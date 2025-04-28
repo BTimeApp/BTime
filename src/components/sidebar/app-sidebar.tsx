@@ -34,7 +34,7 @@ const data = {
     },
     {
       title: "Create Room",
-      url: "/room/create",
+      url: "/create", //change this to /create
       icon: IconLibraryPlus,
     },
     {
