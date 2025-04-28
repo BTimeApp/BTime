@@ -37,11 +37,6 @@ const data = {
       url: "/create", //change this to /create
       icon: IconLibraryPlus,
     },
-    {
-      title: "Join Room",
-      url: "/room/join",
-      icon: IconDoorEnter,
-    },
   ],
   
   navSecondary: [
