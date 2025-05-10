@@ -42,28 +42,6 @@ export default function RootLayout({
             </SidebarInset>
           </SidebarProvider>
         </ThemeProvider>
-
-        
-        
-
-
-        {/* <footer className="flex gap-[24px] flex-wrap items-center justify-center">
-          <a
-            className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-            href="https://cube.studentorg.berkeley.edu/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              aria-hidden
-              src="/globe.svg"
-              alt="Globe icon"
-              width={16}
-              height={16}
-            />
-            Check out Cal Cube Club→
-          </a>
-        </footer> */}
       </body>
     </html>
   );
