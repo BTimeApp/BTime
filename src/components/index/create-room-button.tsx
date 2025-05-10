@@ -9,7 +9,7 @@ import Link from 'next/link'
 export default function CreateRoomButton() {
     return (
             <Button
-                variant="foreground"
+                variant="primary"
                 size="lg"
                 className={cn("p-0")}
                 onClick={(event) => {

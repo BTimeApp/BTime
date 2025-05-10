@@ -20,6 +20,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar"
 
+import ThemeToggle from "@/components/sidebar/theme-toggle"
 const data = {
   user: {
     name: "ctang",
@@ -66,6 +67,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
+        <ThemeToggle />
         <NavUser user={data.user} />
       </SidebarFooter>
     </Sidebar>
