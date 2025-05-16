@@ -12,9 +12,7 @@ export default function CreateRoomButton() {
                 variant="primary"
                 size="lg"
                 className={cn("p-0")}
-                onClick={(event) => {
-                    return;
-            }}>
+            >
                 <Link href="/create" className="grow">
                     <h1 className="font-bold text-center text-2xl">Create Room</h1>
                 </Link>
