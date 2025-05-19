@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+      "outDir": "./dist",
+      "rootDir": "./src/server",
+      "noEmit": false,
+      "target": "es2019",
+      "module": "commonjs",
+      "esModuleInterop": true,
+      "strict": true,
+      "resolveJsonModule": true,
+      "moduleResolution": "node",
+      "baseUrl": "./src",
+      "paths": {
+        "@/*": ["*"]
+      }
+    },
+    "include": ["src/server/**/*.ts"]
+  }
+  

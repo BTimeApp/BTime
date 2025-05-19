@@ -106,7 +106,7 @@ export async function start_server(): Promise<void> {
     return handle(req, res);
   });
 
-  const PORT = config.server.port || 3000;
+  const PORT = config.server.port;
   httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`> Server listening on http://0.0.0.0:${PORT}`);
   });
