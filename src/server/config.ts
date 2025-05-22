@@ -1,7 +1,3 @@
-// config.ts
-import dotenv from 'dotenv';
-dotenv.config();
-
 export const config = {
     server: {
       port: 8080,
@@ -10,6 +6,6 @@ export const config = {
       port: 9000,
     }, 
     database: {
-      uri: "mongodb://127.0.0.1/btime",
+      uri: "mongodb://127.0.0.1:27017/btime",
     },
   };
