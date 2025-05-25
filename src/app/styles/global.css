@@ -22,11 +22,16 @@
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
+  --color-secondary-accent: var(--secondary-accent);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
   --color-primary-accent: var(--primary-accent);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-error: var(--error);
+  --color-error-foreground: var(--error-foreground);
+  --color-error-container: var(--error-container);
+  --color-on-error-container: var(--on-error-container);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -35,6 +40,15 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --color-container-1: var(--container-1);
+  --color-container-2: var(--container-2);
+  --color-container-3: var(--container-3);
+  --color-container-4: var(--container-4);
+  --color-container-5: var(--container-5);
+
+
+
+
 }
 
 :root {
