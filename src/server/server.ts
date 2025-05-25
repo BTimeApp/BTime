@@ -6,29 +6,23 @@ import next from 'next';
 import {config} from './config';
 import 'module-alias/register';
 import { connectToDB } from '@/server/database/database';
+import { IRoom } from '@/types/room';
+import { Types } from 'mongoose';
+import { IRoomUser } from '@/types/roomUser';
+import { ISolve } from '@/types/solve';
 
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
 const handle = app.getRequestHandler();
 
 
-interface RoomUser {
-  userId: string;
-  joinedAt: number;
-}
-
-interface Room {
-  users: RoomUser[];
-  state: 'waiting' | 'started';
-  hostId: string;
-}
-
+//defines useful state variables we want to maintain over the lifestyle of a socket connection (only visible server-side)
 interface CustomSocket extends Socket {
-  roomId?: string;
-  userId?: string;
+  roomId?: Types.ObjectId;
+  userId?: Types.ObjectId;
 }
 
-const rooms: Record<string, Room> = {}; // In-memory room store
+const rooms: Map<Types.ObjectId, IRoom> = new Map<Types.ObjectId, IRoom>(); // In-memory room store
 
 export async function startServer(): Promise<void> {
   await app.prepare();
@@ -42,66 +36,63 @@ export async function startServer(): Promise<void> {
     },
   });
 
-  io.on('connection', (socket: CustomSocket) => {
-    socket.on('join-room', ({ roomId, userId }: { roomId: string; userId: string }) => {
-      const joinedAt = Date.now();
 
-      if (!rooms[roomId]) {
-        rooms[roomId] = {
-          users: [],
-          state: 'waiting',
-          hostId: userId,
-        };
+  io.on('connection', (socket: CustomSocket) => {
+    //by default, roomId and userId will be undefined
+
+    socket.on('join_room', ({ roomId, userId }: { roomId: Types.ObjectId; userId: Types.ObjectId }) => {
+      let room: IRoom | undefined = rooms.get(roomId);
+      const roomUser: IRoomUser = {
+        user: userId,
+        points: 0,
+        setWins: 0,
+        joinedAt: new Date(),
+        competing: true,
       }
 
-      rooms[roomId].users.push({ userId, joinedAt });
+      // temporary - create the room if it doesn't exist. TODO move this to a create_room event
+      if (!room) {
+        room = {
+          roomName: roomId.toString(),
+          host: userId, 
+          users: {userId: roomUser},
+          solves: [],
+          currentSet: 1,
+          currentSolve: 1,
+          roomEvent: '333', 
+          roomFormat: 'racing',
+          matchFormat: 'best_of', //how many sets to take to win
+          setFormat: 'best_of', //how to win a set
+          nSets: 3, //number for match format
+          nSolves: 5, //number for set format 
+          isPrivate: false,
+          state: 'started',
+          password: undefined,
+        };
+      
+        rooms.set(roomId, room);
 
-      const sortedUsers = [...rooms[roomId].users].sort((a, b) => a.joinedAt - b.joinedAt);
-      const hostId = sortedUsers[0].userId;
+        //TODO - write to mongoDB
+        return;
+      }
 
-      socket.join(roomId);
+      socket.join(roomId.toString());
+
       socket.roomId = roomId;
       socket.userId = userId;
 
-      io.to(roomId).emit('room-update', {
-        users: rooms[roomId].users,
-        roomState: rooms[roomId].state,
-        hostId,
-      });
+      io.to(roomId.toString()).emit('room_update', room);
     });
 
-    socket.on('start-room', () => {
-      const room = rooms[socket.roomId!];
-      if (!room) return;
-
-      const hostId = room.users.sort((a, b) => a.joinedAt - b.joinedAt)[0].userId;
-      if (hostId === socket.userId) {
-        room.state = 'started';
-        io.to(socket.roomId!).emit('room-update', {
-          users: room.users,
-          state: room.state,
-          hostId,
+    socket.on('start_room', () => {
+      if (socket.roomId) {
+        io.to(socket.roomId?.toString()).emit('room_started', {
         });
       }
     });
 
     socket.on('disconnect', () => {
-      const { roomId, userId } = socket;
-      if (!roomId || !userId || !rooms[roomId]) return;
-
-      rooms[roomId].users = rooms[roomId].users.filter((u) => u.userId !== userId);
-
-      if (rooms[roomId].users.length === 0) {
-        delete rooms[roomId];
-      } else {
-        const newHostId = rooms[roomId].users.sort((a, b) => a.joinedAt - b.joinedAt)[0].userId;
-
-        io.to(roomId).emit('room-update', {
-          users: rooms[roomId].users,
-          state: rooms[roomId].state,
-          hostId: newHostId,
-        });
-      }
+      
     });
   });
 

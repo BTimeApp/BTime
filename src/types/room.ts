@@ -1,4 +1,4 @@
-import { Types, Document } from 'mongoose';
+import { Types } from 'mongoose';
 import { IUser } from '@/types/user';
 import { IRoomUser } from '@/types/roomUser';
 import { ISolve } from '@/types/solve';
@@ -15,18 +15,30 @@ export const ROOM_FORMATS = [
 
 //match formats - how to win a race based on number of sets won
 export const MATCH_FORMATS = [
-    'best_of_n', //best of n sets wins
-    'first_to_n', //first to n sets wins
+    'best_of', //best of n sets wins
+    'first_to', //first to n sets wins
 ];
+
+export const MATCH_FORMAT_MAP = new Map<MatchFormat, string>([
+    ['best_of', 'Best of'],
+    ['first_to', 'First to']
+]);
 
 //set formats - how to win a set based on the solves
 export const SET_FORMATS = [
-    'best_of_n', //best of n solves
-    'first_to_n', //first to n solves
-    'average_of_n', //average of n format (mean when dropping max and min) - n >= 3
-    'mean_of_n', //mean of n format
+    'best_of', //best of n solves
+    'first_to', //first to n solves
+    'average_of', //average of n format (mean when dropping max and min) - n >= 3
+    'mean_of', //mean of n format
     //TOdO - support other formats like total time differential
-]
+];
+
+export const SET_FORMAT_MAP = new Map<SetFormat, string>([
+    ['best_of', 'Best of'],
+    ['first_to', 'First to'],
+    ['average_of', 'Average of'],
+    ['mean_of', 'Mean of']
+]);
 
 //all room states 
 export const ROOM_STATES = [
@@ -41,14 +53,19 @@ export type MatchFormat = (typeof MATCH_FORMATS)[number];
 export type SetFormat = (typeof SET_FORMATS)[number];
 export type RoomState = (typeof ROOM_STATES)[number];
 
-export interface IRoom extends Document{
+export interface IRoom {
     roomName: string;
     host: Types.ObjectId | IUser;
-    competitors: IRoomUser[];
-    spectators: IRoomUser[];
-    solves: ISolve[];
+    users: Record<string, IRoomUser>; //objectId (user) : IRoomUser. The key has to be a string b/c of mongoDB storage.
+    solves: ISolve[][];
+    currentSet: number; //the current set number (1-indexed)
+    currentSolve: number; //the solve number WITHIN the current set (1-indexed)
     roomEvent: RoomEvent; 
     roomFormat: RoomFormat; 
+    matchFormat?: MatchFormat; //how many sets to take to win
+    setFormat?: SetFormat; //how to win a set
+    nSets?: number; //number for match format
+    nSolves?: number; //number for set format
     isPrivate: boolean;
     state: string;
     password?: string;

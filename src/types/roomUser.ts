@@ -6,4 +6,5 @@ export interface IRoomUser {
   points: number;
   setWins: number;
   joinedAt: Date;
+  competing: boolean; //false = spectating
 }
