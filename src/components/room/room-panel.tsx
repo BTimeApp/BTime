@@ -7,9 +7,8 @@ export default function RoomPanel({
     className?: string;
     children: React.ReactNode;
   }>) {
-    console.log(className);
     return (
-        <div className={"flex-row grow text-center " + className}>
+        <div className={"flex flex-col text-center " + className}>
             {children}
         </div>
     );

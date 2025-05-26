@@ -19,6 +19,8 @@ let socket: ReturnType<typeof io> | null = null;
 export default function Page() {
   const params = useParams<{ roomId: string }>();
   let roomId = params.roomId;
+
+  //room-related state
   const [roomName, setRoomName] = useState<string>("");
   const [userId, setUserId] = useState<string>("");
   const [hostId, setHostId] = useState<string>("");
@@ -33,7 +35,14 @@ export default function Page() {
   const [nSolves, setNSolves] = useState<number>(1);
   const [nSets, setNSets] = useState<number>(1);
   const [roomPrivate, setRoomPrivate] = useState<boolean>(false);
-  const [localRoomState, setLocalRoomState] = useState<RoomState>("started");
+  const [localRoomState, setLocalRoomState] = useState<RoomState>("waiting");
+
+  //utility states
+  const [formatTipText, setFormatTipText] = useState<string>("");
+  const [verboseFormatTipText, setVerboseFormatTipText] = useState<string>("");
+
+  //user-related state
+  const [userCompeting, setUserCompeting] = useState<boolean>(false);
 
   //run on mount
   useEffect(() => {
@@ -75,7 +84,7 @@ export default function Page() {
       setRoomEvent(room.roomEvent);
       setRoomFormat(room.roomFormat);
       setMatchFormat(room.matchFormat ? room.matchFormat : "best_of"); //TODO: find a better way 
-      setMatchFormat(room.setFormat ? room.setFormat : "best_of"); //TODO: find a better way
+      setSetFormat(room.setFormat ? room.setFormat : "best_of"); //TODO: find a better way
       setNSolves(room.nSolves ? room.nSolves : 1);
       setNSets(room.nSets ? room.nSets : 1);
       setRoomPrivate(room.isPrivate);
@@ -88,7 +97,28 @@ export default function Page() {
     };
   }, [roomId, userId]);
 
+  useEffect(() => {
+    let raceFormatText = "";
+    if (roomFormat == 'racing') {
+      raceFormatText = "Format: " + SET_FORMAT_MAP.get(setFormat) + " " + nSolves + " solve" + (nSolves > 1 ? "s" : "");
+
+      if (nSets > 1) { 
+        raceFormatText += ", " + MATCH_FORMAT_MAP.get(matchFormat) + " " + nSets + " set" + (nSets > 1 ? "s" : "");
+      }
+    } 
+    setFormatTipText(raceFormatText);
+
+    let verboseRaceFormatText = "";
+    if (roomFormat == 'racing') {
+      //TODO - make this depend on the format and move logic to types/room.ts
+      verboseRaceFormatText = "Win by winning [x] sets.\n";
+      verboseRaceFormatText += "Win a set by winning [y] solves.";
+    } 
+    setVerboseFormatTipText(verboseRaceFormatText);
+  }, [roomFormat, matchFormat, setFormat]);
+
   //TODO: useEffect for when the currentSet increments...
+  //TODO: useEffect for detecting set and match victory
 
   function getNextScramble() {
     console.log("get next scramble button clicked");
@@ -100,25 +130,57 @@ export default function Page() {
     return;
   }
 
+  function userToggleCompeting() {
+    console.log("user compete/spectate button clicked");
+  }
+
+  function startRoom() {
+    //TODO: make sure the user is actually the host
+    console.log("start room button clicked");
+    setLocalRoomState("started");
+  }
+
   function RoomHeader() {
-    return <Header>
-      <RoomHeaderContent roomState={localRoomState} isHost = {hostId == userId}/>
-    </Header>
+    return (
+      <Header>
+        <RoomHeaderContent roomState={localRoomState} isHost = {hostId == userId}/>
+      </Header>
+    );
   }
 
   function RoomHeaderContent({roomState, isHost}: {roomState: RoomState, isHost: boolean}) {
     //TODO - replace with real scramble
-    const exampleScramble = "Example Scramble";
-    let raceFormatText = "";
-    if (roomFormat == 'racing' && roomState == "started") {
-      console.log("Racing room");
-      raceFormatText = "Format: " + SET_FORMAT_MAP.get(setFormat) + " " + nSolves + " solve" + (nSolves > 1 ? "s" : "");
 
-      if (nSets > 1) { 
-        raceFormatText += ", " + MATCH_FORMAT_MAP.get(matchFormat) + " " + nSets + " set" + (nSets > 1 ? "s" : "");
-      }
-      
-    } 
+    let mainContent = <></>;
+
+    const exampleScramble = "Example Scramble";
+    
+    switch(roomState) {
+      case "waiting":
+        mainContent =  (
+          <>
+            <h2 className = {cn("text-2xl")}>
+              Scramble will display after starting
+            </h2>
+          </>
+        );
+        break;
+      case "started":
+        mainContent =  (
+          <>
+            <h2 className = {cn("text-2xl")}>
+              {exampleScramble}
+            </h2>
+            <div className= {cn("text-md")}>{formatTipText}</div>
+          </>
+        );
+      case "finished":
+        break;
+      default:
+        break;
+    }
+    
+    
 
     return (
         <>
@@ -150,8 +212,7 @@ export default function Page() {
               </div>
 
               <div className = {cn("col-span-6 content-center grid-row")}>
-                <h2 className = {cn("text-2xl")}>{exampleScramble}</h2>
-                <div className= {cn("text-md")}>{raceFormatText}</div>
+                {mainContent}
               </div>
 
               <div className = {cn("col-span-1 grid grid-rows-3")}>
@@ -184,41 +245,87 @@ export default function Page() {
       );
   }
 
-  function RoomContent() {
-    switch(localRoomState) {
-      case "waiting":
-        break;
-      case "started":
-        break;
-      case "finished":
-        break;
-      default:
-        return;
-    }
+  function RoomLeftPanel({roomState, isHost}: {roomState: RoomState, isHost: boolean}) {
+    const competingUsers = users.filter(user => user.competing);
+    const spectatingUsers = users.filter(user => !user.competing);
+
+    return (
+      <RoomPanel className="bg-container-3 py-3">
+        <div>
+          <h2 className = "text-2xl">Racers ({competingUsers.length})</h2>
+          <ul>
+            {competingUsers
+              .map((user, index) => (
+                <li key={index}>{user.user.toString()}</li>
+              ))
+            }
+          </ul>
+        </div>
+        <div>
+          <h2 className = "text-2xl">Spectators ({spectatingUsers.length})</h2>
+          <ul>
+          {spectatingUsers
+              .map((user, index) => (
+                <li key={index}>{user.user.toString()}</li>
+              ))
+            }
+          </ul>
+        </div>
+        <div className = {cn("mt-auto flex flex-row justify-between px-3 py-1")}>
+          <div>
+            <Button
+                variant="primary"
+                size="default"
+                className={cn("px-1")}
+                onClick={userToggleCompeting}
+            >
+              <h1 className={cn("font-bold text-center text-md")}>{userCompeting ? "SPECTATE" : "COMPETE"}</h1>
+            </Button>
+          </div>
+          <div>
+            {isHost && roomState == "waiting" ?
+              <Button
+                variant="primary"
+                size="default"
+                className={cn("px-1")}
+                onClick={startRoom}
+              >
+                <h1 className={cn("font-bold text-center text-md")}>START ROOM</h1>
+              </Button> : 
+              <></>
+            }
+          </div>
+        </div>
+        
+      </RoomPanel>
+    );
+  }
+
+  function RoomRightPanel({roomState, isHost}: {roomState: RoomState, isHost: boolean}) {
+    return (
+      <RoomPanel className="bg-container-1 px-2 py-3">
+        <div>
+          <h2 className = {cn("text-2xl md-1")}>Room: {roomId}</h2>
+        </div>
+        <div className = {cn("text-left")}>
+          <h2 className = "text-2xl">Event: {roomEvent}</h2>
+        </div>
+        <div className = {cn("text-left")}>
+          <h2 className = "text-2xl">{formatTipText}</h2>
+        </div>
+        <div className = {cn("text-left mx-2")}>
+            {verboseFormatTipText}
+        </div>
+      </RoomPanel>
+    );
   }
 
   return (
     <div className = "flex flex-col h-screen">
       <RoomHeader />
-      <div className={cn("flex grow")}>
-        <RoomPanel className="bg-container-5">
-          <h1>LeftPanel placeholder</h1>
-        </RoomPanel>
-        <RoomPanel>
-          <h1>RightPanel placeholder</h1>
-        </RoomPanel>
-        {/* <div className="text-center grow">
-          <h1>RightPanel placeholder</h1>
-          <p>Room ID: {roomId}</p>
-          <p>Host ID: {hostId}</p>
-          <h2>User List:</h2>
-          <ul>
-            {users.map((u) => (
-              //eventually add username...
-              <li key={u.user.toString()}>{u.user.toString()}</li>
-            ))}
-          </ul>
-        </div> */}
+      <div className={cn("grid grid-cols-2 grow")}>
+        <RoomLeftPanel roomState={localRoomState} isHost={hostId==userId}/>
+        <RoomRightPanel roomState={localRoomState} isHost={hostId==userId}/>
       </div>
     </div>
   );

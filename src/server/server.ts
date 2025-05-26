@@ -47,7 +47,7 @@ export async function startServer(): Promise<void> {
         points: 0,
         setWins: 0,
         joinedAt: new Date(),
-        competing: true,
+        competing: false,
       }
 
       // temporary - create the room if it doesn't exist. TODO move this to a create_room event
@@ -66,7 +66,7 @@ export async function startServer(): Promise<void> {
           nSets: 3, //number for match format
           nSolves: 5, //number for set format 
           isPrivate: false,
-          state: 'started',
+          state: 'waiting',
           password: undefined,
         };
       
