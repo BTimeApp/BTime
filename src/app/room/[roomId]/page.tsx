@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from "react";
 import io from "socket.io-client";
-import { v4 as uuidv4 } from 'uuid';
+import { Types } from "mongoose";
 import { RoomState, IRoom, RoomEvent, RoomFormat, MatchFormat, SetFormat, MATCH_FORMAT_MAP, SET_FORMAT_MAP } from "@/types/room";
 import { IRoomUser } from "@/types/roomUser";
 import { ISolve } from "@/types/solve";
@@ -49,8 +49,8 @@ export default function Page() {
     // Set userId from localStorage or generate new
     let storedId = localStorage.getItem("userId");
     if (!storedId || storedId == "") {
-      //any 12-byte sequence is a valid mongoDB id. TODO: replace this with an actual ID from mongoose
-      storedId = uuidv4();
+      //any 12-byte sequence is a valid mongoDB id. TODO: replace this with the actual ID fetched from DB
+      storedId = new Types.ObjectId().toString();
       localStorage.setItem("userId", storedId);
     }
     setUserId(storedId);
