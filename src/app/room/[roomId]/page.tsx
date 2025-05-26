@@ -132,6 +132,8 @@ export default function Page() {
 
   function userToggleCompeting() {
     console.log("user compete/spectate button clicked");
+    setUserCompeting(!userCompeting);
+    //TODO - make this actually change user competing state globally
   }
 
   function startRoom() {
