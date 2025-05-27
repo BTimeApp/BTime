@@ -10,7 +10,8 @@ import { ISolve } from "@/types/solve";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import RoomPanel from "@/components/room/room-panel";
-import { io, Socket } from "socket.io-client";
+import { getSocket } from '@/lib/socket'; // from above
+import { Socket } from "socket.io-client";
 
 
 
@@ -20,9 +21,8 @@ export default function Page() {
 
   //room-related state
   const [roomName, setRoomName] = useState<string>("");
-  const [userId, setUserId] = useState<string>("");
   const [hostId, setHostId] = useState<string>("");
-  const [users, setUsers] = useState<IRoomUser[]>([]);
+  const [users, setUsers] = useState<Record<string,IRoomUser>>({});
   const [solves, setSolves] = useState<ISolve[][]>([]);
   const [currentSet, setCurrentSet] = useState<number>(1);
   const [currentSolve, setCurrentSolve] = useState<number>(1);
@@ -40,7 +40,7 @@ export default function Page() {
   const [verboseFormatTipText, setVerboseFormatTipText] = useState<string>("");
 
   //user-related state
-  const [userCompeting, setUserCompeting] = useState<boolean>(false);
+  const [userId, setUserId] = useState<string>("");
 
   //socket state
   const socketRef = useRef<Socket | null>(null);
@@ -59,13 +59,13 @@ export default function Page() {
 
   //set up socket connection, set up socket incoming events
   useEffect(() => {
-    socketRef.current = io();
+    let socket = getSocket();
+    socketRef.current = socket;
 
-    const socket = socketRef.current;
     socket.on("room_update", (room: IRoom) => {
       console.log("Updating room state with incoming room update message.")
       setRoomName(room.roomName);
-      setUsers(Object.values(room.users));
+      setUsers(room.users);
       setHostId(room.host.toString());
       setSolves(room.solves);
       setCurrentSet(room.currentSet);
@@ -83,12 +83,12 @@ export default function Page() {
     return () => {
       socketRef.current?.disconnect();
     }
-  });
+  }, []);
 
   //join room upon load/change of user/room
   useEffect(() => {
-    if (!userId || !roomId) {
-      console.log("Waiting for userId or roomId...");
+    if (!userId) {
+      console.log("Waiting for userId...");
       return;
     }
 
@@ -101,7 +101,7 @@ export default function Page() {
         socket.emit("join_room", { userId, roomId });
       } else {
         console.log("Waiting for socket to connect before emitting join_room");
-        socket.once("connect", () => {
+        socket.on("connect", () => {
           console.log("Socket connected. Emitting join_room...")
           socket.emit("join_room", { userId, roomId });
         });
@@ -113,7 +113,7 @@ export default function Page() {
       socketRef.current?.disconnect();
       socketRef.current = null;
     };
-  }, [userId, roomId]);
+  }, [userId]);
 
   //update format text based on format changes (there shouldn't be any, but just in case)
   useEffect(() => {
@@ -128,7 +128,7 @@ export default function Page() {
     setFormatTipText(raceFormatText);
 
     setVerboseFormatTipText(getVerboseFormatText(roomFormat, matchFormat, setFormat, nSets, nSolves));
-  }, [roomFormat, matchFormat, setFormat]);
+  }, [roomFormat, matchFormat, setFormat, nSets, nSolves]);
 
   //TODO: useEffect for when the currentSet increments...
   //TODO: useEffect for detecting set and match victory
@@ -145,8 +145,8 @@ export default function Page() {
 
   function userToggleCompeting() {
     console.log("user compete/spectate button clicked");
-    setUserCompeting(!userCompeting);
-    //TODO - make this actually change user competing state globally
+    const socket = socketRef.current;
+    socket?.emit("user_toggle_competing");
   }
 
   function startRoom() {
@@ -261,8 +261,9 @@ export default function Page() {
   }
 
   function RoomLeftPanel({roomState, isHost}: {roomState: RoomState, isHost: boolean}) {
-    const competingUsers = users.filter(user => user.competing);
-    const spectatingUsers = users.filter(user => !user.competing);
+    const userList = Object.values(users);
+    const competingUsers = userList.filter(user => user.competing);
+    const spectatingUsers = userList.filter(user => !user.competing);
 
     switch(roomState) {
       case "waiting":
@@ -296,7 +297,7 @@ export default function Page() {
                     className={cn("px-1")}
                     onClick={userToggleCompeting}
                 >
-                  <h1 className={cn("font-bold text-center text-md")}>{userCompeting ? "SPECTATE" : "COMPETE"}</h1>
+                  <h1 className={cn("font-bold text-center text-md")}>{users[userId]?.competing ? "SPECTATE" : "COMPETE"}</h1>
                 </Button>
               </div>
               <div>

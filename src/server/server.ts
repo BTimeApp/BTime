@@ -37,7 +37,7 @@ export async function startServer(): Promise<void> {
 
 
   io.on('connection', (socket: CustomSocket) => {
-    console.log("Connection established on server");
+    console.log("Connection established on server: ", socket.id);
     //by default, roomId and userId will be undefined
 
     socket.on('join_room', ({ roomId, userId }: { roomId: Types.ObjectId; userId: Types.ObjectId }) => {
@@ -90,6 +90,20 @@ export async function startServer(): Promise<void> {
       if (socket.roomId) {
         io.to(socket.roomId.toString()).emit('room_started', {
         });
+      }
+    });
+    
+    socket.on('user_toggle_competing', () => {
+      if (socket.roomId && socket.userId) {
+        const room = rooms.get(socket.roomId);
+        console.log(room);
+        if (room) {
+          console.log(`User ${socket.userId} toggled competing in room ${socket.roomId}`);
+          room.users[socket.userId.toString()].competing = !room.users[socket.userId.toString()].competing;
+          io.to(socket.roomId.toString()).emit('room_update', room);
+        }
+      } else {
+        console.log(`Either roomId or userId not set on socket: ${socket.roomId}, ${socket.userId}`);
       }
     });
 
