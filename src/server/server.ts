@@ -63,8 +63,8 @@ export async function startServer(): Promise<void> {
           roomFormat: 'racing',
           matchFormat: 'best_of', //how many sets to take to win
           setFormat: 'best_of', //how to win a set
-          nSets: 3, //number for match format
-          nSolves: 5, //number for set format 
+          nSets: 1, //number for match format
+          nSolves: 1, //number for set format 
           isPrivate: false,
           state: 'waiting',
           password: undefined,

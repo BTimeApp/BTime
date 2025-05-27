@@ -32,8 +32,8 @@ export default function Page() {
   const [roomFormat, setRoomFormat] = useState<RoomFormat>("racing");
   const [matchFormat, setMatchFormat] = useState<MatchFormat>("best_of");
   const [setFormat, setSetFormat] = useState<SetFormat>("best_of");
-  const [nSolves, setNSolves] = useState<number>(5);
-  const [nSets, setNSets] = useState<number>(3);
+  const [nSolves, setNSolves] = useState<number>(1);
+  const [nSets, setNSets] = useState<number>(1);
   const [roomPrivate, setRoomPrivate] = useState<boolean>(false);
   const [localRoomState, setLocalRoomState] = useState<RoomState>("waiting");
 
@@ -245,75 +245,142 @@ export default function Page() {
     const competingUsers = users.filter(user => user.competing);
     const spectatingUsers = users.filter(user => !user.competing);
 
-    return (
-      <RoomPanel className="bg-container-3 py-3">
-        <div>
-          <h2 className = "text-2xl">Racers ({competingUsers.length})</h2>
-          <ul>
-            {competingUsers
-              .map((user, index) => (
-                <li key={index}>{user.user.toString()}</li>
-              ))
-            }
-          </ul>
-        </div>
-        <div>
-          <h2 className = "text-2xl">Spectators ({spectatingUsers.length})</h2>
-          <ul>
-          {spectatingUsers
-              .map((user, index) => (
-                <li key={index}>{user.user.toString()}</li>
-              ))
-            }
-          </ul>
-        </div>
-        <div className = {cn("mt-auto flex flex-row justify-between px-3 py-1")}>
-          <div>
-            <Button
-                variant="primary"
-                size="default"
-                className={cn("px-1")}
-                onClick={userToggleCompeting}
-            >
-              <h1 className={cn("font-bold text-center text-md")}>{userCompeting ? "SPECTATE" : "COMPETE"}</h1>
-            </Button>
-          </div>
-          <div>
-            {isHost && roomState == "waiting" ?
-              <Button
-                variant="primary"
-                size="default"
-                className={cn("px-1")}
-                onClick={startRoom}
-              >
-                <h1 className={cn("font-bold text-center text-md")}>START ROOM</h1>
-              </Button> : 
-              <></>
-            }
-          </div>
-        </div>
-        
-      </RoomPanel>
-    );
+    switch(roomState) {
+      case "waiting":
+        return (
+          <RoomPanel className="bg-container-3 py-3">
+            <div>
+              <h2 className = "text-2xl">Racers ({competingUsers.length})</h2>
+              <ul>
+                {competingUsers
+                  .map((user, index) => (
+                    <li key={index}>{user.user.toString()}</li>
+                  ))
+                }
+              </ul>
+            </div>
+            <div>
+              <h2 className = "text-2xl">Spectators ({spectatingUsers.length})</h2>
+              <ul>
+              {spectatingUsers
+                  .map((user, index) => (
+                    <li key={index}>{user.user.toString()}</li>
+                  ))
+                }
+              </ul>
+            </div>
+            <div className = {cn("mt-auto flex flex-row justify-between px-3 py-1")}>
+              <div>
+                <Button
+                    variant="primary"
+                    size="default"
+                    className={cn("px-1")}
+                    onClick={userToggleCompeting}
+                >
+                  <h1 className={cn("font-bold text-center text-md")}>{userCompeting ? "SPECTATE" : "COMPETE"}</h1>
+                </Button>
+              </div>
+              <div>
+                {isHost ?
+                  <Button
+                    variant="primary"
+                    size="default"
+                    className={cn("px-1")}
+                    onClick={startRoom}
+                  >
+                    <h1 className={cn("font-bold text-center text-md")}>START ROOM</h1>
+                  </Button> : 
+                  <></>
+                }
+              </div>
+            </div>
+            
+          </RoomPanel>
+        );
+      case "started":
+        return (
+          <RoomPanel className={cn("bg-secondary py-1 gap-2")}>
+            <div className={cn("flex flex-row items-center px-3 gap-3 ")}>
+              <div className={cn("text-2xl grow")}>{userId}</div>
+              <div className={cn("flex-col justify-center")}>
+                <div>
+                  Sets
+                </div>
+                <div>
+                  0 
+                  {/* TODO: replace with user sets won */}
+                </div>
+              </div>
+              <div className={cn("flex-col justify-center")}>
+                <div>
+                  Solves
+                </div>
+                <div>
+                  0 
+                  {/* TODO: replace with user solves won */}
+                </div>
+              </div>
+            </div>
+            <div className={cn("grow flex flex-col justify-center")}>
+              <div>
+                Status Tooltip (TODO)
+              </div>
+              <div>
+                Timer (TODO)
+              </div>
+              <div>
+                Penalty buttons (TODO)
+              </div>
+            </div>
+            <div className={cn("flex flex-row gap-2")}>
+              <div>
+                Inspection Toggle (TODO)
+              </div>
+              <div>
+                Input Mode (TODO)
+              </div>
+            </div>
+          </RoomPanel>
+        );
+      case "finished":
+        break;
+      default:
+        return <></>;
+    }
   }
 
   function RoomRightPanel({roomState, isHost}: {roomState: RoomState, isHost: boolean}) {
-    return (
-      <RoomPanel className="bg-container-1 px-2 py-3">
-        <div>
-          <h2 className = {cn("text-2xl md-1")}>Room: {roomId}</h2>
-        </div>
-        <div className = {cn("text-left")}>
-          <h2 className = "text-2xl">Event: {roomEvent}</h2>
-        </div>
-        <div className = {cn("text-left")}>
-          <h2 className = "text-2xl">{formatTipText}</h2>
-        </div>
-        <div className = {cn("text-left mx-2")}>
-            {verboseFormatTipText}
-        </div>
-      </RoomPanel>
-    );
+    switch (roomState) {
+      case "waiting":
+        return (
+          <RoomPanel className="bg-container-1 px-2 py-3">
+            <div>
+              <h2 className = {cn("text-2xl md-1")}>Room: {roomId}</h2>
+            </div>
+            <div className = {cn("text-left")}>
+              <h2 className = "text-2xl">Event: {roomEvent}</h2>
+            </div>
+            <div className = {cn("text-left")}>
+              <h2 className = "text-2xl">{formatTipText}</h2>
+            </div>
+            <div className = {cn("text-left mx-2")}>
+                {verboseFormatTipText}
+            </div>
+          </RoomPanel>
+        );
+      case "started":
+        return (
+          <RoomPanel className="bg-container-2 py-3">
+            <div>
+              
+            </div>
+          </RoomPanel>
+        );
+      case "finished":
+        break;
+      default:
+        return <></>
+    }
   }
 
   return (
