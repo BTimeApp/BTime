@@ -41,7 +41,7 @@ export async function startServer(): Promise<void> {
     //by default, roomId and userId will be undefined
 
     socket.on('join_room', ({ roomId, userId }: { roomId: Types.ObjectId; userId: Types.ObjectId }) => {
-      console.log(`User ${userId} is trying to join room ${roomId}.`)
+      console.log(`User ${userId} is trying to join room ${roomId}.`);
 
       let room: IRoom | undefined = rooms.get(roomId);
       const roomUser: IRoomUser = {
@@ -87,9 +87,17 @@ export async function startServer(): Promise<void> {
     });
 
     socket.on('start_room', () => {
+      console.log(`User ${socket.userId} is trying to start room ${socket.roomId}.`);
       if (socket.roomId) {
-        io.to(socket.roomId.toString()).emit('room_started', {
-        });
+        const room = rooms.get(socket.roomId);
+        if (room) {
+          if (room.state == "waiting") {
+            room.state = "started";
+            io.to(socket.roomId.toString()).emit('room_update', room);
+          } else {
+            console.log(`Cannot start room when room state is ${room.state}`);
+          } 
+        }
       }
     });
     

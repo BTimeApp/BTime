@@ -145,14 +145,13 @@ export default function Page() {
 
   function userToggleCompeting() {
     console.log("user compete/spectate button clicked");
-    const socket = socketRef.current;
-    socket?.emit("user_toggle_competing");
+    socketRef.current?.emit("user_toggle_competing");
   }
 
   function startRoom() {
     //TODO: make sure the user is actually the host
     console.log("start room button clicked");
-    setLocalRoomState("started");
+    socketRef.current?.emit("start_room");
   }
 
   function RoomHeader() {
