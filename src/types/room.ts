@@ -2,6 +2,7 @@ import { Types } from 'mongoose';
 import { IUser } from '@/types/user';
 import { IRoomUser } from '@/types/roomUser';
 import { ISolve } from '@/types/solve';
+import { format } from 'path';
 
 //defines all legal events
 export const ROOM_EVENTS = ['333', '222', '444', '555', '666', '777', 'megaminx', 'pyraminx', 'skewb', 'clock', 'sq1', '3oh', '3bld', '4bld', '5bld'];
@@ -39,6 +40,42 @@ export const SET_FORMAT_MAP = new Map<SetFormat, string>([
     ['average_of', 'Average of'],
     ['mean_of', 'Mean of']
 ]);
+
+export function getVerboseFormatText(roomFormat: RoomFormat, matchFormat: MatchFormat, setFormat: SetFormat, nSets: number, nSolves: number): string {
+    if (roomFormat == "casual") {
+        return "Enjoy endless solves in this casual room."
+    } else {
+        let formatText = "";
+        if (nSets && nSets > 1) {
+            switch(matchFormat) {
+                case "best_of":
+                    formatText += "Win the match by winning the most of " + nSets + " sets.";
+                    break;
+                case "first_to":
+                    formatText += "Win the match by being the first to win " + nSets + " sets.";
+                    break;
+                default:
+                    break;
+            }
+            formatText += "\n";
+        } 
+        switch(setFormat) {
+            case 'best_of':
+                formatText += "Win a set by winning the most of " + nSolves + " solves.";
+                break;
+            case 'first_to':
+                formatText += "Win a set by being the first to win " + nSolves + " solves.";
+                break;
+            case 'average_of':
+                formatText += "Win a set by having the best average of " + nSolves + " solves (best and worst times dropped).";
+                break;
+            case 'mean_of':
+                formatText += "Win a set by having the best mean of " + nSolves + " solves.";
+                break;
+        }
+        return formatText;
+    }
+}
 
 //all room states 
 export const ROOM_STATES = [

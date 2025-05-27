@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState } from "react";
 import io from "socket.io-client";
 import { Types } from "mongoose";
-import { RoomState, IRoom, RoomEvent, RoomFormat, MatchFormat, SetFormat, MATCH_FORMAT_MAP, SET_FORMAT_MAP } from "@/types/room";
+import { RoomState, IRoom, RoomEvent, RoomFormat, MatchFormat, SetFormat, MATCH_FORMAT_MAP, SET_FORMAT_MAP, getVerboseFormatText } from "@/types/room";
 import { IRoomUser } from "@/types/roomUser";
 import { ISolve } from "@/types/solve";
 import { Button } from "@/components/ui/button";
@@ -32,8 +32,8 @@ export default function Page() {
   const [roomFormat, setRoomFormat] = useState<RoomFormat>("racing");
   const [matchFormat, setMatchFormat] = useState<MatchFormat>("best_of");
   const [setFormat, setSetFormat] = useState<SetFormat>("best_of");
-  const [nSolves, setNSolves] = useState<number>(1);
-  const [nSets, setNSets] = useState<number>(1);
+  const [nSolves, setNSolves] = useState<number>(5);
+  const [nSets, setNSets] = useState<number>(3);
   const [roomPrivate, setRoomPrivate] = useState<boolean>(false);
   const [localRoomState, setLocalRoomState] = useState<RoomState>("waiting");
 
@@ -108,13 +108,7 @@ export default function Page() {
     } 
     setFormatTipText(raceFormatText);
 
-    let verboseRaceFormatText = "";
-    if (roomFormat == 'racing') {
-      //TODO - make this depend on the format and move logic to types/room.ts
-      verboseRaceFormatText = "Win by winning [x] sets.\n";
-      verboseRaceFormatText += "Win a set by winning [y] solves.";
-    } 
-    setVerboseFormatTipText(verboseRaceFormatText);
+    setVerboseFormatTipText(getVerboseFormatText(roomFormat, matchFormat, setFormat, nSets, nSolves));
   }, [roomFormat, matchFormat, setFormat]);
 
   //TODO: useEffect for when the currentSet increments...
