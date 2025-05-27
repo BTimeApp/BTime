@@ -2,8 +2,7 @@
 import Header from "@/components/common/header";
 import * as React from 'react';
 import { useParams } from 'next/navigation';
-import { useEffect, useState } from "react";
-import io from "socket.io-client";
+import { useEffect, useState, useRef } from "react";
 import { Types } from "mongoose";
 import { RoomState, IRoom, RoomEvent, RoomFormat, MatchFormat, SetFormat, MATCH_FORMAT_MAP, SET_FORMAT_MAP, getVerboseFormatText } from "@/types/room";
 import { IRoomUser } from "@/types/roomUser";
@@ -11,8 +10,7 @@ import { ISolve } from "@/types/solve";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import RoomPanel from "@/components/room/room-panel";
-
-let socket: ReturnType<typeof io> | null = null;
+import { io, Socket } from "socket.io-client";
 
 
 
@@ -44,7 +42,10 @@ export default function Page() {
   //user-related state
   const [userCompeting, setUserCompeting] = useState<boolean>(false);
 
-  //run on mount
+  //socket state
+  const socketRef = useRef<Socket | null>(null);
+
+  //retrieve local user ID
   useEffect(() => {
     // Set userId from localStorage or generate new
     let storedId = localStorage.getItem("userId");
@@ -56,25 +57,13 @@ export default function Page() {
     setUserId(storedId);
   }, []);
 
-  //run when mount, run when roomId or userId change
+  //set up socket connection, set up socket incoming events
   useEffect(() => {
-    if (!userId){
-      console.log("No userId detected.");
+    socketRef.current = io();
 
-      //teardown
-      return () => {
-        socket?.disconnect();
-      };
-    }
-    console.log("User id:", userId);
-
-    if (!socket) {
-      socket = io();
-    }
-
-    socket.emit("join_room", { roomId, userId });
-
+    const socket = socketRef.current;
     socket.on("room_update", (room: IRoom) => {
+      console.log("Updating room state with incoming room update message.")
       setRoomName(room.roomName);
       setUsers(Object.values(room.users));
       setHostId(room.host.toString());
@@ -91,12 +80,42 @@ export default function Page() {
       setLocalRoomState(room.state);
     });
 
-    //teardown
     return () => {
-      socket?.disconnect();
-    };
-  }, [roomId, userId]);
+      socketRef.current?.disconnect();
+    }
+  });
 
+  //join room upon load/change of user/room
+  useEffect(() => {
+    if (!userId || !roomId) {
+      console.log("Waiting for userId or roomId...");
+      return;
+    }
+
+    // Initialize socket once
+    if (socketRef.current) {
+      const socket = socketRef.current;
+
+      if (socket.connected) {
+        console.log("Socket already connected — emitting join_room");
+        socket.emit("join_room", { userId, roomId });
+      } else {
+        console.log("Waiting for socket to connect before emitting join_room");
+        socket.once("connect", () => {
+          console.log("Socket connected. Emitting join_room...")
+          socket.emit("join_room", { userId, roomId });
+        });
+      }
+    }
+
+    return () => {
+      // Clean up
+      socketRef.current?.disconnect();
+      socketRef.current = null;
+    };
+  }, [userId, roomId]);
+
+  //update format text based on format changes (there shouldn't be any, but just in case)
   useEffect(() => {
     let raceFormatText = "";
     if (roomFormat == 'racing') {

@@ -9,7 +9,6 @@ import { connectToDB } from '@/server/database/database';
 import { IRoom } from '@/types/room';
 import { Types } from 'mongoose';
 import { IRoomUser } from '@/types/roomUser';
-import { ISolve } from '@/types/solve';
 
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
@@ -38,9 +37,12 @@ export async function startServer(): Promise<void> {
 
 
   io.on('connection', (socket: CustomSocket) => {
+    console.log("Connection established on server");
     //by default, roomId and userId will be undefined
 
     socket.on('join_room', ({ roomId, userId }: { roomId: Types.ObjectId; userId: Types.ObjectId }) => {
+      console.log(`User ${userId} is trying to join room ${roomId}.`)
+
       let room: IRoom | undefined = rooms.get(roomId);
       const roomUser: IRoomUser = {
         user: userId,
@@ -55,7 +57,7 @@ export async function startServer(): Promise<void> {
         room = {
           roomName: roomId.toString(),
           host: userId, 
-          users: {userId: roomUser},
+          users: {},
           solves: [],
           currentSet: 1,
           currentSolve: 1,
@@ -69,12 +71,12 @@ export async function startServer(): Promise<void> {
           state: 'waiting',
           password: undefined,
         };
-      
         rooms.set(roomId, room);
 
         //TODO - write to mongoDB
-        return;
-      }
+      } 
+
+      room.users[userId.toString()] = roomUser;
 
       socket.join(roomId.toString());
 
@@ -86,13 +88,25 @@ export async function startServer(): Promise<void> {
 
     socket.on('start_room', () => {
       if (socket.roomId) {
-        io.to(socket.roomId?.toString()).emit('room_started', {
+        io.to(socket.roomId.toString()).emit('room_started', {
         });
       }
     });
 
     socket.on('disconnect', () => {
-      
+      if (socket.roomId && socket.userId) {
+        const room = rooms.get(socket.roomId);
+        if (room) {
+          //remove user from room
+          delete room.users[socket.userId.toString()];
+          io.to(socket.roomId.toString()).emit('room_update', room);
+
+          //check if no more users, if so, delete room.
+
+          //check if host, and if so, promote a new host
+
+        }
+      }
     });
   });
 
