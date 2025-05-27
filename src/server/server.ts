@@ -100,6 +100,24 @@ export async function startServer(): Promise<void> {
         }
       }
     });
+
+    socket.on('reset_room', () => {
+      console.log(`User ${socket.userId} is trying to reset room ${socket.roomId}.`);
+      if (socket.roomId) {
+        const room = rooms.get(socket.roomId);
+        if (room) {
+          if (room.state == "started" || room.state == "finished") {
+            room.state = "waiting";
+            room.solves = [];
+            room.currentSet = 1;
+            room.currentSolve = 1;
+            io.to(socket.roomId.toString()).emit('room_update', room);
+          } else {
+            console.log(`Cannot reset room when room state is ${room.state}`);
+          } 
+        }
+      }
+    });
     
     socket.on('user_toggle_competing', () => {
       if (socket.roomId && socket.userId) {

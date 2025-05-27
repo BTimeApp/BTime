@@ -140,7 +140,7 @@ export default function Page() {
 
   function resetRoom() {
     console.log("reset room button clicked");
-    return;
+    socketRef.current?.emit("reset_room");
   }
 
   function userToggleCompeting() {
