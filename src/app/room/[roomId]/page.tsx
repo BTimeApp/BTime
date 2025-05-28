@@ -317,9 +317,33 @@ export default function Page() {
           </RoomPanel>
         );
       case "started":
+        let centerSection;
+        if (users[userId].competing) {
+          centerSection = (
+            <>
+              <div>
+                Status Tooltip (TODO)
+              </div>
+              <div>
+                Timer (TODO)
+              </div>
+              <div>
+                Penalty buttons (TODO)
+              </div>
+            </>
+          );
+        } else {
+          centerSection = (
+            <>
+              <div className={cn("text-xl")}>
+                You are spectating. Join to use timer.
+              </div>
+            </>
+          );
+        }
         return (
           <RoomPanel className={cn("bg-secondary py-1 gap-2")}>
-            <div className={cn("flex flex-row items-center px-3 gap-3 ")}>
+            <div className={cn("flex flex-row items-center px-3 gap-3")}>
               <div className={cn("text-2xl grow")}>{userId}</div>
               <div className={cn("flex-col justify-center")}>
                 <div>
@@ -341,22 +365,25 @@ export default function Page() {
               </div>
             </div>
             <div className={cn("grow flex flex-col justify-center")}>
-              <div>
-                Status Tooltip (TODO)
-              </div>
-              <div>
-                Timer (TODO)
-              </div>
-              <div>
-                Penalty buttons (TODO)
-              </div>
+              {centerSection}
             </div>
-            <div className={cn("flex flex-row gap-2")}>
+            <div className={cn("flex flex-row gap-2 px-2")}>
               <div>
                 Inspection Toggle (TODO)
               </div>
               <div>
                 Input Mode (TODO)
+              </div>
+
+              <div className={cn("ml-auto")}>
+                <Button
+                    variant="primary"
+                    size="default"
+                    className={cn("px-1")}
+                    onClick={userToggleCompeting}
+                >
+                  <h1 className={cn("font-bold text-center text-md")}>{users[userId]?.competing ? "SPECTATE" : "COMPETE"}</h1>
+                </Button>
               </div>
             </div>
           </RoomPanel>
