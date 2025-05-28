@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import RoomPanel from "@/components/room/room-panel";
 import { getSocket } from '@/components/socket/socket'; // from above
-import { Socket } from "socket.io-client";
+// import { Socket } from "socket.io-client";
+import { useSocket } from "@/components/socket/socket";
 
 
 
@@ -43,7 +44,7 @@ export default function Page() {
   const [userId, setUserId] = useState<string>("");
 
   //socket state
-  const socketRef = useRef<Socket | null>(null);
+  const socket = useSocket();
 
   //retrieve local user ID
   useEffect(() => {
@@ -59,10 +60,7 @@ export default function Page() {
 
   //set up socket connection, set up socket incoming events
   useEffect(() => {
-    let socket = getSocket();
-    socketRef.current = socket;
-
-    socket.on("room_update", (room: IRoom) => {
+    socket?.on("room_update", (room: IRoom) => {
       console.log("Updating room state with incoming room update message.")
       setRoomName(room.roomName);
       setUsers(room.users);
@@ -81,7 +79,7 @@ export default function Page() {
     });
 
     return () => {
-      socketRef.current?.disconnect();
+      // socketRef.current?.disconnect();
     }
   }, []);
 
@@ -92,26 +90,23 @@ export default function Page() {
       return;
     }
 
-    // Initialize socket once
-    if (socketRef.current) {
-      const socket = socketRef.current;
-
-      if (socket.connected) {
-        console.log("Socket already connected — emitting join_room");
-        socket.emit("join_room", { userId, roomId });
-      } else {
-        console.log("Waiting for socket to connect before emitting join_room");
-        socket.on("connect", () => {
-          console.log("Socket connected. Emitting join_room...")
-          socket.emit("join_room", { userId, roomId });
-        });
-      }
+    // Connect socket to room
+    if (socket?.connected) {
+      console.log("Socket already connected — emitting join_room");
+      socket?.emit("join_room", { userId, roomId });
+    } else {
+      console.log("Waiting for socket to connect before emitting join_room");
+      socket?.on("connect", () => {
+        console.log("Socket connected. Emitting join_room...")
+        socket?.emit("join_room", { userId, roomId });
+      });
     }
 
     return () => {
       // Clean up
-      socketRef.current?.disconnect();
-      socketRef.current = null;
+
+      // socketRef.current?.disconnect();
+      // socketRef.current = null;
     };
   }, [userId]);
 
@@ -140,18 +135,18 @@ export default function Page() {
 
   function resetRoom() {
     console.log("reset room button clicked");
-    socketRef.current?.emit("reset_room");
+    socket?.emit("reset_room");
   }
 
   function userToggleCompeting() {
     console.log("user compete/spectate button clicked");
-    socketRef.current?.emit("user_toggle_competing");
+    socket?.emit("user_toggle_competing");
   }
 
   function startRoom() {
     //TODO: make sure the user is actually the host
     console.log("start room button clicked");
-    socketRef.current?.emit("start_room");
+    socket?.emit("start_room");
   }
 
   function RoomHeader() {

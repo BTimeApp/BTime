@@ -16,17 +16,11 @@ const SocketContext = createContext<Socket | null>(null);
 export const useSocket = () => useContext(SocketContext);
 
 export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const socketRef = useRef<Socket>(null);
+    const socketRef = useRef<Socket>(getSocket());
 
   useEffect(() => {
-    if (!socketRef.current) {
-        socketRef.current = getSocket();
-    }
-    const socket = socketRef.current;
-
-    if (!socket.connected) {
-      socket.connect();
-      console.log("Socket Provider: ", socket);
+    if (!socketRef.current.connected) {
+        socketRef.current.connect();
     }
   }, []);
 
