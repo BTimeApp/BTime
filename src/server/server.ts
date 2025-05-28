@@ -7,8 +7,9 @@ import {config} from './config';
 import 'module-alias/register';
 import { connectToDB } from '@/server/database/database';
 import { IRoom } from '@/types/room';
-import { Types } from 'mongoose';
+import { ObjectId, Types } from 'mongoose';
 import { IRoomUser } from '@/types/roomUser';
+import { IResult } from '@/types/solve';
 
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
@@ -118,6 +119,10 @@ export async function startServer(): Promise<void> {
         }
       }
     });
+
+    socket.on('submit_time', ({time} : {time: IResult}) => {
+      //update solves - 
+    });
     
     socket.on('user_toggle_competing', () => {
       if (socket.roomId && socket.userId) {
@@ -142,9 +147,31 @@ export async function startServer(): Promise<void> {
           io.to(socket.roomId.toString()).emit('room_update', room);
 
           //check if no more users, if so, delete room.
+          if (Object.keys(room.users).length == 0) {
+            console.log(`Room ${socket.roomId} is empty. Deleting room.`)
+            rooms.delete(socket.roomId);
+            return;
+          }
 
           //check if host, and if so, promote a new host
+          if (room.host == socket.userId) {
+            console.log(`Host has left room ${socket.roomId}. Promoting a new host.`);
+            let earliestID = null;
+            let earliestUser: IRoomUser | null = null;
 
+            for (const userID in room.users) {
+              const user = room.users[userID];
+            
+              if (!earliestUser || user.joinedAt < earliestUser.joinedAt) {
+                earliestUser = user;
+                earliestID = new Types.ObjectId(userID);
+              }
+            }
+
+            room.host = earliestID!; 
+            console.log(`Room ${socket.roomId} promoted a new host: ${room.host}.`);
+            io.to(socket.roomId.toString()).emit('room_update', room);
+          }
         }
       }
     });
