@@ -10,7 +10,7 @@ import { ISolve } from "@/types/solve";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import RoomPanel from "@/components/room/room-panel";
-import { getSocket } from '@/lib/socket'; // from above
+import { getSocket } from '@/components/socket/socket'; // from above
 import { Socket } from "socket.io-client";
 
 

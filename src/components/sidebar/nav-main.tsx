@@ -11,16 +11,16 @@ import {
 } from "@/components/ui/sidebar"
 
 export function NavMain({
-  items,
+  items, className
 }: {
   items: {
     title: string
     url: string
     icon?: Icon
-  }[]
+  }[], className?: string
 }) {
   return (
-    <SidebarGroup>
+    <SidebarGroup className={className}>
       <SidebarGroupContent className="flex flex-col gap-2">
         <SidebarMenu>
           {items.map((item) => (
