@@ -1,10 +1,12 @@
 import { Types } from 'mongoose';
 import { IUser } from '@/types/user';
+import { SolveStatus } from './status';
 
 export interface IRoomUser {
-  user: Types.ObjectId | IUser;
+  user: IUser;
   points: number;
   setWins: number;
   joinedAt: Date;
   competing: boolean; //false = spectating
+  userStatus: SolveStatus;
 }

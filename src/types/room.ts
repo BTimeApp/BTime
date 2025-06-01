@@ -1,8 +1,6 @@
-import { Types } from 'mongoose';
 import { IUser } from '@/types/user';
 import { IRoomUser } from '@/types/roomUser';
 import { ISolve } from '@/types/solve';
-import { format } from 'path';
 
 //defines all legal events
 export const ROOM_EVENTS = ['333', '222', '444', '555', '666', '777', 'megaminx', 'pyraminx', 'skewb', 'clock', 'sq1', '3oh', '3bld', '4bld', '5bld'];
@@ -92,7 +90,7 @@ export type RoomState = (typeof ROOM_STATES)[number];
 
 export interface IRoom {
     roomName: string;
-    host: Types.ObjectId | IUser;
+    host: IUser;
     users: Record<string, IRoomUser>; //objectId (user) : IRoomUser. The key has to be a string b/c of mongoDB storage.
     solves: ISolve[][];
     currentSet: number; //the current set number (1-indexed)

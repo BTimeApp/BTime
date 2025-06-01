@@ -3,15 +3,14 @@ import Header from "@/components/common/header";
 import * as React from 'react';
 import { useParams } from 'next/navigation';
 import { useEffect, useState, useRef } from "react";
-import { Types } from "mongoose";
+import { ObjectId } from "bson";
 import { RoomState, IRoom, RoomEvent, RoomFormat, MatchFormat, SetFormat, MATCH_FORMAT_MAP, SET_FORMAT_MAP, getVerboseFormatText } from "@/types/room";
 import { IRoomUser } from "@/types/roomUser";
 import { ISolve } from "@/types/solve";
+import { IUser } from "@/types/user";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import RoomPanel from "@/components/room/room-panel";
-import { getSocket } from '@/components/socket/socket'; // from above
-// import { Socket } from "socket.io-client";
 import { useSocket } from "@/components/socket/socket";
 
 
@@ -50,9 +49,9 @@ export default function Page() {
   useEffect(() => {
     // Set userId from localStorage or generate new
     let storedId = localStorage.getItem("userId");
-    if (!storedId || storedId == "") {
+    if (!storedId) {
       //any 12-byte sequence is a valid mongoDB id. TODO: replace this with the actual ID fetched from DB
-      storedId = new Types.ObjectId().toString();
+      storedId = new ObjectId().toString();
       localStorage.setItem("userId", storedId);
     }
     setUserId(storedId);
@@ -64,7 +63,7 @@ export default function Page() {
       console.log("Updating room state with incoming room update message.")
       setRoomName(room.roomName);
       setUsers(room.users);
-      setHostId(room.host.toString());
+      setHostId(room.host._id.toString());
       setSolves(room.solves);
       setCurrentSet(room.currentSet);
       setCurrentSolve(room.currentSolve);
@@ -93,17 +92,31 @@ export default function Page() {
     // Connect socket to room
     if (socket?.connected) {
       console.log("Socket already connected — emitting join_room");
-      socket?.emit("join_room", { userId, roomId });
     } else {
       console.log("Waiting for socket to connect before emitting join_room");
       socket?.on("connect", () => {
-        console.log("Socket connected. Emitting join_room...")
-        socket?.emit("join_room", { userId, roomId });
+        console.log("Socket connected. ")
       });
     }
 
+    //TODO: move user login logic to its own authentication
+    const user: IUser = {
+      _id: new ObjectId(userId),
+      name: "TEST USER",
+      email: "TEST_USER@gmail.com",
+      userName: userId.toString().slice(-10)
+    }
+    console.log(user);
+    socket?.emit("user_login", { userId, user });
+
+    //only join room upon login
+    socket?.on("user_logged_in", () => {
+      socket?.emit("join_room", { userId, roomId });
+    });
+
     return () => {
-      // Clean up
+      // Clean up 
+      socket?.emit("user_logout", { userId });
 
       // socketRef.current?.disconnect();
       // socketRef.current = null;
@@ -268,7 +281,7 @@ export default function Page() {
               <ul>
                 {competingUsers
                   .map((user, index) => (
-                    <li key={index}>{user.user.toString()}</li>
+                    <li key={index}>{user.user.userName}</li>
                   ))
                 }
               </ul>
@@ -278,7 +291,7 @@ export default function Page() {
               <ul>
               {spectatingUsers
                   .map((user, index) => (
-                    <li key={index}>{user.user.toString()}</li>
+                    <li key={index}>{user.user.userName}</li>
                   ))
                 }
               </ul>
@@ -410,10 +423,33 @@ export default function Page() {
           </RoomPanel>
         );
       case "started":
+        //sort by set wins first, then points
+        const sortedUsers = Object.values(users).sort((u1, u2) => {
+          if (u2.setWins !== u1.setWins) {
+            return u2.setWins - u1.setWins;
+          } else {
+            return u2.points - u1.points;
+          }
+        });
+
+
         return (
-          <RoomPanel className="bg-container-2 py-3">
-            <div>
-              
+          <RoomPanel className="bg-container-2 px-1 py-3">
+            <div className = "grid grid-row text-center text-xl">
+              <div className = "grid grid-cols-12">
+                <div className="col-span-5">Name</div>
+                <div className="col-span-3">Time</div>
+                <div className="col-span-2">Sets</div>
+                <div className="col-span-2">Solves</div>
+              </div>
+              {sortedUsers.map((user, index) => (
+                <div key={index} className="grid grid-cols-12">
+                  <div className="col-span-5">{user.user.userName}</div>
+                  <div className="col-span-3">{user.userStatus}</div>
+                  <div className="col-span-2">{user.setWins}</div>
+                  <div className="col-span-2">{user.points}</div>
+                </div>
+              ))}
             </div>
           </RoomPanel>
         );

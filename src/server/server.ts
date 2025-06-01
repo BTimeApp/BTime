@@ -7,9 +7,10 @@ import {config} from './config';
 import 'module-alias/register';
 import { connectToDB } from '@/server/database/database';
 import { IRoom } from '@/types/room';
-import { ObjectId, Types } from 'mongoose';
+import { Types } from 'mongoose';
 import { IRoomUser } from '@/types/roomUser';
 import { IResult } from '@/types/solve';
+import { IUser } from '@/types/user';
 
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
@@ -23,6 +24,7 @@ interface CustomSocket extends Socket {
 }
 
 const rooms: Map<Types.ObjectId, IRoom> = new Map<Types.ObjectId, IRoom>(); // In-memory room store
+const users: Map<Types.ObjectId, IUser> = new Map<Types.ObjectId, IUser>(); // In-memory user store
 
 export async function startServer(): Promise<void> {
   await app.prepare();
@@ -41,23 +43,51 @@ export async function startServer(): Promise<void> {
     console.log("Connection established on server: ", socket.id);
     //by default, roomId and userId will be undefined
 
+    socket.on('user_login', ({userId, user}: { userId: Types.ObjectId, user: IUser}) => {
+      if (users.get(userId)) {
+        console.log(`User ${users.get(userId)!.userName} double login.`)
+      } else {
+        console.log(`User ${user.userName} is logging in.`);
+        users.set(userId, user);
+        socket.emit("user_logged_in");
+      }
+    });  
+
+    socket.on('user_logout', ({userId}: { userId: Types.ObjectId}) => {
+      if (users.get(userId)) {
+        console.log(`User ${users.get(userId)!.userName} logging out.`)
+        users.delete(userId);
+      } else {
+        console.log(`Nonexistent user with id ${userId} is trying to log out.`);
+      }
+    });  
+
     socket.on('join_room', ({ roomId, userId }: { roomId: Types.ObjectId; userId: Types.ObjectId }) => {
+      if (!users.get(userId)) {
+        console.log(`Nonexistent user with id ${userId} attempting to join room ${roomId}.`);
+        return;
+      }
+      let user: IUser | undefined = users.get(userId);
+      let room: IRoom | undefined = rooms.get(roomId);
+
       console.log(`User ${userId} is trying to join room ${roomId}.`);
 
-      let room: IRoom | undefined = rooms.get(roomId);
+      
+
       const roomUser: IRoomUser = {
-        user: userId,
+        user: user!,
         points: 0,
         setWins: 0,
         joinedAt: new Date(),
-        competing: false,
+        competing: true,
+        userStatus: "IDLE"
       }
 
       // temporary - create the room if it doesn't exist. TODO move this to a create_room event
       if (!room) {
         room = {
           roomName: roomId.toString(),
-          host: userId, 
+          host: user!, 
           users: {},
           solves: [],
           currentSet: 1,
@@ -139,6 +169,11 @@ export async function startServer(): Promise<void> {
     });
 
     socket.on('disconnect', () => {
+      if (socket.userId) {
+        users.delete(socket.userId);
+      }
+
+
       if (socket.roomId && socket.userId) {
         const room = rooms.get(socket.roomId);
         if (room) {
@@ -154,7 +189,7 @@ export async function startServer(): Promise<void> {
           }
 
           //check if host, and if so, promote a new host
-          if (room.host == socket.userId) {
+          if (room.host._id == socket.userId) {
             console.log(`Host has left room ${socket.roomId}. Promoting a new host.`);
             let earliestID = null;
             let earliestUser: IRoomUser | null = null;
@@ -168,7 +203,7 @@ export async function startServer(): Promise<void> {
               }
             }
 
-            room.host = earliestID!; 
+            room.host = room.users[earliestID!.toString()].user; 
             console.log(`Room ${socket.roomId} promoted a new host: ${room.host}.`);
             io.to(socket.roomId.toString()).emit('room_update', room);
           }
