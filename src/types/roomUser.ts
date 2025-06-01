@@ -1,4 +1,3 @@
-import { Types } from 'mongoose';
 import { IUser } from '@/types/user';
 import { SolveStatus } from './status';
 

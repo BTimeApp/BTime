@@ -2,7 +2,7 @@
 import Header from "@/components/common/header";
 import * as React from 'react';
 import { useParams } from 'next/navigation';
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { ObjectId } from "bson";
 import { RoomState, IRoom, RoomEvent, RoomFormat, MatchFormat, SetFormat, MATCH_FORMAT_MAP, SET_FORMAT_MAP, getVerboseFormatText } from "@/types/room";
 import { IRoomUser } from "@/types/roomUser";
@@ -33,7 +33,7 @@ export default function Page() {
   const [nSolves, setNSolves] = useState<number>(1);
   const [nSets, setNSets] = useState<number>(1);
   const [roomPrivate, setRoomPrivate] = useState<boolean>(false);
-  const [localRoomState, setLocalRoomState] = useState<RoomState>("waiting");
+  const [localRoomState, setLocalRoomState] = useState<RoomState>('WAITING');
 
   //utility states
   const [formatTipText, setFormatTipText] = useState<string>("");
@@ -178,7 +178,7 @@ export default function Page() {
     const exampleScramble = "Example Scramble";
     
     switch(roomState) {
-      case "waiting":
+      case 'WAITING':
         mainContent =  (
           <>
             <h2 className = {cn("text-2xl")}>
@@ -187,7 +187,7 @@ export default function Page() {
           </>
         );
         break;
-      case "started":
+      case 'STARTED':
         mainContent =  (
           <>
             <h2 className = {cn("text-2xl")}>
@@ -196,7 +196,7 @@ export default function Page() {
             <div className= {cn("text-md")}>{formatTipText}</div>
           </>
         );
-      case "finished":
+      case 'FINISHED':
         break;
       default:
         break;
@@ -209,7 +209,7 @@ export default function Page() {
           <div className = {cn("grid grid-cols-8 text-center")}>
             <div className = {cn("col-span-1 grid grid-rows-3")}>
               {
-                roomState == "started" ?
+                roomState == 'STARTED' ?
                 <div className = {cn("row-span-1 text-lg")}>
                     Set {currentSet}
                 </div>
@@ -217,7 +217,7 @@ export default function Page() {
                 <></>
               }
               {
-                roomState == "started" && isHost ?
+                roomState == 'STARTED' && isHost ?
                 <div className = {cn("row-span-1 row-start-3")}>
                     <Button
                         variant="outline"
@@ -239,7 +239,7 @@ export default function Page() {
 
               <div className = {cn("col-span-1 grid grid-rows-3")}>
               {
-                roomState == "started" ?
+                roomState == 'STARTED' ?
                 <div className = {cn("row-span-1 text-lg")}>
                     Solve {currentSolve}
                 </div>
@@ -247,7 +247,7 @@ export default function Page() {
                 <></>
               }
               {
-                roomState == 'started' && isHost ?
+                roomState == 'STARTED' && isHost ?
                 <div className = {cn("row-span-1 row-start-3")}>
                     <Button
                         variant="reset"
@@ -273,7 +273,7 @@ export default function Page() {
     const spectatingUsers = userList.filter(user => !user.competing);
 
     switch(roomState) {
-      case "waiting":
+      case 'WAITING':
         return (
           <RoomPanel className="bg-container-3 py-3">
             <div>
@@ -324,7 +324,7 @@ export default function Page() {
             
           </RoomPanel>
         );
-      case "started":
+      case 'STARTED':
         let centerSection;
         if (users[userId].competing) {
           centerSection = (
@@ -396,7 +396,7 @@ export default function Page() {
             </div>
           </RoomPanel>
         );
-      case "finished":
+      case 'FINISHED':
         break;
       default:
         return <></>;
@@ -405,7 +405,7 @@ export default function Page() {
 
   function RoomRightPanel({roomState, isHost}: {roomState: RoomState, isHost: boolean}) {
     switch (roomState) {
-      case "waiting":
+      case 'WAITING':
         return (
           <RoomPanel className="bg-container-1 px-2 py-3">
             <div>
@@ -422,7 +422,7 @@ export default function Page() {
             </div>
           </RoomPanel>
         );
-      case "started":
+      case 'STARTED':
         //sort by set wins first, then points
         const sortedUsers = Object.values(users).sort((u1, u2) => {
           if (u2.setWins !== u1.setWins) {
@@ -453,7 +453,7 @@ export default function Page() {
             </div>
           </RoomPanel>
         );
-      case "finished":
+      case 'FINISHED':
         break;
       default:
         return <></>

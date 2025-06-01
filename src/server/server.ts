@@ -94,12 +94,12 @@ export async function startServer(): Promise<void> {
           currentSolve: 1,
           roomEvent: '333', 
           roomFormat: 'racing',
-          matchFormat: 'best_of', //how many sets to take to win
-          setFormat: 'best_of', //how to win a set
+          matchFormat: 'BEST_OF', //how many sets to take to win
+          setFormat: 'BEST_OF', //how to win a set
           nSets: 1, //number for match format
           nSolves: 1, //number for set format 
           isPrivate: false,
-          state: 'waiting',
+          state: 'WAITING',
           password: undefined,
         };
         rooms.set(roomId, room);
@@ -122,8 +122,8 @@ export async function startServer(): Promise<void> {
       if (socket.roomId) {
         const room = rooms.get(socket.roomId);
         if (room) {
-          if (room.state == "waiting") {
-            room.state = "started";
+          if (room.state == 'WAITING') {
+            room.state = 'STARTED';
             io.to(socket.roomId.toString()).emit('room_update', room);
           } else {
             console.log(`Cannot start room when room state is ${room.state}`);
@@ -137,8 +137,8 @@ export async function startServer(): Promise<void> {
       if (socket.roomId) {
         const room = rooms.get(socket.roomId);
         if (room) {
-          if (room.state == "started" || room.state == "finished") {
-            room.state = "waiting";
+          if (room.state == 'STARTED' || room.state == 'FINISHED') {
+            room.state = 'WAITING';
             room.solves = [];
             room.currentSet = 1;
             room.currentSolve = 1;

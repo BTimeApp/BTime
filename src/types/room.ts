@@ -7,49 +7,49 @@ export const ROOM_EVENTS = ['333', '222', '444', '555', '666', '777', 'megaminx'
 
 //defines all legal formats (more to come hopefully)
 export const ROOM_FORMATS = [
-    'casual', //no points or score, just cubing
-    'racing', //racing with sets and points
+    'CASUAL', //no points or score, just cubing
+    'RACING', //racing with sets and points
     //TODO: add a competitive mode with ranking, etc
 ];
 
 //match formats - how to win a race based on number of sets won
 export const MATCH_FORMATS = [
-    'best_of', //best of n sets wins
-    'first_to', //first to n sets wins
+    'BEST_OF', //best of n sets wins
+    'FIRST_TO', //first to n sets wins
 ];
 
 export const MATCH_FORMAT_MAP = new Map<MatchFormat, string>([
-    ['best_of', 'Best of'],
-    ['first_to', 'First to']
+    ['BEST_OF', 'Best of'],
+    ['FIRST_TO', 'First to']
 ]);
 
 //set formats - how to win a set based on the solves
 export const SET_FORMATS = [
-    'best_of', //best of n solves
-    'first_to', //first to n solves
-    'average_of', //average of n format (mean when dropping max and min) - n >= 3
-    'mean_of', //mean of n format
+    'BEST_OF', //best of n solves
+    'FIRST_TO', //first to n solves
+    'AVERAGE_OF', //average of n format (mean when dropping max and min) - n >= 3
+    'MEAN_OF', //mean of n format
     //TOdO - support other formats like total time differential
 ];
 
 export const SET_FORMAT_MAP = new Map<SetFormat, string>([
-    ['best_of', 'Best of'],
-    ['first_to', 'First to'],
-    ['average_of', 'Average of'],
-    ['mean_of', 'Mean of']
+    ['BEST_OF', 'Best of'],
+    ['FIRST_TO', 'First to'],
+    ['AVERAGE_OF', 'Average of'],
+    ['MEAN_OF', 'Mean of']
 ]);
 
 export function getVerboseFormatText(roomFormat: RoomFormat, matchFormat: MatchFormat, setFormat: SetFormat, nSets: number, nSolves: number): string {
-    if (roomFormat == "casual") {
+    if (roomFormat == 'CASUAL') {
         return "Enjoy endless solves in this casual room."
     } else {
         let formatText = "";
         if (nSets && nSets > 1) {
             switch(matchFormat) {
-                case "best_of":
+                case 'BEST_OF':
                     formatText += "Win the match by winning the most of " + nSets + " sets.";
                     break;
-                case "first_to":
+                case 'FIRST_TO':
                     formatText += "Win the match by being the first to win " + nSets + " sets.";
                     break;
                 default:
@@ -58,16 +58,16 @@ export function getVerboseFormatText(roomFormat: RoomFormat, matchFormat: MatchF
             formatText += "\n";
         } 
         switch(setFormat) {
-            case 'best_of':
+            case 'BEST_OF':
                 formatText += "Win a set by winning the most of " + nSolves + " solves.";
                 break;
-            case 'first_to':
+            case 'FIRST_TO':
                 formatText += "Win a set by being the first to win " + nSolves + " solves.";
                 break;
-            case 'average_of':
+            case 'AVERAGE_OF':
                 formatText += "Win a set by having the best average of " + nSolves + " solves (best and worst times dropped).";
                 break;
-            case 'mean_of':
+            case 'MEAN_OF':
                 formatText += "Win a set by having the best mean of " + nSolves + " solves.";
                 break;
         }
@@ -77,9 +77,9 @@ export function getVerboseFormatText(roomFormat: RoomFormat, matchFormat: MatchF
 
 //all room states 
 export const ROOM_STATES = [
-    'waiting', //like a pregame lobby - waiting for people before host starts
-    'started', //ingame - doing solves
-    'finished' //either when host ends the room, or when all attempts are done
+    'WAITING', //like a pregame lobby - waiting for people before host starts
+    'STARTED', //ingame - doing solves
+    'FINSHED' //either when host ends the room, or when all attempts are done
 ]; 
 
 export type RoomEvent = (typeof ROOM_EVENTS)[number];
