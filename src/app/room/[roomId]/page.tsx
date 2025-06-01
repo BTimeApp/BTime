@@ -4,14 +4,18 @@ import * as React from 'react';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from "react";
 import { ObjectId } from "bson";
-import { RoomState, IRoom, RoomEvent, RoomFormat, MatchFormat, SetFormat, MATCH_FORMAT_MAP, SET_FORMAT_MAP, getVerboseFormatText } from "@/types/room";
+import { RoomState, IRoom, RoomEvent, RoomFormat, MatchFormat, SetFormat, MATCH_FORMAT_MAP, SET_FORMAT_MAP, getVerboseFormatText, ROOM_STATES } from "@/types/room";
 import { IRoomUser } from "@/types/roomUser";
 import { ISolve } from "@/types/solve";
+import { IResult, Penalty, Result} from "@/types/result";
 import { IUser } from "@/types/user";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import RoomPanel from "@/components/room/room-panel";
 import { useSocket } from "@/components/socket/socket";
+import { CallbackInput } from "@/components/ui/input";
+import { SolveStatus } from "@/types/status";
+import { TimerType } from "@/types/timerType";
 
 
 
@@ -38,9 +42,12 @@ export default function Page() {
   //utility states
   const [formatTipText, setFormatTipText] = useState<string>("");
   const [verboseFormatTipText, setVerboseFormatTipText] = useState<string>("");
+  const [localResult, setLocalResult] = useState<Result>(new Result("")); //consider using a reducer
+  const [timerType, setTimerType] = useState<TimerType>("TYPING");
 
   //user-related state
   const [userId, setUserId] = useState<string>("");
+  const [userStatus, setUserStatus] = useState<SolveStatus>("IDLE");
 
   //socket state
   const socket = useSocket();
@@ -138,6 +145,32 @@ export default function Page() {
     setVerboseFormatTipText(getVerboseFormatText(roomFormat, matchFormat, setFormat, nSets, nSolves));
   }, [roomFormat, matchFormat, setFormat, nSets, nSolves]);
 
+  useEffect(() => {
+    switch(localRoomState) {
+      case "WAITING":
+        setUserStatus("IDLE");
+        break;
+      case "STARTED":
+        switch(timerType) {
+          case "TYPING":
+            setUserStatus("SOLVING");
+          default:
+            break;
+        }
+        break;
+      case "FINISHED":
+        setUserStatus("IDLE");
+        break;
+      default:
+        break;
+    }
+  }, [localRoomState]);
+
+  useEffect(() => {
+    // console.log("new user status", userStatus);
+    socket?.emit("user_update_status", userStatus);
+  }, [userStatus]);
+
   //TODO: useEffect for when the currentSet increments...
   //TODO: useEffect for detecting set and match victory
 
@@ -162,6 +195,54 @@ export default function Page() {
     socket?.emit("start_room");
   }
 
+  /**
+   * Advances the state machine for the local timer 
+   */
+  function handleTimerStateTransition() {
+    if (localRoomState !== "STARTED") {
+      console.log("Timer State Transition called in the wrong room state. Ignoring call.")
+    } else {
+      switch(timerType) {
+        case "TYPING":
+          switch(userStatus) {
+            case "SOLVING":
+              setUserStatus("SUBMITTING");
+              break;
+            case "SUBMITTING":
+              setUserStatus("FINISHED");
+              break;
+            case "FINISHED":
+              setUserStatus("SOLVING");
+              break;
+            default:
+              break;
+          }
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
+  function redoSolve() {
+    if (localRoomState !== "STARTED") {
+      console.log("Timer redoSolve() called in the wrong room state. Ignoring call.")
+    } else {
+      switch(timerType) {
+        case "TYPING":
+          setUserStatus("SOLVING");
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
+  //handles submitting the local result to the server. DOES NOT HANDLE STATE TRANSITIONS.
+  function submitLocalResult() {
+    socket?.emit("user_submit_result", localResult.toIResult());
+  }
+
   function RoomHeader() {
     return (
       <Header>
@@ -171,11 +252,7 @@ export default function Page() {
   }
 
   function RoomHeaderContent({roomState, isHost}: {roomState: RoomState, isHost: boolean}) {
-    //TODO - replace with real scramble
-
     let mainContent = <></>;
-
-    const exampleScramble = "Example Scramble";
     
     switch(roomState) {
       case 'WAITING':
@@ -188,10 +265,11 @@ export default function Page() {
         );
         break;
       case 'STARTED':
+        const scramble = solves[currentSet - 1][currentSolve - 1].scramble;
         mainContent =  (
           <>
             <h2 className = {cn("text-2xl")}>
-              {exampleScramble}
+              {scramble}
             </h2>
             <div className= {cn("text-md")}>{formatTipText}</div>
           </>
@@ -326,18 +404,111 @@ export default function Page() {
         );
       case 'STARTED':
         let centerSection;
+        function handleInput(value: string): void {
+          setLocalResult(new Result(value, "OK"));
+          handleTimerStateTransition();
+        }
+        function getTimer() {
+          switch(timerType) {
+            case "TYPING":
+              switch (userStatus) {
+                case "SOLVING":
+                  return (
+                    <CallbackInput type="text" className="text-center" onEnter={handleInput}/>
+                  );
+                case "SUBMITTING":
+                  return (
+                    <div className="text-xl">
+                      {localResult.toString()}
+                    </div>
+                  );
+                case "FINISHED":
+                default:
+                  return (
+                    <>
+                      <div>
+                        Waiting for others to finish
+                      </div>
+                    </>
+                  )
+              }
+          }
+        }
+        function handlePenalty(penalty: Penalty) {
+          //just calling setPenalty will not trigger a re-render
+          setLocalResult(new Result(localResult.getTime(), penalty));
+        }
+        function submitResult() {
+          submitLocalResult();
+          handleTimerStateTransition();
+        }
+        function getButtons() {
+          switch(timerType) {
+            case "TYPING":
+              switch (userStatus) {
+                case "SUBMITTING":
+                  return (
+                    <div className="mx-auto flex flex-row gap-2 px-2">
+                      <Button
+                          variant="destructive"
+                          size="xs"
+                          className={cn("")}
+                          onClick={() => {redoSolve()}}
+                      >
+                        <h1 className={cn("font-bold text-center text-md")}>REDO</h1>
+                      </Button>
+                      <Button
+                          variant="destructive"
+                          size="xs"
+                          className={cn("")}
+                          onClick={() => {handlePenalty('OK')}}
+                      >
+                        <h1 className={cn("font-bold text-center text-md")}>OK</h1>
+                      </Button>
+                      <Button
+                          variant="destructive"
+                          size="xs"
+                          className={cn("")}
+                          onClick={() => {handlePenalty('+2')}}
+                      >
+                        <h1 className={cn("font-bold text-center text-md")}>+2</h1>
+                      </Button>
+                      <Button
+                          variant="destructive"
+                          size="xs"
+                          className={cn("")}
+                          onClick={() => {handlePenalty('DNF')}}
+                      >
+                        <h1 className={cn("font-bold text-center text-md")}>DNF</h1>
+                      </Button>
+                      <Button
+                          variant="destructive"
+                          size="xs"
+                          className={cn("")}
+                          onClick={() => {submitResult()}}
+                      >
+                        <h1 className={cn("font-bold text-center text-md")}>SUBMIT</h1>
+                      </Button>
+                    </div>
+                  );
+                default:
+                  return (
+                    <></>
+                  )
+              }
+          }
+        }
+
         if (users[userId].competing) {
           centerSection = (
             <>
-              <div>
-                Status Tooltip (TODO)
+              {/* <div>
+                TODO - write timer tooltip text
+              </div> */}
+              <div className="mx-auto">
+                {getTimer()}
               </div>
-              <div>
-                Timer (TODO)
-              </div>
-              <div>
-                Penalty buttons (TODO)
-              </div>
+              {getButtons()}
             </>
           );
         } else {
@@ -432,6 +603,7 @@ export default function Page() {
           }
         });
 
+        const currentResults: Record<string, IResult> = solves[currentSet - 1][currentSolve - 1].results;
 
         return (
           <RoomPanel className="bg-container-2 px-1 py-3">
@@ -445,7 +617,7 @@ export default function Page() {
               {sortedUsers.map((user, index) => (
                 <div key={index} className="grid grid-cols-12">
                   <div className="col-span-5">{user.user.userName}</div>
-                  <div className="col-span-3">{user.userStatus}</div>
+                  <div className="col-span-3">{user.userStatus == "FINISHED" ? Result.fromIResult(currentResults[user.user._id.toString()]).toString() : user.userStatus}</div>
                   <div className="col-span-2">{user.setWins}</div>
                   <div className="col-span-2">{user.points}</div>
                 </div>

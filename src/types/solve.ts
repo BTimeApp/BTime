@@ -1,13 +1,7 @@
-export const PENALTIES = ['OK', '+2', 'DNF'];
-export type Penalty = (typeof PENALTIES)[number];
-
-export interface IResult {
-    time: number,
-    penalty: Penalty,
-}
+import { IResult } from "@/types/result";
 
 export interface ISolve {
-    id: number,
-    scramble: string,
-    results: Record<string, IResult>, //user ID : result
-};
+  id: number;
+  scramble: string;
+  results: Record<string, IResult>; //user ID : result
+}

@@ -9,8 +9,10 @@ import { connectToDB } from '@/server/database/database';
 import { IRoom } from '@/types/room';
 import { Types } from 'mongoose';
 import { IRoomUser } from '@/types/roomUser';
-import { IResult } from '@/types/solve';
+import { IResult } from '@/types/result';
 import { IUser } from '@/types/user';
+import { ISolve } from '@/types/solve';
+import { SolveStatus } from '@/types/status';
 
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
@@ -83,13 +85,21 @@ export async function startServer(): Promise<void> {
         userStatus: "IDLE"
       }
 
-      // temporary - create the room if it doesn't exist. TODO move this to a create_room event
+      // temporary - create the room if it doesn't exist. 
+      // TODO move this to a create_room event
+      // TODO generate actual scramble
       if (!room) {
         room = {
           roomName: roomId.toString(),
           host: user!, 
           users: {},
-          solves: [],
+          solves: [[
+            {
+                scramble: "TEMPORARY_SCRAMBLE",
+                id: 0,
+                results: {}
+            }
+          ]],
           currentSet: 1,
           currentSolve: 1,
           roomEvent: '333', 
@@ -139,7 +149,12 @@ export async function startServer(): Promise<void> {
         if (room) {
           if (room.state == 'STARTED' || room.state == 'FINISHED') {
             room.state = 'WAITING';
-            room.solves = [];
+            room.solves = [[
+              {
+                scramble: "TEMPORARY_SCRAMBLE", 
+                id: 0, 
+                results: {}
+              }]];
             room.currentSet = 1;
             room.currentSolve = 1;
             io.to(socket.roomId.toString()).emit('room_update', room);
@@ -149,9 +164,40 @@ export async function startServer(): Promise<void> {
         }
       }
     });
+    socket.on('user_update_status', (newUserStatus : SolveStatus) => {
+      if (socket.roomId && socket.userId) {
+        const room = rooms.get(socket.roomId);
+        if (room) {
+          const currentUserStatus: SolveStatus = room.users[socket.userId.toString()].userStatus;
+          if (newUserStatus == currentUserStatus) {
+            console.log(`User ${socket.userId} submitted new user status to room ${socket.roomId} which is the same as old user status.`)
+          } else {
+            room.users[socket.userId.toString()].userStatus = newUserStatus;
+            io.to(socket.roomId.toString()).emit('room_update', room);
+          }
+        }
+      }
+    });
+    socket.on('user_submit_result', (result : IResult) => {
+      // we store results as an easily-serializable type and reconstruct on client when needed. 
+      // Socket.io does not preserve complex object types over the network, so it makes it hard to pass Result types around anyways.
 
-    socket.on('submit_time', ({time} : {time: IResult}) => {
-      //update solves - 
+      if (socket.roomId && socket.userId) {
+        const room = rooms.get(socket.roomId);
+        if (room) {
+          if (room.state !== "STARTED") {
+            console.log(`User ${socket.userId} tried to submit a result to ${socket.roomId} in the wrong room state. Ignoring message.`);
+          } else {
+            let solveObject: ISolve = room.solves[room.currentSet - 1][room.currentSolve - 1];
+            solveObject.results[socket.userId.toString()] = result;
+            
+            //TODO - if all users are done, update set and solve counts...
+            
+            io.to(socket.roomId.toString()).emit('room_update', room);
+          }
+        }
+      }
+      
     });
     
     socket.on('user_toggle_competing', () => {
