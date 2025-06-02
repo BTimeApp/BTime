@@ -122,6 +122,16 @@ export class Result {
     }
   }
 
+  static meanOf(results: Result[]): number {
+    return results.reduce((sum, res) => sum + res.toTime(), 0) / results.length;
+  }
+
+  static averageOf(results: Result[]): number {
+    if (results.length <= 2) return Number.NEGATIVE_INFINITY;
+
+    return results.sort((a, b) => a.compare(b)).slice(1, -1).reduce((sum, res) => sum + res.toTime(), 0) / (results.length - 2);
+  }
+
   compare(other: Result): number {
     const thisTime = this.toTime();
     const otherTime = other.toTime();

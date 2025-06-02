@@ -1,6 +1,8 @@
 import { IUser } from '@/types/user';
 import { IRoomUser } from '@/types/roomUser';
 import { ISolve } from '@/types/solve';
+import { Result } from './result';
+import { Types } from 'mongoose';
 
 //defines all legal events
 export const ROOM_EVENTS = ['333', '222', '444', '555', '666', '777', 'megaminx', 'pyraminx', 'skewb', 'clock', 'sq1', '3oh', '3bld', '4bld', '5bld'];
@@ -89,6 +91,7 @@ export type SetFormat = (typeof SET_FORMATS)[number];
 export type RoomState = (typeof ROOM_STATES)[number];
 
 export interface IRoom {
+    _id: Types.ObjectId,
     roomName: string;
     host: IUser;
     users: Record<string, IRoomUser>; //objectId (user) : IRoomUser. The key has to be a string b/c of mongoDB storage.
@@ -102,6 +105,106 @@ export interface IRoom {
     nSets?: number; //number for match format
     nSolves?: number; //number for set format
     isPrivate: boolean;
-    state: string;
+    state: RoomState;
     password?: string;
+    winners?: string[]; //the objectIds (users) who have won the whole room
 };
+
+/**
+ * check if there is a set winner. return all set winner(s), although it should be rare to have multiple.
+*/ 
+export function findSetWinners(room: IRoom): string[] {
+    //no set wins when room is a casual room
+    if (room.roomFormat == "CASUAL") return [];
+    const competingUsers = Object.values(room.users).filter((user) => user.competing);
+    //no set win possible if no competing users exist
+    if (competingUsers.length == 0) return [];
+
+    switch(room.setFormat) { 
+        case "BEST_OF":
+            //user has won for sure if they have the majority of solves
+            return competingUsers.filter(user => user.points > room.nSolves! / 2).map((user, index) => {return user.user._id.toString()});
+        case "FIRST_TO":
+            //user has won only when they win n solves.
+            return competingUsers.filter(user => user.points >= room.nSolves!).map((user, index) => {return user.user._id.toString()});
+        case "AVERAGE_OF": {
+            //requires that competing user have done ALL solves in this set
+            const setSolves = room.solves[room.currentSet - 1];
+            if (setSolves.length < (room.nSolves || Number.POSITIVE_INFINITY)) return [];
+
+            let currentIds = new Set(competingUsers.map((user, index) => {return user.user._id.toString()}));
+            for (const solve of setSolves) {
+                let competedIds = new Set(Object.keys(solve.results));
+                currentIds = currentIds.intersection(competedIds);
+            }
+            const eligibleIds = [...currentIds];
+
+            if (eligibleIds.length == 0) return [];
+
+            const results: Record<string, Result[]> = eligibleIds.reduce((acc, id) => {
+                acc[id] = setSolves.map(solve => Result.fromIResult(solve.results[id]));
+                return acc;
+              }, {} as Record<string, Result[]>);
+
+            const averages: Record<string, number> = Object.fromEntries(
+                eligibleIds.map((id, index) => [id, Result.averageOf(results[id])]
+            ));
+
+            const minAverage = Math.min(...Object.values(averages));
+
+            return eligibleIds.filter((uid) => averages[uid] === minAverage);
+        }
+        case "MEAN_OF": {
+            //requires that competing user have done ALL solves in this set
+            const setSolves = room.solves[room.currentSet - 1];
+            if (setSolves.length < (room.nSolves || Number.POSITIVE_INFINITY)) return [];
+
+            let currentIds = new Set(competingUsers.map((user, index) => {return user.user._id.toString()}));
+            for (const solve of setSolves) {
+                let competedIds = new Set(Object.keys(solve.results));
+                currentIds = currentIds.intersection(competedIds);
+            }
+            const eligibleIds = [...currentIds];
+
+            if (eligibleIds.length == 0) return [];
+
+            const results: Record<string, Result[]> = eligibleIds.reduce((acc, id) => {
+                acc[id] = setSolves.map(solve => Result.fromIResult(solve.results[id]));
+                return acc;
+              }, {} as Record<string, Result[]>);
+
+            const means: Record<string, number> = Object.fromEntries(
+                eligibleIds.map((id, index) => [id, Result.meanOf(results[id])]
+            ));
+
+            const minMean = Math.min(...Object.values(means));
+
+            return eligibleIds.filter((uid) => means[uid] === minMean);
+        }
+        default:
+            return [];
+    }
+}
+
+/**
+ * check if there is a match winner. return all match winner(s), although it should be rare to have multiple.
+*/ 
+export function findMatchWinners(room: IRoom): string[] {
+    //no set wins when room is a casual room
+    if (room.roomFormat == "CASUAL") return [];
+    const competingUsers = Object.values(room.users).filter((user) => user.competing);
+    //no set win possible if no competing users exist
+    if (competingUsers.length == 0) return [];
+
+    switch(room.setFormat) { 
+        case "BEST_OF":
+            //user has won for sure if they have the majority of solves
+            return competingUsers.filter(user => user.setWins > room.nSets! / 2).map((user, index) => {return user.user._id.toString()});
+        case "FIRST_TO":
+            //user has won only when they win n solves.
+            return competingUsers.filter(user => user.setWins >= room.nSets!).map((user, index) => {return user.user._id.toString()});
+        default:
+            return [];
+    }
+}
+

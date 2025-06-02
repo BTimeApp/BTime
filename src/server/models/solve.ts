@@ -1,6 +1,6 @@
 import { Schema } from "mongoose";
-import { PENALTIES, IResult, ISolve } from "@/types/solve";
-
+import { ISolve } from "@/types/solve";
+import { IResult, PENALTIES } from "@/types/result";
 
 const resultSchema = new Schema<IResult>({
     time: { type: Number, required: true },
