@@ -46,6 +46,7 @@ export default function Page() {
   const [nSets, setNSets] = useState<number>(1);
   const [roomPrivate, setRoomPrivate] = useState<boolean>(false);
   const [localRoomState, setLocalRoomState] = useState<RoomState>("WAITING");
+  const [roomWinners, setRoomWinners] = useState<string[]>([]);
 
   //utility states
   const [formatTipText, setFormatTipText] = useState<string>("");
@@ -55,6 +56,7 @@ export default function Page() {
 
   //user-related state
   const [userId, setUserId] = useState<string>("");
+  const [userIsHost, setUserIsHost] = useState<boolean>(false);
   const [userStatus, setUserStatus] = useState<SolveStatus>("IDLE");
 
   //socket state
@@ -76,6 +78,7 @@ export default function Page() {
   useEffect(() => {
     socket?.on("room_update", (room: IRoom) => {
       console.log("Updating room state with incoming room update message.");
+      // console.log(room);
       setRoomName(room.roomName);
       setUsers(room.users);
       setHostId(room.host._id.toString());
@@ -90,6 +93,7 @@ export default function Page() {
       setNSets(room.nSets ? room.nSets : 1);
       setRoomPrivate(room.isPrivate);
       setLocalRoomState(room.state);
+      setRoomWinners(room.winners || []);
     });
 
     socket?.on("solve_finished", () => {
@@ -141,6 +145,12 @@ export default function Page() {
       // socketRef.current = null;
     };
   }, [userId]);
+
+  //update user is host whenever userId or hostId update
+  useEffect(() => {
+    setUserIsHost(userId == hostId);
+  }, [userId, hostId]);
+
 
   //update format text based on format changes (there shouldn't be any, but just in case)
   useEffect(() => {
@@ -197,17 +207,18 @@ export default function Page() {
     socket?.emit("user_update_status", userStatus);
   }, [userStatus]);
 
-  //TODO: useEffect for when the currentSet increments...
-  //TODO: useEffect for detecting set and match victory
-
   function getNextScramble() {
-    console.log("get next scramble button clicked");
-    return;
+    if (userIsHost) {
+      console.log("get next scramble button clicked");
+      socket?.emit("skip_scramble");
+    }
   }
 
   function resetRoom() {
-    console.log("reset room button clicked");
-    socket?.emit("reset_room");
+    if (userIsHost) {
+      console.log("reset room button clicked");
+      socket?.emit("reset_room");
+    }
   }
 
   /**
@@ -225,9 +236,17 @@ export default function Page() {
 
 
   function startRoom() {
-    //TODO: make sure the user is actually the host
-    console.log("start room button clicked");
-    socket?.emit("start_room");
+    if (userIsHost) {
+      console.log("start room button clicked");
+      socket?.emit("start_room");
+    }
+  }
+
+  function rematchRoom() {
+    if (userIsHost) {
+      console.log("rematch room button clicked");
+      socket?.emit("rematch_room");
+    }
   }
 
   /**
@@ -310,7 +329,7 @@ export default function Page() {
       <Header>
         <RoomHeaderContent
           roomState={localRoomState}
-          isHost={hostId == userId}
+          isHost={userIsHost}
         />
       </Header>
     );
@@ -343,7 +362,15 @@ export default function Page() {
             <div className={cn("text-md")}>{formatTipText}</div>
           </>
         );
+        break;
       case "FINISHED":
+        mainContent = (
+          <>
+            <h2 className={cn("text-2xl")}>
+              Room has finished!
+            </h2>
+          </>
+        );
         break;
       default:
         break;
@@ -648,9 +675,81 @@ export default function Page() {
           </RoomPanel>
         );
       case "FINISHED":
-
+        const winningUserNames = roomWinners;
         return (
-          <></>
+          <RoomPanel className="bg-container-3 py-3">
+            <div>
+              {
+                winningUserNames.length > 1 ?
+                <>
+                  <h2 className="text-2xl">Winners ({winningUserNames.length})</h2>
+                  <ul>
+                    {winningUserNames.map((username, index) => (
+                      <li key={index}>{username}</li>
+                    ))}
+                  </ul>
+                </>
+                :
+                <>
+                  <h2 className="text-2xl">Winner: {winningUserNames[0]}</h2>
+                </>
+              }
+              
+            </div>
+            <div>
+              <h2 className="text-2xl">Racers ({competingUsers.length})</h2>
+              <ul>
+                {competingUsers.map((user, index) => (
+                  <li key={index}>{user.user.userName}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h2 className="text-2xl">
+                Spectators ({spectatingUsers.length})
+              </h2>
+              <ul>
+                {spectatingUsers.map((user, index) => (
+                  <li key={index}>{user.user.userName}</li>
+                ))}
+              </ul>
+            </div>
+            <div
+              className={cn("mt-auto flex flex-row justify-between px-3 py-1")}
+            >
+              <div>
+                <Button
+                  variant="primary"
+                  size="default"
+                  className={cn("px-1")}
+                  onClick={() => {userToggleCompetingSpectating(!users[userId]?.competing)}}
+                >
+                  <h1 className={cn("font-bold text-center text-md")}>
+                    {users[userId]?.competing ? "SPECTATE" : "COMPETE"}
+                  </h1>
+                </Button>
+              </div>
+              <div>
+                {isHost ? (
+                  <Button
+                    variant="primary"
+                    size="default"
+                    className={cn("px-1")}
+                    onClick={() => {
+                        rematchRoom();
+                      }
+                    }
+                  >
+                    <h1 className={cn("font-bold text-center text-md")}>
+                      REMATCH
+                    </h1>
+                  </Button>
+                ) : (
+                  <></>
+                )}
+              </div>
+            </div>
+          </RoomPanel>
         );
       default:
         return <></>;
@@ -666,6 +765,8 @@ export default function Page() {
   }) {
     switch (roomState) {
       case "WAITING":
+        //fallthrough logic
+      case "FINISHED":
         return (
           <RoomPanel className="bg-container-1 px-2 py-3">
             <div>
@@ -690,9 +791,7 @@ export default function Page() {
           }
         });
 
-        const currentResults: Record<string, IResult> =
-          solves[currentSet - 1][currentSolve - 1].results;
-
+        let currentResults: Record<string, IResult> = currentSet >= 1 && currentSolve >= 1 ? solves[currentSet - 1][currentSolve - 1].results : {};
         return (
           <RoomPanel className="bg-container-2 px-1 py-3">
             <div className="grid grid-row text-center text-xl">
@@ -719,8 +818,6 @@ export default function Page() {
             </div>
           </RoomPanel>
         );
-      case "FINISHED":
-        break;
       default:
         return <></>;
     }
@@ -730,8 +827,8 @@ export default function Page() {
     <div className="flex flex-col h-screen">
       <RoomHeader />
       <div className={cn("grid grid-cols-2 grow")}>
-        <RoomLeftPanel roomState={localRoomState} isHost={hostId == userId} />
-        <RoomRightPanel roomState={localRoomState} isHost={hostId == userId} />
+        <RoomLeftPanel roomState={localRoomState} isHost={userIsHost} />
+        <RoomRightPanel roomState={localRoomState} isHost={userIsHost} />
       </div>
     </div>
   );

@@ -36,7 +36,14 @@ export class Result {
 
     if (numericalStringMatch) {
       //alays match numerical string if possible
-      return parseIntNaN(input);
+      const paddedInput = input.padStart(6, "0");
+      const minutes = parseIntNaN(paddedInput.slice(0, -4));
+      const seconds = parseIntNaN(paddedInput.slice(-4, -2));
+      const centiseconds = parseIntNaN(paddedInput.slice(-2));
+
+      return (
+        minutes * 60 * 100 + seconds * 100 + centiseconds
+      );
     } else if (decimalStringMatch) {
       const [, seconds, centiseconds] = decimalStringMatch;
       return (
@@ -100,7 +107,7 @@ export class Result {
     const minutes = Math.floor(totalSeconds / 60);
     const centiseconds = totalTime % 100;
     const seconds = totalSeconds % 60;
-    let resultString = `${minutes ? minutes + ":" : ""}${seconds.toString().padStart(2, "0")}.${centiseconds
+    let resultString = `${minutes ? minutes + ":" : ""}${seconds.toString().padStart(1, "0")}.${centiseconds
       .toString()
       .padStart(2, "0")}`;
     
