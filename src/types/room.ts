@@ -354,30 +354,28 @@ export function finishRoomSolve(room: IRoom) {
     return;
   }
 
-  let fastest_uid = null;
-  let fastest_result: Result | undefined = undefined;
+  if (room.setFormat == "BEST_OF" || room.setFormat == "FIRST_TO") {
+    let fastest_uid = null;
+    let fastest_result: Result | undefined = undefined;
 
-  for (const user of competingUsers) {
-    const result: Result = Result.fromIResult(
-      currentSolve.results[user.user._id.toString()]
-    );
-    if (!fastest_result || result.isLessThan(fastest_result)) {
-      fastest_uid = user.user._id.toString();
-      fastest_result = result;
+    for (const user of competingUsers) {
+      const result: Result = Result.fromIResult(
+        currentSolve.results[user.user._id.toString()]
+      );
+      if (!fastest_result || result.isLessThan(fastest_result)) {
+        //ties are broken by the first user to submit the time.
+        fastest_uid = user.user._id.toString();
+        fastest_result = result;
+      }
     }
-  }
 
-  // 0 users means return
-  if (!fastest_uid || !fastest_result) {
-    console.log(`Room ${room._id} has no winner for current solve. `);
-    return;
+    // 0 users means return
+    if (!fastest_uid || !fastest_result) {
+      console.log(`Room ${room._id} has no winner for current solve. `);
+      return;
+    }
+    room.users[fastest_uid].points += 1;
   }
-
-  if (room.setFormat == "AVERAGE_OF" || room.setFormat == "MEAN_OF") {
-    // do not reward points in AoN or MoN formats.
-    return;
-  }
-  room.users[fastest_uid].points += 1;
 
   const setWinners: string[] = findSetWinners(room);
   if (setWinners.length > 0) {
@@ -417,16 +415,19 @@ export async function newRoomSolve(room: IRoom) {
 }
 
 export async function skipScramble(room: IRoom) {
-  
   if (room.solves[room.currentSet - 1].length > 0) {
-    room.solves[room.currentSet - 1][room.currentSolve - 1].scramble = await generateScramble(room.roomEvent);
+    room.solves[room.currentSet - 1][room.currentSolve - 1].scramble =
+      await generateScramble(room.roomEvent);
     room.solves[room.currentSet - 1][room.currentSolve - 1].results = {};
   } else if (room.currentSet > 1) {
-    room.solves[room.currentSet - 2][room.currentSolve - 1].scramble = await generateScramble(room.roomEvent);
+    room.solves[room.currentSet - 2][room.currentSolve - 1].scramble =
+      await generateScramble(room.roomEvent);
     room.solves[room.currentSet - 2][room.currentSolve - 1].results = {};
   } else {
     //there is no last solve...
-    throw new Error("skipScramble() cannot be called when the room's list of solves is empty.");
+    throw new Error(
+      "skipScramble() cannot be called when the room's list of solves is empty."
+    );
   }
 }
 
@@ -447,12 +448,11 @@ export function resetRoom(room: IRoom) {
   });
 }
 
-
 function getCurrentSolveId(room: IRoom) {
-    if (room.solves[room.currentSet - 1].length > 0) {
-      return room.solves[room.currentSet - 1][room.currentSolve - 1].id;
-    } else if (room.currentSet > 1) {
-      return room.solves[room.currentSet - 2][room.currentSolve - 1].id;
-    }
-    return 0;
+  if (room.solves[room.currentSet - 1].length > 0) {
+    return room.solves[room.currentSet - 1][room.currentSolve - 1].id;
+  } else if (room.currentSet > 1) {
+    return room.solves[room.currentSet - 2][room.currentSolve - 1].id;
+  }
+  return 0;
 }
