@@ -19,6 +19,7 @@ import { IResult } from "@/types/result";
 import { IUser } from "@/types/user";
 import { ISolve } from "@/types/solve";
 import { SolveStatus } from "@/types/status";
+import { IRoomSolve } from "@/types/roomSolve";
 
 const dev = process.env.NODE_ENV !== "production";
 const app = next({ dev });
@@ -103,6 +104,7 @@ export async function startServer(): Promise<void> {
           joinedAt: new Date(),
           competing: true,
           userStatus: "IDLE",
+          currentResult: undefined
         };
 
         // temporary - create the room if it doesn't exist.
@@ -114,15 +116,15 @@ export async function startServer(): Promise<void> {
             roomName: roomId.toString(),
             host: user!,
             users: {},
-            solves: [[]],
+            solves: [],
             currentSet: 1,
             currentSolve: 0,
             roomEvent: "333",
             roomFormat: "RACING",
             matchFormat: "BEST_OF", //how many sets to take to win
-            setFormat: "BEST_OF", //how to win a set
-            nSets: 1, //number for match format
-            nSolves: 1, //number for set format
+            setFormat: "FIRST_TO", //how to win a set
+            nSets: 5, //number for match format
+            nSolves: 5, //number for set format
             isPrivate: false,
             state: "WAITING",
             password: undefined,
@@ -240,16 +242,24 @@ export async function startServer(): Promise<void> {
           );
           return;
         }
+        if (room.solves.length == 0) {
+          console.log(
+            `User ${socket.userId} tried to submit a result to ${socket.roomId} when there are no solves in the room.`
+          );
+          return;
+        }
 
-        let solveObject: ISolve =
-          room.solves[room.currentSet - 1][room.currentSolve - 1];
-        solveObject.results[socket.userId.toString()] = result;
+        let solveObject: IRoomSolve = room.solves.at(-1)!;
+        solveObject.solve.results[socket.userId.toString()] = result;
+
         room.users[socket.userId.toString()].userStatus = "FINISHED";
+        room.users[socket.userId.toString()].currentResult = result;
 
         //TODO - if all users are done, update set and solve counts...
         const solveFinished: boolean = checkRoomSolveFinished(room);
         if (solveFinished) {
           finishRoomSolve(room);
+          io.to(socket.roomId.toString()).emit("solve_finished");
           if ((room.state as RoomState) !== "FINISHED") {
             await newRoomSolve(room);
           }

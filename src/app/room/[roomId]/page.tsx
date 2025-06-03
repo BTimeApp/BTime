@@ -26,6 +26,7 @@ import { useSocket } from "@/components/socket/socket";
 import { CallbackInput } from "@/components/ui/input";
 import { SolveStatus } from "@/types/status";
 import { TimerType } from "@/types/timerType";
+import { IRoomSolve } from "@/types/roomSolve";
 
 export default function Page() {
   const params = useParams<{ roomId: string }>();
@@ -35,7 +36,7 @@ export default function Page() {
   const [roomName, setRoomName] = useState<string>("");
   const [hostId, setHostId] = useState<string>("");
   const [users, setUsers] = useState<Record<string, IRoomUser>>({});
-  const [solves, setSolves] = useState<ISolve[][]>([]);
+  const [solves, setSolves] = useState<IRoomSolve[]>([]);
   const [currentSet, setCurrentSet] = useState<number>(1);
   const [currentSolve, setCurrentSolve] = useState<number>(0);
   const [roomEvent, setRoomEvent] = useState<RoomEvent>("333");
@@ -78,7 +79,7 @@ export default function Page() {
   useEffect(() => {
     socket?.on("room_update", (room: IRoom) => {
       console.log("Updating room state with incoming room update message.");
-      // console.log(room);
+      console.log(room);
       setRoomName(room.roomName);
       setUsers(room.users);
       setHostId(room.host._id.toString());
@@ -150,7 +151,6 @@ export default function Page() {
   useEffect(() => {
     setUserIsHost(userId == hostId);
   }, [userId, hostId]);
-
 
   //update format text based on format changes (there shouldn't be any, but just in case)
   useEffect(() => {
@@ -231,9 +231,8 @@ export default function Page() {
       handleTimerStateTransition();
     } else {
       setUserStatus("SPECTATING");
-    }    
+    }
   }
-
 
   function startRoom() {
     if (userIsHost) {
@@ -293,14 +292,14 @@ export default function Page() {
       );
     } else {
       if (users[userId].competing) {
-        switch(timerType) {
+        switch (timerType) {
           case "TYPING":
             setUserStatus("SOLVING");
             return;
           default:
             return;
         }
-      } 
+      }
       //otherwise, do nothing - user is spectating and status does not need to be updated
     }
   }
@@ -327,10 +326,7 @@ export default function Page() {
   function RoomHeader() {
     return (
       <Header>
-        <RoomHeaderContent
-          roomState={localRoomState}
-          isHost={userIsHost}
-        />
+        <RoomHeaderContent roomState={localRoomState} isHost={userIsHost} />
       </Header>
     );
   }
@@ -355,7 +351,10 @@ export default function Page() {
         );
         break;
       case "STARTED":
-        const scramble = currentSolve > 0 ? solves[currentSet - 1][currentSolve - 1].scramble : "";
+        const scramble =
+          currentSolve > 0
+            ? solves.at(-1)!.solve.scramble
+            : "";
         mainContent = (
           <>
             <h2 className={cn("text-2xl")}>{scramble}</h2>
@@ -366,9 +365,7 @@ export default function Page() {
       case "FINISHED":
         mainContent = (
           <>
-            <h2 className={cn("text-2xl")}>
-              Room has finished!
-            </h2>
+            <h2 className={cn("text-2xl")}>Room has finished!</h2>
           </>
         );
         break;
@@ -478,7 +475,9 @@ export default function Page() {
                   variant="primary"
                   size="default"
                   className={cn("px-1")}
-                  onClick={() => {userToggleCompetingSpectating(!users[userId]?.competing)}}
+                  onClick={() => {
+                    userToggleCompetingSpectating(!users[userId]?.competing);
+                  }}
                 >
                   <h1 className={cn("font-bold text-center text-md")}>
                     {users[userId]?.competing ? "SPECTATE" : "COMPETE"}
@@ -664,7 +663,9 @@ export default function Page() {
                   variant="primary"
                   size="default"
                   className={cn("px-1")}
-                  onClick={() => {userToggleCompetingSpectating(!users[userId]?.competing)}}
+                  onClick={() => {
+                    userToggleCompetingSpectating(!users[userId]?.competing);
+                  }}
                 >
                   <h1 className={cn("font-bold text-center text-md")}>
                     {users[userId]?.competing ? "SPECTATE" : "COMPETE"}
@@ -679,22 +680,22 @@ export default function Page() {
         return (
           <RoomPanel className="bg-container-3 py-3">
             <div>
-              {
-                winningUserNames.length > 1 ?
+              {winningUserNames.length > 1 ? (
                 <>
-                  <h2 className="text-2xl">Winners ({winningUserNames.length})</h2>
+                  <h2 className="text-2xl">
+                    Winners ({winningUserNames.length})
+                  </h2>
                   <ul>
                     {winningUserNames.map((username, index) => (
                       <li key={index}>{username}</li>
                     ))}
                   </ul>
                 </>
-                :
+              ) : (
                 <>
                   <h2 className="text-2xl">Winner: {winningUserNames[0]}</h2>
                 </>
-              }
-              
+              )}
             </div>
             <div>
               <h2 className="text-2xl">Racers ({competingUsers.length})</h2>
@@ -722,7 +723,9 @@ export default function Page() {
                   variant="primary"
                   size="default"
                   className={cn("px-1")}
-                  onClick={() => {userToggleCompetingSpectating(!users[userId]?.competing)}}
+                  onClick={() => {
+                    userToggleCompetingSpectating(!users[userId]?.competing);
+                  }}
                 >
                   <h1 className={cn("font-bold text-center text-md")}>
                     {users[userId]?.competing ? "SPECTATE" : "COMPETE"}
@@ -736,9 +739,8 @@ export default function Page() {
                     size="default"
                     className={cn("px-1")}
                     onClick={() => {
-                        rematchRoom();
-                      }
-                    }
+                      rematchRoom();
+                    }}
                   >
                     <h1 className={cn("font-bold text-center text-md")}>
                       REMATCH
@@ -765,7 +767,7 @@ export default function Page() {
   }) {
     switch (roomState) {
       case "WAITING":
-        //fallthrough logic
+      //fallthrough logic
       case "FINISHED":
         return (
           <RoomPanel className="bg-container-1 px-2 py-3">
@@ -791,7 +793,6 @@ export default function Page() {
           }
         });
 
-        let currentResults: Record<string, IResult> = currentSet >= 1 && currentSolve >= 1 ? solves[currentSet - 1][currentSolve - 1].results : {};
         return (
           <RoomPanel className="bg-container-2 px-1 py-3">
             <div className="grid grid-row text-center text-xl">
@@ -805,10 +806,8 @@ export default function Page() {
                 <div key={index} className="grid grid-cols-12">
                   <div className="col-span-5">{user.user.userName}</div>
                   <div className="col-span-3">
-                    {user.userStatus == "FINISHED"
-                      ? Result.fromIResult(
-                          currentResults[user.user._id.toString()]
-                        ).toString()
+                    {user.userStatus == "FINISHED" && user.currentResult
+                      ? Result.fromIResult(user.currentResult).toString()
                       : user.userStatus}
                   </div>
                   <div className="col-span-2">{user.setWins}</div>

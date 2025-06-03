@@ -1,6 +1,7 @@
 import { IUser } from "@/types/user";
 import { IRoomUser } from "@/types/roomUser";
 import { ISolve } from "@/types/solve";
+import { IRoomSolve } from "./roomSolve";
 import { Result } from "./result";
 import { Types } from "mongoose";
 import { generateScramble } from "@/lib/utils";
@@ -160,7 +161,7 @@ export interface IRoom {
   roomName: string;
   host: IUser;
   users: Record<string, IRoomUser>; //objectId (user) : IRoomUser. The key has to be a string b/c of mongoDB storage.
-  solves: ISolve[][];
+  solves: IRoomSolve[];
   currentSet: number; //the current set number (1-indexed)
   currentSolve: number; //the solve number WITHIN the current set (1-indexed)
   roomEvent: RoomEvent;
@@ -204,7 +205,7 @@ export function findSetWinners(room: IRoom): string[] {
         });
     case "AVERAGE_OF": {
       //requires that competing user have done ALL solves in this set
-      const setSolves = room.solves[room.currentSet - 1];
+      const setSolves = room.solves.filter((roomSolve) => roomSolve.setIndex == room.currentSet);
       if (setSolves.length < (room.nSolves || Number.POSITIVE_INFINITY))
         return [];
 
@@ -213,8 +214,8 @@ export function findSetWinners(room: IRoom): string[] {
           return user.user._id.toString();
         })
       );
-      for (const solve of setSolves) {
-        let competedIds = new Set(Object.keys(solve.results));
+      for (const roomSolve of setSolves) {
+        let competedIds = new Set(Object.keys(roomSolve.solve.results));
         currentIds = currentIds.intersection(competedIds);
       }
       const eligibleIds = [...currentIds];
@@ -223,8 +224,8 @@ export function findSetWinners(room: IRoom): string[] {
 
       const results: Record<string, Result[]> = eligibleIds.reduce(
         (acc, id) => {
-          acc[id] = setSolves.map((solve) =>
-            Result.fromIResult(solve.results[id])
+          acc[id] = setSolves.map((roomSolve) =>
+            Result.fromIResult(roomSolve.solve.results[id])
           );
           return acc;
         },
@@ -241,7 +242,7 @@ export function findSetWinners(room: IRoom): string[] {
     }
     case "MEAN_OF": {
       //requires that competing user have done ALL solves in this set
-      const setSolves = room.solves[room.currentSet - 1];
+      const setSolves = room.solves.filter((roomSolve) => roomSolve.setIndex == room.currentSet);
       if (setSolves.length < (room.nSolves || Number.POSITIVE_INFINITY))
         return [];
 
@@ -250,8 +251,8 @@ export function findSetWinners(room: IRoom): string[] {
           return user.user._id.toString();
         })
       );
-      for (const solve of setSolves) {
-        let competedIds = new Set(Object.keys(solve.results));
+      for (const roomSolve of setSolves) {
+        let competedIds = new Set(Object.keys(roomSolve.solve.results));
         currentIds = currentIds.intersection(competedIds);
       }
       const eligibleIds = [...currentIds];
@@ -260,8 +261,8 @@ export function findSetWinners(room: IRoom): string[] {
 
       const results: Record<string, Result[]> = eligibleIds.reduce(
         (acc, id) => {
-          acc[id] = setSolves.map((solve) =>
-            Result.fromIResult(solve.results[id])
+          acc[id] = setSolves.map((roomSolve) =>
+            Result.fromIResult(roomSolve.solve.results[id])
           );
           return acc;
         },
@@ -293,7 +294,7 @@ export function findMatchWinners(room: IRoom): string[] {
   //no set win possible if no competing users exist
   if (competingUsers.length == 0) return [];
 
-  switch (room.setFormat) {
+  switch (room.matchFormat) {
     case "BEST_OF":
       //user has won for sure if they have the majority of solves
       return competingUsers
@@ -317,7 +318,8 @@ export function findMatchWinners(room: IRoom): string[] {
  *
  */
 export function checkRoomSolveFinished(room: IRoom): boolean {
-  const currentSolve = room.solves[room.currentSet - 1][room.currentSolve - 1];
+  if (room.solves.length == 0) return false;
+  const currentSolve = room.solves.at(-1);
   const competingUsers = Object.values(room.users).filter(
     (user) => user.competing
   );
@@ -326,7 +328,7 @@ export function checkRoomSolveFinished(room: IRoom): boolean {
   for (const user of competingUsers) {
     if (
       user.userStatus !== "FINISHED" ||
-      !Object.keys(currentSolve.results).includes(user.user._id.toString())
+      !Object.keys(currentSolve!.solve.results).includes(user.user._id.toString())
     ) {
       allUsersFinished = false;
       break;
@@ -342,7 +344,9 @@ export function checkRoomSolveFinished(room: IRoom): boolean {
  *  Find the winner of the current solve. Award a point and process necessary consequences (set win, race win)
  */
 export function finishRoomSolve(room: IRoom) {
-  const currentSolve = room.solves[room.currentSet - 1][room.currentSolve - 1];
+  if (room.solves.length == 0) return;
+
+  const currentSolve = room.solves.at(-1);
   const competingUsers = Object.values(room.users).filter(
     (user) => user.competing
   );
@@ -360,7 +364,7 @@ export function finishRoomSolve(room: IRoom) {
 
     for (const user of competingUsers) {
       const result: Result = Result.fromIResult(
-        currentSolve.results[user.user._id.toString()]
+        currentSolve!.solve.results[user.user._id.toString()]
       );
       if (!fastest_result || result.isLessThan(fastest_result)) {
         //ties are broken by the first user to submit the time.
@@ -391,7 +395,11 @@ export function finishRoomSolve(room: IRoom) {
       //reset solve counter, update set counter
       room.currentSolve = 0;
       room.currentSet += 1;
-      room.solves.push([]);
+
+      //reset number of solves users have won
+      Object.values(room.users).map((roomUser) => {
+        roomUser.points = 0;
+      });
     }
   }
 }
@@ -405,30 +413,29 @@ export async function newRoomSolve(room: IRoom) {
   const currSolveId = getCurrentSolveId(room);
 
   const newScramble: string = await generateScramble(room.roomEvent);
-  const newSolve: ISolve = {
+  const solveObj: ISolve = {
     id: currSolveId + 1,
     scramble: newScramble,
     results: {},
+  }
+  const newSolve: IRoomSolve = {
+    solve: solveObj,
+    setIndex: room.currentSet,
+    solveIndex: room.currentSolve + 1,
   };
   room.currentSolve += 1;
-  room.solves.at(-1)?.push(newSolve);
+  room.solves.push(newSolve);
+
+  Object.values(room.users).map((roomUser) => {
+    roomUser.currentResult = undefined;
+  });
 }
 
 export async function skipScramble(room: IRoom) {
-  if (room.solves[room.currentSet - 1].length > 0) {
-    room.solves[room.currentSet - 1][room.currentSolve - 1].scramble =
-      await generateScramble(room.roomEvent);
-    room.solves[room.currentSet - 1][room.currentSolve - 1].results = {};
-  } else if (room.currentSet > 1) {
-    room.solves[room.currentSet - 2][room.currentSolve - 1].scramble =
-      await generateScramble(room.roomEvent);
-    room.solves[room.currentSet - 2][room.currentSolve - 1].results = {};
-  } else {
-    //there is no last solve...
-    throw new Error(
-      "skipScramble() cannot be called when the room's list of solves is empty."
-    );
-  }
+  if (room.solves.length == 0) return;
+
+  room.solves.at(-1)!.solve.scramble = await generateScramble(room.roomEvent);
+  room.solves.at(-1)!.solve.results = {};
 }
 
 /**
@@ -436,7 +443,7 @@ export async function skipScramble(room: IRoom) {
  */
 export function resetRoom(room: IRoom) {
   room.state = "WAITING";
-  room.solves = [[]];
+  room.solves = [];
   room.currentSet = 1;
   room.currentSolve = 0;
   room.winners = room.roomFormat == "RACING" ? [] : undefined;
@@ -445,14 +452,11 @@ export function resetRoom(room: IRoom) {
     roomUser.points = 0;
     roomUser.setWins = 0;
     roomUser.userStatus = roomUser.competing ? "IDLE" : "SPECTATING";
+    roomUser.currentResult = undefined;
   });
 }
 
 function getCurrentSolveId(room: IRoom) {
-  if (room.solves[room.currentSet - 1].length > 0) {
-    return room.solves[room.currentSet - 1][room.currentSolve - 1].id;
-  } else if (room.currentSet > 1) {
-    return room.solves[room.currentSet - 2][room.currentSolve - 1].id;
-  }
-  return 0;
+  if (room.solves.length == 0) return 0;
+  return room.solves.at(-1)!.solve.id;
 }
