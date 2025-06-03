@@ -79,7 +79,7 @@ export default function Page() {
   useEffect(() => {
     socket?.on("room_update", (room: IRoom) => {
       console.log("Updating room state with incoming room update message.");
-      console.log(room);
+      // console.log(room);
       setRoomName(room.roomName);
       setUsers(room.users);
       setHostId(room.host._id.toString());
@@ -155,7 +155,7 @@ export default function Page() {
   //update format text based on format changes (there shouldn't be any, but just in case)
   useEffect(() => {
     let raceFormatText = "";
-    if (roomFormat == "racing") {
+    if (roomFormat == "RACING") {
       raceFormatText =
         "Format: " +
         SET_FORMAT_MAP.get(setFormat) +
