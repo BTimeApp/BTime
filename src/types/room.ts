@@ -192,16 +192,16 @@ export function findSetWinners(room: IRoom): string[] {
     case "BEST_OF":
       //user has won for sure if they have the majority of solves
       return competingUsers
-        .filter((user) => user.points > room.nSolves! / 2)
-        .map((user, index) => {
-          return user.user._id.toString();
+        .filter((roomUser) => roomUser.points > room.nSolves! / 2)
+        .map((roomUser) => {
+          return roomUser.user._id.toString();
         });
     case "FIRST_TO":
       //user has won only when they win n solves.
       return competingUsers
-        .filter((user) => user.points >= room.nSolves!)
-        .map((user, index) => {
-          return user.user._id.toString();
+        .filter((roomUser) => roomUser.points >= room.nSolves!)
+        .map((roomUser) => {
+          return roomUser.user._id.toString();
         });
     case "AVERAGE_OF": {
       //requires that competing user have done ALL solves in this set
@@ -210,8 +210,8 @@ export function findSetWinners(room: IRoom): string[] {
         return [];
 
       let currentIds = new Set(
-        competingUsers.map((user, index) => {
-          return user.user._id.toString();
+        competingUsers.map((roomUser) => {
+          return roomUser.user._id.toString();
         })
       );
       for (const roomSolve of setSolves) {
@@ -233,7 +233,7 @@ export function findSetWinners(room: IRoom): string[] {
       );
 
       const averages: Record<string, number> = Object.fromEntries(
-        eligibleIds.map((id, index) => [id, Result.averageOf(results[id])])
+        eligibleIds.map((id) => [id, Result.averageOf(results[id])])
       );
 
       const minAverage = Math.min(...Object.values(averages));
@@ -247,8 +247,8 @@ export function findSetWinners(room: IRoom): string[] {
         return [];
 
       let currentIds = new Set(
-        competingUsers.map((user, index) => {
-          return user.user._id.toString();
+        competingUsers.map((roomUser) => {
+          return roomUser.user._id.toString();
         })
       );
       for (const roomSolve of setSolves) {
@@ -299,14 +299,14 @@ export function findMatchWinners(room: IRoom): string[] {
       //user has won for sure if they have the majority of solves
       return competingUsers
         .filter((roomUser) => roomUser.setWins > room.nSets! / 2)
-        .map((roomUser, index) => {
+        .map((roomUser) => {
           return roomUser.user.userName;
         });
     case "FIRST_TO":
       //user has won only when they win n solves.
       return competingUsers
         .filter((roomUser) => roomUser.setWins >= room.nSets!)
-        .map((roomUser, index) => {
+        .map((roomUser) => {
           return roomUser.user.userName;
         });
     default:
@@ -325,10 +325,10 @@ export function checkRoomSolveFinished(room: IRoom): boolean {
   );
 
   let allUsersFinished: boolean = true;
-  for (const user of competingUsers) {
+  for (const roomUser of competingUsers) {
     if (
-      user.userStatus !== "FINISHED" ||
-      !Object.keys(currentSolve!.solve.results).includes(user.user._id.toString())
+      roomUser.userStatus !== "FINISHED" ||
+      !Object.keys(currentSolve!.solve.results).includes(roomUser.user._id.toString())
     ) {
       allUsersFinished = false;
       break;
@@ -362,13 +362,13 @@ export function finishRoomSolve(room: IRoom) {
     let fastest_uid = null;
     let fastest_result: Result | undefined = undefined;
 
-    for (const user of competingUsers) {
+    for (const roomUser of competingUsers) {
       const result: Result = Result.fromIResult(
-        currentSolve!.solve.results[user.user._id.toString()]
+        currentSolve!.solve.results[roomUser.user._id.toString()]
       );
       if (!fastest_result || result.isLessThan(fastest_result)) {
         //ties are broken by the first user to submit the time.
-        fastest_uid = user.user._id.toString();
+        fastest_uid = roomUser.user._id.toString();
         fastest_result = result;
       }
     }
