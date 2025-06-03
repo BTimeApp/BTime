@@ -25,7 +25,7 @@ export const roomSchema = new Schema<IRoom>({
     nSets: { type: Number, required: false},
     nSolves: {type: Number, required: false}, 
     isPrivate: { type: Boolean, required: true},
-    state: {type: String, required: true, default: "waiting"},
+    state: {type: String, required: true, default: 'WAITING'},
     password: {type: String, required: false},
 }, {
     methods: {
