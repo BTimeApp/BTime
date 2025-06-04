@@ -171,12 +171,3 @@
     @apply bg-background text-foreground;
   }
 }
-
-@layer components {
-  .section-title {
-    @apply flex text-foreground m-10 text-3xl font-extrabold; 
-  }
-  .subsection-title {
-    @apply flex text-foreground m-10 text-2xl font-bold;
-  }
-}
