@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsc && (concurrently \"tsc --watch -p tsconfig.json\" \"tsc-alias -w\" \"nodemon dist/src/server/run_server.js\")",
+    "dev": "tsc && (NODE_ENV=development concurrently \"tsc --watch -p tsconfig.json\" \"tsc-alias -w\" \"nodemon dist/src/server/run_server.js\")",
     "lint": "next lint",
     "lint:fix": "eslint . --fix"
   },
