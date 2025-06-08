@@ -1,16 +1,10 @@
 import OAuth2Strategy from "passport-oauth2";
-import axios from 'axios';
+import axios from "axios";
 import { PassportStatic } from "passport";
-
-export interface UserProfile {
-  id: string;
-  name: string;
-  email?: string;
-  wca_id: string;
-  avatar_url?: string;
-}
+import { UserDocument, UserModel, toIUser } from "@/server/models/user";
 
 export function configureWCAPassport(passportInstance: PassportStatic) {
+
   const authURL = `${process.env.WCA_SOURCE}/oauth/authorize`;
   const authTokenURL = `${process.env.WCA_SOURCE}/oauth/token`;
   const userProfileURL = `${process.env.WCA_SOURCE}/api/v0/me`;
@@ -24,26 +18,39 @@ export function configureWCAPassport(passportInstance: PassportStatic) {
     try {
       console.log(`fetching data from ${userProfileURL}...`);
 
-      const res = await axios.get(userProfileURL, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }).then((res) => res.data);
+      const res = await axios
+        .get(userProfileURL, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        })
+        .then((res) => res.data);
 
       const profile = res.me;
 
-      // TODO - convert this scheme to fetching from the DB and returning the user. If no user currently exists, make one. 
-      const user: UserProfile = {
-        id: profile.id,
-        name: profile.name,
-        email: profile.email,
-        wca_id: profile.wca_id,
-        avatar_url: profile.avatar?.thumb_url,
-      };
-
-      done(null, user);
+      // query DB and update. If user doesn't exist, create. Note that this is tied to email 
+      UserModel.findOneAndUpdate(
+        {
+          wcaIdNo: profile.id,
+        },
+        {
+          name: profile.name,
+          wcaIdNo: profile.id,
+          wcaId: profile.wca_id,
+          avatarURL: profile.avatar?.thumb_url,
+          $setOnInsert: {email: profile.email} //only set email upon insertion (protect against overriding existing email from email OAuth)
+        },
+        {
+          upsert: true,
+          useFindAndModify: false,
+          setDefaultsOnInsert: true,
+          new: true,
+        }
+      )
+        .lean()
+        .then((user: UserDocument) => done(null, toIUser(user)))
+        .catch((err) => done(err));
     } catch (err) {
-    
       done(err);
     }
   };

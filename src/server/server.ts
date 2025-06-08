@@ -5,18 +5,18 @@ import { connectToDB } from "@/server/database/database";
 import {
   IRoom
 } from "@/types/room";
-import { Types } from "mongoose";
 import { IUser } from "@/types/user";
 import { initSocket } from "./socket/init_socket";
 import { handleConfig } from "./load_config";
-import { configureWCAPassport, UserProfile } from "@/server/auth";
+import { configureWCAPassport } from "@/server/auth";
 import { api } from "@/server/api";
 import passport from 'passport';
 import session from 'express-session';
+import { UserDocument } from "./models/user";
 
 
-export const rooms: Map<Types.ObjectId, IRoom> = new Map<Types.ObjectId, IRoom>(); // In-memory room store
-export const users: Map<Types.ObjectId, IUser> = new Map<Types.ObjectId, IUser>(); // In-memory user store
+export const rooms: Map<string, IRoom> = new Map<string, IRoom>(); // In-memory room store
+export const users: Map<string, IUser> = new Map<string, IUser>(); // In-memory user store
 
 export async function startServer(): Promise<void> {
   // handle config with dotenv
@@ -66,7 +66,7 @@ export async function startServer(): Promise<void> {
     passport.authenticate('wca', { failureRedirect: '/' }),
     (req, res) => {
       // authentication successful
-      console.log(`User with WCAID ${(req.user as UserProfile).wca_id} is now logged in.`);
+      console.log(`User ${(req.user as IUser).wcaId} ${(req.user as UserDocument)._id} is now logged in.`);
 
       res.redirect('/');
     }

@@ -16,8 +16,7 @@ import {
   getVerboseFormatText,
 } from "@/types/room";
 import { IRoomUser } from "@/types/roomUser";
-import { ISolve } from "@/types/solve";
-import { IResult, Penalty, Result } from "@/types/result";
+import { Penalty, Result } from "@/types/result";
 import { IUser } from "@/types/user";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -82,7 +81,7 @@ export default function Page() {
       // console.log(room);
       setRoomName(room.roomName);
       setUsers(room.users);
-      setHostId(room.host._id.toString());
+      setHostId(room.host.id.toString());
       setSolves(room.solves);
       setCurrentSet(room.currentSet);
       setCurrentSolve(room.currentSolve);
@@ -125,10 +124,10 @@ export default function Page() {
 
     //TODO: move user login logic to its own authentication
     const user: IUser = {
-      _id: new ObjectId(userId),
+      id: new ObjectId(userId).toString(),
       name: "TEST USER",
       email: "TEST_USER@gmail.com",
-      userName: userId.toString().slice(-10),
+      userName: "TEST USER",
     };
     console.log(user);
     socket?.emit("user_login", { userId, user });

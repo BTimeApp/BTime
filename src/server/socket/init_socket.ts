@@ -19,8 +19,8 @@ import { IRoomSolve } from "@/types/roomSolve";
 
 //defines useful state variables we want to maintain over the lifestyle of a socket connection (only visible server-side)
 interface CustomSocket extends Socket {
-  roomId?: Types.ObjectId;
-  userId?: Types.ObjectId;
+  roomId?: string;
+  userId?: string;
 }
 
 export const initSocket = (httpServer: HttpServer) => {
@@ -47,7 +47,7 @@ const listenSocketEvents = (io: Server) => {
 
     socket.on(
       "user_login",
-      ({ userId, user }: { userId: Types.ObjectId; user: IUser }) => {
+      ({ userId, user }: { userId: string; user: IUser }) => {
         if (users.get(userId)) {
           console.log(`User ${users.get(userId)!.userName} double login.`);
         } else {
@@ -58,7 +58,7 @@ const listenSocketEvents = (io: Server) => {
       }
     );
 
-    socket.on("user_logout", ({ userId }: { userId: Types.ObjectId }) => {
+    socket.on("user_logout", ({ userId }: { userId: string }) => {
       if (users.get(userId)) {
         console.log(`User ${users.get(userId)!.userName} logging out.`);
         users.delete(userId);
@@ -73,8 +73,8 @@ const listenSocketEvents = (io: Server) => {
         roomId,
         userId,
       }: {
-        roomId: Types.ObjectId;
-        userId: Types.ObjectId;
+        roomId: string;
+        userId: string;
       }) => {
         if (!users.get(userId)) {
           console.log(
@@ -102,7 +102,7 @@ const listenSocketEvents = (io: Server) => {
         // TODO generate actual scramble
         if (!room) {
           room = {
-            _id: roomId,
+            id: roomId,
             roomName: roomId.toString(),
             host: user!,
             users: {},
@@ -143,7 +143,7 @@ const listenSocketEvents = (io: Server) => {
 
       if (room.state == "STARTED") {
         await skipScramble(room);
-        io.to(room._id.toString()).emit("room_update", room);
+        io.to(room.id.toString()).emit("room_update", room);
       } else {
         console.log(`Cannot skip scramble when room state is ${room.state}`);
       }
@@ -159,7 +159,7 @@ const listenSocketEvents = (io: Server) => {
       if (room.state == "WAITING" || room.state == "FINISHED") {
         room.state = "STARTED";
         await newRoomSolve(room);
-        io.to(room._id.toString()).emit("room_update", room);
+        io.to(room.id.toString()).emit("room_update", room);
       } else {
         console.log(`Cannot start room when room state is ${room.state}`);
       }
@@ -174,7 +174,7 @@ const listenSocketEvents = (io: Server) => {
 
       if (room.state == "STARTED" || room.state == "FINISHED") {
         resetRoom(room);
-        io.to(room._id.toString()).emit("room_update", room);
+        io.to(room.id.toString()).emit("room_update", room);
       } else {
         console.log(`Cannot reset room when room state is ${room.state}`);
       }
@@ -193,7 +193,7 @@ const listenSocketEvents = (io: Server) => {
         await newRoomSolve(room);
         room.state = "STARTED";
         console.log();
-        io.to(room._id.toString()).emit("room_update", room);
+        io.to(room.id.toString()).emit("room_update", room);
       } else {
         console.log(
           `Cannot trigger a room rematch when room state is ${room.state}`
@@ -305,7 +305,7 @@ const listenSocketEvents = (io: Server) => {
         }
 
         //check if host, and if so, promote a new host
-        if (room.host._id == socket.userId) {
+        if (room.host.id == socket.userId) {
           console.log(
             `Host has left room ${socket.roomId}. Promoting a new host.`
           );

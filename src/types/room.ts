@@ -3,7 +3,6 @@ import { IRoomUser } from "@/types/roomUser";
 import { ISolve } from "@/types/solve";
 import { IRoomSolve } from "./roomSolve";
 import { Result } from "./result";
-import { Types } from "mongoose";
 import { generateScramble } from "@/lib/utils";
 
 //defines all legal events
@@ -157,7 +156,7 @@ export type SetFormat = (typeof SET_FORMATS)[number];
 export type RoomState = (typeof ROOM_STATES)[number];
 
 export interface IRoom {
-  _id: Types.ObjectId;
+  id: string;
   roomName: string;
   host: IUser;
   users: Record<string, IRoomUser>; //objectId (user) : IRoomUser. The key has to be a string b/c of mongoDB storage.
@@ -194,14 +193,14 @@ export function findSetWinners(room: IRoom): string[] {
       return competingUsers
         .filter((roomUser) => roomUser.points > room.nSolves! / 2)
         .map((roomUser) => {
-          return roomUser.user._id.toString();
+          return roomUser.user.id;
         });
     case "FIRST_TO":
       //user has won only when they win n solves.
       return competingUsers
         .filter((roomUser) => roomUser.points >= room.nSolves!)
         .map((roomUser) => {
-          return roomUser.user._id.toString();
+          return roomUser.user.id;
         });
     case "AVERAGE_OF": {
       //requires that competing user have done ALL solves in this set
@@ -211,7 +210,7 @@ export function findSetWinners(room: IRoom): string[] {
 
       let currentIds = new Set(
         competingUsers.map((roomUser) => {
-          return roomUser.user._id.toString();
+          return roomUser.user.id;
         })
       );
       for (const roomSolve of setSolves) {
@@ -248,7 +247,7 @@ export function findSetWinners(room: IRoom): string[] {
 
       let currentIds = new Set(
         competingUsers.map((roomUser) => {
-          return roomUser.user._id.toString();
+          return roomUser.user.id;
         })
       );
       for (const roomSolve of setSolves) {
@@ -328,7 +327,7 @@ export function checkRoomSolveFinished(room: IRoom): boolean {
   for (const roomUser of competingUsers) {
     if (
       roomUser.userStatus !== "FINISHED" ||
-      !Object.keys(currentSolve!.solve.results).includes(roomUser.user._id.toString())
+      !Object.keys(currentSolve!.solve.results).includes(roomUser.user.id)
     ) {
       allUsersFinished = false;
       break;
@@ -353,7 +352,7 @@ export function finishRoomSolve(room: IRoom) {
 
   if (competingUsers.length == 0) {
     console.log(
-      `Room ${room._id} has 0 competing users and cannot complete the current solve`
+      `Room ${room.id} has 0 competing users and cannot complete the current solve`
     );
     return;
   }
@@ -364,18 +363,18 @@ export function finishRoomSolve(room: IRoom) {
 
     for (const roomUser of competingUsers) {
       const result: Result = Result.fromIResult(
-        currentSolve!.solve.results[roomUser.user._id.toString()]
+        currentSolve!.solve.results[roomUser.user.id]
       );
       if (!fastest_result || result.isLessThan(fastest_result)) {
         //ties are broken by the first user to submit the time.
-        fastest_uid = roomUser.user._id.toString();
+        fastest_uid = roomUser.user.id;
         fastest_result = result;
       }
     }
 
     // 0 users means return
     if (!fastest_uid || !fastest_result) {
-      console.log(`Room ${room._id} has no winner for current solve. `);
+      console.log(`Room ${room.id} has no winner for current solve. `);
       return;
     }
     room.users[fastest_uid].points += 1;
