@@ -9,6 +9,10 @@ import { Types } from "mongoose";
 import { IUser } from "@/types/user";
 import { initSocket } from "./socket/init_socket";
 import { handleConfig } from "./load_config";
+import { configureWCAPassport, UserProfile } from "@/server/auth";
+import { api } from "@/server/api";
+import passport from 'passport';
+import session from 'express-session';
 
 
 export const rooms: Map<Types.ObjectId, IRoom> = new Map<Types.ObjectId, IRoom>(); // In-memory room store
@@ -36,6 +40,41 @@ export async function startServer(): Promise<void> {
   app.use(express.json()); // for parsing application/json
   app.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
   
+  // set up session
+  app.use(
+    session({
+      secret: process.env.SESSION_SECRET,
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        secure: isProd
+      }
+    })
+  );
+
+  // allow passport to use session
+  app.use(passport.initialize())
+  app.use(passport.session())
+
+  configureWCAPassport(passport);
+
+  //TODO - move auth routes to their own file
+  app.get('/auth/wca', passport.authenticate('wca', { scope: ['public', 'email'] }));
+
+  app.get(
+    '/auth/wca/callback',
+    passport.authenticate('wca', { failureRedirect: '/' }),
+    (req, res) => {
+      // authentication successful
+      console.log(`User with WCAID ${(req.user as UserProfile).wca_id} is now logged in.`);
+
+      res.redirect('/');
+    }
+  );
+
+  // Set up api routes
+  app.use('/api', api(app, passport));
+
   // set up socket.io server listener
   initSocket(httpServer);
 

@@ -38,7 +38,6 @@ export const initSocket = (httpServer: HttpServer) => {
 
 const listenSocketEvents = (io: Server) => {
   io.on("connection", (socket: CustomSocket) => {
-    console.log("Connection established on server: ", socket.id);
     //by default, roomId and userId will be undefined
 
     function getSocketRoom(): IRoom | undefined {
