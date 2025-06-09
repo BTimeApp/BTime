@@ -3,7 +3,6 @@ import Header from "@/components/common/header";
 import * as React from "react";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ObjectId } from "bson";
 import {
   RoomState,
   IRoom,
@@ -16,17 +15,16 @@ import {
   getVerboseFormatText,
 } from "@/types/room";
 import { IRoomUser } from "@/types/roomUser";
-import { ISolve } from "@/types/solve";
-import { IResult, Penalty, Result } from "@/types/result";
-import { IUser } from "@/types/user";
+import { Penalty, Result } from "@/types/result";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import RoomPanel from "@/components/room/room-panel";
-import { useSocket } from "@/components/socket/socket";
+import { useSocket } from "@/hooks/useSocket";
 import { CallbackInput } from "@/components/ui/input";
 import { SolveStatus } from "@/types/status";
 import { TimerType } from "@/types/timerType";
 import { IRoomSolve } from "@/types/roomSolve";
+import { useSession } from "@/hooks/useSession";
 
 export default function Page() {
   const params = useParams<{ roomId: string }>();
@@ -56,33 +54,21 @@ export default function Page() {
   const [timerType, setTimerType] = useState<TimerType>("TYPING");
 
   //user-related state
-  const [userId, setUserId] = useState<string>("");
   const [userIsHost, setUserIsHost] = useState<boolean>(false);
   const [userStatus, setUserStatus] = useState<SolveStatus>("IDLE");
 
-  //socket state
-  const socket = useSocket();
-
-  //retrieve local user ID
-  useEffect(() => {
-    // Set userId from localStorage or generate new
-    let storedId = localStorage.getItem("userId");
-    if (!storedId) {
-      //any 12-byte sequence is a valid mongoDB id. TODO: replace this with the actual ID fetched from DB
-      storedId = new ObjectId().toString();
-      localStorage.setItem("userId", storedId);
-    }
-    setUserId(storedId);
-  }, []);
+  //generate socket, fetch local user from session
+  const { socket, socketConnected } = useSocket(false);
+  const { localUser, sessionLoading } = useSession();
 
   //set up socket connection, set up socket incoming events
   useEffect(() => {
-    socket?.on("room_update", (room: IRoom) => {
+    socket.on("room_update", (room: IRoom) => {
       console.log("Updating room state with incoming room update message.");
       // console.log(room);
       setRoomName(room.roomName);
       setUsers(room.users);
-      setHostId(room.host._id.toString());
+      setHostId(room.host.id);
       setSolves(room.solves);
       setCurrentSet(room.currentSet);
       setCurrentSolve(room.currentSolve);
@@ -97,7 +83,7 @@ export default function Page() {
       setRoomWinners(room.winners || []);
     });
 
-    socket?.on("solve_finished", () => {
+    socket.on("solve_finished", () => {
       handleSolveFinishedEvent();
     });
 
@@ -108,49 +94,31 @@ export default function Page() {
 
   //join room upon load/change of user/room
   useEffect(() => {
-    if (!userId) {
-      console.log("Waiting for userId...");
+    if (!localUser) {
       return;
     }
 
     // Connect socket to room
-    if (socket?.connected) {
+    if (socket.connected) {
       console.log("Socket already connected — emitting join_room");
     } else {
       console.log("Waiting for socket to connect before emitting join_room");
-      socket?.on("connect", () => {
+      socket.connect();
+      socket.on("connect", () => {
         console.log("Socket connected. ");
       });
     }
-
-    //TODO: move user login logic to its own authentication
-    const user: IUser = {
-      _id: new ObjectId(userId),
-      name: "TEST USER",
-      email: "TEST_USER@gmail.com",
-      userName: userId.toString().slice(-10),
-    };
-    console.log(user);
-    socket?.emit("user_login", { userId, user });
-
     //only join room upon login
-    socket?.on("user_logged_in", () => {
-      socket?.emit("join_room", { userId, roomId });
-    });
+    socket.emit("join_room", { userId: localUser.id, roomId: roomId });
 
-    return () => {
-      // Clean up
-      socket?.emit("user_logout", { userId });
-
-      // socketRef.current?.disconnect();
-      // socketRef.current = null;
-    };
-  }, [userId]);
+    return () => {};
+  }, [localUser, socketConnected]);
 
   //update user is host whenever userId or hostId update
   useEffect(() => {
-    setUserIsHost(userId == hostId);
-  }, [userId, hostId]);
+    if (!localUser) return;
+    setUserIsHost(localUser.id == hostId);
+  }, [localUser, hostId]);
 
   //update format text based on format changes (there shouldn't be any, but just in case)
   useEffect(() => {
@@ -204,20 +172,20 @@ export default function Page() {
 
   useEffect(() => {
     // console.log("new user status", userStatus);
-    socket?.emit("user_update_status", userStatus);
+    socket.emit("user_update_status", userStatus);
   }, [userStatus]);
 
   function getNextScramble() {
     if (userIsHost) {
       console.log("get next scramble button clicked");
-      socket?.emit("skip_scramble");
+      socket.emit("skip_scramble");
     }
   }
 
   function resetRoom() {
     if (userIsHost) {
       console.log("reset room button clicked");
-      socket?.emit("reset_room");
+      socket.emit("reset_room");
     }
   }
 
@@ -226,7 +194,7 @@ export default function Page() {
    */
   function userToggleCompetingSpectating(competing: boolean) {
     console.log("user compete button clicked");
-    socket?.emit("user_toggle_competing_spectating", competing);
+    socket.emit("user_toggle_competing_spectating", competing);
     if (competing) {
       handleTimerStateTransition();
     } else {
@@ -237,14 +205,14 @@ export default function Page() {
   function startRoom() {
     if (userIsHost) {
       console.log("start room button clicked");
-      socket?.emit("start_room");
+      socket.emit("start_room");
     }
   }
 
   function rematchRoom() {
     if (userIsHost) {
       console.log("rematch room button clicked");
-      socket?.emit("rematch_room");
+      socket.emit("rematch_room");
     }
   }
 
@@ -290,18 +258,23 @@ export default function Page() {
       console.log(
         "Timer redoSolve() called in the wrong room state. Ignoring call."
       );
-    } else {
-      if (users[userId].competing) {
-        switch (timerType) {
-          case "TYPING":
-            setUserStatus("SOLVING");
-            return;
-          default:
-            return;
-        }
-      }
-      //otherwise, do nothing - user is spectating and status does not need to be updated
+      return;
+    } 
+    if (!localUser) {
+      console.log("Local user doesn't exist. This should not happen.");
+      return;
     }
+
+    if (users[localUser.id].competing) {
+      switch (timerType) {
+        case "TYPING":
+          setUserStatus("SOLVING");
+          return;
+        default:
+          return;
+      }
+    }
+    //otherwise, do nothing - user is spectating and status does not need to be updated
   }
 
   /**
@@ -320,7 +293,7 @@ export default function Page() {
 
   //handles submitting the local result to the server. DOES NOT HANDLE STATE TRANSITIONS.
   function submitLocalResult() {
-    socket?.emit("user_submit_result", localResult.toIResult());
+    socket.emit("user_submit_result", localResult.toIResult());
   }
 
   function RoomHeader() {
@@ -476,11 +449,11 @@ export default function Page() {
                   size="default"
                   className={cn("px-1")}
                   onClick={() => {
-                    userToggleCompetingSpectating(!users[userId]?.competing);
+                    userToggleCompetingSpectating(!users[localUser!.id]?.competing);
                   }}
                 >
                   <h1 className={cn("font-bold text-center text-md")}>
-                    {users[userId]?.competing ? "SPECTATE" : "COMPETE"}
+                    {users[localUser!.id]?.competing ? "SPECTATE" : "COMPETE"}
                   </h1>
                 </Button>
               </div>
@@ -618,7 +591,7 @@ export default function Page() {
           }
         }
 
-        if (users[userId].competing) {
+        if (users[localUser!.id].competing) {
           centerSection = (
             <>
               {/* <div>
@@ -640,15 +613,15 @@ export default function Page() {
         return (
           <RoomPanel className={cn("bg-secondary py-1 gap-2")}>
             <div className={cn("flex flex-row items-center px-3 gap-3")}>
-              <div className={cn("text-2xl grow")}>{userId}</div>
+              <div className={cn("text-2xl grow")}>{localUser!.userName}</div>
               <div className={cn("flex-col justify-center")}>
                 <div>Sets</div>
-                <div>{users[userId].setWins}</div>
+                <div>{users[localUser!.id].setWins}</div>
               </div>
               <div className={cn("flex-col justify-center")}>
                 {/* TODO - conditionally render this stuff based on set format */}
                 <div>Solves</div>
-                <div>{users[userId].points}</div>
+                <div>{users[localUser!.id].points}</div>
               </div>
             </div>
             <div className={cn("grow flex flex-col justify-center")}>
@@ -664,11 +637,11 @@ export default function Page() {
                   size="default"
                   className={cn("px-1")}
                   onClick={() => {
-                    userToggleCompetingSpectating(!users[userId]?.competing);
+                    userToggleCompetingSpectating(!users[localUser!.id]?.competing);
                   }}
                 >
                   <h1 className={cn("font-bold text-center text-md")}>
-                    {users[userId]?.competing ? "SPECTATE" : "COMPETE"}
+                    {users[localUser!.id]?.competing ? "SPECTATE" : "COMPETE"}
                   </h1>
                 </Button>
               </div>
@@ -724,11 +697,11 @@ export default function Page() {
                   size="default"
                   className={cn("px-1")}
                   onClick={() => {
-                    userToggleCompetingSpectating(!users[userId]?.competing);
+                    userToggleCompetingSpectating(!users[localUser!.id]?.competing);
                   }}
                 >
                   <h1 className={cn("font-bold text-center text-md")}>
-                    {users[userId]?.competing ? "SPECTATE" : "COMPETE"}
+                    {users[localUser!.id]?.competing ? "SPECTATE" : "COMPETE"}
                   </h1>
                 </Button>
               </div>
@@ -797,7 +770,7 @@ export default function Page() {
           <RoomPanel className="bg-container-2 px-1 py-3">
             <div className="grid grid-row text-center text-xl">
               <div className="grid grid-cols-12">
-                <div className="col-span-5">Name</div>
+                <div className="col-span-5">User</div>
                 <div className="col-span-3">Time</div>
                 <div className="col-span-2">Sets</div>
                 <div className="col-span-2">Solves</div>
@@ -820,6 +793,22 @@ export default function Page() {
       default:
         return <></>;
     }
+  }
+
+  if (sessionLoading) {
+    //TODO - replace
+    return (
+      <div>
+        Loading
+      </div>
+    )
+  } else if (!localUser) {
+    //TODO - replace
+    return (
+      <div>
+        You are not logged in. Please log in.
+      </div>
+    )
   }
 
   return (
