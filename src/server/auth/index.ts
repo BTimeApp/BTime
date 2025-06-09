@@ -2,7 +2,6 @@ import OAuth2Strategy from "passport-oauth2";
 import axios from "axios";
 import { PassportStatic } from "passport";
 import { UserDocument, UserModel, toIUser } from "@/server/models/user";
-import { IUser } from "@/types/user";
 
 export function configureWCAPassport(passportInstance: PassportStatic) {
   const authURL = `${process.env.WCA_SOURCE}/oauth/authorize`;
@@ -38,7 +37,11 @@ export function configureWCAPassport(passportInstance: PassportStatic) {
           wcaIdNo: profile.id,
           wcaId: profile.wca_id,
           avatarURL: profile.avatar?.thumb_url,
-          $setOnInsert: { email: profile.email }, //only set email upon insertion (protect against overriding existing email from email OAuth)
+          $setOnInsert: { 
+            //only set these fields upon insertion (protect against overriding existing fields from other OAuth/user changing)
+            email: profile.email,
+            userName: profile.wca_id 
+          }, 
         },
         {
           upsert: true,

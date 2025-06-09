@@ -9,11 +9,10 @@ export function v0(app: Application, passportInstance: PassportStatic): Router {
   const router = Router();
   router.use("/me", (req, res) => {
     if (req.isAuthenticated()) {
-      res.send({ user: req.user });
-    } else {
-      //TODO - change this to send to a page (/profile?) that allows user to log in with button
-      res.redirect("/auth/wca");
-    }
+        res.json(req.user);
+      } else {
+        res.status(401).json({ error: "Not authenticated" });
+      }
   });
 
   return router;

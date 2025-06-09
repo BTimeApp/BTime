@@ -6,7 +6,7 @@ import {
   IRoom
 } from "@/types/room";
 import { IUser } from "@/types/user";
-import { initSocket } from "./socket/init_socket";
+import { initSocket, SocketMiddleware } from "./socket/init_socket";
 import { handleConfig } from "./load_config";
 import { configureWCAPassport } from "@/server/auth";
 import { api } from "@/server/api";
@@ -39,16 +39,16 @@ export async function startServer(): Promise<void> {
   app.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
   
   // set up session
-  app.use(
-    session({
-      secret: process.env.SESSION_SECRET,
-      resave: false,
-      saveUninitialized: false,
-      cookie: {
-        secure: isProd
-      }
-    })
-  );
+  const sessionMiddleware = session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: isProd
+    }
+  })
+
+  app.use(sessionMiddleware);
 
   // allow passport to use session
   app.use(passport.initialize())
@@ -61,10 +61,26 @@ export async function startServer(): Promise<void> {
 
   app.get(
     '/auth/wca/callback',
-    passport.authenticate('wca', { failureRedirect: '/' }),
+    passport.authenticate('wca', { failureRedirect: '/profile', }),
     (req, res) => {
       // authentication successful - TODO make this redirect to previous page (or other custom logic)
-      res.redirect('/');
+      const user = req.user;
+      if (!user) {
+        //this one should never happen...
+        console.log("No User in auth wca callback...");
+        res.redirect('/profile'); 
+        return;
+      }
+      if (users.get(user.id)) {
+        //already exists in users... 
+        console.log(`User ${user.id} double login.`);
+      } else {
+        console.log(`Adding user ${user.id} to local user store.`);
+        users.set(user.id, user);
+        console.log(users.keys());
+      }
+      
+      res.redirect("/");
     }
   );
 
@@ -72,7 +88,7 @@ export async function startServer(): Promise<void> {
   app.use('/api', api(app, passport));
 
   // set up socket.io server listener
-  initSocket(httpServer);
+  initSocket(httpServer, sessionMiddleware as SocketMiddleware);
 
 
   // Let Next.js handle all other requests

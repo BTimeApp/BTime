@@ -16,6 +16,10 @@ import { IRoomUser } from "@/types/roomUser";
 import { IResult } from "@/types/result";
 import { SolveStatus } from "@/types/status";
 import { IRoomSolve } from "@/types/roomSolve";
+import { ServerResponse } from 'http';
+import { NextFunction } from 'express';
+import passport from 'passport';
+
 
 //defines useful state variables we want to maintain over the lifestyle of a socket connection (only visible server-side)
 interface CustomSocket extends Socket {
@@ -23,7 +27,13 @@ interface CustomSocket extends Socket {
   userId?: string;
 }
 
-export const initSocket = (httpServer: HttpServer) => {
+export type SocketMiddleware = (
+  req: any, //TODO - refactor to a more precise type later
+  res: ServerResponse,
+  next: NextFunction
+) => void;
+
+export const initSocket = (httpServer: HttpServer, sessionMiddleware: SocketMiddleware) => {
   const io = new Server(httpServer, {
     cors: {
       origin: "*",
@@ -31,6 +41,31 @@ export const initSocket = (httpServer: HttpServer) => {
   });
 
   // middleware should be taken care of in the main server script
+
+  //https://socket.io/how-to/use-with-passport
+  function socketHandshakeMiddleware(middleware: SocketMiddleware): SocketMiddleware {
+    return (req, res, next) => {
+      const isHandshake = req._query.sid === undefined;
+      if (isHandshake) {
+        middleware(req, res, next);
+      } else {
+        next();
+      }
+    };
+  }
+
+  io.engine.use(socketHandshakeMiddleware(sessionMiddleware));
+  io.engine.use(socketHandshakeMiddleware(passport.session()));
+  io.engine.use(
+    socketHandshakeMiddleware((req, res, next) => {
+      if (req.user) {
+        next();
+      } else {
+        res.writeHead(401);
+        res.end();
+      }
+    }),
+  );
 
   // TODO: move socket events to their own namespaces
   listenSocketEvents(io);
@@ -44,28 +79,6 @@ const listenSocketEvents = (io: Server) => {
       if (!socket.roomId) return undefined;
       return rooms.get(socket.roomId);
     }
-
-    socket.on(
-      "user_login",
-      ({ userId, user }: { userId: string; user: IUser }) => {
-        if (users.get(userId)) {
-          console.log(`User ${users.get(userId)!.userName} double login.`);
-        } else {
-          console.log(`User ${user.userName} is logging in.`);
-          users.set(userId, user);
-          socket.emit("user_logged_in");
-        }
-      }
-    );
-
-    socket.on("user_logout", ({ userId }: { userId: string }) => {
-      if (users.get(userId)) {
-        console.log(`User ${users.get(userId)!.userName} logging out.`);
-        users.delete(userId);
-      } else {
-        console.log(`Nonexistent user with id ${userId} is trying to log out.`);
-      }
-    });
 
     socket.on(
       "join_room",
@@ -82,6 +95,7 @@ const listenSocketEvents = (io: Server) => {
           );
           return;
         }
+
         let user: IUser | undefined = users.get(userId);
         let room: IRoom | undefined = rooms.get(roomId);
 
@@ -285,10 +299,7 @@ const listenSocketEvents = (io: Server) => {
     });
 
     socket.on("disconnect", () => {
-      if (socket.userId) {
-        users.delete(socket.userId);
-      }
-
+      // TODO - this logic may be moved to an express API call later
       if (socket.roomId && socket.userId) {
         const room = rooms.get(socket.roomId);
         if (!room) return;
