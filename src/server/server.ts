@@ -12,8 +12,6 @@ import { configureWCAPassport } from "@/server/auth";
 import { api } from "@/server/api";
 import passport from 'passport';
 import session from 'express-session';
-import { UserDocument } from "./models/user";
-
 
 export const rooms: Map<string, IRoom> = new Map<string, IRoom>(); // In-memory room store
 export const users: Map<string, IUser> = new Map<string, IUser>(); // In-memory user store
@@ -65,9 +63,7 @@ export async function startServer(): Promise<void> {
     '/auth/wca/callback',
     passport.authenticate('wca', { failureRedirect: '/' }),
     (req, res) => {
-      // authentication successful
-      console.log(`User ${(req.user as IUser).wcaId} ${(req.user as UserDocument)._id} is now logged in.`);
-
+      // authentication successful - TODO make this redirect to previous page (or other custom logic)
       res.redirect('/');
     }
   );

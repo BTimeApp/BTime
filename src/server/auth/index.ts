@@ -2,9 +2,9 @@ import OAuth2Strategy from "passport-oauth2";
 import axios from "axios";
 import { PassportStatic } from "passport";
 import { UserDocument, UserModel, toIUser } from "@/server/models/user";
+import { IUser } from "@/types/user";
 
 export function configureWCAPassport(passportInstance: PassportStatic) {
-
   const authURL = `${process.env.WCA_SOURCE}/oauth/authorize`;
   const authTokenURL = `${process.env.WCA_SOURCE}/oauth/token`;
   const userProfileURL = `${process.env.WCA_SOURCE}/api/v0/me`;
@@ -28,7 +28,7 @@ export function configureWCAPassport(passportInstance: PassportStatic) {
 
       const profile = res.me;
 
-      // query DB and update. If user doesn't exist, create. Note that this is tied to email 
+      // query DB and update. If user doesn't exist, create.
       UserModel.findOneAndUpdate(
         {
           wcaIdNo: profile.id,
@@ -38,7 +38,7 @@ export function configureWCAPassport(passportInstance: PassportStatic) {
           wcaIdNo: profile.id,
           wcaId: profile.wca_id,
           avatarURL: profile.avatar?.thumb_url,
-          $setOnInsert: {email: profile.email} //only set email upon insertion (protect against overriding existing email from email OAuth)
+          $setOnInsert: { email: profile.email }, //only set email upon insertion (protect against overriding existing email from email OAuth)
         },
         {
           upsert: true,
@@ -71,12 +71,23 @@ export function configureWCAPassport(passportInstance: PassportStatic) {
     )
   );
 
-  // Required for session support
-  passportInstance.serializeUser((user, done) => {
-    done(null, user);
+  passportInstance.serializeUser((user: Express.User, done) => {
+    done(null, user.id);
   });
 
-  passportInstance.deserializeUser((obj: any, done) => {
-    done(null, obj);
+  passportInstance.deserializeUser(async (id: string, done) => {
+    //id is the objectId of the user in DB.
+    UserModel.findOne({ _id: id })
+      .then((user) => {
+        // find fail
+        if (!user) {
+          return done(null, false);
+        }
+
+        return done(null, toIUser(user) as Express.User);
+      })
+      .catch((err) => {
+        return done(err);
+      });
   });
 }
