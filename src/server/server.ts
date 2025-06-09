@@ -36,7 +36,7 @@ const users: Map<Types.ObjectId, IUser> = new Map<Types.ObjectId, IUser>(); // I
 
 export async function startServer(): Promise<void> {
   await app.prepare();
-  await connectToDB();
+  //await connectToDB();
 
   const server = express();
   const httpServer = createServer(server);
