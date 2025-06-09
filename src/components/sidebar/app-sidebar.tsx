@@ -9,23 +9,18 @@ import {
   IconSettings,
 } from "@tabler/icons-react"
 
-// import { NavDocuments } from "@/components/nav-documents"
 import { NavMain } from "@/components/sidebar/nav-main"
-import { NavSecondary } from "@/components/sidebar/nav-secondary"
 import { NavUser } from "@/components/sidebar/nav-user"
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
 } from "@/components/ui/sidebar"
+import { useSession } from "@/hooks/useSession";
+import { useEffect } from "react";
 
 import ThemeToggle from "@/components/sidebar/theme-toggle"
 const data = {
-  user: {
-    name: "ctang",
-    email: "example@gmail.com",
-    avatar: "/images/C_logo.png",
-  },
   navMain: [
     {
       title: "BTime",
@@ -59,6 +54,15 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+
+  // this will automatically try to log in and fetch a user.
+  const { localUser, sessionLoading } = useSession();
+  // user: {
+  //   name: "Guest User",
+  //   email: "guest@btime.com",
+  //   avatar: "/images/C_logo.png",
+  // },
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarContent>
@@ -67,7 +71,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
       <SidebarFooter>
         <ThemeToggle />
-        <NavUser user={data.user} />
+        <NavUser user={localUser} />
       </SidebarFooter>
     </Sidebar>
   )

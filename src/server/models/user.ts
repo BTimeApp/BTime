@@ -41,5 +41,6 @@ export function toIUser(user: UserDocument): IUser {
     email: user.email,
     userName: user.userName,
     wcaId: user.wcaId,
+    avatarURL: user.avatarURL
   };
 }

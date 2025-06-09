@@ -4,5 +4,6 @@ export interface IUser {
   email: string;
   userName: string;
   wcaId?: string;
+  avatarURL?: string;
 }
 
