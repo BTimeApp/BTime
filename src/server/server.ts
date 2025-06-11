@@ -52,28 +52,35 @@ export async function startServer(): Promise<void> {
   configureWCAPassport(passport);
 
   //TODO - move auth routes to their own file
-  app.get('/auth/wca', passport.authenticate('wca', { scope: ['public', 'email'] }));
+  app.get('/auth/wca', (req, res, nextfn) => {
+    const redirect = req.query.redirect as string || "/";
+    if (redirect.startsWith('/') && !redirect.startsWith('//')) {
+      req.session.redirectTo = redirect;
+    }
+    nextfn();
+  }, passport.authenticate('wca', { scope: ['public', 'email'] }));
 
   app.get(
     '/auth/wca/callback',
     passport.authenticate('wca', { failureRedirect: '/profile', }),
     (req, res) => {
+      const redirectTo = req.session.redirectTo || '/';
+      delete req.session.redirectTo;
+
       // authentication successful - TODO make this redirect to previous page (or other custom logic)
       const user = req.user;
+      
       if (!user) {
         //this one should never happen...
         console.log("No User in auth wca callback...");
-        res.redirect('/profile'); 
-        return;
-      }
-      if (users.get(user.id)) {
+      } else if (users.get(user.id)) {
         //already exists in users... 
         console.log(`User ${user.id} double login.`);
       } else {
         users.set(user.id, user);
       }
       
-      res.redirect("/");
+      res.redirect(redirectTo);
     }
   );
 
