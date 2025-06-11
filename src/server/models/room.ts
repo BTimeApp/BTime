@@ -19,7 +19,7 @@ export const roomSchema = new Schema<IRoom>({
     currentSet: {type: Number, required: true, default: 1}, 
     currentSolve: {type: Number, required: true, default: 1}, 
     roomEvent: { type: String, enum: ROOM_EVENTS, required: true, default: '333'}, 
-    roomFormat: { type: String, enum: ROOM_FORMATS, required: true, default: 'casual'},
+    roomFormat: { type: String, enum: ROOM_FORMATS, required: true, default: 'CASUAL'},
     matchFormat: { type: String, enum: MATCH_FORMATS, required: false},
     setFormat: {type: String, enum: SET_FORMATS, required: false}, 
     nSets: { type: Number, required: false},

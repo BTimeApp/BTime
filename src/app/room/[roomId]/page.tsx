@@ -38,9 +38,9 @@ export default function Page() {
   const [currentSet, setCurrentSet] = useState<number>(1);
   const [currentSolve, setCurrentSolve] = useState<number>(0);
   const [roomEvent, setRoomEvent] = useState<RoomEvent>("333");
-  const [roomFormat, setRoomFormat] = useState<RoomFormat>("racing");
-  const [matchFormat, setMatchFormat] = useState<MatchFormat>("best_of");
-  const [setFormat, setSetFormat] = useState<SetFormat>("best_of");
+  const [roomFormat, setRoomFormat] = useState<RoomFormat>("RACING");
+  const [matchFormat, setMatchFormat] = useState<MatchFormat>("BEST_OF");
+  const [setFormat, setSetFormat] = useState<SetFormat>("BEST_OF");
   const [nSolves, setNSolves] = useState<number>(1);
   const [nSets, setNSets] = useState<number>(1);
   const [roomPrivate, setRoomPrivate] = useState<boolean>(false);
@@ -68,14 +68,14 @@ export default function Page() {
       // console.log(room);
       setRoomName(room.roomName);
       setUsers(room.users);
-      setHostId(room.host.id);
+      setHostId(room.host ? room.host.id : "");
       setSolves(room.solves);
       setCurrentSet(room.currentSet);
       setCurrentSolve(room.currentSolve);
       setRoomEvent(room.roomEvent);
       setRoomFormat(room.roomFormat);
-      setMatchFormat(room.matchFormat ? room.matchFormat : "best_of"); //TODO: find a better way
-      setSetFormat(room.setFormat ? room.setFormat : "best_of"); //TODO: find a better way
+      setMatchFormat(room.matchFormat ? room.matchFormat : "BEST_OF"); //TODO: find a better way
+      setSetFormat(room.setFormat ? room.setFormat : "BEST_OF"); //TODO: find a better way
       setNSolves(room.nSolves ? room.nSolves : 1);
       setNSets(room.nSets ? room.nSets : 1);
       setRoomPrivate(room.isPrivate);
@@ -745,7 +745,7 @@ export default function Page() {
         return (
           <RoomPanel className="bg-container-1 px-2 py-3">
             <div>
-              <h2 className={cn("text-2xl md-1")}>Room: {roomId}</h2>
+              <h2 className={cn("text-2xl md-1")}>Room: {roomName}</h2>
             </div>
             <div className={cn("text-left")}>
               <h2 className="text-2xl">Event: {roomEvent}</h2>

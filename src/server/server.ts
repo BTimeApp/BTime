@@ -75,9 +75,7 @@ export async function startServer(): Promise<void> {
         //already exists in users... 
         console.log(`User ${user.id} double login.`);
       } else {
-        console.log(`Adding user ${user.id} to local user store.`);
         users.set(user.id, user);
-        console.log(users.keys());
       }
       
       res.redirect("/");

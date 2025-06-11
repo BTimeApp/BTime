@@ -1,4 +1,5 @@
 import { IUser } from "@/types/user";
+import { IncomingMessage } from "http";
 
 declare global {
   namespace Express {
@@ -7,4 +8,9 @@ declare global {
   }
 }
 
+declare module 'http' {
+  interface IncomingMessage extends IncomingMessage {
+    user?: IUser;
+  }
+}
 export {}; // force module scope

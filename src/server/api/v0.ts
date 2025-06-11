@@ -13,6 +13,5 @@ export function v0(app: Application, passportInstance: PassportStatic): Router {
     res.json(req.user);
   });
 
-
   return router;
 }

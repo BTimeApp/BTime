@@ -42,9 +42,9 @@ const guestUserInfo: IUser = {
 export function NavUser({
   user,
 }: {
-  user: IUser | null
+  user: IUser | undefined
 }) {
-  const { isMobile } = useSidebar()
+  const { isMobile } = useSidebar();
 
   if (!user) {
     user = guestUserInfo
@@ -102,7 +102,6 @@ export function NavUser({
               </Link>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            {/* <a href="/auth/wca"> */}
               <DropdownMenuItem onClick={() => {
                 window.location.href = "/auth/wca";
               }}>
@@ -110,7 +109,6 @@ export function NavUser({
                 <IconLogout />
                 Log in/out
               </DropdownMenuItem>
-            {/* </a> */}
             
           </DropdownMenuContent>
         </DropdownMenu>
