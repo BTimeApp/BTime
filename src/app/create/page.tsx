@@ -5,7 +5,7 @@ import CreateRoomDropdown from "@/components/create/create-dropdowns";
 import Header from "@/components/common/header";
 import CreateInput from "@/components/create/create-input";
 import CreateToggleButton from "@/components/create/create-toggle";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export default function Page() {
   /* DropDown Options */
@@ -32,18 +32,6 @@ export default function Page() {
   const [publicRoom, setToPrivateRoom] = useState<boolean>(false); // default is public 
   const [noSpectators, setYesSpectators] = useState<boolean>(false); // if private room, allow spec, only if they have pw, else public room freely choose
   
-  /* just for debugging */
-  useEffect(() => {
-    console.log(name);
-  }, [name]);
-
-   useEffect(() => {
-    console.log(event);
-  }, [event]);
-  
-  useEffect(() => {
-    console.log(publicRoom);
-  }, [publicRoom]);
 
  /* 
   TODOS:
