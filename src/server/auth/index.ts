@@ -2,6 +2,7 @@ import OAuth2Strategy from "passport-oauth2";
 import axios from "axios";
 import { PassportStatic } from "passport";
 import { UserDocument, UserModel, toIUser } from "@/server/models/user";
+import { NextFunction, Request, Response } from "express";
 
 export function configureWCAPassport(passportInstance: PassportStatic) {
   const authURL = `${process.env.WCA_SOURCE}/oauth/authorize`;
@@ -93,4 +94,12 @@ export function configureWCAPassport(passportInstance: PassportStatic) {
         return done(err);
       });
   });
+}
+
+export function authMiddleware(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Not authenticated. User needs to be logged in" });
+    return;
+  }
+  next();
 }
