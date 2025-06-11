@@ -2,10 +2,6 @@ import express, { Request, Response } from "express";
 import { createServer } from "http";
 import next from "next";
 import { connectToDB } from "@/server/database/database";
-import {
-  IRoom
-} from "@/types/room";
-import { IUser } from "@/types/user";
 import { initSocket, SocketMiddleware } from "./socket/init_socket";
 import { handleConfig } from "./load_config";
 import { configureWCAPassport } from "@/server/auth";
@@ -13,8 +9,7 @@ import { api } from "@/server/api";
 import passport from 'passport';
 import session from 'express-session';
 
-export const rooms: Map<string, IRoom> = new Map<string, IRoom>(); // In-memory room store
-export const users: Map<string, IUser> = new Map<string, IUser>(); // In-memory user store
+import {rooms, users} from "@/server/server_objects";
 
 export async function startServer(): Promise<void> {
   // handle config with dotenv

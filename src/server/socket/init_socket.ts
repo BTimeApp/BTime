@@ -1,7 +1,7 @@
 import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
 import { Types } from "mongoose";
-import { rooms, users } from "@/server/server";
+import {rooms, users} from "@/server/server_objects";
 import {
   IRoom,
   skipScramble,
