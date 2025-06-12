@@ -39,7 +39,8 @@ export async function startServer(): Promise<void> {
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: isProd
+      secure: isProd,
+      maxAge: 1000 * 60 * 60 * 7, //1 week in milliseconds
     }
   })
 
@@ -55,17 +56,41 @@ export async function startServer(): Promise<void> {
   app.get('/auth/wca', (req, res, nextfn) => {
     const redirect = req.query.redirect as string || "/";
     if (redirect.startsWith('/') && !redirect.startsWith('//')) {
-      req.session.redirectTo = redirect;
+      
+      const stateObj = {
+        redirectTo: redirect,
+        source: 'login-button',
+      };
+  
+      const stateStr = encodeURIComponent(JSON.stringify(stateObj));
+
+      passport.authenticate('wca', {
+        scope: ['public', 'email'],
+        state: stateStr
+      })(req, res, nextfn);
+    } else {
+      passport.authenticate('wca', {
+        scope: ['public', 'email']
+      })(req, res, nextfn);
     }
-    nextfn();
-  }, passport.authenticate('wca', { scope: ['public', 'email'] }));
+  });
 
   app.get(
     '/auth/wca/callback',
-    passport.authenticate('wca', { failureRedirect: '/profile', }),
+    passport.authenticate('wca', {failureRedirect: "/profile", session: true,}),
     (req, res) => {
-      const redirectTo = req.session.redirectTo || '/';
-      delete req.session.redirectTo;
+      let redirectTo = "/";
+
+      try {
+        if (req.query.state) {
+          const state = JSON.parse(decodeURIComponent(req.query.state as string));
+          if (state.redirectTo && typeof state.redirectTo === 'string') {
+            redirectTo = state.redirectTo;
+          }
+        }
+      } catch (e) {
+        console.warn('Invalid state param:', e);
+      }
 
       // authentication successful - TODO make this redirect to previous page (or other custom logic)
       const user = req.user;

@@ -19,7 +19,7 @@ export default function LoginButton({
       size={size}
       asChild={asChild}
       onClick={() => {
-        window.location.href = "/auth/wca";
+        window.location.href = `/auth/wca?redirect=${window.location.pathname}`;
       }}
     >
       Log In (WCA)
