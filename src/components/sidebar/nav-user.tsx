@@ -1,11 +1,9 @@
 "use client";
 
 import {
-  IconCreditCard,
   IconDotsVertical,
   IconLogin,
   IconLogout,
-  IconNotification,
   IconUserCircle,
 } from "@tabler/icons-react";
 
