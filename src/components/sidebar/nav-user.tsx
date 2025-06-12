@@ -51,6 +51,7 @@ export function NavUser({ user }: { user: IUser | undefined }) {
       window.location.href = `/auth/wca?redirect=${window.location.pathname}`;
     } else {
       // user logged in. log out
+      window.location.href = `/logout?redirect=${window.location.pathname}`;
     }
   }
 

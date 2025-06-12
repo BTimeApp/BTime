@@ -109,6 +109,44 @@ export async function startServer(): Promise<void> {
     }
   );
 
+  app.get('/logout', (req, res, nextfn) => {
+    const redirect = req.query.redirect as string || '/';
+  
+    // req.logout will automatically clear the req.user field before calling its callback, so store user id first.
+    const userId = req.user?.id;
+    req.logout?.(err => {
+      if (err) {
+        res.status(500).send('Logout failed');
+        res.redirect(redirect);
+        return nextfn(err);
+      }
+
+      req.session?.destroy((err: any) => {
+
+        if (err) {
+          res.status(500).send('Logout failed');
+          res.redirect(redirect);
+          return nextfn(err);
+        }
+
+        //clear the cookie that defines the session
+        res.clearCookie('connect.sid', {
+          path: '/',
+          httpOnly: true,
+          secure: isProd,
+        });
+
+        //remove the user from global user pool
+        if (userId) {
+          users.delete(userId);
+        }
+
+        res.redirect(redirect);
+      });
+    });
+  });
+  
+
   // Set up api routes
   app.use('/api', api(app, passport));
 
