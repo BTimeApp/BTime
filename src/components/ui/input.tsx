@@ -26,6 +26,7 @@ function CallbackInput( { className, type, onEnter, ...props} : CallbackInputPro
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && onEnter) {
       onEnter(e.currentTarget.value);
+      e.currentTarget.value = "";
     }
 
     // if custom onKeyDown is passed, trigger

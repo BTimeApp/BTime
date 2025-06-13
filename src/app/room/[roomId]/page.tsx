@@ -323,8 +323,13 @@ export default function Page() {
 
   const endStringTimerCallback = useCallback(
     (value: string) => {
-      setLocalResult(new Result(value, "OK"));
-      handleTimerStateTransition();
+      try {
+        setLocalResult(new Result(value, "OK"));
+        handleTimerStateTransition();
+      } catch (err) {
+        //optional - handle error
+      }
+      
     },
     [handleTimerStateTransition]
   );
