@@ -117,10 +117,6 @@ export default function Page() {
     return () => {};
   }, [localUser, socketConnected]);
 
-  useEffect(() => {
-    console.log(numSets);
-  }, [numSets]);
-
   const roomSettings: IRoomSettings = useMemo(
     () => ({
       roomName: name,
