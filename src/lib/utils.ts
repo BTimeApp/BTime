@@ -13,6 +13,13 @@ export function parseIntNaN(input: string) {
   return isNaN(parsedInt) ? 0 : parsedInt;
 }
 
+export function toLowerExceptFirst(str: string): string {
+  if (!str) {
+    return "";
+  }
+  return str.charAt(0) + str.slice(1).toLowerCase();
+}
+
 export async function generateScramble(event: RoomEvent) {
   const EventMapping = new Map<RoomEvent, string>([
     ["222", "222"],

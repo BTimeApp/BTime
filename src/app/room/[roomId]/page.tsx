@@ -1,8 +1,7 @@
 "use client";
 import Header from "@/components/common/header";
-import * as React from "react";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import {
   RoomState,
   IRoom,
@@ -17,14 +16,17 @@ import {
 import { IRoomUser } from "@/types/roomUser";
 import { Penalty, Result } from "@/types/result";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, toLowerExceptFirst } from "@/lib/utils";
 import RoomPanel from "@/components/room/room-panel";
 import { useSocket } from "@/hooks/useSocket";
-import { CallbackInput } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { SolveStatus } from "@/types/status";
-import { TimerType } from "@/types/timerType";
+import { TIMER_TYPES, TimerType } from "@/types/timerType";
 import { IRoomSolve } from "@/types/roomSolve";
 import { useSession } from "@/hooks/useSession";
+import TimerSection from "@/components/room/timer-section";
+import RoomSubmittingButtons from "@/components/room/room-submitting-buttons";
+import Dropdown from "@/components/common/dropdown";
 
 export default function Page() {
   const params = useParams<{ roomId: string }>();
@@ -51,7 +53,8 @@ export default function Page() {
   const [formatTipText, setFormatTipText] = useState<string>("");
   const [verboseFormatTipText, setVerboseFormatTipText] = useState<string>("");
   const [localResult, setLocalResult] = useState<Result>(new Result("")); //consider using a reducer
-  const [timerType, setTimerType] = useState<TimerType>("TYPING");
+  const [timerType, setTimerType] = useState<TimerType>("KEYBOARD");
+  const [useInspection, setUseInspection] = useState<boolean>(false); //if inspection is on
 
   //user-related state
   const [userIsHost, setUserIsHost] = useState<boolean>(false);
@@ -83,14 +86,35 @@ export default function Page() {
       setRoomWinners(room.winners || []);
     });
 
-    socket.on("solve_finished", () => {
-      handleSolveFinishedEvent();
-    });
-
     return () => {
       // socketRef.current?.disconnect();
     };
   }, []);
+
+  /**
+ * Update relevant local states if the server says that the solve is finished
+ */
+  const handleSolveFinishedEvent = useCallback(() => {
+    switch (timerType) {
+      case "TYPING":
+        setUserStatus("SOLVING");
+        break;
+      case "KEYBOARD":
+        setUserStatus("IDLE");
+        break;
+      default:
+        break;
+    }
+  }, [timerType]);
+
+  useEffect(() => {
+    const listener = () => handleSolveFinishedEvent();
+
+    socket.on("solve_finished", listener);
+    return () => {
+      socket.off("solve_finished", listener);
+    };
+  }, [handleSolveFinishedEvent]);
 
   //join room upon load/change of user/room
   useEffect(() => {
@@ -158,6 +182,9 @@ export default function Page() {
         switch (timerType) {
           case "TYPING":
             setUserStatus("SOLVING");
+            break;
+          case "KEYBOARD":
+            setUserStatus("IDLE");
           default:
             break;
         }
@@ -168,7 +195,7 @@ export default function Page() {
       default:
         break;
     }
-  }, [localRoomState]);
+  }, [localRoomState, timerType]);
 
   useEffect(() => {
     // console.log("new user status", userStatus);
@@ -192,6 +219,14 @@ export default function Page() {
   /**
    * Toggles user spectating/competing
    */
+  function userToggleInspection(newUseInspection: boolean) {
+    setUseInspection(newUseInspection);
+    if (timerType === "KEYBOARD" && userStatus === "INSPECTING") {
+      //special case where we have to manually set timer state
+      setUserStatus("IDLE");
+    }
+  }
+
   function userToggleCompetingSpectating(competing: boolean) {
     console.log("user compete button clicked");
     socket.emit("user_toggle_competing_spectating", competing);
@@ -216,10 +251,19 @@ export default function Page() {
     }
   }
 
+  function handlePenalty(penalty: Penalty) {
+    //just calling setPenalty will not trigger a re-render
+    setLocalResult(new Result(localResult.getTime(), penalty));
+  }
+  function submitResult() {
+    handleTimerStateTransition();
+    submitLocalResult();
+  }
+
   /**
    * Advances the state machine for the local timer
    */
-  function handleTimerStateTransition() {
+  const handleTimerStateTransition = useCallback(() => {
     if (localRoomState !== "STARTED") {
       console.log(
         "Timer State Transition called in the wrong room state. Ignoring call."
@@ -244,22 +288,65 @@ export default function Page() {
               break;
           }
           break;
+        case "KEYBOARD":
+          switch (userStatus) {
+            case "IDLE":
+              if (useInspection) {
+                setUserStatus("INSPECTING");
+              } else {
+                setUserStatus("SOLVING");
+              }
+              break;
+            case "INSPECTING":
+              setUserStatus("SOLVING");
+              break;
+            case "SOLVING":
+              setUserStatus("SUBMITTING");
+              break;
+            case "SUBMITTING":
+              setUserStatus("FINISHED");
+              break;
+            case "FINISHED":
+              setUserStatus("IDLE");
+              break;
+            case "SPECTATING":
+              setUserStatus("IDLE");
+              break;
+            default:
+              break;
+          }
         default:
           break;
       }
     }
-  }
+  }, [localRoomState, timerType, userStatus, useInspection]);
+
+  const endStringTimerCallback = useCallback(
+    (value: string) => {
+      setLocalResult(new Result(value, "OK"));
+      handleTimerStateTransition();
+    },
+    [handleTimerStateTransition]
+  );
+
+  const endNumberTimerCallback = useCallback(
+    (timerValue: number) => {
+      setLocalResult(new Result(timerValue));
+      handleTimerStateTransition();
+    },
+    [handleTimerStateTransition]
+  );
 
   /**
    * Goes back one user status in the state transitions (if in the applicable state). This allows users to correct misscrambles, typos, etc.
    */
-  function redoSolve() {
+  const redoSolve = useCallback(() => {
     if (localRoomState !== "STARTED") {
       console.log(
         "Timer redoSolve() called in the wrong room state. Ignoring call."
       );
       return;
-    } 
+    }
     if (!localUser) {
       console.log("Local user doesn't exist. This should not happen.");
       return;
@@ -270,26 +357,15 @@ export default function Page() {
         case "TYPING":
           setUserStatus("SOLVING");
           return;
+        case "KEYBOARD":
+          setUserStatus("IDLE");
+          return;
         default:
           return;
       }
     }
     //otherwise, do nothing - user is spectating and status does not need to be updated
-  }
-
-  /**
-   * Update relevant local states if the server says that the solve is finished
-   */
-  function handleSolveFinishedEvent() {
-    switch (timerType) {
-      case "TYPING":
-        setUserStatus("SOLVING");
-        break;
-      default:
-        setUserStatus("IDLE");
-        break;
-    }
-  }
+  }, [localRoomState, localUser, users, timerType]);
 
   //handles submitting the local result to the server. DOES NOT HANDLE STATE TRANSITIONS.
   function submitLocalResult() {
@@ -324,10 +400,7 @@ export default function Page() {
         );
         break;
       case "STARTED":
-        const scramble =
-          currentSolve > 0
-            ? solves.at(-1)!.solve.scramble
-            : "";
+        const scramble = currentSolve > 0 ? solves.at(-1)!.solve.scramble : "";
         mainContent = (
           <>
             <h2 className={cn("text-2xl")}>{scramble}</h2>
@@ -449,7 +522,9 @@ export default function Page() {
                   size="default"
                   className={cn("px-1")}
                   onClick={() => {
-                    userToggleCompetingSpectating(!users[localUser!.id]?.competing);
+                    userToggleCompetingSpectating(
+                      !users[localUser!.id]?.competing
+                    );
                   }}
                 >
                   <h1 className={cn("font-bold text-center text-md")}>
@@ -478,138 +553,48 @@ export default function Page() {
         );
       case "STARTED":
         let centerSection;
-        function handleInput(value: string): void {
-          setLocalResult(new Result(value, "OK"));
-          handleTimerStateTransition();
-        }
-        function getTimer() {
-          switch (timerType) {
-            case "TYPING":
-              switch (userStatus) {
-                case "SOLVING":
-                  return (
-                    <CallbackInput
-                      type="text"
-                      className="text-center"
-                      onEnter={handleInput}
-                    />
-                  );
-                case "SUBMITTING":
-                  return (
-                    <div className="text-xl">{localResult.toString()}</div>
-                  );
-                case "FINISHED":
-                default:
-                  return (
-                    <>
-                      <div>Waiting for others to finish</div>
-                    </>
-                  );
-              }
-          }
-        }
-        function handlePenalty(penalty: Penalty) {
-          //just calling setPenalty will not trigger a re-render
-          setLocalResult(new Result(localResult.getTime(), penalty));
-        }
-        function submitResult() {
-          handleTimerStateTransition();
-          submitLocalResult();
-        }
-        function getButtons() {
-          switch (timerType) {
-            case "TYPING":
-              switch (userStatus) {
-                case "SUBMITTING":
-                  return (
-                    <div className="mx-auto flex flex-row gap-2 px-2">
-                      <Button
-                        variant="destructive"
-                        size="xs"
-                        className={cn("")}
-                        onClick={() => {
-                          redoSolve();
-                        }}
-                      >
-                        <h1 className={cn("font-bold text-center text-md")}>
-                          REDO
-                        </h1>
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="xs"
-                        className={cn("")}
-                        onClick={() => {
-                          handlePenalty("OK");
-                        }}
-                      >
-                        <h1 className={cn("font-bold text-center text-md")}>
-                          OK
-                        </h1>
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="xs"
-                        className={cn("")}
-                        onClick={() => {
-                          handlePenalty("+2");
-                        }}
-                      >
-                        <h1 className={cn("font-bold text-center text-md")}>
-                          +2
-                        </h1>
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="xs"
-                        className={cn("")}
-                        onClick={() => {
-                          handlePenalty("DNF");
-                        }}
-                      >
-                        <h1 className={cn("font-bold text-center text-md")}>
-                          DNF
-                        </h1>
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="xs"
-                        className={cn("")}
-                        onClick={() => {
-                          submitResult();
-                        }}
-                      >
-                        <h1 className={cn("font-bold text-center text-md")}>
-                          SUBMIT
-                        </h1>
-                      </Button>
-                    </div>
-                  );
-                default:
-                  return <></>;
-              }
-          }
-        }
 
-        if (users[localUser!.id].competing) {
-          centerSection = (
-            <>
-              {/* <div>
-                TODO - write timer tooltip text
-              </div> */}
-              <div className="mx-auto">{getTimer()}</div>
-              {getButtons()}
-            </>
-          );
-        } else {
-          centerSection = (
-            <>
-              <div className={cn("text-xl")}>
-                You are spectating. Join to use timer.
-              </div>
-            </>
-          );
-        }
+        centerSection = users[localUser!.id].competing ? (
+          <>
+            <div className="mx-auto">
+              <TimerSection
+                timerType={timerType}
+                userStatus={userStatus}
+                useInspection={useInspection}
+                localResult={localResult}
+                manualInputCallback={endStringTimerCallback}
+                startInspectionCallback={handleTimerStateTransition}
+                endInspectionCallback={handleTimerStateTransition}
+                endTimerCallback={endNumberTimerCallback}
+              />
+            </div>
+            {userStatus === "SUBMITTING" ? (
+              <RoomSubmittingButtons
+                redoSolveCallback={redoSolve}
+                okPenaltyCallback={() => {
+                  handlePenalty("OK");
+                }}
+                plusTwoPenaltyCallback={() => {
+                  handlePenalty("+2");
+                }}
+                dnfPenaltyCallback={() => {
+                  handlePenalty("DNF");
+                }}
+                submitResultCallback={submitLocalResult}
+                timerType={timerType}
+              />
+            ) : (
+              <></>
+            )}
+          </>
+        ) : (
+          <>
+            <div className={cn("text-xl")}>
+              You are spectating. Join to use timer.
+            </div>
+          </>
+        );
+
         return (
           <RoomPanel className={cn("bg-secondary py-1 gap-2")}>
             <div className={cn("flex flex-row items-center px-3 gap-3")}>
@@ -628,8 +613,23 @@ export default function Page() {
               {centerSection}
             </div>
             <div className={cn("flex flex-row gap-2 px-2")}>
-              <div>Inspection Toggle (TODO)</div>
-              <div>Input Mode (TODO)</div>
+              <div>
+                <div>Inspection</div>
+                <Switch
+                  checked={useInspection}
+                  onCheckedChange={userToggleInspection}
+                ></Switch>
+              </div>
+              <div>
+                <div>Timer</div>
+                <Dropdown
+                  options={TIMER_TYPES.map((x) => toLowerExceptFirst(x))}
+                  onChange={(value: string) => {
+                    setTimerType(value.toUpperCase() as TimerType);
+                  }}
+                  placeholder={toLowerExceptFirst(timerType)}
+                />
+              </div>
 
               <div className={cn("ml-auto")}>
                 <Button
@@ -637,7 +637,9 @@ export default function Page() {
                   size="default"
                   className={cn("px-1")}
                   onClick={() => {
-                    userToggleCompetingSpectating(!users[localUser!.id]?.competing);
+                    userToggleCompetingSpectating(
+                      !users[localUser!.id]?.competing
+                    );
                   }}
                 >
                   <h1 className={cn("font-bold text-center text-md")}>
@@ -697,7 +699,9 @@ export default function Page() {
                   size="default"
                   className={cn("px-1")}
                   onClick={() => {
-                    userToggleCompetingSpectating(!users[localUser!.id]?.competing);
+                    userToggleCompetingSpectating(
+                      !users[localUser!.id]?.competing
+                    );
                   }}
                 >
                   <h1 className={cn("font-bold text-center text-md")}>
@@ -781,6 +785,8 @@ export default function Page() {
                   <div className="col-span-3">
                     {user.userStatus == "FINISHED" && user.currentResult
                       ? Result.fromIResult(user.currentResult).toString()
+                      : user.user.id == localUser?.id
+                      ? userStatus
                       : user.userStatus}
                   </div>
                   <div className="col-span-2">{user.setWins}</div>
@@ -797,18 +803,10 @@ export default function Page() {
 
   if (sessionLoading) {
     //TODO - replace
-    return (
-      <div>
-        Loading
-      </div>
-    )
+    return <div>Loading</div>;
   } else if (!localUser) {
     //TODO - replace
-    return (
-      <div>
-        You are not logged in. Please log in.
-      </div>
-    )
+    return <div>You are not logged in. Please log in.</div>;
   }
 
   return (

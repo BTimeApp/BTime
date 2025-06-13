@@ -76,13 +76,15 @@ export class Result {
     this.penalty = penalty;
   }
 
-  toTime(): number {
-    switch (this.penalty) {
+  static applyPenalty(timeInCentiseconds: number, penalty?: Penalty): number {
+    switch (penalty) {
+      case undefined:
+        return timeInCentiseconds;
       case "OK":
-        return this.time;
+        return timeInCentiseconds;
       case "+2":
         // +2 is 200 centiseconds
-        return this.time + 200;
+        return timeInCentiseconds + 200;
       case "DNF":
         // use +inf as DNF. Consider using max integer?
         return Number.POSITIVE_INFINITY;
@@ -92,15 +94,22 @@ export class Result {
     }
   }
 
+  toTime(): number {
+    return Result.applyPenalty(this.time, this.penalty);
+  }
+
   toSeconds(): number {
     return this.toTime() / 100;
   }
 
-  toString(): string {
-    const totalTime = this.toTime();
-    //TODO: decide if penalties include original time or not
+  /** Converts a time (in centiseconds) to a formatted time string (...mm:ss.xx). timeInCentiseconds should NOT have the penalty applied yet.
+   *  
+   */
+  static timeToString(timeInCentiseconds: number, penalty?: Penalty): string {
+    const totalTime = Result.applyPenalty(timeInCentiseconds, penalty);
+
     if (totalTime === Number.POSITIVE_INFINITY) {
-        return "DNF";
+      return "DNF";
     }
 
     const totalSeconds = Math.floor(totalTime / 100);
@@ -111,11 +120,15 @@ export class Result {
       .toString()
       .padStart(2, "0")}`;
     
-    if (this.penalty == '+2') {
+    if (penalty && penalty == '+2') {
         resultString += '+';
     }
 
     return resultString;
+  }
+
+  toString(): string {
+    return Result.timeToString(this.time, this.penalty);
   }
 
   static fromIResult(obj: IResult): Result {

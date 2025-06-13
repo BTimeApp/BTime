@@ -86,6 +86,16 @@ const listenSocketEvents = (io: Server) => {
     socket.user = socket.request.user;
     console.log(`User connected to socket: ${JSON.stringify(socket.user)}`)
 
+    if (!socket.user) {
+      console.log(`Socket received empty/undefined user. Disconnecting.`);
+      socket.disconnect(true);
+    }
+
+    const userId = socket.user!.id;
+
+    //user joins "their" room by default
+    socket.join(userId);
+
     function getSocketRoom(): IRoom | undefined {
       if (!socket.roomId) return undefined;
       return rooms.get(socket.roomId);
@@ -256,7 +266,9 @@ const listenSocketEvents = (io: Server) => {
             `User ${socket.user?.id} submitted new user status ${newUserStatus} to room ${socket.roomId}`
           );
           room.users[socket.user?.id].userStatus = newUserStatus;
-          io.to(socket.roomId.toString()).emit("room_update", room);
+          // Do not reflect user status back to the same user that triggered this update! 
+          // This will cause the timer component to be re-mounted since the page component re-renders on room state change 
+          io.to(socket.roomId.toString()).except(userId).emit("room_update", room);
         }
       }
     });
@@ -302,7 +314,6 @@ const listenSocketEvents = (io: Server) => {
     socket.on("user_toggle_competing_spectating", (competing: boolean) => {
       if (socket.roomId && socket.user) {
         const room = rooms.get(socket.roomId);
-        console.log(room);
         if (!room || room.users[socket.user?.id].competing == competing) return;
 
         console.log(
