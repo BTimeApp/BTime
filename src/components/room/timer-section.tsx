@@ -1,7 +1,7 @@
 import { useState } from "react";
 import KeyListener from "@/components/common/key-listener";
 import StopwatchTimer from "@/components/room/stopwatch-timer";
-import { Result } from "@/types/result";
+import { Penalty, Result } from "@/types/result";
 import { SolveStatus } from "@/types/status";
 import { TimerType } from "@/types/timerType";
 import { CallbackInput } from "@/components/ui/input";
@@ -15,7 +15,7 @@ type TimerSectionProps = {
   localResult: Result;
   manualInputCallback?: (value: string) => void;
   startInspectionCallback?: () => void;
-  endInspectionCallback?: () => void;
+  endInspectionCallback?: (penalty: Penalty) => void;
   endTimerCallback?: (value: number) => void;
 };
 

@@ -56,7 +56,6 @@ function InspectionCountdown({ onFinishInspection, className }: InspectionCountd
   const handleKeyUp = useCallback(() => {
     setSpacebarDown(false);
     onFinishInspection?.(penaltyRef.current);
-    console.log(penaltyRef.current);
   }, [onFinishInspection]);
 
   return (

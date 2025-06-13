@@ -52,6 +52,7 @@ export default function Page() {
   //utility states
   const [formatTipText, setFormatTipText] = useState<string>("");
   const [verboseFormatTipText, setVerboseFormatTipText] = useState<string>("");
+  const [localPenalty, setLocalPenalty] = useState<Penalty>("OK");
   const [localResult, setLocalResult] = useState<Result>(new Result("")); //consider using a reducer
   const [timerType, setTimerType] = useState<TimerType>("KEYBOARD");
   const [useInspection, setUseInspection] = useState<boolean>(false); //if inspection is on
@@ -105,6 +106,9 @@ export default function Page() {
       default:
         break;
     }
+
+    //reset the local penalty
+    setLocalPenalty("OK");
   }, [timerType]);
 
   useEffect(() => {
@@ -172,6 +176,10 @@ export default function Page() {
       getVerboseFormatText(roomFormat, matchFormat, setFormat, nSets, nSolves)
     );
   }, [roomFormat, matchFormat, setFormat, nSets, nSolves]);
+
+  useEffect(() => {
+    setLocalResult(new Result(localResult.getTime(), localPenalty));
+  }, [localPenalty]);
 
   useEffect(() => {
     switch (localRoomState) {
@@ -251,15 +259,6 @@ export default function Page() {
     }
   }
 
-  function handlePenalty(penalty: Penalty) {
-    //just calling setPenalty will not trigger a re-render
-    setLocalResult(new Result(localResult.getTime(), penalty));
-  }
-  function submitResult() {
-    handleTimerStateTransition();
-    submitLocalResult();
-  }
-
   /**
    * Advances the state machine for the local timer
    */
@@ -324,22 +323,22 @@ export default function Page() {
   const endStringTimerCallback = useCallback(
     (value: string) => {
       try {
-        setLocalResult(new Result(value, "OK"));
+        setLocalResult(new Result(value, localPenalty));
         handleTimerStateTransition();
       } catch (err) {
         //optional - handle error
       }
       
     },
-    [handleTimerStateTransition]
+    [handleTimerStateTransition, localPenalty]
   );
 
   const endNumberTimerCallback = useCallback(
     (timerValue: number) => {
-      setLocalResult(new Result(timerValue));
+      setLocalResult(new Result(timerValue, localPenalty));
       handleTimerStateTransition();
     },
-    [handleTimerStateTransition]
+    [handleTimerStateTransition, localPenalty]
   );
 
   /**
@@ -569,7 +568,10 @@ export default function Page() {
                 localResult={localResult}
                 manualInputCallback={endStringTimerCallback}
                 startInspectionCallback={handleTimerStateTransition}
-                endInspectionCallback={handleTimerStateTransition}
+                endInspectionCallback={(penalty: Penalty) => {
+                  setLocalPenalty(penalty); 
+                  handleTimerStateTransition();
+                }}
                 endTimerCallback={endNumberTimerCallback}
               />
             </div>
@@ -577,13 +579,13 @@ export default function Page() {
               <RoomSubmittingButtons
                 redoSolveCallback={redoSolve}
                 okPenaltyCallback={() => {
-                  handlePenalty("OK");
+                  setLocalPenalty("OK");
                 }}
                 plusTwoPenaltyCallback={() => {
-                  handlePenalty("+2");
+                  setLocalPenalty("+2");
                 }}
                 dnfPenaltyCallback={() => {
-                  handlePenalty("DNF");
+                  setLocalPenalty("DNF");
                 }}
                 submitResultCallback={submitLocalResult}
                 timerType={timerType}
