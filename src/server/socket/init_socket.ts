@@ -164,8 +164,8 @@ const listenSocketEvents = (io: Server) => {
           return;
         }
 
-        //validate user provided the correct password (if it exists)
-        if (room.isPrivate) {
+        //validate password if room is private AND user isn't host
+        if (room.isPrivate && userId !== room.host?.id) {
           //TODO - store passwords with bcrypt and then use bcrypt here to make it not a plaintext comparison
           if (!password || !room.password || password !== room.password) {
             console.log(`User ${userId} submitted the wrong password to room ${roomId}.`);
