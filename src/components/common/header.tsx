@@ -7,7 +7,7 @@ export default function Header({
   }>) {
     return (
         <div className="flex lg:min-h-20 h-auto p-2 bg-primary">
-            <SidebarTrigger className="-ml-1 text-foreground" />
+            <SidebarTrigger className="-ml-1 -mt-1 text-foreground fixed" />
             <div className = "flex-row grow text-primary-foreground content-center">
                 {children}
             </div>

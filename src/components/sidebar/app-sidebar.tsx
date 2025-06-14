@@ -17,7 +17,6 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar"
 import { useSession } from "@/hooks/useSession";
-import { useEffect } from "react";
 
 import ThemeToggle from "@/components/sidebar/theme-toggle"
 const data = {
