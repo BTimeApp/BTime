@@ -1,7 +1,7 @@
 "use client";
 import Header from "@/components/common/header";
 import { useParams } from "next/navigation";
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   RoomState,
   IRoom,
@@ -27,8 +27,8 @@ import { useSession } from "@/hooks/useSession";
 import TimerSection from "@/components/room/timer-section";
 import RoomSubmittingButtons from "@/components/room/room-submitting-buttons";
 import Dropdown from "@/components/common/dropdown";
-import { CallbackInput } from "@/components/ui/input";
 import PasswordPrompt from "@/components/room/password-prompt";
+import { useRouter } from "next/navigation";
 
 export default function Page() {
   const params = useParams<{ roomId: string }>();
@@ -58,7 +58,7 @@ export default function Page() {
   const [localResult, setLocalResult] = useState<Result>(new Result("")); //consider using a reducer
   const [timerType, setTimerType] = useState<TimerType>("KEYBOARD");
   const [useInspection, setUseInspection] = useState<boolean>(false); //if inspection is on
-
+  const [isRoomValid, setIsRoomValid] = useState<boolean>(true); //is there a room associated with the roomId?
   const [isPasswordAuthenticated, setIsPasswordAuthenticated] = useState<boolean>(false); //if the password has been accepted
 
   //user-related state
@@ -69,26 +69,32 @@ export default function Page() {
   const { socket, socketConnected } = useSocket(false);
   const { localUser, sessionLoading } = useSession();
 
+  const router = useRouter();
+
+  const roomUpdateHandler = useCallback((room: IRoom) => {
+    setRoomName(room.roomName);
+    setUsers(room.users);
+    setHostId(room.host ? room.host.id : "");
+    setSolves(room.solves);
+    setCurrentSet(room.currentSet);
+    setCurrentSolve(room.currentSolve);
+    setRoomEvent(room.roomEvent);
+    setRoomFormat(room.roomFormat);
+    setMatchFormat(room.matchFormat ? room.matchFormat : "BEST_OF"); //TODO: find a better way
+    setSetFormat(room.setFormat ? room.setFormat : "BEST_OF"); //TODO: find a better way
+    setNSolves(room.nSolves ? room.nSolves : 1);
+    setNSets(room.nSets ? room.nSets : 1);
+    setRoomPrivate(room.isPrivate);
+    setLocalRoomState(room.state);
+    setRoomWinners(room.winners || []);
+  }, []);
+
   //set up socket connection, set up socket incoming events
   useEffect(() => {
     socket.on("room_update", (room: IRoom) => {
       console.log("Updating room state with incoming room update message.");
       // console.log(room);
-      setRoomName(room.roomName);
-      setUsers(room.users);
-      setHostId(room.host ? room.host.id : "");
-      setSolves(room.solves);
-      setCurrentSet(room.currentSet);
-      setCurrentSolve(room.currentSolve);
-      setRoomEvent(room.roomEvent);
-      setRoomFormat(room.roomFormat);
-      setMatchFormat(room.matchFormat ? room.matchFormat : "BEST_OF"); //TODO: find a better way
-      setSetFormat(room.setFormat ? room.setFormat : "BEST_OF"); //TODO: find a better way
-      setNSolves(room.nSolves ? room.nSolves : 1);
-      setNSets(room.nSets ? room.nSets : 1);
-      setRoomPrivate(room.isPrivate);
-      setLocalRoomState(room.state);
-      setRoomWinners(room.winners || []);
+      roomUpdateHandler(room);
     });
 
     return () => {
@@ -141,7 +147,7 @@ export default function Page() {
       });
     }
     //only join room upon login
-    socket.emit("join_room", { userId: localUser.id, roomId: roomId });
+    socket.emit("join_room", { userId: localUser.id, roomId: roomId, password: undefined }, passwordValidationCallback);
 
     return () => {};
   }, [localUser, socketConnected]);
@@ -213,6 +219,13 @@ export default function Page() {
     // console.log("new user status", userStatus);
     socket.emit("user_update_status", userStatus);
   }, [userStatus]);
+
+  useEffect(() => {
+    if (!isRoomValid) {
+      console.log(`No room with ID ${roomId} exists. Navigating to home page.`);
+      router.push("/");
+    }
+  }, [isRoomValid]);
 
   function getNextScramble() {
     if (userIsHost) {
@@ -345,11 +358,24 @@ export default function Page() {
     [handleTimerStateTransition, localPenalty]
   );
 
-  const passwordValidationCallback = useCallback((passwordValid: boolean, roomState?: RoomState) => {
-    //example callback
+  const passwordValidationCallback = useCallback((passwordValid: boolean, roomValid: boolean, room?: IRoom) => {
+    if (!roomValid) {
+      setIsRoomValid(false);
+      return;
+    }
+
     if (passwordValid) {
       setIsPasswordAuthenticated(passwordValid);
-      //set room states here...
+      if (room) {
+        // as long as this function only has setStates inside, no need to add to dependency list
+        roomUpdateHandler(room);
+      } else {
+        // this should not happen - if it does, needs to be handled properly
+        console.log("Password is valid but room not received...");
+      }
+    } else {
+      //TODO - trigger some error behavior saying "password bad" or smth
+      console.log("Password not valid!");
     }
   }, []);
 

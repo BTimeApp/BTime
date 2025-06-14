@@ -1,7 +1,7 @@
 import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
 import { Types } from "mongoose";
-import {rooms, users} from "@/server/server_objects";
+import { rooms, users } from "@/server/server_objects";
 import {
   IRoom,
   skipScramble,
@@ -84,7 +84,7 @@ const listenSocketEvents = (io: Server) => {
 
     //since we require a user to log in, access and set first.
     socket.user = socket.request.user;
-    console.log(`User connected to socket: ${JSON.stringify(socket.user)}`)
+    console.log(`User connected to socket: ${JSON.stringify(socket.user)}`);
 
     if (!socket.user) {
       console.log(`Socket received empty/undefined user. Disconnecting.`);
@@ -104,7 +104,7 @@ const listenSocketEvents = (io: Server) => {
     socket.on(
       "create_room",
       (
-        {roomSettings}: { roomSettings: IRoomSettings },
+        { roomSettings }: { roomSettings: IRoomSettings },
         callback: (roomId: string) => void
       ) => {
         let roomId: string = new ObjectId().toString();
@@ -124,21 +124,61 @@ const listenSocketEvents = (io: Server) => {
 
     socket.on(
       "join_room",
-      ({ roomId, userId }: { roomId: string; userId: string }) => {
-        if (!users.get(userId)) {
+      (
+        {
+          roomId,
+          userId,
+          password,
+        }: {
+          roomId: string;
+          userId: string;
+          password?: string;
+        },
+        passwordValidationCallback: (passwordValid: boolean, roomIdValid: boolean, room?: IRoom) => void
+      ) => {
+        //validate real user
+        let user: IUser | undefined = users.get(userId);
+        if (!user) {
           console.log(
             `Nonexistent user with id ${userId} attempting to join room ${roomId}.`
           );
           return;
         }
 
-        let user: IUser | undefined = users.get(userId);
+        //validate real room
         let room: IRoom | undefined = rooms.get(roomId);
+        if (!room) {
+          console.log(
+            `User ${userId} trying to join nonexistent room ${roomId}`
+          );
+          passwordValidationCallback(false, false, undefined);
+          return;
+        }
 
-        console.log(`User ${userId} is trying to join room ${roomId}.`);
+        //validate user is not already in this room
+        if (Object.keys(room.users).includes(userId)) {
+          console.log(
+            `User ${userId} double join in room ${roomId}.`
+          );
+          passwordValidationCallback(true, true, room);
+          return;
+        }
+
+        //validate user provided the correct password (if it exists)
+        if (room.isPrivate) {
+          //TODO - store passwords with bcrypt and then use bcrypt here to make it not a plaintext comparison
+          if (!password || !room.password || password !== room.password) {
+            console.log(`User ${userId} submitted the wrong password to room ${roomId}.`);
+            passwordValidationCallback(false, true, undefined);
+            return;
+          }
+        }
+
+        //add user to room
+        console.log(`User ${userId} joining room ${roomId}.`);
 
         const roomUser: IRoomUser = {
-          user: user!,
+          user: user,
           points: 0,
           setWins: 0,
           joinedAt: new Date(),
@@ -147,39 +187,13 @@ const listenSocketEvents = (io: Server) => {
           currentResult: undefined,
         };
 
-        // temporary - create the room if it doesn't exist.
-        // TODO move this to a create_room event
-        // TODO generate actual scramble
-        if (!room) {
-          room = {
-            id: roomId,
-            roomName: roomId.toString(),
-            host: user!,
-            users: {},
-            solves: [],
-            currentSet: 1,
-            currentSolve: 0,
-            roomEvent: "333",
-            roomFormat: "RACING",
-            matchFormat: "BEST_OF", //how many sets to take to win
-            setFormat: "FIRST_TO", //how to win a set
-            nSets: 5, //number for match format
-            nSolves: 5, //number for set format
-            isPrivate: false,
-            state: "WAITING",
-            password: undefined,
-          };
-          rooms.set(roomId, room);
-
-          //TODO - write to mongoDB
-        }
-
-        room.users[userId.toString()] = roomUser;
-
-        socket.join(roomId.toString());
+        room.users[userId] = roomUser;
+        socket.join(roomId);
         socket.roomId = roomId;
+        passwordValidationCallback(true, true, room);
 
-        io.to(roomId.toString()).emit("room_update", room);
+        //broadcast update to all other users
+        io.to(roomId).except(userId).emit("room_update", room);
       }
     );
 
@@ -266,9 +280,11 @@ const listenSocketEvents = (io: Server) => {
             `User ${socket.user?.id} submitted new user status ${newUserStatus} to room ${socket.roomId}`
           );
           room.users[socket.user?.id].userStatus = newUserStatus;
-          // Do not reflect user status back to the same user that triggered this update! 
-          // This will cause the timer component to be re-mounted since the page component re-renders on room state change 
-          io.to(socket.roomId.toString()).except(userId).emit("room_update", room);
+          // Do not reflect user status back to the same user that triggered this update!
+          // This will cause the timer component to be re-mounted since the page component re-renders on room state change
+          io.to(socket.roomId.toString())
+            .except(userId)
+            .emit("room_update", room);
         }
       }
     });

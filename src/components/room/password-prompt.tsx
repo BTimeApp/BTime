@@ -2,11 +2,12 @@ import { Socket } from "socket.io-client";
 import { CallbackInput } from "@/components/ui/input";
 import { Button } from "../ui/button";
 import { useCallback, useState } from "react";
+import { IRoom } from "@/types/room";
 type PasswordPromptProps = {
   socket: Socket;
   roomId: string;
   userId: string; //require authenticated user
-  passwordValidationCallback: (passwordValid: boolean) => void;
+  passwordValidationCallback: (passwordValid: boolean, roomValid: boolean, room?: IRoom) => void;
 };
 
 function PasswordPrompt({ socket, roomId, userId, passwordValidationCallback }: PasswordPromptProps) {
