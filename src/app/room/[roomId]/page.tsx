@@ -27,10 +27,12 @@ import { useSession } from "@/hooks/useSession";
 import TimerSection from "@/components/room/timer-section";
 import RoomSubmittingButtons from "@/components/room/room-submitting-buttons";
 import Dropdown from "@/components/common/dropdown";
+import { CallbackInput } from "@/components/ui/input";
+import PasswordPrompt from "@/components/room/password-prompt";
 
 export default function Page() {
   const params = useParams<{ roomId: string }>();
-  let roomId = params.roomId;
+  const roomId = params.roomId;
 
   //room-related state
   const [roomName, setRoomName] = useState<string>("");
@@ -56,6 +58,8 @@ export default function Page() {
   const [localResult, setLocalResult] = useState<Result>(new Result("")); //consider using a reducer
   const [timerType, setTimerType] = useState<TimerType>("KEYBOARD");
   const [useInspection, setUseInspection] = useState<boolean>(false); //if inspection is on
+
+  const [isPasswordAuthenticated, setIsPasswordAuthenticated] = useState<boolean>(false); //if the password has been accepted
 
   //user-related state
   const [userIsHost, setUserIsHost] = useState<boolean>(false);
@@ -341,6 +345,14 @@ export default function Page() {
     [handleTimerStateTransition, localPenalty]
   );
 
+  const passwordValidationCallback = useCallback((passwordValid: boolean, roomState?: RoomState) => {
+    //example callback
+    if (passwordValid) {
+      setIsPasswordAuthenticated(passwordValid);
+      //set room states here...
+    }
+  }, []);
+
   /**
    * Goes back one user status in the state transitions (if in the applicable state). This allows users to correct misscrambles, typos, etc.
    */
@@ -376,13 +388,24 @@ export default function Page() {
     socket.emit("user_submit_result", localResult.toIResult());
   }
 
-  function RoomHeader() {
-    return (
-      <Header>
-        <RoomHeaderContent roomState={localRoomState} isHost={userIsHost} />
-      </Header>
-    );
-  }
+  const RoomHeader = useCallback(() => {
+    if (!isPasswordAuthenticated) {
+      return (
+        <Header>
+          <div className="text-center">
+            <h2 className={cn("text-2xl")}>{roomName}</h2>
+            <div>{roomEvent}</div>
+          </div>
+        </Header>
+      );
+    } else {
+      return (
+        <Header>
+          <RoomHeaderContent roomState={localRoomState} isHost={userIsHost} />
+        </Header>
+      );
+    }
+  }, [isPasswordAuthenticated, roomName, roomEvent, localRoomState, userIsHost]);
 
   function RoomHeaderContent({
     roomState,
@@ -810,10 +833,31 @@ export default function Page() {
 
   if (sessionLoading) {
     //TODO - replace
-    return <div>Loading</div>;
+    <RoomHeader />
+    return (
+      <div className="flex flex-col h-screen">
+        <RoomHeader />
+        <div>Loading...</div>
+      </div>
+    );
   } else if (!localUser) {
     //TODO - replace
-    return <div>You are not logged in. Please log in.</div>;
+    return (
+      <div className="flex flex-col h-screen">
+        <RoomHeader />
+        <div>You are not logged in. Please log in.</div>
+      </div>
+    );
+  } else if (!isPasswordAuthenticated) {
+    
+    return (
+      <div className="flex flex-col h-screen">
+        <RoomHeader />
+        <div className="flex flex-1 items-center justify-center">
+          <PasswordPrompt socket={socket} userId={localUser.id} roomId={roomId} passwordValidationCallback={passwordValidationCallback}/>
+        </div>
+      </div>
+    );
   }
 
   return (
