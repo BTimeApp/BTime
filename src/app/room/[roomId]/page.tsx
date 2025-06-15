@@ -237,6 +237,7 @@ export default function Page() {
         setUserStatus("IDLE");
         break;
       case "STARTED":
+        if (userStatus === "SPECTATING") return;
         switch (timerType) {
           case "TYPING":
             setUserStatus("SOLVING");
@@ -253,6 +254,8 @@ export default function Page() {
       default:
         break;
     }
+  // ignore lint warning - we do not want userStatus change to trigger this hook
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localRoomState, timerType]);
 
   useEffect(() => {
@@ -280,7 +283,6 @@ export default function Page() {
   }
 
   function userToggleCompetingSpectating(competing: boolean) {
-    console.log("user compete button clicked");
     socket.emit("user_toggle_competing_spectating", competing);
     if (competing) {
       handleTimerStateTransition();
@@ -307,11 +309,7 @@ export default function Page() {
    * Advances the state machine for the local timer
    */
   const handleTimerStateTransition = useCallback(() => {
-    if (localRoomState !== "STARTED") {
-      console.log(
-        "Timer State Transition called in the wrong room state. Ignoring call."
-      );
-    } else {
+    if (localRoomState === "STARTED") {
       switch (timerType) {
         case "TYPING":
           switch (userStatus) {
@@ -361,6 +359,8 @@ export default function Page() {
         default:
           break;
       }
+    } else {
+      setUserStatus("IDLE");
     }
   }, [localRoomState, timerType, userStatus, useInspection]);
 
