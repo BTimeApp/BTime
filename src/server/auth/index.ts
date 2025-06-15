@@ -12,8 +12,8 @@ export function configureWCAPassport(passportInstance: PassportStatic) {
   const verify = async (
     accessToken: string,
     refreshToken: string,
-    profile: any,
-    done: (error: any, user?: any, info?: any) => void
+    profile: any, // eslint-disable-line @typescript-eslint/no-explicit-any
+    done: (error: any, user?: any, info?: any) => void // eslint-disable-line @typescript-eslint/no-explicit-any
   ) => {
     try {
       console.log(`fetching data from ${userProfileURL}...`);

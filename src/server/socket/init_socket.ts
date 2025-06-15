@@ -30,7 +30,7 @@ interface CustomSocket extends Socket {
 }
 
 export type SocketMiddleware = (
-  req: any, //TODO - refactor to a more precise type later
+  req: any, // eslint-disable-line @typescript-eslint/no-explicit-any
   res: ServerResponse,
   next: NextFunction
 ) => void;
@@ -137,7 +137,7 @@ const listenSocketEvents = (io: Server) => {
         passwordValidationCallback: (passwordValid: boolean, roomIdValid: boolean, room?: IRoom) => void
       ) => {
         //validate real user
-        let user: IUser | undefined = users.get(userId);
+        const user: IUser | undefined = users.get(userId);
         if (!user) {
           console.log(
             `Nonexistent user with id ${userId} attempting to join room ${roomId}.`
@@ -146,7 +146,7 @@ const listenSocketEvents = (io: Server) => {
         }
 
         //validate real room
-        let room: IRoom | undefined = rooms.get(roomId);
+        const room: IRoom | undefined = rooms.get(roomId);
         if (!room) {
           console.log(
             `User ${userId} trying to join nonexistent room ${roomId}`
@@ -308,7 +308,7 @@ const listenSocketEvents = (io: Server) => {
           return;
         }
 
-        let solveObject: IRoomSolve = room.solves.at(-1)!;
+        const solveObject: IRoomSolve = room.solves.at(-1)!;
         solveObject.solve.results[socket.user?.id] = result;
 
         room.users[socket.user?.id].userStatus = "FINISHED";

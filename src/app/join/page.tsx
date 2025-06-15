@@ -1,6 +1,5 @@
 "use client"
 import React, { useState, useEffect } from "react";
-import Form from "next/form";
 import JoinPrivateRoom from "@/components/index/join-private-room";
 import CreateInput from "@/components/create/create-input";
 import Header from "@/components/common/header";

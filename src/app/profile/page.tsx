@@ -3,6 +3,7 @@ import Header from "@/components/common/header";
 import LoginButton from "@/components/common/login-button";
 import HomeHeaderContent from "@/components/index/home-header-content";
 import { useSession } from "@/hooks/useSession";
+import Image from "next/image";
 
 /** TODO
  *    - find a good way to format this page
@@ -11,14 +12,14 @@ import { useSession } from "@/hooks/useSession";
  */
 
 export default function Page() {
-  const { localUser, sessionLoading } = useSession();
+  const { localUser } = useSession();
 
   let body = <></>;
   if (localUser) {
     body = (
       <div className="grid grid-cols-2 gap-2">
         <div>
-            <img src={localUser.avatarURL ? localUser.avatarURL : "/images/C_logo.png"} alt="/images/C_logo.png"></img>
+            <Image src={localUser.avatarURL ? localUser.avatarURL : "/images/C_logo.png"} alt="/images/C_logo.png" width="200" height="200"/>
         </div>
         <div>
             <div>

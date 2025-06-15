@@ -9,7 +9,7 @@ import { api } from "@/server/api";
 import passport from 'passport';
 import session from 'express-session';
 
-import {rooms, users} from "@/server/server_objects";
+import {users} from "@/server/server_objects";
 
 export async function startServer(): Promise<void> {
   // handle config with dotenv
@@ -123,7 +123,7 @@ export async function startServer(): Promise<void> {
         return nextfn(err);
       }
 
-      req.session?.destroy((err: any) => {
+      req.session?.destroy((err: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
 
         if (err) {
           res.status(500).send('Logout failed');
@@ -150,7 +150,7 @@ export async function startServer(): Promise<void> {
   
 
   // Set up api routes
-  app.use('/api', api(app, passport));
+  app.use('/api', api());
 
   // set up socket.io server listener
   initSocket(httpServer, sessionMiddleware as SocketMiddleware);

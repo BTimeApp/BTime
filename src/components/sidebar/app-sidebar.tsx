@@ -55,7 +55,7 @@ const data = {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   // this will automatically try to log in and fetch a user.
-  const { localUser, sessionLoading } = useSession();
+  const { localUser } = useSession();
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>

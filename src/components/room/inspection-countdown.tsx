@@ -32,7 +32,7 @@ function InspectionCountdown({ onFinishInspection, className }: InspectionCountd
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, []);
+  }, [remainingTime]);
 
   useEffect(() => {
     let newPenalty: Penalty = "OK";
@@ -47,7 +47,7 @@ function InspectionCountdown({ onFinishInspection, className }: InspectionCountd
       setPenalty(newPenalty);
       penaltyRef.current = newPenalty;
     }
-  }, [remainingTime]);
+  }, [remainingTime, penalty]);
 
   const handleKeyDown = useCallback(() => {
     setSpacebarDown(true);

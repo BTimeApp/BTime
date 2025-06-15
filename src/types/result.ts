@@ -26,7 +26,7 @@ export class Result {
       throw new Error("Invalid input for Time");
     }
 
-    penalty ? (this.penalty = penalty) : (this.penalty = "OK");
+    this.penalty = (penalty ? penalty : 'OK');
   }
 
   static parseTimeString(input: string): number {

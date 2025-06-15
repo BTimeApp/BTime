@@ -18,7 +18,7 @@ function PasswordPrompt({ socket, roomId, userId, passwordValidationCallback }: 
     //emit a socket event with roomId, userId, password, and onPasswordValid callback.
     socket.emit("join_room", {roomId: roomId, userId: userId, password: password}, passwordValidationCallback);
 
-  }, [socket, password]);
+  }, [socket, password, roomId, userId, passwordValidationCallback]);
 
   if (!socket.connected) {
     return (

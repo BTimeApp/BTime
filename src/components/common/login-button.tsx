@@ -7,7 +7,6 @@ export default function LoginButton({
   variant = "primary",
   size,
   asChild = false,
-  ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;

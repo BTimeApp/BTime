@@ -258,7 +258,7 @@ export function findSetWinners(room: IRoom): string[] {
         })
       );
       for (const roomSolve of setSolves) {
-        let competedIds = new Set(Object.keys(roomSolve.solve.results));
+        const competedIds = new Set(Object.keys(roomSolve.solve.results));
         currentIds = currentIds.intersection(competedIds);
       }
       const eligibleIds = [...currentIds];
@@ -295,7 +295,7 @@ export function findSetWinners(room: IRoom): string[] {
         })
       );
       for (const roomSolve of setSolves) {
-        let competedIds = new Set(Object.keys(roomSolve.solve.results));
+        const competedIds = new Set(Object.keys(roomSolve.solve.results));
         currentIds = currentIds.intersection(competedIds);
       }
       const eligibleIds = [...currentIds];

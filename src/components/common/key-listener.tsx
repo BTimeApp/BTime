@@ -49,7 +49,7 @@ function KeyListener({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [onKeyDown, onKeyUp]);
+  }, [onKeyDown, onKeyUp, keyName, onDismount]);
 
   if (!children) return null;
 

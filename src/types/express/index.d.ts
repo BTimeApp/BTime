@@ -1,16 +1,15 @@
 import { IUser } from "@/types/user";
-import { IncomingMessage } from "http";
 import 'express-session';
 
 declare global {
-  namespace Express {
-    interface User extends IUser{
+  namespace Express { 
+    interface User extends IUser{ // eslint-disable-line @typescript-eslint/no-empty-object-type
     }
   }
 }
 
 declare module 'http' {
-  interface IncomingMessage extends IncomingMessage {
+  interface IncomingMessage {
     user?: IUser;
   }
 }

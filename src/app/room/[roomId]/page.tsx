@@ -47,7 +47,6 @@ export default function Page() {
   const [setFormat, setSetFormat] = useState<SetFormat>("BEST_OF");
   const [nSolves, setNSolves] = useState<number>(1);
   const [nSets, setNSets] = useState<number>(1);
-  const [roomPrivate, setRoomPrivate] = useState<boolean>(false);
   const [localRoomState, setLocalRoomState] = useState<RoomState>("WAITING");
   const [roomWinners, setRoomWinners] = useState<string[]>([]);
 
@@ -59,7 +58,8 @@ export default function Page() {
   const [timerType, setTimerType] = useState<TimerType>("KEYBOARD");
   const [useInspection, setUseInspection] = useState<boolean>(false); //if inspection is on
   const [isRoomValid, setIsRoomValid] = useState<boolean>(true); //is there a room associated with the roomId?
-  const [isPasswordAuthenticated, setIsPasswordAuthenticated] = useState<boolean>(false); //if the password has been accepted
+  const [isPasswordAuthenticated, setIsPasswordAuthenticated] =
+    useState<boolean>(false); //if the password has been accepted
 
   //user-related state
   const [userIsHost, setUserIsHost] = useState<boolean>(false);
@@ -84,24 +84,13 @@ export default function Page() {
     setSetFormat(room.setFormat ? room.setFormat : "BEST_OF"); //TODO: find a better way
     setNSolves(room.nSolves ? room.nSolves : 1);
     setNSets(room.nSets ? room.nSets : 1);
-    setRoomPrivate(room.isPrivate);
     setLocalRoomState(room.state);
     setRoomWinners(room.winners || []);
   }, []);
 
-  //set up socket connection, set up socket incoming events
-  useEffect(() => {
-    socket.on("room_update", roomUpdateHandler);
-
-    return () => {
-      // socketRef.current?.disconnect();
-      socket.off("room_update", roomUpdateHandler);
-    };
-  }, [socket]);
-
   /**
- * Update relevant local states if the server says that the solve is finished
- */
+   * Update relevant local states if the server says that the solve is finished
+   */
   const handleSolveFinishedEvent = useCallback(() => {
     switch (timerType) {
       case "TYPING":
@@ -118,6 +107,54 @@ export default function Page() {
     setLocalPenalty("OK");
   }, [timerType]);
 
+  const passwordValidationCallback = useCallback(
+    (passwordValid: boolean, roomValid: boolean, room?: IRoom) => {
+      if (!roomValid) {
+        setIsRoomValid(false);
+        return;
+      }
+
+      if (passwordValid) {
+        setIsPasswordAuthenticated(passwordValid);
+        if (room) {
+          // as long as this function only has setStates inside, no need to add to dependency list
+          roomUpdateHandler(room);
+        } else {
+          // this should not happen - if it does, needs to be handled properly
+          console.log("Password is valid but room not received...");
+        }
+      } else {
+        //TODO - trigger some error behavior saying "password bad" or smth
+        console.log("Password not valid!");
+      }
+    },
+    [roomUpdateHandler]
+  );
+
+  const getNextScramble = useCallback(() => {
+    if (userIsHost) {
+      socket.emit("skip_scramble");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userIsHost]);
+
+  const resetRoom = useCallback(() => {
+    if (userIsHost) {
+      socket.emit("reset_room");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userIsHost]);
+
+  //set up socket connection, set up socket incoming events
+  useEffect(() => {
+    socket.on("room_update", roomUpdateHandler);
+
+    return () => {
+      // socketRef.current?.disconnect();
+      socket.off("room_update", roomUpdateHandler);
+    };
+  }, [roomUpdateHandler, socket]);
+
   useEffect(() => {
     const listener = () => handleSolveFinishedEvent();
 
@@ -125,7 +162,7 @@ export default function Page() {
     return () => {
       socket.off("solve_finished", listener);
     };
-  }, [handleSolveFinishedEvent]);
+  }, [socket, handleSolveFinishedEvent]);
 
   //join room upon load/change of user/room
   useEffect(() => {
@@ -144,10 +181,16 @@ export default function Page() {
       });
     }
     //only join room upon login
-    socket.emit("join_room", { userId: localUser.id, roomId: roomId, password: undefined }, passwordValidationCallback);
+    socket.emit(
+      "join_room",
+      { userId: localUser.id, roomId: roomId, password: undefined },
+      passwordValidationCallback
+    );
 
     return () => {};
-  }, [localUser, socketConnected]);
+    // ignore socket missing - we don't want to always rerun this on socket change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId, localUser, socketConnected, passwordValidationCallback]);
 
   //update user is host whenever userId or hostId update
   useEffect(() => {
@@ -185,7 +228,7 @@ export default function Page() {
   }, [roomFormat, matchFormat, setFormat, nSets, nSolves]);
 
   useEffect(() => {
-    setLocalResult(new Result(localResult.getTime(), localPenalty));
+    setLocalResult((res) => new Result(res.getTime(), localPenalty));
   }, [localPenalty]);
 
   useEffect(() => {
@@ -213,30 +256,17 @@ export default function Page() {
   }, [localRoomState, timerType]);
 
   useEffect(() => {
-    // console.log("new user status", userStatus);
     socket.emit("user_update_status", userStatus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userStatus]);
 
   useEffect(() => {
     if (!isRoomValid) {
-      console.log(`No room with ID ${roomId} exists. Navigating to home page.`);
       router.push("/");
     }
+    // safe to ignore router dependency here since we only push
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRoomValid]);
-
-  function getNextScramble() {
-    if (userIsHost) {
-      console.log("get next scramble button clicked");
-      socket.emit("skip_scramble");
-    }
-  }
-
-  function resetRoom() {
-    if (userIsHost) {
-      console.log("reset room button clicked");
-      socket.emit("reset_room");
-    }
-  }
 
   /**
    * Toggles user spectating/competing
@@ -339,10 +369,9 @@ export default function Page() {
       try {
         setLocalResult(new Result(value, localPenalty));
         handleTimerStateTransition();
-      } catch (err) {
-        //optional - handle error
+      } catch {
+        //do not handle error - is likely an invalid time string
       }
-      
     },
     [handleTimerStateTransition, localPenalty]
   );
@@ -354,27 +383,6 @@ export default function Page() {
     },
     [handleTimerStateTransition, localPenalty]
   );
-
-  const passwordValidationCallback = useCallback((passwordValid: boolean, roomValid: boolean, room?: IRoom) => {
-    if (!roomValid) {
-      setIsRoomValid(false);
-      return;
-    }
-
-    if (passwordValid) {
-      setIsPasswordAuthenticated(passwordValid);
-      if (room) {
-        // as long as this function only has setStates inside, no need to add to dependency list
-        roomUpdateHandler(room);
-      } else {
-        // this should not happen - if it does, needs to be handled properly
-        console.log("Password is valid but room not received...");
-      }
-    } else {
-      //TODO - trigger some error behavior saying "password bad" or smth
-      console.log("Password not valid!");
-    }
-  }, []);
 
   /**
    * Goes back one user status in the state transitions (if in the applicable state). This allows users to correct misscrambles, typos, etc.
@@ -411,105 +419,103 @@ export default function Page() {
     socket.emit("user_submit_result", localResult.toIResult());
   }
 
-  const RoomHeaderContent = useCallback(({
-    roomState,
-    isHost,
-  }: {
-    roomState: RoomState;
-    isHost: boolean;
-  }) => {
-    let mainContent = <></>;
+  const RoomHeaderContent = useCallback(
+    ({ roomState, isHost }: { roomState: RoomState; isHost: boolean }) => {
+      let mainContent = <></>;
 
-    switch (roomState) {
-      case "WAITING":
-        mainContent = (
-          <>
-            <h2 className={cn("text-2xl")}>
-              Scramble will display after starting
-            </h2>
-          </>
-        );
-        break;
-      case "STARTED":
-        const scramble = currentSolve > 0 ? solves.at(-1)!.solve.scramble : "";
-        mainContent = (
-          <>
-            <h2 className={cn("text-2xl")}>{scramble}</h2>
-            <div className={cn("text-md")}>{formatTipText}</div>
-          </>
-        );
-        break;
-      case "FINISHED":
-        mainContent = (
-          <>
-            <h2 className={cn("text-2xl")}>Room has finished!</h2>
-          </>
-        );
-        break;
-      default:
-        break;
-    }
+      switch (roomState) {
+        case "WAITING":
+          mainContent = (
+            <>
+              <h2 className={cn("text-2xl")}>
+                Scramble will display after starting
+              </h2>
+            </>
+          );
+          break;
+        case "STARTED":
+          const scramble =
+            currentSolve > 0 ? solves.at(-1)!.solve.scramble : "";
+          mainContent = (
+            <>
+              <h2 className={cn("text-2xl")}>{scramble}</h2>
+              <div className={cn("text-md")}>{formatTipText}</div>
+            </>
+          );
+          break;
+        case "FINISHED":
+          mainContent = (
+            <>
+              <h2 className={cn("text-2xl")}>Room has finished!</h2>
+            </>
+          );
+          break;
+        default:
+          break;
+      }
 
-    return (
-      <>
-        <div className={cn("grid grid-cols-8 text-center")}>
-          <div className={cn("col-span-1 grid grid-rows-3")}>
-            {roomState == "STARTED" ? (
-              <div className={cn("row-span-1 text-lg")}>Set {currentSet}</div>
-            ) : (
-              <></>
-            )}
-            {roomState == "STARTED" && isHost ? (
-              <div className={cn("row-span-1 row-start-3")}>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className={cn("px-1")}
-                  onClick={getNextScramble}
-                >
-                  <h1 className={cn("font-bold text-center text-md")}>
-                    NEXT SCRAMBLE
-                  </h1>
-                </Button>
-              </div>
-            ) : (
-              <></>
-            )}
+      return (
+        <>
+          <div className={cn("grid grid-cols-8 text-center")}>
+            <div className={cn("col-span-1 grid grid-rows-3")}>
+              {roomState == "STARTED" ? (
+                <div className={cn("row-span-1 text-lg")}>Set {currentSet}</div>
+              ) : (
+                <></>
+              )}
+              {roomState == "STARTED" && isHost ? (
+                <div className={cn("row-span-1 row-start-3")}>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className={cn("px-1")}
+                    onClick={getNextScramble}
+                  >
+                    <h1 className={cn("font-bold text-center text-md")}>
+                      NEXT SCRAMBLE
+                    </h1>
+                  </Button>
+                </div>
+              ) : (
+                <></>
+              )}
+            </div>
+
+            <div className={cn("col-span-6 content-center grid-row")}>
+              {mainContent}
+            </div>
+
+            <div className={cn("col-span-1 grid grid-rows-3")}>
+              {roomState == "STARTED" ? (
+                <div className={cn("row-span-1 text-lg")}>
+                  Solve {currentSolve}
+                </div>
+              ) : (
+                <></>
+              )}
+              {roomState == "STARTED" && isHost ? (
+                <div className={cn("row-span-1 row-start-3")}>
+                  <Button
+                    variant="reset"
+                    size="lg"
+                    className={cn("px-1")}
+                    onClick={resetRoom}
+                  >
+                    <h1 className={cn("font-bold text-center text-md")}>
+                      RESET ROOM
+                    </h1>
+                  </Button>
+                </div>
+              ) : (
+                <></>
+              )}
+            </div>
           </div>
-
-          <div className={cn("col-span-6 content-center grid-row")}>
-            {mainContent}
-          </div>
-
-          <div className={cn("col-span-1 grid grid-rows-3")}>
-            {roomState == "STARTED" ? (
-              <div className={cn("row-span-1 text-lg")}>
-                Solve {currentSolve}
-              </div>
-            ) : (
-              <></>
-            )}
-            {roomState == "STARTED" && isHost ? (
-              <div className={cn("row-span-1 row-start-3")}>
-                <Button
-                  variant="reset"
-                  size="lg"
-                  className={cn("px-1")}
-                  onClick={resetRoom}
-                >
-                  <h1 className={cn("font-bold text-center text-md")}>
-                    RESET ROOM
-                  </h1>
-                </Button>
-              </div>
-            ) : (
-              <></>
-            )}
-          </div>
-        </div>
-      </>
-    );
-  }, [currentSolve, currentSet, solves, formatTipText]);
+        </>
+      );
+    },
+    [currentSolve, currentSet, solves, formatTipText, getNextScramble, resetRoom]
+  );
 
   const RoomHeader = useCallback(() => {
     if (!isPasswordAuthenticated) {
@@ -528,7 +534,14 @@ export default function Page() {
         </Header>
       );
     }
-  }, [isPasswordAuthenticated, roomName, roomEvent, localRoomState, userIsHost, RoomHeaderContent]);
+  }, [
+    isPasswordAuthenticated,
+    roomName,
+    roomEvent,
+    localRoomState,
+    userIsHost,
+    RoomHeaderContent,
+  ]);
 
   function RoomLeftPanel({
     roomState,
@@ -602,9 +615,7 @@ export default function Page() {
           </RoomPanel>
         );
       case "STARTED":
-        let centerSection;
-
-        centerSection = users[localUser!.id].competing ? (
+        const centerSection = users[localUser!.id].competing ? (
           <>
             <div className="mx-auto">
               <TimerSection
@@ -615,7 +626,7 @@ export default function Page() {
                 manualInputCallback={endStringTimerCallback}
                 startInspectionCallback={handleTimerStateTransition}
                 endInspectionCallback={(penalty: Penalty) => {
-                  setLocalPenalty(penalty); 
+                  setLocalPenalty(penalty);
                   handleTimerStateTransition();
                 }}
                 endTimerCallback={endNumberTimerCallback}
@@ -788,13 +799,7 @@ export default function Page() {
     }
   }
 
-  function RoomRightPanel({
-    roomState,
-    isHost,
-  }: {
-    roomState: RoomState;
-    isHost: boolean;
-  }) {
+  function RoomRightPanel({ roomState }: { roomState: RoomState }) {
     switch (roomState) {
       case "WAITING":
       //fallthrough logic
@@ -856,7 +861,7 @@ export default function Page() {
 
   if (sessionLoading) {
     //TODO - replace
-    <RoomHeader />
+    <RoomHeader />;
     return (
       <div className="flex flex-col h-screen">
         <RoomHeader />
@@ -872,12 +877,16 @@ export default function Page() {
       </div>
     );
   } else if (!isPasswordAuthenticated) {
-    
     return (
       <div className="flex flex-col h-screen">
         <RoomHeader />
         <div className="flex flex-1 items-center justify-center">
-          <PasswordPrompt socket={socket} userId={localUser.id} roomId={roomId} passwordValidationCallback={passwordValidationCallback}/>
+          <PasswordPrompt
+            socket={socket}
+            userId={localUser.id}
+            roomId={roomId}
+            passwordValidationCallback={passwordValidationCallback}
+          />
         </div>
       </div>
     );
@@ -888,7 +897,7 @@ export default function Page() {
       <RoomHeader />
       <div className={cn("grid grid-cols-2 grow")}>
         <RoomLeftPanel roomState={localRoomState} isHost={userIsHost} />
-        <RoomRightPanel roomState={localRoomState} isHost={userIsHost} />
+        <RoomRightPanel roomState={localRoomState} />
       </div>
     </div>
   );

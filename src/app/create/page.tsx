@@ -58,7 +58,6 @@ const EVENT_DISPLAY_TO_VALUE = new Map<string, RoomEvent>([
   ["5x5 BLD", "5bld"],
 ]);
 
-const PRIVACY_OPTIONS = ["Private", "Public"];
 const MATCH_FORMAT_OPTIONS = ["Best Of", "First To"]; // add more
 const MATCH_FORMAT_DISPLAY_TO_VALUE = new Map<string, MatchFormat>([
   ["Best Of", "BEST_OF"],
@@ -77,8 +76,9 @@ export default function Page() {
 
   /* User Input Values: Name, Max Participant, Solve Timeout */
   const [name, setName] = useState<string>("");
-  const [maxParticipants, setMaxParticipants] = useState<string>("10");
-  const [timeLimit, setTimeLimit] = useState<string>("5"); // not sure what units we should use for this
+  // TODO - make these do something
+  // const [maxParticipants, setMaxParticipants] = useState<string>("10");
+  // const [timeLimit, setTimeLimit] = useState<string>("5"); // not sure what units we should use for this
 
   /* User Selected from DropDowns */
   const [roomFormat, setRoomFormat] = useState<string>("Racing");
@@ -89,14 +89,14 @@ export default function Page() {
   const [numSolves, setNumSolves] = useState<number>(1);
 
   /* Toggle + related Options */
-  //TODO - make toggles actually set these
   const [roomIsPrivate, setRoomIsPrivate] = useState<boolean>(false); // default is public
   const [password, setPassword] = useState<string>("");
-  const [allowSpectators, setAllowSpectators] = useState<boolean>(true); // if private room, allow spec, only if they have pw, else public room freely choose
+  // TODO - make this do something
+  // const [allowSpectators, setAllowSpectators] = useState<boolean>(true); // if private room, allow spec, only if they have pw, else public room freely choose
 
   //generate socket, fetch local user from session
   const { socket, socketConnected } = useSocket(false);
-  const { localUser, sessionLoading } = useSession();
+  const { localUser } = useSession();
 
   //join room upon load/change of user/room
   useEffect(() => {
@@ -115,7 +115,7 @@ export default function Page() {
     }
 
     return () => {};
-  }, [localUser, socketConnected]);
+  }, [socket, localUser, socketConnected]);
 
   const roomSettings: IRoomSettings = useMemo(
     () => ({
@@ -203,7 +203,7 @@ export default function Page() {
           <CreateInput
             placeholder="1"
             onChange={(val: string) => {
-              let numParsed: number = parseInt(val);
+              const numParsed: number = parseInt(val);
               if (!isNaN(numParsed)) {
                 setNumSets(numParsed);
               } 
@@ -226,7 +226,7 @@ export default function Page() {
             <CreateInput
               placeholder="1"
               onChange={(val: string) => {
-                let numParsed: number = parseInt(val);
+                const numParsed: number = parseInt(val);
                 if (!isNaN(numParsed)) {
                   setNumSolves(numParsed);
                 } 
