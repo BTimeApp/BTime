@@ -41,7 +41,7 @@ export const initSocket = (
 ) => {
   const io = new Server(httpServer, {
     cors: {
-      origin: "*",
+      credentials: true
     },
   });
 

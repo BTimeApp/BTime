@@ -40,6 +40,8 @@ export async function startServer(): Promise<void> {
     saveUninitialized: false,
     cookie: {
       secure: isProd,
+      httpOnly: true,
+      sameSite: "lax",
       maxAge: 1000 * 60 * 60 * 7, //1 week in milliseconds
     }
   })
