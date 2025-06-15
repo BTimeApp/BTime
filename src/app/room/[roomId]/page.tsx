@@ -91,16 +91,13 @@ export default function Page() {
 
   //set up socket connection, set up socket incoming events
   useEffect(() => {
-    socket.on("room_update", (room: IRoom) => {
-      console.log("Updating room state with incoming room update message.");
-      // console.log(room);
-      roomUpdateHandler(room);
-    });
+    socket.on("room_update", roomUpdateHandler);
 
     return () => {
       // socketRef.current?.disconnect();
+      socket.off("room_update", roomUpdateHandler);
     };
-  }, []);
+  }, [socket]);
 
   /**
  * Update relevant local states if the server says that the solve is finished
@@ -414,32 +411,13 @@ export default function Page() {
     socket.emit("user_submit_result", localResult.toIResult());
   }
 
-  const RoomHeader = useCallback(() => {
-    if (!isPasswordAuthenticated) {
-      return (
-        <Header>
-          <div className="text-center">
-            <h2 className={cn("text-2xl")}>{roomName}</h2>
-            <div>{roomEvent}</div>
-          </div>
-        </Header>
-      );
-    } else {
-      return (
-        <Header>
-          <RoomHeaderContent roomState={localRoomState} isHost={userIsHost} />
-        </Header>
-      );
-    }
-  }, [isPasswordAuthenticated, roomName, roomEvent, localRoomState, userIsHost]);
-
-  function RoomHeaderContent({
+  const RoomHeaderContent = useCallback(({
     roomState,
     isHost,
   }: {
     roomState: RoomState;
     isHost: boolean;
-  }) {
+  }) => {
     let mainContent = <></>;
 
     switch (roomState) {
@@ -531,7 +509,26 @@ export default function Page() {
         </div>
       </>
     );
-  }
+  }, [currentSolve, currentSet, solves, formatTipText]);
+
+  const RoomHeader = useCallback(() => {
+    if (!isPasswordAuthenticated) {
+      return (
+        <Header>
+          <div className="text-center">
+            <h2 className={cn("text-2xl")}>{roomName}</h2>
+            <div>{roomEvent}</div>
+          </div>
+        </Header>
+      );
+    } else {
+      return (
+        <Header>
+          <RoomHeaderContent roomState={localRoomState} isHost={userIsHost} />
+        </Header>
+      );
+    }
+  }, [isPasswordAuthenticated, roomName, roomEvent, localRoomState, userIsHost, RoomHeaderContent]);
 
   function RoomLeftPanel({
     roomState,

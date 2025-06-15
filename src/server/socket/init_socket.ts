@@ -206,7 +206,7 @@ const listenSocketEvents = (io: Server) => {
 
       if (room.state == "STARTED") {
         await skipScramble(room);
-        io.to(room.id.toString()).emit("room_update", room);
+        io.to(room.id).emit("room_update", room);
       } else {
         console.log(`Cannot skip scramble when room state is ${room.state}`);
       }
