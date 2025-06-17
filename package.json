@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "tsc && (NODE_ENV=development concurrently \"tsc --watch -p tsconfig.json\" \"tsc-alias -w\" \"nodemon dist/src/server/run_server.js\")",
     "lint": "next lint",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "build": "next build && tsc && tsc-alias",
+    "start": "NODE_ENV=production node dist/src/server/run_server.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -77,6 +79,6 @@
     "typescript": "^5"
   },
   "_moduleAliases": {
-    "@": "dist"
+    "@": "dist/src"
   }
 }

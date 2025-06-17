@@ -10,6 +10,13 @@ const nextConfig: NextConfig = {
         pathname: "**",
         search: "",
       },
+      {
+        protocol: "https",
+        hostname: "avatars.worldcubeassociation.org",
+        port: "",
+        pathname: "**",
+        search: "",
+      },
     ],
   },
 };

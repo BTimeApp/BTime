@@ -2,9 +2,9 @@ import express, { Request, Response } from "express";
 import { createServer } from "http";
 import next from "next";
 import { connectToDB } from "@/server/database/database";
-import { initSocket, SocketMiddleware } from "./socket/init_socket";
-import { handleConfig } from "./load_config";
-import { configureWCAPassport } from "@/server/auth";
+import { initSocket, SocketMiddleware } from "@/server/socket/init_socket";
+import { handleConfig } from "@/server/load_config";
+import { createAuthRouter } from "@/server/auth";
 import { api } from "@/server/api";
 import passport from 'passport';
 import session from 'express-session';
@@ -14,6 +14,7 @@ import {users} from "@/server/server_objects";
 export async function startServer(): Promise<void> {
   // handle config with dotenv
   handleConfig();
+  console.log(`Running server with ${process.env.NODE_ENV} settings.`)
   const isProd = (process.env.NODE_ENV === "production");
 
   // connect to the DB
@@ -52,65 +53,8 @@ export async function startServer(): Promise<void> {
   app.use(passport.initialize())
   app.use(passport.session())
 
-  configureWCAPassport(passport);
-
-  //TODO - move auth routes to their own file
-  app.get('/auth/wca', (req, res, nextfn) => {
-    const redirect = req.query.redirect as string || "/";
-    if (redirect.startsWith('/') && !redirect.startsWith('//')) {
-      
-      const stateObj = {
-        redirectTo: redirect,
-        source: 'login-button',
-      };
-  
-      const stateStr = encodeURIComponent(JSON.stringify(stateObj));
-
-      passport.authenticate('wca', {
-        scope: ['public', 'email'],
-        state: stateStr
-      })(req, res, nextfn);
-    } else {
-      passport.authenticate('wca', {
-        scope: ['public', 'email']
-      })(req, res, nextfn);
-    }
-  });
-
-  app.get(
-    '/auth/wca/callback',
-    passport.authenticate('wca', {failureRedirect: "/profile", session: true,}),
-    (req, res) => {
-      let redirectTo = "/";
-
-      try {
-        if (req.query.state) {
-          const state = JSON.parse(decodeURIComponent(req.query.state as string));
-          if (state.redirectTo && typeof state.redirectTo === 'string') {
-            redirectTo = state.redirectTo;
-          }
-        }
-      } catch (e) {
-        console.warn('Invalid state param:', e);
-      }
-
-      // authentication successful - TODO make this redirect to previous page (or other custom logic)
-      const user = req.user;
-      
-      if (!user) {
-        //this one should never happen...
-        console.log("No User in auth wca callback...");
-      } else if (users.get(user.id)) {
-        //already exists in users... 
-        console.log(`User ${user.id} double login.`);
-      } else {
-        users.set(user.id, user);
-      }
-      
-      res.redirect(redirectTo);
-    }
-  );
-
+  // Set up auth and logout routes
+  app.use("/auth", createAuthRouter(passport));
   app.get('/logout', (req, res, nextfn) => {
     const redirect = req.query.redirect as string || '/';
   
@@ -148,7 +92,6 @@ export async function startServer(): Promise<void> {
     });
   });
   
-
   // Set up api routes
   app.use('/api', api());
 
