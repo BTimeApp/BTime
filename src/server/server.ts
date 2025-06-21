@@ -84,6 +84,10 @@ export async function startServer(): Promise<void> {
     }
   );
 
+  app.get('/api/getrooms', (req, res) => {
+    res.send(Array.from(rooms, ([key, value]) => ({ key, value })));
+  })
+
   // Set up api routes
   app.use('/api', api(app, passport));
 
