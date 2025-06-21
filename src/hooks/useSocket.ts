@@ -1,5 +1,5 @@
 import { getSocket } from "@/lib/socket";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Socket } from "socket.io-client";
 
 export function useSocket(autoConnect: boolean = true) {
@@ -18,7 +18,7 @@ export function useSocket(autoConnect: boolean = true) {
       socket.off("connect", handleConnect);
       //no disconnect here - explicitly call destroySocket() in lib/socket.ts
     };
-  }, [autoConnect]);
+  }, [socket, autoConnect]);
 
   return {
     socket,

@@ -1,33 +1,33 @@
-'use client'
+"use client";
 
-import React, { useState } from "react";
+import React from "react";
 
-// add props including, lists (the options or single input) -> this should connect to other variables to help 
+// add props including, lists (the options or single input) -> this should connect to other variables to help
 
-// this can be interface or type   
 type CreateDropdownProps = {
-    options: string[];
-    onChange: (value:string) => void;
-    
+  options: string[];
+  onChange: (value: string) => void;
+  appear?: boolean;
 };
 
-export default function CreateRoomDropdown({ options, onChange}: CreateDropdownProps) { 
-    // const [option, setOption] = useState(""); 
-    
-    // const getOption = (event: { target: { value: React.SetStateAction<string>; }; }) => {
-    //     setOption(event.target.value) 
-    //     alert(event.target.value)
-    // };
+export default function CreateRoomDropdown({
+  options,
+  onChange,
+  appear = true,
+}: CreateDropdownProps) {
 
+  if (appear) {
     return (
-        <div className="">
-            <select className="subsection-title font-normal border-3" onChange={(e) => onChange(e.target.value)}>
-                {options.map((val) => (
-                    <option key={val}>
-                    {val}
-                    </option>
-                ))}
-            </select>
-        </div>
+      <div className="">
+        <select
+          className="subsection-title font-normal border-3"
+          onChange={(e) => onChange(e.target.value)}
+        >
+          {options.map((val) => (
+            <option key={val}>{val}</option>
+          ))}
+        </select>
+      </div>
     );
+  }
 }

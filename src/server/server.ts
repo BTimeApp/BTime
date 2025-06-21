@@ -2,23 +2,19 @@ import express, { Request, Response } from "express";
 import { createServer } from "http";
 import next from "next";
 import { connectToDB } from "@/server/database/database";
-import {
-  IRoom
-} from "@/types/room";
-import { IUser } from "@/types/user";
-import { initSocket, SocketMiddleware } from "./socket/init_socket";
-import { handleConfig } from "./load_config";
-import { configureWCAPassport } from "@/server/auth";
+import { initSocket, SocketMiddleware } from "@/server/socket/init_socket";
+import { handleConfig } from "@/server/load_config";
+import { createAuthRouter } from "@/server/auth";
 import { api } from "@/server/api";
 import passport from 'passport';
 import session from 'express-session';
 
-export const rooms: Map<string, IRoom> = new Map<string, IRoom>(); // In-memory room store
-export const users: Map<string, IUser> = new Map<string, IUser>(); // In-memory user store
+import {users, rooms} from "@/server/server_objects";
 
 export async function startServer(): Promise<void> {
   // handle config with dotenv
   handleConfig();
+  console.log(`Running server with ${process.env.NODE_ENV} settings.`)
   const isProd = (process.env.NODE_ENV === "production");
 
   // connect to the DB
@@ -44,52 +40,67 @@ export async function startServer(): Promise<void> {
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: isProd
+      secure: isProd,
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 60 * 7, //1 week in milliseconds
     }
   })
 
-  app.use(sessionMiddleware);
+  app.use(sessionMiddleware); 
 
   // allow passport to use session
   app.use(passport.initialize())
   app.use(passport.session())
 
-  configureWCAPassport(passport);
-
-  //TODO - move auth routes to their own file
-  app.get('/auth/wca', passport.authenticate('wca', { scope: ['public', 'email'] }));
-
-  app.get(
-    '/auth/wca/callback',
-    passport.authenticate('wca', { failureRedirect: '/profile', }),
-    (req, res) => {
-      // authentication successful - TODO make this redirect to previous page (or other custom logic)
-      const user = req.user;
-      if (!user) {
-        //this one should never happen...
-        console.log("No User in auth wca callback...");
-        res.redirect('/profile'); 
-        return;
-      }
-      if (users.get(user.id)) {
-        //already exists in users... 
-        console.log(`User ${user.id} double login.`);
-      } else {
-        console.log(`Adding user ${user.id} to local user store.`);
-        users.set(user.id, user);
-        console.log(users.keys());
-      }
-      
-      res.redirect("/");
-    }
-  );
-
-  app.get('/api/getrooms', (req, res) => {
+  // get rooms route
+  app.get("/api/getrooms", (req, res) => {
     res.send(Array.from(rooms, ([key, value]) => ({ key, value })));
   })
 
+  // Set up auth and logout routes
+  app.use("/auth", createAuthRouter(passport));
+  app.get('/logout', (req, res, nextfn) => {
+    const redirect = req.query.redirect as string || '/';
+  
+    // req.logout will automatically clear the req.user field before calling its callback, so store user id first.
+    const userId = req.user?.id;
+    req.logout?.(err => {
+      if (err) {
+        res.status(500).send('Logout failed');
+        res.redirect(redirect);
+        return nextfn(err);
+  }
+
+  
+
+      req.session?.destroy((err: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+
+        if (err) {
+          res.status(500).send('Logout failed');
+          res.redirect(redirect);
+          return nextfn(err);
+        }
+
+        //clear the cookie that defines the session
+        res.clearCookie('connect.sid', {
+          path: '/',
+          httpOnly: true,
+          secure: isProd,
+        });
+
+        //remove the user from global user pool
+        if (userId) {
+          users.delete(userId);
+        }
+
+        res.redirect(redirect);
+      });
+    });
+  });
+  
   // Set up api routes
-  app.use('/api', api(app, passport));
+  app.use('/api', api());
 
   // set up socket.io server listener
   initSocket(httpServer, sessionMiddleware as SocketMiddleware);

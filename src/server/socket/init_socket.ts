@@ -1,7 +1,7 @@
 import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
 import { Types } from "mongoose";
-import { rooms, users } from "@/server/server";
+import { rooms, users } from "@/server/server_objects";
 import {
   IRoom,
   skipScramble,
@@ -10,40 +10,47 @@ import {
   finishRoomSolve,
   checkRoomSolveFinished,
   RoomState,
+  IRoomSettings,
+  createRoom,
 } from "@/types/room";
 import { IUser } from "@/types/user";
 import { IRoomUser } from "@/types/roomUser";
 import { IResult } from "@/types/result";
 import { SolveStatus } from "@/types/status";
 import { IRoomSolve } from "@/types/roomSolve";
-import { ServerResponse } from 'http';
-import { NextFunction } from 'express';
-import passport from 'passport';
-
+import { ServerResponse } from "http";
+import { NextFunction } from "express";
+import { ObjectId } from "bson";
+import passport from "passport";
 
 //defines useful state variables we want to maintain over the lifestyle of a socket connection (only visible server-side)
 interface CustomSocket extends Socket {
   roomId?: string;
-  userId?: string;
+  user?: IUser;
 }
 
 export type SocketMiddleware = (
-  req: any, //TODO - refactor to a more precise type later
+  req: any, // eslint-disable-line @typescript-eslint/no-explicit-any
   res: ServerResponse,
   next: NextFunction
 ) => void;
 
-export const initSocket = (httpServer: HttpServer, sessionMiddleware: SocketMiddleware) => {
+export const initSocket = (
+  httpServer: HttpServer,
+  sessionMiddleware: SocketMiddleware
+) => {
   const io = new Server(httpServer, {
     cors: {
-      origin: "*",
+      credentials: true
     },
   });
 
   // middleware should be taken care of in the main server script
 
   //https://socket.io/how-to/use-with-passport
-  function socketHandshakeMiddleware(middleware: SocketMiddleware): SocketMiddleware {
+  function socketHandshakeMiddleware(
+    middleware: SocketMiddleware
+  ): SocketMiddleware {
     return (req, res, next) => {
       const isHandshake = req._query.sid === undefined;
       if (isHandshake) {
@@ -64,7 +71,7 @@ export const initSocket = (httpServer: HttpServer, sessionMiddleware: SocketMidd
         res.writeHead(401);
         res.end();
       }
-    }),
+    })
   );
 
   // TODO: move socket events to their own namespaces
@@ -73,7 +80,21 @@ export const initSocket = (httpServer: HttpServer, sessionMiddleware: SocketMidd
 
 const listenSocketEvents = (io: Server) => {
   io.on("connection", (socket: CustomSocket) => {
-    //by default, roomId and userId will be undefined
+    //by default, roomId and userId will be undefined.
+
+    //since we require a user to log in, access and set first.
+    socket.user = socket.request.user;
+    console.log(`User connected to socket: ${JSON.stringify(socket.user)}`);
+
+    if (!socket.user) {
+      console.log(`Socket received empty/undefined user. Disconnecting.`);
+      socket.disconnect(true);
+    }
+
+    const userId = socket.user!.id;
+
+    //user joins "their" room by default
+    socket.join(userId);
 
     function getSocketRoom(): IRoom | undefined {
       if (!socket.roomId) return undefined;
@@ -81,28 +102,83 @@ const listenSocketEvents = (io: Server) => {
     }
 
     socket.on(
+      "create_room",
+      (
+        { roomSettings }: { roomSettings: IRoomSettings },
+        callback: (roomId: string) => void
+      ) => {
+        let roomId: string = new ObjectId().toString();
+        while (rooms.get(roomId)) {
+          roomId = new ObjectId().toString();
+        }
+        const room: IRoom = createRoom({
+          roomSettings: roomSettings,
+          roomId: roomId,
+          initialHost: socket.user,
+        });
+
+        rooms.set(room.id, room);
+        callback(roomId);
+      }
+    );
+
+    socket.on(
       "join_room",
-      ({
-        roomId,
-        userId,
-      }: {
-        roomId: string;
-        userId: string;
-      }) => {
-        if (!users.get(userId)) {
+      (
+        {
+          roomId,
+          userId,
+          password,
+        }: {
+          roomId: string;
+          userId: string;
+          password?: string;
+        },
+        passwordValidationCallback: (passwordValid: boolean, roomIdValid: boolean, room?: IRoom) => void
+      ) => {
+        //validate real user
+        const user: IUser | undefined = users.get(userId);
+        if (!user) {
           console.log(
             `Nonexistent user with id ${userId} attempting to join room ${roomId}.`
           );
           return;
         }
 
-        let user: IUser | undefined = users.get(userId);
-        let room: IRoom | undefined = rooms.get(roomId);
+        //validate real room
+        const room: IRoom | undefined = rooms.get(roomId);
+        if (!room) {
+          console.log(
+            `User ${userId} trying to join nonexistent room ${roomId}`
+          );
+          passwordValidationCallback(false, false, undefined);
+          return;
+        }
 
-        console.log(`User ${userId} is trying to join room ${roomId}.`);
+        //validate user is not already in this room
+        if (Object.keys(room.users).includes(userId)) {
+          console.log(
+            `User ${userId} double join in room ${roomId}.`
+          );
+          passwordValidationCallback(true, true, room);
+          return;
+        }
+
+        //validate password if room is private AND user isn't host
+        if (room.isPrivate && userId !== room.host?.id) {
+          //TODO - store passwords with bcrypt and then use bcrypt here to make it not a plaintext comparison
+          if (!password || !room.password || password !== room.password) {
+            console.log(`User ${userId} submitted the wrong password to room ${roomId}.`);
+            passwordValidationCallback(false, true, undefined);
+            return;
+          }
+        }
+
+        //add user to room
+        console.log(`User ${userId} joining room ${roomId}.`);
 
         const roomUser: IRoomUser = {
-          user: user!,
+          user: user,
           points: 0,
           setWins: 0,
           joinedAt: new Date(),
@@ -111,53 +187,26 @@ const listenSocketEvents = (io: Server) => {
           currentResult: undefined,
         };
 
-        // temporary - create the room if it doesn't exist.
-        // TODO move this to a create_room event
-        // TODO generate actual scramble
-        if (!room) {
-          room = {
-            id: roomId,
-            roomName: roomId.toString(),
-            host: user!,
-            users: {},
-            solves: [],
-            currentSet: 1,
-            currentSolve: 0,
-            roomEvent: "333",
-            roomFormat: "RACING",
-            matchFormat: "BEST_OF", //how many sets to take to win
-            setFormat: "FIRST_TO", //how to win a set
-            nSets: 5, //number for match format
-            nSolves: 5, //number for set format
-            isPrivate: false,
-            state: "WAITING",
-            password: undefined,
-          };
-          rooms.set(roomId, room);
-
-          //TODO - write to mongoDB
-        }
-
-        room.users[userId.toString()] = roomUser;
-
-        socket.join(roomId.toString());
+        room.users[userId] = roomUser;
+        socket.join(roomId);
         socket.roomId = roomId;
-        socket.userId = userId;
+        passwordValidationCallback(true, true, room);
 
-        io.to(roomId.toString()).emit("room_update", room);
+        //broadcast update to all other users
+        io.to(roomId).except(userId).emit("room_update", room);
       }
     );
 
     socket.on("skip_scramble", async () => {
       console.log(
-        `User ${socket.userId} is trying to skip the scramble in room ${socket.roomId}.`
+        `User ${socket.user?.id} is trying to skip the scramble in room ${socket.roomId}.`
       );
       const room = getSocketRoom();
       if (!room) return;
 
       if (room.state == "STARTED") {
         await skipScramble(room);
-        io.to(room.id.toString()).emit("room_update", room);
+        io.to(room.id).emit("room_update", room);
       } else {
         console.log(`Cannot skip scramble when room state is ${room.state}`);
       }
@@ -165,7 +214,7 @@ const listenSocketEvents = (io: Server) => {
 
     socket.on("start_room", async () => {
       console.log(
-        `User ${socket.userId} is trying to start room ${socket.roomId}.`
+        `User ${socket.user?.id} is trying to start room ${socket.roomId}.`
       );
       const room = getSocketRoom();
       if (!room) return;
@@ -181,7 +230,7 @@ const listenSocketEvents = (io: Server) => {
 
     socket.on("reset_room", () => {
       console.log(
-        `User ${socket.userId} is trying to reset room ${socket.roomId}.`
+        `User ${socket.user?.id} is trying to reset room ${socket.roomId}.`
       );
       const room = getSocketRoom();
       if (!room) return;
@@ -196,7 +245,7 @@ const listenSocketEvents = (io: Server) => {
 
     socket.on("rematch_room", async () => {
       console.log(
-        `User ${socket.userId} is trying to rematch room ${socket.roomId}.`
+        `User ${socket.user?.id} is trying to rematch room ${socket.roomId}.`
       );
 
       const room = getSocketRoom();
@@ -216,50 +265,54 @@ const listenSocketEvents = (io: Server) => {
     });
 
     socket.on("user_update_status", (newUserStatus: SolveStatus) => {
-      if (socket.roomId && socket.userId) {
+      if (socket.roomId && socket.user) {
         const room = rooms.get(socket.roomId);
         if (!room) return;
 
         const currentUserStatus: SolveStatus =
-          room.users[socket.userId.toString()].userStatus;
+          room.users[socket.user?.id].userStatus;
         if (newUserStatus == currentUserStatus) {
           console.log(
-            `User ${socket.userId} submitted new user status to room ${socket.roomId} which is the same as old user status.`
+            `User ${socket.user?.id} submitted new user status to room ${socket.roomId} which is the same as old user status.`
           );
         } else {
           console.log(
-            `User ${socket.userId} submitted new user status ${newUserStatus} to room ${socket.roomId}`
+            `User ${socket.user?.id} submitted new user status ${newUserStatus} to room ${socket.roomId}`
           );
-          room.users[socket.userId.toString()].userStatus = newUserStatus;
-          io.to(socket.roomId.toString()).emit("room_update", room);
+          room.users[socket.user?.id].userStatus = newUserStatus;
+          // Do not reflect user status back to the same user that triggered this update!
+          // This will cause the timer component to be re-mounted since the page component re-renders on room state change
+          io.to(socket.roomId.toString())
+            .except(userId)
+            .emit("room_update", room);
         }
       }
     });
     socket.on("user_submit_result", async (result: IResult) => {
       // we store results as an easily-serializable type and reconstruct on client when needed.
       // Socket.io does not preserve complex object types over the network, so it makes it hard to pass Result types around anyways.
-      if (socket.roomId && socket.userId) {
+      if (socket.roomId && socket.user) {
         const room = rooms.get(socket.roomId);
         if (!room) return;
 
         if (room.state !== "STARTED") {
           console.log(
-            `User ${socket.userId} tried to submit a result to ${socket.roomId} in the wrong room state. Ignoring message.`
+            `User ${socket.user?.id} tried to submit a result to ${socket.roomId} in the wrong room state. Ignoring message.`
           );
           return;
         }
         if (room.solves.length == 0) {
           console.log(
-            `User ${socket.userId} tried to submit a result to ${socket.roomId} when there are no solves in the room.`
+            `User ${socket.user?.id} tried to submit a result to ${socket.roomId} when there are no solves in the room.`
           );
           return;
         }
 
-        let solveObject: IRoomSolve = room.solves.at(-1)!;
-        solveObject.solve.results[socket.userId.toString()] = result;
+        const solveObject: IRoomSolve = room.solves.at(-1)!;
+        solveObject.solve.results[socket.user?.id] = result;
 
-        room.users[socket.userId.toString()].userStatus = "FINISHED";
-        room.users[socket.userId.toString()].currentResult = result;
+        room.users[socket.user?.id].userStatus = "FINISHED";
+        room.users[socket.user?.id].currentResult = result;
 
         //TODO - if all users are done, update set and solve counts...
         const solveFinished: boolean = checkRoomSolveFinished(room);
@@ -275,37 +328,32 @@ const listenSocketEvents = (io: Server) => {
     });
 
     socket.on("user_toggle_competing_spectating", (competing: boolean) => {
-      if (socket.roomId && socket.userId) {
+      if (socket.roomId && socket.user) {
         const room = rooms.get(socket.roomId);
-        console.log(room);
-        if (
-          !room ||
-          room.users[socket.userId.toString()].competing == competing
-        )
-          return;
+        if (!room || room.users[socket.user?.id].competing == competing) return;
 
         console.log(
-          `User ${socket.userId} is now ${
+          `User ${socket.user?.id} is now ${
             competing ? "competing" : "spectating"
           } in room ${socket.roomId}`
         );
-        room.users[socket.userId.toString()].competing = competing;
+        room.users[socket.user?.id].competing = competing;
         io.to(socket.roomId.toString()).emit("room_update", room);
       } else {
         console.log(
-          `Either roomId or userId not set on socket: ${socket.roomId}, ${socket.userId}`
+          `Either roomId or userId not set on socket: ${socket.roomId}, ${socket.user?.id}`
         );
       }
     });
 
     socket.on("disconnect", () => {
       // TODO - this logic may be moved to an express API call later
-      if (socket.roomId && socket.userId) {
+      if (socket.roomId && socket.user) {
         const room = rooms.get(socket.roomId);
         if (!room) return;
 
         //remove user from room
-        delete room.users[socket.userId.toString()];
+        delete room.users[socket.user?.id];
         io.to(socket.roomId.toString()).emit("room_update", room);
 
         //check if no more users, if so, delete room.
@@ -315,11 +363,18 @@ const listenSocketEvents = (io: Server) => {
           return;
         }
 
-        //check if host, and if so, promote a new host
-        if (room.host.id == socket.userId) {
-          console.log(
-            `Host has left room ${socket.roomId}. Promoting a new host.`
-          );
+        //check if user is host OR there is somehow no host.
+        if ((room.host && room.host.id == socket.user.id) || !room.host) {
+          if (room.host) {
+            console.log(
+              `Host has left room ${socket.roomId}. Promoting a new host.`
+            );
+          } else {
+            console.log(
+              `User left room without a host: ${socket.roomId}. Promoting a new host.`
+            );
+          }
+
           let earliestID = null;
           let earliestUser: IRoomUser | null = null;
 

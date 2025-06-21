@@ -19,6 +19,8 @@ const buttonVariants = cva(
           "grow bg-primary-foreground text-primary shadow-xs hover:bg-primary-foreground/80 hover:text-primary-accent/80",
         primary:
           "grow bg-primary text-primary-foreground shadow-xs hover:bg-primary/80 hover:text-primary-accent/80",
+        primary_inactive:
+          "bg-primary-inactive text-primary-foreground shadow-xs",
         secondary:
           "grow bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80 hover:text-secondary-accent/80",
         ghost:

@@ -1,18 +1,13 @@
-"use client"
+"use client";
 
 import {
-  IconCreditCard,
   IconDotsVertical,
+  IconLogin,
   IconLogout,
-  IconNotification,
   IconUserCircle,
-} from "@tabler/icons-react"
+} from "@tabler/icons-react";
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,33 +16,41 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar"
-import Link from "next/link"
-import { IUser } from "@/types/user"
+} from "@/components/ui/sidebar";
+import Link from "next/link";
+import { IUser } from "@/types/user";
+
+const GUEST_ID: string = "guest-id";
 
 const guestUserInfo: IUser = {
-  id: "guest-id",
+  id: GUEST_ID,
   userName: "Guest",
   name: "Guest User",
   email: "guest@btime.com",
   avatarURL: "/images/C_logo.png",
-}
+};
 
-export function NavUser({
-  user,
-}: {
-  user: IUser | null
-}) {
-  const { isMobile } = useSidebar()
+export function NavUser({ user }: { user: IUser | undefined }) {
+  const { isMobile } = useSidebar();
 
   if (!user) {
-    user = guestUserInfo
+    user = guestUserInfo;
+  }
+
+  function handleUserLogin() {
+    if (!user || user.id === GUEST_ID) {
+      // user not logged in. log in.
+      window.location.href = `/auth/wca?redirect=${window.location.pathname}`;
+    } else {
+      // user logged in. log out
+      window.location.href = `/logout?redirect=${window.location.pathname}`;
+    }
   }
 
   return (
@@ -102,19 +105,24 @@ export function NavUser({
               </Link>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            {/* <a href="/auth/wca"> */}
-              <DropdownMenuItem onClick={() => {
-                window.location.href = "/auth/wca";
-              }}>
-                {/* Make this login too! */}
-                <IconLogout />
-                Log in/out
-              </DropdownMenuItem>
-            {/* </a> */}
-            
+            <DropdownMenuItem
+              onClick={handleUserLogin}
+            >
+              {user.id == GUEST_ID ? (
+                <>
+                  <IconLogin />
+                  Log In
+                </>
+              ) : (
+                <>
+                  <IconLogout />
+                  Log Out
+                </>
+              )}
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
-  )
+  );
 }

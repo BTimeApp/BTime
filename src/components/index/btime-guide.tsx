@@ -1,7 +1,6 @@
 "use client";
 
 export default function BTimeGuide() {
-    // fetch map of rooms
     return (
         <div>
             <h2 className="font-bold text-center text-xl">BTime Guide</h2>

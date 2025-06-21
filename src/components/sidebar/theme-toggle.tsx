@@ -6,7 +6,7 @@ import { SidebarMenuItem, SidebarMenuButton } from "../ui/sidebar";
 import { IconMoon, IconSun } from "@tabler/icons-react";
 
 export default function ThemeToggle() {
-  const { theme, setTheme, resolvedTheme } = useTheme();
+  const { setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   // Prevent mismatch between server and client

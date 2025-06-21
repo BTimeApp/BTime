@@ -1,14 +1,15 @@
 "use client";
 import { useEffect, useState } from "react";
+import { IRoom } from "@/types/room"
 
 export default function RoomListing() {
-    const [rooms, setRooms] = useState([]);
+    const [rooms, setRooms] = useState<{ [key: string]: IRoom }>({});
 
     // run once on mount
     // TODO: maybe have a reload button on the page to refresh
     useEffect(() => {
         const fetchRooms = async () => {
-            const response = await fetch('/api/getrooms');
+            const response = await fetch("/api/getrooms");
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
@@ -17,7 +18,6 @@ export default function RoomListing() {
         }
         fetchRooms();
     }, []);
-    
     return (
         <div className="px-3">
             <h2 className="font-bold text-center text-xl">Room List</h2>
@@ -37,11 +37,12 @@ export default function RoomListing() {
             </ul>
             <ul>
                 {
-                rooms.length != 0 ?
-                rooms.map(({ key, value }) => (
+                Object.keys(rooms).length != 0 ?    
+                Object.entries(rooms).map(([key, value]) => (
                     <li key={key}>
-                        Room Name: {key}     <br></br>
-                        Users: {Object.keys(value.users).length}     <br></br>
+                        Key: {key}                      <br></br>
+                        Value: {value.roomName}                  <br></br>
+                        Room Name: {value.roomName}     <br></br>
                         Event: {value.roomEvent}        <br></br>
                         Format: {value.matchFormat}{value.nSets} {value.setFormat}{value.nSolves}
                     </li>
@@ -50,5 +51,6 @@ export default function RoomListing() {
                 } 
             </ul>
         </div>
+        // Users: {Object.keys(value.users).length}     <br></br>
     )
 } 

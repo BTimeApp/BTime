@@ -28,7 +28,7 @@ export default function RootLayout({
           defaultTheme="system"
           enableSystem={true}
         >
-          <SidebarProvider>
+          <SidebarProvider defaultOpen={false}>
             <AppSidebar />
             <SidebarInset>
               <div className="flex flex-1 flex-col gap-4 pt-0">

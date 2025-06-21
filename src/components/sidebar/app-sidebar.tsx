@@ -17,7 +17,6 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar"
 import { useSession } from "@/hooks/useSession";
-import { useEffect } from "react";
 
 import ThemeToggle from "@/components/sidebar/theme-toggle"
 const data = {
@@ -56,12 +55,7 @@ const data = {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   // this will automatically try to log in and fetch a user.
-  const { localUser, sessionLoading } = useSession();
-  // user: {
-  //   name: "Guest User",
-  //   email: "guest@btime.com",
-  //   avatar: "/images/C_logo.png",
-  // },
+  const { localUser } = useSession();
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
