@@ -33,6 +33,9 @@ export async function startServer(): Promise<void> {
   app.set('prod', isProd);
   app.use(express.json()); // for parsing application/json
   app.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
+  if (isProd) {
+    app.set('trust proxy', 1);
+  }
   
   // set up session
   const sessionMiddleware = session({
