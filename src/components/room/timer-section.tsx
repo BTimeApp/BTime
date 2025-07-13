@@ -13,6 +13,7 @@ type TimerSectionProps = {
   userStatus: SolveStatus;
   useInspection?: boolean;
   localResult: Result;
+  keyboardTimerStartTime: number | undefined;
   manualInputCallback?: (value: string) => void;
   startInspectionCallback?: () => void;
   endInspectionCallback?: (penalty: Penalty) => void;
@@ -24,6 +25,7 @@ function TimerSection({
   userStatus,
   useInspection = true,
   localResult,
+  keyboardTimerStartTime,
   manualInputCallback,
   startInspectionCallback,
   endInspectionCallback,
@@ -111,7 +113,7 @@ function TimerSection({
               <div>Press Space to Stop</div>
               {/* TODO - make this hold the amount of time left in inspection */}
               <StopwatchTimer
-                startTime={performance.now()}
+                startTime={keyboardTimerStartTime}
                 onFinishTimer={endTimerCallback}
                 className="text-2xl"
               />

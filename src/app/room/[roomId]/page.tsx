@@ -29,6 +29,7 @@ import RoomSubmittingButtons from "@/components/room/room-submitting-buttons";
 import Dropdown from "@/components/common/dropdown";
 import PasswordPrompt from "@/components/room/password-prompt";
 import { useRouter } from "next/navigation";
+import { useStartTimeOnTransition } from "@/hooks/useStartTimeOnTransition";
 
 export default function Page() {
   const params = useParams<{ roomId: string }>();
@@ -61,9 +62,11 @@ export default function Page() {
   const [isPasswordAuthenticated, setIsPasswordAuthenticated] =
     useState<boolean>(false); //if the password has been accepted
 
+
   //user-related state
   const [userIsHost, setUserIsHost] = useState<boolean>(false);
   const [userStatus, setUserStatus] = useState<SolveStatus>("IDLE");
+  const keyboardTimerStartTime = useStartTimeOnTransition(userStatus, "SOLVING");
 
   //generate socket, fetch local user from session
   const { socket, socketConnected } = useSocket(false);
@@ -623,6 +626,7 @@ export default function Page() {
                 userStatus={userStatus}
                 useInspection={useInspection}
                 localResult={localResult}
+                keyboardTimerStartTime={keyboardTimerStartTime}
                 manualInputCallback={endStringTimerCallback}
                 startInspectionCallback={handleTimerStateTransition}
                 endInspectionCallback={(penalty: Penalty) => {
