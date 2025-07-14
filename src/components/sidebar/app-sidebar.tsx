@@ -2,11 +2,11 @@
 
 import * as React from "react"
 import {
-  IconFileDescription,
-  IconHelp,
+  // IconFileDescription,
+  // IconHelp,
   IconHome,
   IconLibraryPlus,
-  IconSettings,
+  // IconSettings,
 } from "@tabler/icons-react"
 
 import { NavMain } from "@/components/sidebar/nav-main"
