@@ -34,21 +34,21 @@ const data = {
   ],
   
   navSecondary: [
-    {
-      title: "Settings",
-      url: "/settings",
-      icon: IconSettings,
-    },
-    {
-      title: "About",
-      url: "/about",
-      icon: IconHelp,
-    },
-    {
-      title: "Docs",
-      url: "/docs",
-      icon: IconFileDescription,
-    },
+    // {
+    //   title: "Settings",
+    //   url: "/settings",
+    //   icon: IconSettings,
+    // },
+    // {
+    //   title: "About",
+    //   url: "/about",
+    //   icon: IconHelp,
+    // },
+    // {
+    //   title: "Docs",
+    //   url: "/docs",
+    //   icon: IconFileDescription,
+    // },
   ],
 }
 
