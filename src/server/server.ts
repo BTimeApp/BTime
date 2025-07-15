@@ -8,7 +8,6 @@ import { createAuthRouter } from "@/server/auth";
 import { api } from "@/server/api";
 import passport from 'passport';
 import session from 'express-session';
-
 import {users, rooms} from "@/server/server_objects";
 
 export async function startServer(): Promise<void> {

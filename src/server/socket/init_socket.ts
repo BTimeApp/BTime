@@ -4,15 +4,17 @@ import { Types } from "mongoose";
 import { rooms, users } from "@/server/server_objects";
 import {
   IRoom,
+  RoomState,
+  IRoomSettings,
+} from "@/types/room";
+import {
   skipScramble,
   newRoomSolve,
   resetRoom,
   finishRoomSolve,
   checkRoomSolveFinished,
-  RoomState,
-  IRoomSettings,
-  createRoom,
-} from "@/types/room";
+  createRoom
+} from "@/lib/room";
 import { IUser } from "@/types/user";
 import { IRoomUser } from "@/types/roomUser";
 import { IResult } from "@/types/result";
@@ -22,6 +24,7 @@ import { ServerResponse } from "http";
 import { NextFunction } from "express";
 import { ObjectId } from "bson";
 import passport from "passport";
+import bcrypt from "bcrypt";
 
 //defines useful state variables we want to maintain over the lifestyle of a socket connection (only visible server-side)
 interface CustomSocket extends Socket {
@@ -103,7 +106,7 @@ const listenSocketEvents = (io: Server) => {
 
     socket.on(
       "create_room",
-      (
+      async (
         { roomSettings }: { roomSettings: IRoomSettings },
         callback: (roomId: string) => void
       ) => {
@@ -111,7 +114,7 @@ const listenSocketEvents = (io: Server) => {
         while (rooms.get(roomId)) {
           roomId = new ObjectId().toString();
         }
-        const room: IRoom = createRoom({
+        const room: IRoom = await createRoom({
           roomSettings: roomSettings,
           roomId: roomId,
           initialHost: socket.user,
@@ -124,7 +127,7 @@ const listenSocketEvents = (io: Server) => {
 
     socket.on(
       "join_room",
-      (
+      async (
         {
           roomId,
           userId,
@@ -166,8 +169,18 @@ const listenSocketEvents = (io: Server) => {
 
         //validate password if room is private AND user isn't host
         if (room.isPrivate && userId !== room.host?.id) {
-          //TODO - store passwords with bcrypt and then use bcrypt here to make it not a plaintext comparison
-          if (!password || !room.password || password !== room.password) {
+          if (!password) {
+            console.log(`User ${userId} an empty password to room ${roomId}.`);
+            passwordValidationCallback(false, true, undefined);
+            return;
+          } else if (!room.password) {
+            console.log(`User ${userId} submitted the wrong password to room ${roomId}.`);
+            passwordValidationCallback(false, true, undefined);
+            return;
+          }
+          
+          const passwordValid = await bcrypt.compare(password, room.password);
+          if (!passwordValid) {
             console.log(`User ${userId} submitted the wrong password to room ${roomId}.`);
             passwordValidationCallback(false, true, undefined);
             return;
