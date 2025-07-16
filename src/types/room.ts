@@ -1,6 +1,6 @@
 import { IUser } from "@/types/user";
 import { IRoomUser } from "@/types/roomUser";
-import { IRoomSolve } from "./roomSolve";
+import { IRoomSolve } from "@/types/roomSolve";
 
 //defines all legal events
 export const ROOM_EVENTS = [
@@ -53,6 +53,18 @@ export const SET_FORMAT_MAP = new Map<SetFormat, string>([
   ["FIRST_TO", "First to"],
   ["AVERAGE_OF", "Average of"],
   ["MEAN_OF", "Mean of"],
+]);
+
+export const MATCH_FORMAT_ABBREVIATION_MAP = new Map<MatchFormat, string>([
+  ["BEST_OF", "bo"],
+  ["FIRST_TO", "ft"]
+]);
+
+export const SET_FORMAT_ABBREVIATION_MAP = new Map<SetFormat, string>([
+  ["BEST_OF", "bo"],
+  ["FIRST_TO", "ft"],
+  ["AVERAGE_OF", "ao"],
+  ["MEAN_OF", "mo"],
 ]);
 
 export function getVerboseFormatText(

@@ -57,7 +57,7 @@ export async function startServer(): Promise<void> {
 
   // get rooms route
   app.get("/api/getrooms", (req, res) => {
-    res.send(Array.from(rooms, ([key, value]) => ({ key, value })));
+    res.send(Array.from(rooms));
   })
 
   // Set up auth and logout routes
