@@ -285,14 +285,6 @@ export default function Page() {
     }
   }
 
-  function userToggleCompetingSpectating(competing: boolean) {
-    socket.emit("user_toggle_competing_spectating", competing);
-    if (competing) {
-      handleTimerStateTransition();
-    } else {
-      setUserStatus("SPECTATING");
-    }
-  }
 
   function startRoom() {
     if (userIsHost) {
@@ -326,7 +318,7 @@ export default function Page() {
               setUserStatus("SOLVING");
               break;
             case "SPECTATING":
-              setUserStatus("SOLVING");
+              //handleUserToggleSpectating does this state transition 
               break;
             default:
               break;
@@ -354,7 +346,7 @@ export default function Page() {
               setUserStatus("IDLE");
               break;
             case "SPECTATING":
-              setUserStatus("IDLE");
+              //handleUserToggleSpectating does this state transition
               break;
             default:
               break;
@@ -366,6 +358,39 @@ export default function Page() {
       setUserStatus("IDLE");
     }
   }, [localRoomState, timerType, userStatus, useInspection]);
+
+  // This is meant specifically to be used when the user toggles their spectating/competing status
+  const handleUserToggleSpectating = useCallback(() => {
+    if (localRoomState === "STARTED") {
+      //submit the NEW competing boolean - true if currently spectating
+      socket.emit("user_toggle_competing_spectating", userStatus == "SPECTATING");
+      switch (timerType) {
+        case "TYPING":
+          switch (userStatus) {
+            case "SPECTATING":
+              setUserStatus("SOLVING");
+              break;
+            default:
+              setUserStatus("SPECTATING");
+              break;
+          }
+          break;
+        case "KEYBOARD":
+          switch (userStatus) {
+            case "SPECTATING":
+              setUserStatus("IDLE");
+              break;
+            default:
+              setUserStatus("SPECTATING");
+              break;
+          }
+        default:
+          break;
+      }
+    } else {
+      setUserStatus("IDLE");
+    }
+  }, [localRoomState, timerType, userStatus]);
 
   const endStringTimerCallback = useCallback(
     (value: string) => {
@@ -588,9 +613,7 @@ export default function Page() {
                   size="default"
                   className={cn("px-1")}
                   onClick={() => {
-                    userToggleCompetingSpectating(
-                      !users[localUser!.id]?.competing
-                    );
+                    handleUserToggleSpectating();
                   }}
                 >
                   <h1 className={cn("font-bold text-center text-md")}>
@@ -705,9 +728,7 @@ export default function Page() {
                   size="default"
                   className={cn("px-1")}
                   onClick={() => {
-                    userToggleCompetingSpectating(
-                      !users[localUser!.id]?.competing
-                    );
+                    handleUserToggleSpectating();
                   }}
                 >
                   <h1 className={cn("font-bold text-center text-md")}>
@@ -767,9 +788,7 @@ export default function Page() {
                   size="default"
                   className={cn("px-1")}
                   onClick={() => {
-                    userToggleCompetingSpectating(
-                      !users[localUser!.id]?.competing
-                    );
+                    handleUserToggleSpectating();
                   }}
                 >
                   <h1 className={cn("font-bold text-center text-md")}>
