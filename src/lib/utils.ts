@@ -33,6 +33,7 @@ export async function generateScramble(event: RoomEvent) {
     ["skewb", "skewb"],
     ["clock", "clock"],
     ["sq1", "sq1"],
+    ["3oh", "333oh"],
     ["3bld", "333bf"],
     ["4bld", "444bf"],
     ["5bld", "555bf"],
