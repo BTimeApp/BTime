@@ -390,6 +390,7 @@ export default function Page() {
     } else {
       setUserStatus("IDLE");
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localRoomState, timerType, userStatus]);
 
   const endStringTimerCallback = useCallback(

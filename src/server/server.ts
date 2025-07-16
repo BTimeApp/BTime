@@ -8,7 +8,8 @@ import { createAuthRouter } from "@/server/auth";
 import { api } from "@/server/api";
 import passport from 'passport';
 import session from 'express-session';
-import {users, rooms} from "@/server/server_objects";
+import { users } from "@/server/server_objects";
+import { rateLimit } from "express-rate-limit";
 
 export async function startServer(): Promise<void> {
   // handle config with dotenv
@@ -95,6 +96,20 @@ export async function startServer(): Promise<void> {
       });
     });
   });
+
+  /** 
+   * Rate Limiter
+   */
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    limit: 1000, // Limit each IP to 100 requests per `window` (here, per 15 minutes).
+    standardHeaders: 'draft-8', // draft-6: `RateLimit-*` headers; draft-7 & draft-8: combined `RateLimit` header
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers.
+    // store: ... , // Redis, Memcached, etc. 
+  })
+  
+  // Apply the rate limiting middleware to all requests.
+  app.use(limiter);
   
   // Set up api routes
   app.use('/api', api());

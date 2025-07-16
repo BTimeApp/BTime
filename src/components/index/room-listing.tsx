@@ -8,31 +8,39 @@ import {
   ROOM_EVENT_ICON_SRC_MAP,
 } from "@/types/room";
 import JoinRoomButton from "@/components/index/join-room-button";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from 'lucide-react';
 
 export default function RoomListing() {
   const [rooms, setRooms] = useState<Map<string, IRoom>>(
     new Map<string, IRoom>()
   );
 
+  async function updateRooms() {
+    const response = await fetch("/api/v0/rooms", {
+      method: "GET"
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+    const json: [string, IRoom][] = await response.json();
+    setRooms(new Map<string, IRoom>(json));
+  }
+
   // run once on mount
   // TODO: maybe have a reload button on the page to refresh
   useEffect(() => {
-    const fetchRooms = async () => {
-      const response = await fetch("/api/v0/rooms", {
-        method: "GET"
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      const json: [string, IRoom][] = await response.json();
-      setRooms(new Map<string, IRoom>(json));
-    };
-    fetchRooms();
+    updateRooms();
   }, []);
 
   return (
     <div className="flex flex-col px-3">
-      <h2 className="font-bold text-center text-xl">Rooms</h2>
+      <div className="flex flex-row">
+        <h2 className="grow font-bold text-center text-xl">Rooms</h2>  
+        <Button variant="outline" size="sm" onClick={updateRooms}>
+          <RefreshCw/>
+        </Button>
+      </div>    
       <div className="px-1">
         <div className="grid grid-cols-6 gap-3 py-1 text-left">
           <div>Room Name</div>
