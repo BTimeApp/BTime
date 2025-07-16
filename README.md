@@ -43,3 +43,6 @@ This means the webapp is running on your local machine!
 
 You can view BTime on [http://0.0.0.0:8080](http://0.0.0.0:8080). Others on your local network can also use the url `http://[your_ip]:8080`to access the site if you've configured your machine's firewall correctly.
 
+
+## Licenses
+This project uses [icons.cubing.net](https://icons.cubing.net/) icons, which is allowed under the MIT License.

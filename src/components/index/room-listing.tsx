@@ -4,6 +4,8 @@ import { IRoom } from "@/types/room";
 import {
   MATCH_FORMAT_ABBREVIATION_MAP,
   SET_FORMAT_ABBREVIATION_MAP,
+  ROOM_EVENT_DISPLAY_NAME_MAP,
+  ROOM_EVENT_ICON_SRC_MAP,
 } from "@/types/room";
 import JoinRoomButton from "@/components/index/join-room-button";
 
@@ -31,17 +33,27 @@ export default function RoomListing() {
       <h2 className="font-bold text-center text-xl">Rooms</h2>
       <div className="px-1">
         <div className="grid grid-cols-6 gap-3 py-1 text-left">
-            <div>Room Name</div>
-            <div>Event</div>
-            <div>Mode</div>
-            <div>Match Format</div>
-            <div>Set Format</div>
+          <div>Room Name</div>
+          <div>Event</div>
+          <div>Mode</div>
+          <div>Match Format</div>
+          <div>Set Format</div>
         </div>
         {rooms.size != 0 ? (
           [...rooms.entries()].map(([roomId, room]) => (
-            <div key={roomId} className="grid grid-cols-6 gap-3 py-1 text-left items-center">
+            <div
+              key={roomId}
+              className="grid grid-cols-6 gap-3 py-1 text-left items-center"
+            >
               <div>{room.roomName}</div>
-              <div>{room.roomEvent}</div>
+              <div className="flex flex-row">
+                <span
+                  className={`cubing-icon ${ROOM_EVENT_ICON_SRC_MAP.get(
+                    room.roomEvent
+                  )}`}
+                ></span>
+                <div>{ROOM_EVENT_DISPLAY_NAME_MAP.get(room.roomEvent)}</div>
+              </div>
               <div>{room.roomFormat}</div>
               {room.roomFormat === "RACING" ? (
                 <>
@@ -66,13 +78,10 @@ export default function RoomListing() {
               <div className="col-start-6">
                 <JoinRoomButton roomId={room.id}></JoinRoomButton>
               </div>
-              
             </div>
           ))
         ) : (
-          <div className="text-center">
-            No rooms currently available!
-          </div>
+          <div className="text-center">No rooms currently available!</div>
         )}
       </div>
     </div>

@@ -21,6 +21,43 @@ export const ROOM_EVENTS = [
   "5bld",
 ] as const;
 
+export const ROOM_EVENT_DISPLAY_NAME_MAP = new Map<RoomEvent, string>([
+  ["333", "3x3"],
+  ["222", "2x2"],
+  ["444", "4x4"],
+  ["555", "5x5"],
+  ["666", "6x6"],
+  ["777", "7x7"],
+  ["megaminx", "Megaminx"],
+  ["pyraminx", "Pyraminx"],
+  ["skewb", "Skewb"],
+  ["clock", "Clock"],
+  ["sq1", "Sq-1"],
+  ["3oh", "3x3 OH"],
+  ["3bld", "3BLD"],
+  ["4bld", "4BLD"],
+  ["5bld", "5BLD"]
+]);
+
+// Source - https://icons.cubing.net/#svg
+export const ROOM_EVENT_ICON_SRC_MAP = new Map<RoomEvent, string>([
+  ["333", "event-333"],
+  ["222", "event-222"],
+  ["444", "event-444"],
+  ["555", "event-555"],
+  ["666", "event-666"],
+  ["777", "event-777"],
+  ["megaminx", "event-pyram"],
+  ["pyraminx", "event-minx"],
+  ["skewb", "event-skewb"],
+  ["clock", "event-clock"],
+  ["sq1", "event-sq1"],
+  ["3oh", "event-333oh"],
+  ["3bld", "event-333bf"],
+  ["4bld", "event-444bf"],
+  ["5bld", "event-555bf"]
+]);
+
 //defines all legal formats (more to come hopefully)
 export const ROOM_FORMATS = [
   "CASUAL", //no points or score, just cubing

@@ -22,6 +22,9 @@ export default function RootLayout({
       } /* Surely there's a better way to stop the warning */
       lang="en"
     >
+      <head>
+        <link rel="stylesheet" href="https://cdn.cubing.net/v0/css/@cubing/icons/css"/> 
+      </head>
       <body className={`${inter.className} antialiased`}>
         <ThemeProvider
           attribute="class"
