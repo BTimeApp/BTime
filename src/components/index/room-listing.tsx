@@ -18,7 +18,9 @@ export default function RoomListing() {
   // TODO: maybe have a reload button on the page to refresh
   useEffect(() => {
     const fetchRooms = async () => {
-      const response = await fetch("/api/getrooms");
+      const response = await fetch("/api/v0/rooms", {
+        method: "GET"
+      });
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }

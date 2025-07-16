@@ -55,11 +55,6 @@ export async function startServer(): Promise<void> {
   app.use(passport.initialize())
   app.use(passport.session())
 
-  // get rooms route
-  app.get("/api/getrooms", (req, res) => {
-    res.send(Array.from(rooms));
-  })
-
   // Set up auth and logout routes
   app.use("/auth", createAuthRouter(passport));
   app.get('/logout', (req, res, nextfn) => {
