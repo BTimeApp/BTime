@@ -2,18 +2,14 @@ import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
 import { Types } from "mongoose";
 import { rooms, users } from "@/server/server_objects";
-import {
-  IRoom,
-  RoomState,
-  IRoomSettings,
-} from "@/types/room";
+import { IRoom, RoomState, IRoomSettings } from "@/types/room";
 import {
   skipScramble,
   newRoomSolve,
   resetRoom,
   finishRoomSolve,
   checkRoomSolveFinished,
-  createRoom
+  createRoom,
 } from "@/lib/room";
 import { IUser } from "@/types/user";
 import { IRoomUser } from "@/types/roomUser";
@@ -44,7 +40,7 @@ export const initSocket = (
 ) => {
   const io = new Server(httpServer, {
     cors: {
-      credentials: true
+      credentials: true,
     },
   });
 
@@ -137,7 +133,11 @@ const listenSocketEvents = (io: Server) => {
           userId: string;
           password?: string;
         },
-        passwordValidationCallback: (passwordValid: boolean, roomIdValid: boolean, room?: IRoom) => void
+        passwordValidationCallback: (
+          passwordValid: boolean,
+          roomIdValid: boolean,
+          room?: IRoom
+        ) => void
       ) => {
         //validate real user
         const user: IUser | undefined = users.get(userId);
@@ -160,9 +160,7 @@ const listenSocketEvents = (io: Server) => {
 
         //validate user is not already in this room
         if (Object.keys(room.users).includes(userId)) {
-          console.log(
-            `User ${userId} double join in room ${roomId}.`
-          );
+          console.log(`User ${userId} double join in room ${roomId}.`);
           passwordValidationCallback(true, true, room);
           return;
         }
@@ -174,14 +172,18 @@ const listenSocketEvents = (io: Server) => {
             passwordValidationCallback(false, true, undefined);
             return;
           } else if (!room.password) {
-            console.log(`User ${userId} submitted the wrong password to room ${roomId}.`);
+            console.log(
+              `User ${userId} submitted the wrong password to room ${roomId}.`
+            );
             passwordValidationCallback(false, true, undefined);
             return;
           }
-          
+
           const passwordValid = await bcrypt.compare(password, room.password);
           if (!passwordValid) {
-            console.log(`User ${userId} submitted the wrong password to room ${roomId}.`);
+            console.log(
+              `User ${userId} submitted the wrong password to room ${roomId}.`
+            );
             passwordValidationCallback(false, true, undefined);
             return;
           }
@@ -351,7 +353,8 @@ const listenSocketEvents = (io: Server) => {
           } in room ${socket.roomId}`
         );
         room.users[socket.user?.id].competing = competing;
-        io.to(socket.roomId.toString()).emit("room_update", room);
+        io.to(socket.roomId.toString())
+          .emit("room_update", room);
       } else {
         console.log(
           `Either roomId or userId not set on socket: ${socket.roomId}, ${socket.user?.id}`

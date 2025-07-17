@@ -313,7 +313,7 @@ export async function createRoom({roomSettings, roomId, initialHost}: {roomSetti
     Object.values(room.users).map((roomUser) => {
       roomUser.points = 0;
       roomUser.setWins = 0;
-      roomUser.userStatus = roomUser.competing ? "IDLE" : "SPECTATING";
+      roomUser.userStatus = "IDLE";
       roomUser.currentResult = undefined;
     });
   }

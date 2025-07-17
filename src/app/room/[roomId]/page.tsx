@@ -66,6 +66,7 @@ export default function Page() {
   //user-related state
   const [userIsHost, setUserIsHost] = useState<boolean>(false);
   const [userStatus, setUserStatus] = useState<SolveStatus>("IDLE");
+  const [userCompeting, setUserCompeting] = useState<boolean>(true);
   const keyboardTimerStartTime = useStartTimeOnTransition(userStatus, "SOLVING");
 
   //generate socket, fetch local user from session
@@ -240,7 +241,7 @@ export default function Page() {
         setUserStatus("IDLE");
         break;
       case "STARTED":
-        if (userStatus === "SPECTATING") return;
+        if (!userCompeting) return;
         switch (timerType) {
           case "TYPING":
             setUserStatus("SOLVING");
@@ -317,9 +318,6 @@ export default function Page() {
             case "FINISHED":
               setUserStatus("SOLVING");
               break;
-            case "SPECTATING":
-              //handleUserToggleSpectating does this state transition 
-              break;
             default:
               break;
           }
@@ -345,9 +343,6 @@ export default function Page() {
             case "FINISHED":
               setUserStatus("IDLE");
               break;
-            case "SPECTATING":
-              //handleUserToggleSpectating does this state transition
-              break;
             default:
               break;
           }
@@ -361,37 +356,16 @@ export default function Page() {
 
   // This is meant specifically to be used when the user toggles their spectating/competing status
   const handleUserToggleSpectating = useCallback(() => {
-    if (localRoomState === "STARTED") {
-      //submit the NEW competing boolean - true if currently spectating
-      socket.emit("user_toggle_competing_spectating", userStatus == "SPECTATING");
-      switch (timerType) {
-        case "TYPING":
-          switch (userStatus) {
-            case "SPECTATING":
-              setUserStatus("SOLVING");
-              break;
-            default:
-              setUserStatus("SPECTATING");
-              break;
-          }
-          break;
-        case "KEYBOARD":
-          switch (userStatus) {
-            case "SPECTATING":
-              setUserStatus("IDLE");
-              break;
-            default:
-              setUserStatus("SPECTATING");
-              break;
-          }
-        default:
-          break;
-      }
+    //submit the NEW competing boolean - true if currently spectating
+    socket.emit("user_toggle_competing_spectating", !userCompeting);
+
+    if (userCompeting) {
+      setUserCompeting(false);
     } else {
-      setUserStatus("IDLE");
+      setUserCompeting(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localRoomState, timerType, userStatus]);
+  }, [userCompeting]);
 
   const endStringTimerCallback = useCallback(
     (value: string) => {
@@ -428,7 +402,7 @@ export default function Page() {
       return;
     }
 
-    if (users[localUser.id].competing) {
+    if (userCompeting) {
       switch (timerType) {
         case "TYPING":
           setUserStatus("SOLVING");
@@ -441,7 +415,7 @@ export default function Page() {
       }
     }
     //otherwise, do nothing - user is spectating and status does not need to be updated
-  }, [localRoomState, localUser, users, timerType]);
+  }, [localRoomState, localUser, userCompeting, timerType]);
 
   //handles submitting the local result to the server. DOES NOT HANDLE STATE TRANSITIONS.
   function submitLocalResult() {
@@ -618,7 +592,7 @@ export default function Page() {
                   }}
                 >
                   <h1 className={cn("font-bold text-center text-md")}>
-                    {users[localUser!.id]?.competing ? "SPECTATE" : "COMPETE"}
+                    {userCompeting ? "SPECTATE" : "COMPETE"}
                   </h1>
                 </Button>
               </div>
@@ -642,7 +616,7 @@ export default function Page() {
           </RoomPanel>
         );
       case "STARTED":
-        const centerSection = users[localUser!.id].competing ? (
+        const centerSection = userCompeting ? (
           <>
             <div className="mx-auto">
               <TimerSection
@@ -733,7 +707,7 @@ export default function Page() {
                   }}
                 >
                   <h1 className={cn("font-bold text-center text-md")}>
-                    {users[localUser!.id]?.competing ? "SPECTATE" : "COMPETE"}
+                    {userCompeting ? "SPECTATE" : "COMPETE"}
                   </h1>
                 </Button>
               </div>
@@ -793,7 +767,7 @@ export default function Page() {
                   }}
                 >
                   <h1 className={cn("font-bold text-center text-md")}>
-                    {users[localUser!.id]?.competing ? "SPECTATE" : "COMPETE"}
+                    {userCompeting ? "SPECTATE" : "COMPETE"}
                   </h1>
                 </Button>
               </div>
@@ -852,6 +826,18 @@ export default function Page() {
           }
         });
 
+        function userStatusText(user: IRoomUser) {
+          if (!user.competing) {
+            return "SPECTATING";
+          } else {
+            if (user.userStatus == "FINISHED" && user.currentResult) {
+              return Result.fromIResult(user.currentResult).toString();
+            } else {
+              return user.userStatus;
+            }
+          }
+        }
+
         return (
           <RoomPanel className="bg-container-2 px-1 py-3">
             <div className="grid grid-row text-center text-xl">
@@ -865,11 +851,7 @@ export default function Page() {
                 <div key={index} className="grid grid-cols-12">
                   <div className="col-span-5">{user.user.userName}</div>
                   <div className="col-span-3">
-                    {user.userStatus == "FINISHED" && user.currentResult
-                      ? Result.fromIResult(user.currentResult).toString()
-                      : user.user.id == localUser?.id
-                      ? userStatus
-                      : user.userStatus}
+                    {userStatusText(user)}
                   </div>
                   <div className="col-span-2">{user.setWins}</div>
                   <div className="col-span-2">{user.points}</div>
