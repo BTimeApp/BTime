@@ -16,9 +16,10 @@ import {
   SidebarContent,
   SidebarFooter,
 } from "@/components/ui/sidebar"
-import { useSession } from "@/hooks/useSession";
+import { useSession } from "@/context/sessionContext"
 
 import ThemeToggle from "@/components/sidebar/theme-toggle"
+
 const data = {
   navMain: [
     {
@@ -28,7 +29,7 @@ const data = {
     },
     {
       title: "Create Room",
-      url: "/create", //change this to /create
+      url: "/create", 
       icon: IconLibraryPlus,
     },
   ],
@@ -55,7 +56,7 @@ const data = {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   // this will automatically try to log in and fetch a user.
-  const { localUser } = useSession();
+  const { user } = useSession();
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -65,7 +66,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
       <SidebarFooter>
         <ThemeToggle />
-        <NavUser user={localUser} />
+        <NavUser user={user} />
       </SidebarFooter>
     </Sidebar>
   )

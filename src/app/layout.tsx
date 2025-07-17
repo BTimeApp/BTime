@@ -4,6 +4,7 @@ import "./styles/global.css";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { ThemeProvider } from "next-themes";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { SessionProvider } from "@/context/sessionContext";
 
 export const metadata: Metadata = {
   title: "BTime",
@@ -26,22 +27,24 @@ export default function RootLayout({
         <link rel="stylesheet" href="https://cdn.cubing.net/v0/css/@cubing/icons/css"/> 
       </head>
       <body className={`${inter.className} antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem={true}
-        >
-          <SidebarProvider defaultOpen={false}>
-            <AppSidebar />
-            <SidebarInset>
-              <div className="flex flex-1 flex-col gap-4 pt-0">
-                <div className="min-h-[100vh] flex-1 rounded-xl bg-background md:min-h-min">
-                  {children}
+        <SessionProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem={true}
+          >
+            <SidebarProvider defaultOpen={false}>
+              <AppSidebar />
+              <SidebarInset>
+                <div className="flex flex-1 flex-col gap-4 pt-0">
+                  <div className="min-h-[100vh] flex-1 rounded-xl bg-background md:min-h-min">
+                    {children}
+                  </div>
                 </div>
-              </div>
-            </SidebarInset>
-          </SidebarProvider>
-        </ThemeProvider>
+              </SidebarInset>
+            </SidebarProvider>
+          </ThemeProvider>
+        </SessionProvider>
       </body>
     </html>
   );

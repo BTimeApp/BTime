@@ -2,7 +2,7 @@
 import Header from "@/components/common/header";
 import LoginButton from "@/components/common/login-button";
 import HomeHeaderContent from "@/components/index/home-header-content";
-import { useSession } from "@/hooks/useSession";
+import { useSession } from "@/context/sessionContext";
 import Image from "next/image";
 
 /** TODO
@@ -12,7 +12,7 @@ import Image from "next/image";
  */
 
 export default function Page() {
-  const { localUser } = useSession();
+  const { user: localUser } = useSession();
 
   let body = <></>;
   if (localUser) {

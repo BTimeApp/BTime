@@ -8,7 +8,7 @@ import CreateInput from "@/components/create/create-input";
 import CreateToggleButton from "@/components/create/create-toggle";
 import { useState, useEffect, useMemo } from "react";
 import { useSocket } from "@/hooks/useSocket";
-import { useSession } from "@/hooks/useSession";
+import { useSession } from "@/context/sessionContext";
 import {
   IRoomSettings,
   MatchFormat,
@@ -96,7 +96,7 @@ export default function Page() {
 
   //generate socket, fetch local user from session
   const { socket, socketConnected } = useSocket(false);
-  const { localUser } = useSession();
+  const { user: localUser } = useSession();
 
   //join room upon load/change of user/room
   useEffect(() => {

@@ -23,7 +23,7 @@ import { Switch } from "@/components/ui/switch";
 import { SolveStatus } from "@/types/status";
 import { TIMER_TYPES, TimerType } from "@/types/timerType";
 import { IRoomSolve } from "@/types/roomSolve";
-import { useSession } from "@/hooks/useSession";
+import { useSession } from "@/context/sessionContext";
 import TimerSection from "@/components/room/timer-section";
 import RoomSubmittingButtons from "@/components/room/room-submitting-buttons";
 import Dropdown from "@/components/common/dropdown";
@@ -70,7 +70,7 @@ export default function Page() {
 
   //generate socket, fetch local user from session
   const { socket, socketConnected } = useSocket(false);
-  const { localUser, sessionLoading } = useSession();
+  const { user: localUser, loading: sessionLoading } = useSession();
 
   const router = useRouter();
 
