@@ -35,11 +35,11 @@ export default function RoomListing() {
   }, []);
 
   return (
-    <div className="flex flex-col px-3">
+    <div className="flex flex-col px-3 gap-1 rounded-lg shadow-lg p-1 bg-container-1">
       <div className="flex flex-row px-1">
         <h2 className="grow font-bold text-center text-xl">Rooms</h2>
         <Tooltip>
-          <TooltipTrigger>
+          <TooltipTrigger asChild>
             <Button variant="outline" size="sm" onClick={updateRooms}>
               <RefreshCw />
             </Button>

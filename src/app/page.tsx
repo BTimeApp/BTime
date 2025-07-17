@@ -2,7 +2,7 @@ import Header from "@/components/common/header"
 import HomeHeaderContent from "@/components/index/home-header-content";
 import CreateRoomButton from "@/components/index/create-room-button";
 import RoomListing from "@/components/index/room-listing";
-import BTimeGuide from "@/components/index/btime-guide";
+import ProfileView from "@/components/index/profile-view";
 
 export default function Home() {
   return (
@@ -18,7 +18,7 @@ export default function Home() {
           <RoomListing />
         </div>
         <div className="flex-1 px-2">
-          <BTimeGuide />
+          <ProfileView />
         </div>
       </div>
     </div>
