@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { IRoom } from "@/types/room";
+import { IRoomSummary } from "@/types/roomListingInfo";
 import {
   MATCH_FORMAT_ABBREVIATION_MAP,
   SET_FORMAT_ABBREVIATION_MAP,
@@ -9,11 +9,12 @@ import {
 } from "@/types/room";
 import JoinRoomButton from "@/components/index/join-room-button";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, User, Globe, GlobeLock } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function RoomListing() {
-  const [rooms, setRooms] = useState<Map<string, IRoom>>(
-    new Map<string, IRoom>()
+  const [rooms, setRooms] = useState<Map<string, IRoomSummary>>(
+    new Map<string, IRoomSummary>()
   );
 
   async function updateRooms() {
@@ -23,8 +24,8 @@ export default function RoomListing() {
     if (!response.ok) {
       throw new Error(`HTTP error! Status: ${response.status}`);
     }
-    const json: [string, IRoom][] = await response.json();
-    setRooms(new Map<string, IRoom>(json));
+    const json: [string, IRoomSummary][] = await response.json();
+    setRooms(new Map<string, IRoomSummary>(json));
   }
 
   // run once on mount
@@ -35,45 +36,62 @@ export default function RoomListing() {
 
   return (
     <div className="flex flex-col px-3">
-      <div className="flex flex-row">
+      <div className="flex flex-row px-1">
         <h2 className="grow font-bold text-center text-xl">Rooms</h2>
-        <Button variant="outline" size="sm" onClick={updateRooms}>
-          <RefreshCw />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger>
+            <Button variant="outline" size="sm" onClick={updateRooms}>
+              <RefreshCw />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <div>Refresh</div>
+          </TooltipContent>
+        </Tooltip>
+        
       </div>
       <div className="px-1">
-        <div className="grid grid-cols-8 gap-3 px-1 py-1 text-left shadow-sm rounded-sm">
+        <div className="grid grid-cols-10 gap-3 px-1 py-1 text-left shadow-sm rounded-sm">
           <div className="col-span-3">Room Name</div>
           <div>Users</div>
           <div>Event</div>
-          <div className="col-span-2">Format</div>
+          <div>Format</div>
+          <div className="col-start-8">Privacy</div>
         </div>
         {rooms.size != 0 ? (
           [...rooms.entries()].map(([roomId, room]) => (
             <div
               key={roomId}
-              className="grid grid-cols-8 gap-3 px-1 py-1 text-left items-center shadow-sm rounded-sm"
+              className="grid grid-cols-10 gap-3 px-1 py-1 text-left items-center shadow-sm rounded-sm"
             >
               <div className="col-span-3">{room.roomName}</div>
-              <div>{Object.keys(room.users).length}</div>
+              <div className="flex flex-row">
+                <User/>
+                <div>{room.numUsers}</div>
+              </div>
               <div className="flex flex-row">
                 <span
                   className={`cubing-icon ${ROOM_EVENT_ICON_SRC_MAP.get(
                     room.roomEvent
                   )}`}
-                ></span>
+                />
                 <div>{ROOM_EVENT_DISPLAY_NAME_MAP.get(room.roomEvent)}</div>
               </div>
-              <div className="col-span-2">
-                {room.roomFormat}{" "}
+              <div>{room.roomFormat}</div>
+              <div className="grid grid-rows-2">
                 {room.roomFormat === "RACING" ? (
-                  "(" + MATCH_FORMAT_ABBREVIATION_MAP.get(room.matchFormat!)! +
-                  room.nSets! +
-                  " " +
-                  SET_FORMAT_ABBREVIATION_MAP.get(room.setFormat!)! +
-                  room.nSolves! + ")"
+                  <>
+                    <div>
+                      {MATCH_FORMAT_ABBREVIATION_MAP.get(room.matchFormat!)! +
+                        room.nSets!}
+                    </div>
+                    <div>
+                      {SET_FORMAT_ABBREVIATION_MAP.get(room.setFormat!)! +
+                        room.nSolves!}
+                    </div>
+                  </>
                 ) : (
-                  ""
+                  <></>
                 )}
               </div>
 
@@ -83,7 +101,21 @@ export default function RoomListing() {
               ) : (
                 <JoinRoomButton roomId={room.id}></JoinRoomButton>
               )} */}
-              <div className="col-start-8">
+              <div className="col-start-8 flex flex-row">
+                {
+                  room.isPrivate ? 
+                  <>
+                    <GlobeLock/>
+                    <div>Private</div>
+                  </>
+                   : 
+                  <>
+                    <Globe/>
+                    <div>Public</div>
+                  </>
+                }
+              </div>
+              <div className="col-start-10">
                 <JoinRoomButton roomId={room.id}></JoinRoomButton>
               </div>
             </div>
