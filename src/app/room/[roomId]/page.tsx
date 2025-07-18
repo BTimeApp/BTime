@@ -30,6 +30,7 @@ import Dropdown from "@/components/common/dropdown";
 import PasswordPrompt from "@/components/room/password-prompt";
 import { useRouter } from "next/navigation";
 import { useStartTimeOnTransition } from "@/hooks/useStartTimeOnTransition";
+import { RoomHeader } from "@/components/room/room-header";
 
 export default function Page() {
   const params = useParams<{ roomId: string }>();
@@ -62,12 +63,14 @@ export default function Page() {
   const [isPasswordAuthenticated, setIsPasswordAuthenticated] =
     useState<boolean>(false); //if the password has been accepted
 
-
   //user-related state
   const [userIsHost, setUserIsHost] = useState<boolean>(false);
   const [userStatus, setUserStatus] = useState<SolveStatus>("IDLE");
   const [userCompeting, setUserCompeting] = useState<boolean>(true);
-  const keyboardTimerStartTime = useStartTimeOnTransition(userStatus, "SOLVING");
+  const keyboardTimerStartTime = useStartTimeOnTransition(
+    userStatus,
+    "SOLVING"
+  );
 
   //generate socket, fetch local user from session
   const { socket, socketConnected } = useSocket(false);
@@ -134,20 +137,6 @@ export default function Page() {
     },
     [roomUpdateHandler]
   );
-
-  const getNextScramble = useCallback(() => {
-    if (userIsHost) {
-      socket.emit("skip_scramble");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userIsHost]);
-
-  const resetRoom = useCallback(() => {
-    if (userIsHost) {
-      socket.emit("reset_room");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userIsHost]);
 
   //set up socket connection, set up socket incoming events
   useEffect(() => {
@@ -258,8 +247,8 @@ export default function Page() {
       default:
         break;
     }
-  // ignore lint warning - we do not want userStatus change to trigger this hook
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // ignore lint warning - we do not want userStatus change to trigger this hook
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localRoomState, timerType]);
 
   useEffect(() => {
@@ -285,7 +274,6 @@ export default function Page() {
       setUserStatus("IDLE");
     }
   }
-
 
   function startRoom() {
     if (userIsHost) {
@@ -364,7 +352,7 @@ export default function Page() {
     } else {
       setUserCompeting(true);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userCompeting]);
 
   const endStringTimerCallback = useCallback(
@@ -421,130 +409,6 @@ export default function Page() {
   function submitLocalResult() {
     socket.emit("user_submit_result", localResult.toIResult());
   }
-
-  const RoomHeaderContent = useCallback(
-    ({ roomState, isHost }: { roomState: RoomState; isHost: boolean }) => {
-      let mainContent = <></>;
-
-      switch (roomState) {
-        case "WAITING":
-          mainContent = (
-            <>
-              <h2 className={cn("text-2xl")}>
-                Scramble will display after starting
-              </h2>
-            </>
-          );
-          break;
-        case "STARTED":
-          const scramble =
-            currentSolve > 0 ? solves.at(-1)!.solve.scramble : "";
-          mainContent = (
-            <>
-              <h2 className={cn("text-2xl")}>{scramble}</h2>
-              <div className={cn("text-md")}>{formatTipText}</div>
-            </>
-          );
-          break;
-        case "FINISHED":
-          mainContent = (
-            <>
-              <h2 className={cn("text-2xl")}>Room has finished!</h2>
-            </>
-          );
-          break;
-        default:
-          break;
-      }
-
-      return (
-        <>
-          <div className={cn("grid grid-cols-8 text-center")}>
-            <div className={cn("col-span-1 grid grid-rows-3")}>
-              {roomState == "STARTED" ? (
-                <div className={cn("row-span-1 text-lg")}>Set {currentSet}</div>
-              ) : (
-                <></>
-              )}
-              {roomState == "STARTED" && isHost ? (
-                <div className={cn("row-span-1 row-start-3")}>
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className={cn("px-1")}
-                    onClick={getNextScramble}
-                  >
-                    <h1 className={cn("font-bold text-center text-md")}>
-                      NEXT SCRAMBLE
-                    </h1>
-                  </Button>
-                </div>
-              ) : (
-                <></>
-              )}
-            </div>
-
-            <div className={cn("col-span-6 content-center grid-row")}>
-              {mainContent}
-            </div>
-
-            <div className={cn("col-span-1 grid grid-rows-3")}>
-              {roomState == "STARTED" ? (
-                <div className={cn("row-span-1 text-lg")}>
-                  Solve {currentSolve}
-                </div>
-              ) : (
-                <></>
-              )}
-              {roomState == "STARTED" && isHost ? (
-                <div className={cn("row-span-1 row-start-3")}>
-                  <Button
-                    variant="reset"
-                    size="lg"
-                    className={cn("px-1")}
-                    onClick={resetRoom}
-                  >
-                    <h1 className={cn("font-bold text-center text-md")}>
-                      RESET ROOM
-                    </h1>
-                  </Button>
-                </div>
-              ) : (
-                <></>
-              )}
-            </div>
-          </div>
-        </>
-      );
-    },
-    [currentSolve, currentSet, solves, formatTipText, getNextScramble, resetRoom]
-  );
-
-  const RoomHeader = useCallback(() => {
-    if (!isPasswordAuthenticated) {
-      return (
-        <Header>
-          <div className="text-center">
-            <h2 className={cn("text-2xl")}>{roomName}</h2>
-            <div>{roomEvent}</div>
-          </div>
-        </Header>
-      );
-    } else {
-      return (
-        <Header>
-          <RoomHeaderContent roomState={localRoomState} isHost={userIsHost} />
-        </Header>
-      );
-    }
-  }, [
-    isPasswordAuthenticated,
-    roomName,
-    roomEvent,
-    localRoomState,
-    userIsHost,
-    RoomHeaderContent,
-  ]);
 
   function RoomLeftPanel({
     roomState,
@@ -850,9 +714,7 @@ export default function Page() {
               {sortedUsers.map((user, index) => (
                 <div key={index} className="grid grid-cols-12">
                   <div className="col-span-5">{user.user.userName}</div>
-                  <div className="col-span-3">
-                    {userStatusText(user)}
-                  </div>
+                  <div className="col-span-3">{userStatusText(user)}</div>
                   <div className="col-span-2">{user.setWins}</div>
                   <div className="col-span-2">{user.points}</div>
                 </div>
@@ -867,25 +729,45 @@ export default function Page() {
 
   if (sessionLoading) {
     //TODO - replace
-    <RoomHeader />;
+
     return (
       <div className="flex flex-col h-screen">
-        <RoomHeader />
-        <div>Loading...</div>
+        <RoomHeader
+          passwordAuthenticated={isPasswordAuthenticated}
+          socket={socket}
+          roomState={localRoomState}
+          isHost={userIsHost}
+          roomName={roomName}
+          roomEvent={roomEvent}
+        />
       </div>
     );
   } else if (!localUser) {
     //TODO - replace
     return (
       <div className="flex flex-col h-screen">
-        <RoomHeader />
+        <RoomHeader
+          passwordAuthenticated={isPasswordAuthenticated}
+          socket={socket}
+          roomState={localRoomState}
+          isHost={userIsHost}
+          roomName={roomName}
+          roomEvent={roomEvent}
+        />
         <div>You are not logged in. Please log in.</div>
       </div>
     );
   } else if (!isPasswordAuthenticated) {
     return (
       <div className="flex flex-col h-screen">
-        <RoomHeader />
+        <RoomHeader
+          passwordAuthenticated={isPasswordAuthenticated}
+          socket={socket}
+          roomState={localRoomState}
+          isHost={userIsHost}
+          roomName={roomName}
+          roomEvent={roomEvent}
+        />
         <div className="flex flex-1 items-center justify-center">
           <PasswordPrompt
             socket={socket}
@@ -900,7 +782,19 @@ export default function Page() {
 
   return (
     <div className="flex flex-col h-screen">
-      <RoomHeader />
+      <RoomHeader
+        passwordAuthenticated={isPasswordAuthenticated}
+        socket={socket}
+        roomState={localRoomState}
+        isHost={userIsHost}
+        roomName={roomName}
+        roomEvent={roomEvent}
+        scramble={currentSolve > 0 ? solves.at(-1)!.solve.scramble : ""}
+        formatTipText={formatTipText}
+        currentSet={currentSet}
+        currentSolve={currentSolve}
+      />
+
       <div className={cn("grid grid-cols-2 grow")}>
         <RoomLeftPanel roomState={localRoomState} isHost={userIsHost} />
         <RoomRightPanel roomState={localRoomState} />
