@@ -31,6 +31,7 @@ import PasswordPrompt from "@/components/room/password-prompt";
 import { useRouter } from "next/navigation";
 import { useStartTimeOnTransition } from "@/hooks/useStartTimeOnTransition";
 import { RoomHeader } from "@/components/room/room-header";
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function Page() {
   const params = useParams<{ roomId: string }>();
@@ -294,6 +295,7 @@ export default function Page() {
    */
   const handleTimerStateTransition = useCallback(() => {
     if (localRoomState === "STARTED") {
+      console.log("Handle Timer State Transition Callback");
       switch (timerType) {
         case "TYPING":
           switch (userStatus) {
@@ -480,6 +482,12 @@ export default function Page() {
           </RoomPanel>
         );
       case "STARTED":
+        
+        const allLocalUserResults = solves //all solves
+          .filter((userResult) => userResult.setIndex == currentSet) //from current set
+          .map((solve) => solve.solve.results[localUser!.id]) //get result belonging to local user
+          .slice(0, -1); //exclude current solve (will be ---)
+
         const centerSection = userCompeting ? (
           <div className="flex flex-row flex-1 min-h-0">
             <div className="flex flex-col flex-1 min-h-0 justify-center">
@@ -516,11 +524,22 @@ export default function Page() {
                 />
               )}
             </div>
-            
-            <div className="flex flex-col flex-1 min-h-0 overflow-y-auto max-w-[25%]">
-                {/* time list */}
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-              </div>
+
+            <div className="flex flex-col flex-1 max-h-[50%] min-h-0 overflow-y-auto py-5 max-w-[20%] text-center">
+              <div>Times</div>
+              {allLocalUserResults
+                .reverse()
+                .map((userResult, index) =>
+                  userResult === undefined ? (
+                    <div key={index}>---</div>
+                  ) : (
+                    <div key={index}>
+                      {" "}
+                      {Result.fromIResult(userResult).toString()}
+                    </div>
+                  )
+                )}
+            </div>
           </div>
         ) : (
           <>
@@ -531,8 +550,16 @@ export default function Page() {
         );
 
         return (
-          <RoomPanel className={cn("flex flex-col h-full min-h-0 overflow-hidden bg-secondary py-1 gap-2")}>
-            <div className={cn("flex flex-row flex-none min-h-0 items-center px-3 gap-3")}>
+          <RoomPanel
+            className={cn(
+              "flex flex-col h-full min-h-0 overflow-hidden bg-secondary py-1 gap-2"
+            )}
+          >
+            <div
+              className={cn(
+                "flex flex-row flex-none min-h-0 items-center px-3 gap-3"
+              )}
+            >
               <div className={cn("text-2xl grow")}>{localUser!.userName}</div>
               <div className={cn("flex-col justify-center")}>
                 <div>Sets</div>
@@ -707,9 +734,42 @@ export default function Page() {
           }
         }
 
+        function globalTimeList(users: IRoomUser[], solves: IRoomSolve[]) {
+
+          return (
+            <div className="max-h-[50%] w-full mt-auto flex flex-col">
+              <div className="flex-1 text-foreground text-2xl">
+                  Time List
+              </div>
+              <Table className="flex-1 table-auto w-full border overflow-y-auto">
+                <TableHeader>
+                  <TableRow>
+                    {roomFormat !== "CASUAL" && <TableHead className="text-center w-10">Set</TableHead>}
+                    <TableHead className="text-center w-10">Solve</TableHead>
+                    {users.map((user) => (
+                      <TableHead key={user.user.id} className="text-center">{user.user.userName}</TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {solves.map((solve, index) => (
+                    <TableRow key={index}>
+                      {roomFormat !== "CASUAL" && <TableCell>{solve.setIndex}</TableCell>}
+                      <TableCell>{solve.solveIndex}</TableCell>
+                      {users.map((user) => (
+                        <TableCell key={user.user.id}>{solve.solve.results[user.user.id] ? Result.fromIResult(solve.solve.results[user.user.id]).toString() : "---"}</TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )
+        }
+
         return (
-          <RoomPanel className="bg-container-2 px-1 py-3">
-            <div className="grid grid-row text-center text-xl">
+          <RoomPanel className="flex flex-col h-full bg-container-2 px-1 py-3">
+            <div className="grid grid-row max-h-50 overflow-y-auto text-center text-xl">
               <div className="grid grid-cols-12">
                 <div className="col-span-5">User</div>
                 <div className="col-span-3">Time</div>
@@ -725,6 +785,7 @@ export default function Page() {
                 </div>
               ))}
             </div>
+            {globalTimeList(Object.values(users), solves)}
           </RoomPanel>
         );
       default:
