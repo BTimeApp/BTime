@@ -481,42 +481,47 @@ export default function Page() {
         );
       case "STARTED":
         const centerSection = userCompeting ? (
-          <>
-            <div className="mx-auto">
-              <TimerSection
-                timerType={timerType}
-                userStatus={userStatus}
-                useInspection={useInspection}
-                localResult={localResult}
-                keyboardTimerStartTime={keyboardTimerStartTime}
-                manualInputCallback={endStringTimerCallback}
-                startInspectionCallback={handleTimerStateTransition}
-                endInspectionCallback={(penalty: Penalty) => {
-                  setLocalPenalty(penalty);
-                  handleTimerStateTransition();
-                }}
-                endTimerCallback={endNumberTimerCallback}
-              />
+          <div className="flex flex-row flex-1 min-h-0">
+            <div className="flex flex-col flex-1 min-h-0 justify-center">
+              <div className="mx-auto">
+                <TimerSection
+                  timerType={timerType}
+                  userStatus={userStatus}
+                  useInspection={useInspection}
+                  localResult={localResult}
+                  keyboardTimerStartTime={keyboardTimerStartTime}
+                  manualInputCallback={endStringTimerCallback}
+                  startInspectionCallback={handleTimerStateTransition}
+                  endInspectionCallback={(penalty: Penalty) => {
+                    setLocalPenalty(penalty);
+                    handleTimerStateTransition();
+                  }}
+                  endTimerCallback={endNumberTimerCallback}
+                />
+              </div>
+              {userStatus === "SUBMITTING" && (
+                <RoomSubmittingButtons
+                  redoSolveCallback={redoSolve}
+                  okPenaltyCallback={() => {
+                    setLocalPenalty("OK");
+                  }}
+                  plusTwoPenaltyCallback={() => {
+                    setLocalPenalty("+2");
+                  }}
+                  dnfPenaltyCallback={() => {
+                    setLocalPenalty("DNF");
+                  }}
+                  submitResultCallback={submitLocalResult}
+                  timerType={timerType}
+                />
+              )}
             </div>
-            {userStatus === "SUBMITTING" ? (
-              <RoomSubmittingButtons
-                redoSolveCallback={redoSolve}
-                okPenaltyCallback={() => {
-                  setLocalPenalty("OK");
-                }}
-                plusTwoPenaltyCallback={() => {
-                  setLocalPenalty("+2");
-                }}
-                dnfPenaltyCallback={() => {
-                  setLocalPenalty("DNF");
-                }}
-                submitResultCallback={submitLocalResult}
-                timerType={timerType}
-              />
-            ) : (
-              <></>
-            )}
-          </>
+            
+            <div className="flex flex-col flex-1 min-h-0 overflow-y-auto max-w-[25%]">
+                {/* time list */}
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+              </div>
+          </div>
         ) : (
           <>
             <div className={cn("text-xl")}>
@@ -526,8 +531,8 @@ export default function Page() {
         );
 
         return (
-          <RoomPanel className={cn("bg-secondary py-1 gap-2")}>
-            <div className={cn("flex flex-row items-center px-3 gap-3")}>
+          <RoomPanel className={cn("flex flex-col h-full min-h-0 overflow-hidden bg-secondary py-1 gap-2")}>
+            <div className={cn("flex flex-row flex-none min-h-0 items-center px-3 gap-3")}>
               <div className={cn("text-2xl grow")}>{localUser!.userName}</div>
               <div className={cn("flex-col justify-center")}>
                 <div>Sets</div>
@@ -539,10 +544,10 @@ export default function Page() {
                 <div>{users[localUser!.id].points}</div>
               </div>
             </div>
-            <div className={cn("grow flex flex-col justify-center")}>
+            <div className={cn("flex flex-col flex-1 min-h-0")}>
               {centerSection}
             </div>
-            <div className={cn("flex flex-row gap-2 px-2")}>
+            <div className={cn("flex flex-row flex-none gap-2 px-2")}>
               <div>
                 <div>Inspection</div>
                 <Switch
@@ -795,7 +800,7 @@ export default function Page() {
         currentSolve={currentSolve}
       />
 
-      <div className={cn("grid grid-cols-2 grow")}>
+      <div className={cn("grid grid-cols-2 flex-1 min-h-0")}>
         <RoomLeftPanel roomState={localRoomState} isHost={userIsHost} />
         <RoomRightPanel roomState={localRoomState} />
       </div>
