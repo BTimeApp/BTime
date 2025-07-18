@@ -295,10 +295,7 @@ const listenSocketEvents = (io: Server) => {
             `User ${socket.user?.id} submitted new user status ${newUserStatus} to room ${socket.roomId}`
           );
           room.users[socket.user?.id].userStatus = newUserStatus;
-          // Do not reflect user status back to the same user that triggered this update!
-          // This will cause the timer component to be re-mounted since the page component re-renders on room state change
           io.to(socket.roomId.toString())
-            .except(userId)
             .emit("room_update", room);
         }
       }
