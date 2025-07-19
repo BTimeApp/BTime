@@ -39,7 +39,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Crown } from "lucide-react";
-import { useRouteChangeEvent } from "@/hooks/useRouteChange";
 
 export default function Page() {
   const params = useParams<{ roomId: string }>();
