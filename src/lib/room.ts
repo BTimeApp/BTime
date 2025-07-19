@@ -1,7 +1,7 @@
 import { IRoom, IRoomSettings } from "@/types/room";
 import { ISolve } from "@/types/solve";
 import { IRoomSolve } from "@/types/room-solve";
-import { Result } from "@/types/result";
+import { IResult, Result } from "@/types/result";
 import { generateScramble } from "@/lib/utils";
 import { IUser } from "@/types/user";
 import { ObjectId } from "bson";
@@ -213,43 +213,70 @@ export async function createRoom({roomSettings, roomId, initialHost}: {roomSetti
       console.log(`finishRoomSolve: room ${room.id} has no currentSolve to finish`);
       return;
     } 
+    const currentResults = currentSolve.solve.results;
 
-    const competingUsers = Object.values(room.users).filter(
-      (user) => user.competing
-    );
-  
-    if (competingUsers.length == 0) {
-      console.log(
-        `Room ${room.id} has 0 competing users and cannot complete the current solve`
-      );
-      return;
-    }
-  
     if (room.setFormat == "BEST_OF" || room.setFormat == "FIRST_TO") {
+      const eligibleResults: [string, IResult][] = Object.entries(currentResults).filter(([userId, result]) => room.users[userId]?.competing);
+
       let fastest_uid = null;
       let fastest_result: Result | undefined = undefined;
-  
-      for (const roomUser of competingUsers) {
-        const result: Result = Result.fromIResult(
-          currentSolve.solve.results[roomUser.user.id]
-        );
-        if (!fastest_result || result.isLessThan(fastest_result)) {
-          //expected behavior: ties are broken by the first user to submit the time.
-          //current behavior: ties are broken by the first user in the competingUsers list (generally the earlier one to join the room). TODO - fix
-          fastest_uid = roomUser.user.id;
+
+      for (const [userId, iResult] of eligibleResults) {
+        const result: Result = Result.fromIResult(iResult);
+        if ((result.getPenalty() !== "DNF") && (!fastest_result || result.isLessThan(fastest_result))) {
+          fastest_uid = userId;
           fastest_result = result;
         }
       }
-  
-      // 0 users means return
-      if (!fastest_uid || !fastest_result) {
-        console.log(`Room ${room.id} has no winner for current solve. `);
-        return;
+
+      if (fastest_result) {
+        if (!fastest_uid || !fastest_result) {
+          console.log(`Room ${room.id} has no winner for current solve. `);
+          return;
+        }
+        currentSolve.solveWinner = fastest_uid;
+        room.users[fastest_uid].points += 1;
       }
-      currentSolve.solveWinner = fastest_uid;
-      room.users[fastest_uid].points += 1;
     }
+    
   
+
+    // const competingUsers = Object.values(room.users).filter(
+    //   (user) => user.competing
+    // );
+  
+    // if (competingUsers.length == 0) {
+    //   console.log(
+    //     `Room ${room.id} has 0 competing users and cannot complete the current solve`
+    //   );
+    //   return;
+    // }
+    // if (room.setFormat == "BEST_OF" || room.setFormat == "FIRST_TO") {
+    //   let fastest_uid = null;
+    //   let fastest_result: Result | undefined = undefined;
+  
+    //   for (const roomUser of competingUsers) {
+    //     const result: Result = Result.fromIResult(
+    //       currentSolve.solve.results[roomUser.user.id]
+    //     );
+    //     if (result && (!fastest_result || result.isLessThan(fastest_result))) {
+    //       //expected behavior: ties are broken by the first user to submit the time.
+    //       //current behavior: ties are broken by the first user in the competingUsers list (generally the earlier one to join the room). TODO - fix
+    //       fastest_uid = roomUser.user.id;
+    //       fastest_result = result;
+    //     }
+    //   }
+  
+    //   // 0 users means return
+    //   if (!fastest_uid || !fastest_result) {
+    //     console.log(`Room ${room.id} has no winner for current solve. `);
+    //     return;
+    //   }
+    //   currentSolve.solveWinner = fastest_uid;
+    //   room.users[fastest_uid].points += 1;
+    // }
+  
+    // check for any set winners. if so, update room accordingly.
     const setWinners: string[] = findSetWinners(room);
     currentSolve.setWinners = setWinners;
     if (setWinners.length > 0) {
