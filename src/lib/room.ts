@@ -209,6 +209,11 @@ export async function createRoom({roomSettings, roomId, initialHost}: {roomSetti
     if (room.solves.length == 0) return;
   
     const currentSolve = room.solves.at(-1);
+    if (!currentSolve) {
+      console.log(`finishRoomSolve: room ${room.id} has no currentSolve to finish`);
+      return;
+    } 
+
     const competingUsers = Object.values(room.users).filter(
       (user) => user.competing
     );
@@ -226,10 +231,11 @@ export async function createRoom({roomSettings, roomId, initialHost}: {roomSetti
   
       for (const roomUser of competingUsers) {
         const result: Result = Result.fromIResult(
-          currentSolve!.solve.results[roomUser.user.id]
+          currentSolve.solve.results[roomUser.user.id]
         );
         if (!fastest_result || result.isLessThan(fastest_result)) {
-          //ties are broken by the first user to submit the time.
+          //expected behavior: ties are broken by the first user to submit the time.
+          //current behavior: ties are broken by the first user in the competingUsers list (generally the earlier one to join the room). TODO - fix
           fastest_uid = roomUser.user.id;
           fastest_result = result;
         }
@@ -240,10 +246,12 @@ export async function createRoom({roomSettings, roomId, initialHost}: {roomSetti
         console.log(`Room ${room.id} has no winner for current solve. `);
         return;
       }
+      currentSolve.solveWinner = fastest_uid;
       room.users[fastest_uid].points += 1;
     }
   
     const setWinners: string[] = findSetWinners(room);
+    currentSolve.setWinners = setWinners;
     if (setWinners.length > 0) {
       //update set wins for these users
       setWinners.map((uid) => (room.users[uid].setWins += 1));

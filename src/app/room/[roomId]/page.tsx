@@ -1,5 +1,4 @@
 "use client";
-import Header from "@/components/common/header";
 import { useParams } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import {
@@ -31,7 +30,15 @@ import PasswordPrompt from "@/components/room/password-prompt";
 import { useRouter } from "next/navigation";
 import { useStartTimeOnTransition } from "@/hooks/useStartTimeOnTransition";
 import { RoomHeader } from "@/components/room/room-header";
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Crown } from "lucide-react";
 
 export default function Page() {
   const params = useParams<{ roomId: string }>();
@@ -482,7 +489,6 @@ export default function Page() {
           </RoomPanel>
         );
       case "STARTED":
-        
         const allLocalUserResults = solves //all solves
           .filter((userResult) => userResult.setIndex == currentSet) //from current set
           .map((solve) => solve.solve.results[localUser!.id]) //get result belonging to local user
@@ -735,36 +741,66 @@ export default function Page() {
         }
 
         function globalTimeList(users: IRoomUser[], solves: IRoomSolve[]) {
-
           return (
             <div className="max-h-[50%] w-full mt-auto flex flex-col">
-              <div className="flex-1 text-foreground text-2xl">
-                  Time List
-              </div>
+              <div className="flex-1 text-foreground text-2xl">Time List</div>
               <Table className="flex-1 table-auto w-full border overflow-y-auto">
                 <TableHeader>
                   <TableRow>
-                    {roomFormat !== "CASUAL" && <TableHead className="text-center w-10">Set</TableHead>}
+                    {roomFormat !== "CASUAL" && (
+                      <TableHead className="text-center w-10">Set</TableHead>
+                    )}
                     <TableHead className="text-center w-10">Solve</TableHead>
                     {users.map((user) => (
-                      <TableHead key={user.user.id} className="text-center">{user.user.userName}</TableHead>
+                      <TableHead key={user.user.id} className="text-center">
+                        {user.user.userName}
+                      </TableHead>
                     ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {solves.map((solve, index) => (
-                    <TableRow key={index}>
-                      {roomFormat !== "CASUAL" && <TableCell>{solve.setIndex}</TableCell>}
-                      <TableCell>{solve.solveIndex}</TableCell>
-                      {users.map((user) => (
-                        <TableCell key={user.user.id}>{solve.solve.results[user.user.id] ? Result.fromIResult(solve.solve.results[user.user.id]).toString() : "---"}</TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
+                  {solves.map((solve, index) => {
+                    const solveWinner: string | undefined = solve.solveWinner;
+                    const setWinners: string[] | undefined = solve.setWinners;
+
+                    return (
+                      <TableRow key={index}>
+                        {roomFormat !== "CASUAL" && (
+                          <TableCell>{solve.setIndex}</TableCell>
+                        )}
+                        <TableCell>{solve.solveIndex}</TableCell>
+                        {users.map((user) => {
+                          let cellClassName = "";
+                          if (solve.solveWinner == user.user.id) {
+                            cellClassName += "font-bold";
+                          }
+                          return (
+                            <TableCell
+                              key={user.user.id}
+                              className={cellClassName}
+                            >
+                              <div className="flex flex-row text-center items-center justify-center">
+                                {setWinners?.includes(user.user.id) && (
+                                  <Crown />
+                                )}
+                                <div>
+                                  {solve.solve.results[user.user.id]
+                                    ? Result.fromIResult(
+                                        solve.solve.results[user.user.id]
+                                      ).toString()
+                                    : "---"}
+                                </div>
+                              </div>
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
-          )
+          );
         }
 
         return (
