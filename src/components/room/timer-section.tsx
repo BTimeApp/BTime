@@ -3,7 +3,7 @@ import KeyListener from "@/components/common/key-listener";
 import StopwatchTimer from "@/components/room/stopwatch-timer";
 import { Penalty, Result } from "@/types/result";
 import { SolveStatus } from "@/types/status";
-import { TimerType } from "@/types/timerType";
+import { TimerType } from "@/types/timer-type";
 import { CallbackInput } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import InspectionCountdown from "./inspection-countdown";

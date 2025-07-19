@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { IRoomSummary } from "@/types/roomListingInfo";
+import { IRoomSummary } from "@/types/room-listing-info";
 import {
   MATCH_FORMAT_ABBREVIATION_MAP,
   SET_FORMAT_ABBREVIATION_MAP,

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { authMiddleware } from "../auth";
-import { rooms } from "../server_objects";
-import { IRoomSummary, roomToSummary } from "@/types/roomListingInfo";
+import { rooms } from "../server-objects";
+import { IRoomSummary, roomToSummary } from "@/types/room-listing-info";
 
 /** Adds sub-API routes (v0) to an application. Meant to be used from within the /api route. ([btime]/api/v0/...)
  *

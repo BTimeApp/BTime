@@ -2,13 +2,13 @@ import express, { Request, Response } from "express";
 import { createServer } from "http";
 import next from "next";
 import { connectToDB } from "@/server/database/database";
-import { initSocket, SocketMiddleware } from "@/server/socket/init_socket";
-import { handleConfig } from "@/server/load_config";
+import { initSocket, SocketMiddleware } from "@/server/socket/init-socket";
+import { handleConfig } from "@/server/load-config";
 import { createAuthRouter } from "@/server/auth";
 import { api } from "@/server/api";
 import passport from 'passport';
 import session from 'express-session';
-import { users } from "@/server/server_objects";
+import { users } from "@/server/server-objects";
 import { rateLimit } from "express-rate-limit";
 
 export async function startServer(): Promise<void> {

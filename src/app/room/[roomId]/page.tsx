@@ -12,7 +12,7 @@ import {
   SET_FORMAT_MAP,
   getVerboseFormatText,
 } from "@/types/room";
-import { IRoomUser } from "@/types/roomUser";
+import { IRoomUser } from "@/types/room-user";
 import { Penalty, Result } from "@/types/result";
 import { Button } from "@/components/ui/button";
 import { cn, toLowerExceptFirst } from "@/lib/utils";
@@ -20,8 +20,8 @@ import RoomPanel from "@/components/room/room-panel";
 import { useSocket } from "@/hooks/useSocket";
 import { Switch } from "@/components/ui/switch";
 import { SolveStatus } from "@/types/status";
-import { TIMER_TYPES, TimerType } from "@/types/timerType";
-import { IRoomSolve } from "@/types/roomSolve";
+import { TIMER_TYPES, TimerType } from "@/types/timer-type";
+import { IRoomSolve } from "@/types/room-solve";
 import { useSession } from "@/context/sessionContext";
 import TimerSection from "@/components/room/timer-section";
 import RoomSubmittingButtons from "@/components/room/room-submitting-buttons";

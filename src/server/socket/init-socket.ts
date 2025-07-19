@@ -1,7 +1,7 @@
 import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
 import { Types } from "mongoose";
-import { rooms, users } from "@/server/server_objects";
+import { rooms, users } from "@/server/server-objects";
 import { IRoom, RoomState, IRoomSettings } from "@/types/room";
 import {
   skipScramble,
@@ -12,10 +12,10 @@ import {
   createRoom,
 } from "@/lib/room";
 import { IUser } from "@/types/user";
-import { IRoomUser } from "@/types/roomUser";
+import { IRoomUser } from "@/types/room-user";
 import { IResult } from "@/types/result";
 import { SolveStatus } from "@/types/status";
-import { IRoomSolve } from "@/types/roomSolve";
+import { IRoomSolve } from "@/types/room-solve";
 import { ServerResponse } from "http";
 import { NextFunction } from "express";
 import { ObjectId } from "bson";

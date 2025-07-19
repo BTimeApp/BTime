@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import KeyListener from "../common/key-listener";
-import { TimerType } from "@/types/timerType";
+import { TimerType } from "@/types/timer-type";
 
 type RoomSubmittingButtonsProps = {
   redoSolveCallback: () => void;

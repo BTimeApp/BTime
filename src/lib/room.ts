@@ -1,6 +1,6 @@
 import { IRoom, IRoomSettings } from "@/types/room";
 import { ISolve } from "@/types/solve";
-import { IRoomSolve } from "@/types/roomSolve";
+import { IRoomSolve } from "@/types/room-solve";
 import { Result } from "@/types/result";
 import { generateScramble } from "@/lib/utils";
 import { IUser } from "@/types/user";

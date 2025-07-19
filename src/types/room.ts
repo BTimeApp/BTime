@@ -1,6 +1,6 @@
 import { IUser } from "@/types/user";
-import { IRoomUser } from "@/types/roomUser";
-import { IRoomSolve } from "@/types/roomSolve";
+import { IRoomUser } from "@/types/room-user";
+import { IRoomSolve } from "@/types/room-solve";
 
 //defines all legal events
 export const ROOM_EVENTS = [

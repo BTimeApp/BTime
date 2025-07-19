@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { PassportStatic } from "passport";
-import { users } from "@/server/server_objects";
+import { users } from "@/server/server-objects";
 import { Strategy as CustomStrategy } from "passport-custom";
 import { UserModel, UserDocument, toIUser } from "@/server/models/user";
 

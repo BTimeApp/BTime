@@ -1,5 +1,5 @@
 import { Schema, model, Error } from 'mongoose';
-import { IRoomUser } from '@/types/roomUser';
+import { IRoomUser } from '@/types/room-user';
 import { IRoom, MATCH_FORMATS, ROOM_EVENTS, ROOM_FORMATS, RoomEvent, RoomFormat, SET_FORMATS } from '@/types/room';
 import { solveSchema } from '@/server/models/solve';
 
