@@ -69,7 +69,7 @@ export function createWCAAuth(passport: PassportStatic): Router {
             name: profile.name,
             wcaIdNo: profile.id,
             wcaId: profile.wca_id,
-            avatarURL: profile.avatar?.url,
+            avatarURL: profile.avatar?.thumb_url,
             $setOnInsert: {
               //only set these fields upon insertion (protect against overriding existing fields from other OAuth/user changing)
               email: profile.email,
