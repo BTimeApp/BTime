@@ -279,7 +279,7 @@ export default function Page() {
     return () => {
       socket.emit("user_disconnect", {});
     }
-  }, []);
+  }, [socket]);
 
   /**
    * Toggles user spectating/competing
