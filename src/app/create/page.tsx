@@ -84,9 +84,9 @@ export default function Page() {
   const [roomFormat, setRoomFormat] = useState<string>("Racing");
   const [event, setEvent] = useState<string>("3x3");
   const [matchFormat, setMatchFormat] = useState<string>("Best Of");
-  const [numSets, setNumSets] = useState<number>(1);
+  const [numSets, setNumSets] = useState<number>(3);
   const [setFormat, setSetFormat] = useState<string>("Best Of");
-  const [numSolves, setNumSolves] = useState<number>(1);
+  const [numSolves, setNumSolves] = useState<number>(7);
 
   /* Toggle + related Options */
   const [roomIsPrivate, setRoomIsPrivate] = useState<boolean>(false); // default is public
@@ -201,7 +201,7 @@ export default function Page() {
           ></CreateRoomDropdown>
           <CreateSubtitle subtitle="# Sets" appear={roomFormat !== "Casual"} />
           <CreateInput
-            placeholder="1"
+            placeholder="3"
             onChange={(val: string) => {
               const numParsed: number = parseInt(val);
               if (!isNaN(numParsed)) {
@@ -224,7 +224,7 @@ export default function Page() {
 
             <CreateSubtitle subtitle="# Solves" appear={roomFormat !== "Casual"} />
             <CreateInput
-              placeholder="1"
+              placeholder="7"
               onChange={(val: string) => {
                 const numParsed: number = parseInt(val);
                 if (!isNaN(numParsed)) {
