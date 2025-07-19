@@ -17,12 +17,12 @@ import { Penalty, Result } from "@/types/result";
 import { Button } from "@/components/ui/button";
 import { cn, toLowerExceptFirst } from "@/lib/utils";
 import RoomPanel from "@/components/room/room-panel";
-import { useSocket } from "@/hooks/useSocket";
 import { Switch } from "@/components/ui/switch";
 import { SolveStatus } from "@/types/status";
 import { TIMER_TYPES, TimerType } from "@/types/timer-type";
 import { IRoomSolve } from "@/types/room-solve";
 import { useSession } from "@/context/sessionContext";
+import { useSocket } from "@/context/socketContext";
 import TimerSection from "@/components/room/timer-section";
 import RoomSubmittingButtons from "@/components/room/room-submitting-buttons";
 import Dropdown from "@/components/common/dropdown";
@@ -81,7 +81,7 @@ export default function Page() {
   );
 
   //generate socket, fetch local user from session
-  const { socket, socketConnected } = useSocket(false);
+  const { socket, socketConnected } = useSocket();
   const { user: localUser, loading: sessionLoading } = useSession();
 
   const router = useRouter();

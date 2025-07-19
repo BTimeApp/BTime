@@ -7,8 +7,8 @@ import Header from "@/components/common/header";
 import CreateInput from "@/components/create/create-input";
 import CreateToggleButton from "@/components/create/create-toggle";
 import { useState, useEffect, useMemo } from "react";
-import { useSocket } from "@/hooks/useSocket";
 import { useSession } from "@/context/sessionContext";
+import { useSocket } from "@/context/socketContext";
 import {
   IRoomSettings,
   MatchFormat,
@@ -95,7 +95,7 @@ export default function Page() {
   // const [allowSpectators, setAllowSpectators] = useState<boolean>(true); // if private room, allow spec, only if they have pw, else public room freely choose
 
   //generate socket, fetch local user from session
-  const { socket, socketConnected } = useSocket(false);
+  const { socket, socketConnected } = useSocket();
   const { user: localUser } = useSession();
 
   //join room upon load/change of user/room

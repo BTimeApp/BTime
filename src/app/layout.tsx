@@ -5,6 +5,7 @@ import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { ThemeProvider } from "next-themes";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { SessionProvider } from "@/context/sessionContext";
+import { SocketProvider } from "@/context/socketContext";
 
 export const metadata: Metadata = {
   title: "BTime",
@@ -24,26 +25,31 @@ export default function RootLayout({
       lang="en"
     >
       <head>
-        <link rel="stylesheet" href="https://cdn.cubing.net/v0/css/@cubing/icons/css"/> 
+        <link
+          rel="stylesheet"
+          href="https://cdn.cubing.net/v0/css/@cubing/icons/css"
+        />
       </head>
       <body className={`${inter.className} antialiased h-screen flex flex-col`}>
         <SessionProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem={true}
-          >
-            <SidebarProvider defaultOpen={false}>
-              <AppSidebar />
-              <SidebarInset>
-                <div className="flex flex-1 flex-col gap-4 pt-0">
-                  <div className="flex flex-col flex-1 h-screen rounded-xl bg-background">
-                    {children}
+          <SocketProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem={true}
+            >
+              <SidebarProvider defaultOpen={false}>
+                <AppSidebar />
+                <SidebarInset>
+                  <div className="flex flex-1 flex-col gap-4 pt-0">
+                    <div className="flex flex-col flex-1 h-screen rounded-xl bg-background">
+                      {children}
+                    </div>
                   </div>
-                </div>
-              </SidebarInset>
-            </SidebarProvider>
-          </ThemeProvider>
+                </SidebarInset>
+              </SidebarProvider>
+            </ThemeProvider>
+          </SocketProvider>
         </SessionProvider>
       </body>
     </html>
