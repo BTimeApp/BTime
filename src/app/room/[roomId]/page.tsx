@@ -39,6 +39,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Crown } from "lucide-react";
+import { useRouteChangeEvent } from "@/hooks/useRouteChange";
 
 export default function Page() {
   const params = useParams<{ roomId: string }>();
@@ -271,6 +272,15 @@ export default function Page() {
     // safe to ignore router dependency here since we only push
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRoomValid]);
+
+  /**
+   * Page unmount hook
+   */
+  useEffect(() => {
+    return () => {
+      socket.emit("user_disconnect", {});
+    }
+  }, []);
 
   /**
    * Toggles user spectating/competing

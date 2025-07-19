@@ -100,6 +100,56 @@ const listenSocketEvents = (io: Server) => {
       return rooms.get(socket.roomId);
     }
 
+    function handleDisconnect() {
+      // TODO - this logic may be moved to an express API call later
+      if (socket.roomId && socket.user) {
+        const room = rooms.get(socket.roomId);
+        if (!room) return;
+
+        //remove user from room
+        delete room.users[socket.user?.id];
+        io.to(socket.roomId.toString()).emit("room_update", room);
+
+        //check if no more users, if so, delete room.
+        if (Object.keys(room.users).length == 0) {
+          console.log(`Room ${socket.roomId} is empty. Deleting room.`);
+          rooms.delete(socket.roomId);
+          return;
+        }
+
+        //check if user is host OR there is somehow no host.
+        if ((room.host && room.host.id == socket.user.id) || !room.host) {
+          if (room.host) {
+            console.log(
+              `Host has left room ${socket.roomId}. Promoting a new host.`
+            );
+          } else {
+            console.log(
+              `User left room without a host: ${socket.roomId}. Promoting a new host.`
+            );
+          }
+
+          let earliestID = null;
+          let earliestUser: IRoomUser | null = null;
+
+          for (const userID in room.users) {
+            const user = room.users[userID];
+
+            if (!earliestUser || user.joinedAt < earliestUser.joinedAt) {
+              earliestUser = user;
+              earliestID = new Types.ObjectId(userID);
+            }
+          }
+
+          room.host = room.users[earliestID!.toString()].user;
+          console.log(
+            `Room ${socket.roomId} promoted a new host: ${room.host}.`
+          );
+          io.to(socket.roomId.toString()).emit("room_update", room);
+        }
+      }
+    }
+
     socket.on(
       "create_room",
       async (
@@ -359,54 +409,14 @@ const listenSocketEvents = (io: Server) => {
       }
     });
 
+    //manual trigger (e.g. on client leaving the room page)
+    socket.on("user_disconnect", () => {
+      handleDisconnect();
+    });
+
+    //socket disconnection - automatically trigger on client closing all webpages
     socket.on("disconnect", () => {
-      // TODO - this logic may be moved to an express API call later
-      if (socket.roomId && socket.user) {
-        const room = rooms.get(socket.roomId);
-        if (!room) return;
-
-        //remove user from room
-        delete room.users[socket.user?.id];
-        io.to(socket.roomId.toString()).emit("room_update", room);
-
-        //check if no more users, if so, delete room.
-        if (Object.keys(room.users).length == 0) {
-          console.log(`Room ${socket.roomId} is empty. Deleting room.`);
-          rooms.delete(socket.roomId);
-          return;
-        }
-
-        //check if user is host OR there is somehow no host.
-        if ((room.host && room.host.id == socket.user.id) || !room.host) {
-          if (room.host) {
-            console.log(
-              `Host has left room ${socket.roomId}. Promoting a new host.`
-            );
-          } else {
-            console.log(
-              `User left room without a host: ${socket.roomId}. Promoting a new host.`
-            );
-          }
-
-          let earliestID = null;
-          let earliestUser: IRoomUser | null = null;
-
-          for (const userID in room.users) {
-            const user = room.users[userID];
-
-            if (!earliestUser || user.joinedAt < earliestUser.joinedAt) {
-              earliestUser = user;
-              earliestID = new Types.ObjectId(userID);
-            }
-          }
-
-          room.host = room.users[earliestID!.toString()].user;
-          console.log(
-            `Room ${socket.roomId} promoted a new host: ${room.host}.`
-          );
-          io.to(socket.roomId.toString()).emit("room_update", room);
-        }
-      }
+      handleDisconnect();
     });
   });
 };
