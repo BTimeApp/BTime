@@ -39,6 +39,7 @@ export default function ProfileView() {
           alt="/images/C_logo.png"
           width="200"
           height="200"
+          className="rounded-[50%] shadow-lg"
         />
       </div>
       {/* TODO - add more user info */}
