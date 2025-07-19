@@ -742,11 +742,11 @@ export default function Page() {
 
         function globalTimeList(users: IRoomUser[], solves: IRoomSolve[]) {
           return (
-            <div className="max-h-[50%] w-full mt-auto flex flex-col">
+            <div className="max-h-[50%] w-full mt-auto flex flex-col bg-inherit">
               <div className="flex-1 text-foreground text-2xl">Time List</div>
-              <Table className="flex-1 table-auto w-full border overflow-y-auto">
-                <TableHeader>
-                  <TableRow>
+              <Table className="w-full border-collapse bg-inherit">
+                <TableHeader className="sticky top-0 z-10 shadow-sm bg-inherit">
+                  <TableRow className="bg-inherit">
                     {roomFormat !== "CASUAL" && (
                       <TableHead className="text-center w-10">Set</TableHead>
                     )}
@@ -758,7 +758,7 @@ export default function Page() {
                     ))}
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody className="flex-1 overflow-auto">
                   {solves.map((solve, index) => {
                     const solveWinner: string | undefined = solve.solveWinner;
                     const setWinners: string[] | undefined = solve.setWinners;
@@ -766,12 +766,12 @@ export default function Page() {
                     return (
                       <TableRow key={index}>
                         {roomFormat !== "CASUAL" && (
-                          <TableCell>{solve.setIndex}</TableCell>
+                          <TableCell className="w-10">{solve.setIndex}</TableCell>
                         )}
-                        <TableCell>{solve.solveIndex}</TableCell>
+                        <TableCell className="w-10">{solve.solveIndex}</TableCell>
                         {users.map((user) => {
                           let cellClassName = "";
-                          if (solve.solveWinner == user.user.id) {
+                          if (solveWinner == user.user.id) {
                             cellClassName += "font-bold";
                           }
                           return (
