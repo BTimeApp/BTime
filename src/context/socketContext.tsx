@@ -2,6 +2,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { Socket } from "socket.io-client";
 import { getSocket } from "@/lib/socket";
+import { useSession } from "@/context/sessionContext";
 
 interface SocketContextValue {
   socket: Socket;
@@ -13,17 +14,20 @@ const SocketContext = createContext<SocketContextValue | null>(null);
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const socket = getSocket();
   const [socketConnected, setSocketConnected] = useState(socket.connected);
+  const { user } = useSession();
 
   useEffect(() => {
-    if (!socket.connected) socket.connect();
-
     const onConnect = () => setSocketConnected(true);
-    socket.on("connect", onConnect);
+    
+    if (user && !socket.connected) {
+        socket.connect();
+        socket.on("connect", onConnect);
+    }
 
     return () => {
       socket.off("connect", onConnect);
     };
-  }, [socket]);
+  }, [socket, user]);
 
   return (
     <SocketContext.Provider value={{ socket, socketConnected }}>
