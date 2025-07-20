@@ -39,6 +39,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Crown } from "lucide-react";
+import SolveDialog from "@/components/room/solve-dialog";
 
 export default function Page() {
   const params = useParams<{ roomId: string }>();
@@ -773,7 +774,8 @@ export default function Page() {
                     const setWinners: string[] | undefined = solve.setWinners;
 
                     return (
-                      <TableRow key={index}>
+                      <SolveDialog key={index} setIndex={roomFormat==="CASUAL" ? undefined : solve.setIndex} solveIndex={solve.solveIndex} scramble={solve.solve.scramble} event={roomEvent}>
+                        <TableRow>
                         {roomFormat !== "CASUAL" && (
                           <TableCell className="w-10">{solve.setIndex}</TableCell>
                         )}
@@ -804,6 +806,7 @@ export default function Page() {
                           );
                         })}
                       </TableRow>
+                      </SolveDialog>
                     );
                   })}
                 </TableBody>

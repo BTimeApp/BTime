@@ -6,6 +6,7 @@ import { ThemeProvider } from "next-themes";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { SessionProvider } from "@/context/sessionContext";
 import { SocketProvider } from "@/context/socketContext";
+import Script from "next/script";
 
 export const metadata: Metadata = {
   title: "BTime",
@@ -29,6 +30,9 @@ export default function RootLayout({
           rel="stylesheet"
           href="https://cdn.cubing.net/v0/css/@cubing/icons/css"
         />
+
+      <Script src="https://cdn.cubing.net/v0/js/scramble-display" type="module"></Script>
+
       </head>
       <body className={`${inter.className} antialiased h-screen flex flex-col`}>
         <SessionProvider>

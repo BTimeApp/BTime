@@ -58,6 +58,24 @@ export const ROOM_EVENT_ICON_SRC_MAP = new Map<RoomEvent, string>([
   ["5bld", "event-555bf"]
 ]);
 
+export const ROOM_EVENT_JS_NAME_MAP = new Map<RoomEvent, string>([
+  ["333", "333"],
+  ["222", "222"],
+  ["444", "444"],
+  ["555", "555"],
+  ["666", "666"],
+  ["777", "777"],
+  ["megaminx", "minx"],
+  ["pyraminx", "pyram"],
+  ["skewb", "skewb"],
+  ["clock", "clock"],
+  ["sq1", "sq1"],
+  ["3oh", "333oh"],
+  ["3bld", "333bf"],
+  ["4bld", "444bf"],
+  ["5bld", "555bf"]
+]);
+
 //defines all legal formats (more to come hopefully)
 export const ROOM_FORMATS = [
   "CASUAL", //no points or score, just cubing
