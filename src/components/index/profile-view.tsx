@@ -37,8 +37,8 @@ export default function ProfileView() {
         <Image
           src={avatarURL ? avatarURL : "/images/C_logo.png"}
           alt="/images/C_logo.png"
-          width="120"
-          height="120"
+          width="200"
+          height="200"
           className="rounded-[50%] shadow-lg"
         />
       </div>
