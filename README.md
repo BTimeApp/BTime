@@ -2,7 +2,9 @@
 BTime is a web application for social/competitive online cubing.
 
 ## Features
-BTime is in development. New features coming soon!
+* Room creation with custom racing modes (best of N, first to N sets | best of M, first to M, average of M, mean of M solves)
+
+BTime is still in active development. New features coming soon!
 
 ## Development
 These are basic instructions for hosting the BTime webapp locally.
@@ -44,5 +46,7 @@ This means the webapp is running on your local machine!
 You can view BTime on [http://0.0.0.0:8080](http://0.0.0.0:8080). Others on your local network can also use the url `http://[your_ip]:8080`to access the site if you've configured your machine's firewall correctly.
 
 
-## Licenses
-This project uses [icons.cubing.net](https://icons.cubing.net/) icons, which is allowed under the MIT License.
+## Licensed Work
+Cube icons are from [icons.cubing.net](https://icons.cubing.net/), which is under the MIT License.
+
+Scramble drawings are from the [scramble-display](https://github.com/cubing/scramble-display) library under the GPL license (v3+).
