@@ -30,13 +30,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       .finally(() => {
         setLoading(false);
       });
-
-    //   if (res.ok) {
-    //     const data = await res.json();
-    //     setUser(data.user);
-    //   } else {
-    //     setUser(undefined);
-    //   }
   };
 
   useEffect(() => {
