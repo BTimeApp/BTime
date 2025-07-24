@@ -15,7 +15,14 @@ export interface UserDocument extends Document {
 const userSchema = new Schema(
   {
     name: { type: String, required: true },
-    userName: { type: String, required: true },
+    userName: {
+      type: String,
+      required: true,
+      minlength: 5,
+      maxlength: 25,
+      match: /^[a-zA-Z0-9_.]+$/, // Only alphanumeric + underscore,
+      unique: true,
+    }, 
     email: { type: String, required: true },
     wcaId: { type: String, required: false },
     wcaIdNo: { type: Number, required: false }, //the ID number stored in WCA databases. Used during WCA OAuth login
@@ -41,6 +48,6 @@ export function toIUser(user: UserDocument): IUser {
     email: user.email,
     userName: user.userName,
     wcaId: user.wcaId,
-    avatarURL: user.avatarURL
+    avatarURL: user.avatarURL,
   };
 }
