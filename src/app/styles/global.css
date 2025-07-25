@@ -87,6 +87,7 @@
   --error-foreground: oklch(1 0 0);
   --error-container: oklch(0.76 0.1444 13.67);
   --on-error-container: oklch(0 0 0);
+  --success: oklch(0.6587 0.228585 136.59);
 
   /* TODO: find out how to remove/replace */
   --popover: oklch(1 0 0);
@@ -139,6 +140,7 @@
   --error-foreground: oklch(0 0 0);
   --error-container: oklch(0.64 0.2484 24.11);
   --on-error-container: oklch(1 0 0);
+  --success: oklch(0.9307 0.228585 123.0902);
 
   /* TODO: find out how to remove/replace */
   --popover: oklch(0.205 0 0);
@@ -179,4 +181,35 @@
   .subsection-title {
     @apply w-40 text-foreground m-10 text-2xl font-bold mt-0 mb-0;
   }
+}
+
+@layer utilities {
+  @keyframes flash-success {
+    0% {
+      border-color: var(--success);
+    }
+    100% {
+      border-color: transparent;
+    }
+  }
+
+  @keyframes flash-fail {
+    0% {
+      border-color: var(--error);
+    }
+    100% {
+      border-color: transparent;
+    }
+  }
+
+  .animate-flash-success {
+    @apply border-2 border-transparent;
+    animation: flash-success 2.0s ease;
+  }
+
+  .animate-flash-fail {
+    @apply border-2 border-transparent;
+    animation: flash-fail 2.0s ease;
+  }
+
 }

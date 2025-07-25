@@ -16,6 +16,8 @@ import { useCallback, useState } from "react";
 export default function Page() {
   const { user: localUser, refresh } = useSession();
   const [username, setUsername] = useState<string>("");
+  const [usernameFieldFlash, setUsernameFieldFlash] = useState<string>("");
+
 
   const submitProfileChanges = useCallback(async () => {
     const reqBody = {
@@ -33,12 +35,21 @@ export default function Page() {
 
     //expect the backend to use json
     const body = await res.json();
-    console.log(body);
 
+    //TODO - parse body and set error messages
+
+    //set field flash colors based on message
     if (!res.ok) {
       console.log(res.status, body?.message);
+      setUsernameFieldFlash("animate-flash-fail");
+      setTimeout(() => setUsernameFieldFlash(""), 2000); // Clear after animation
       return;
+    } else {
+      setUsernameFieldFlash("animate-flash-success");
+      setTimeout(() => setUsernameFieldFlash(""), 2000); // Clear after animation
     }
+  
+    
 
     //reset fillable fields
     setUsername("");
@@ -70,6 +81,7 @@ export default function Page() {
               onChange={(event) => {
                 setUsername(event.target.value);
               }}
+              className={`${usernameFieldFlash}`}
             ></Input>
           </div>
           <div>Email: {localUser.email}</div>
