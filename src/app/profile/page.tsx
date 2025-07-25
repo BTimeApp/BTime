@@ -16,7 +16,8 @@ import { useCallback, useState } from "react";
 export default function Page() {
   const { user: localUser, refresh } = useSession();
   const [username, setUsername] = useState<string>("");
-  const [usernameFieldFlash, setUsernameFieldFlash] = useState<string>("");
+  const [usernameFieldClass, setUsernameFieldClass] = useState<string>("");
+  const [usernameFieldError, setUsernameFieldError] = useState<string>("");
 
 
   const submitProfileChanges = useCallback(async () => {
@@ -36,17 +37,17 @@ export default function Page() {
     //expect the backend to use json
     const body = await res.json();
 
-    //TODO - parse body and set error messages
 
     //set field flash colors based on message
     if (!res.ok) {
-      console.log(res.status, body?.message);
-      setUsernameFieldFlash("animate-flash-fail");
-      setTimeout(() => setUsernameFieldFlash(""), 2000); // Clear after animation
+      console.log(body.message);
+      setUsernameFieldError(body.message);
+      setUsernameFieldClass("border-error");
       return;
     } else {
-      setUsernameFieldFlash("animate-flash-success");
-      setTimeout(() => setUsernameFieldFlash(""), 2000); // Clear after animation
+      setUsernameFieldError("");
+      setUsernameFieldClass("animate-flash-success");
+      setTimeout(() => setUsernameFieldClass(""), 2000); // Clear after animation
     }
   
     
@@ -81,9 +82,10 @@ export default function Page() {
               onChange={(event) => {
                 setUsername(event.target.value);
               }}
-              className={`${usernameFieldFlash}`}
+              className={`${usernameFieldClass}`}
             ></Input>
           </div>
+          {usernameFieldError && <div className="text-xs text-error">{usernameFieldError}</div>}
           <div>Email: {localUser.email}</div>
           <div>WCAID: {localUser.wcaId ? localUser.wcaId : "None"}</div>
           <Button
