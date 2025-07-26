@@ -80,7 +80,7 @@ function TimerSection({
               >
                 <div
                   className={cn(
-                    `text-2xl ${spacebarDown ? "text-green-500" : ""}`
+                    `text-4xl ${spacebarDown ? "text-green-500" : ""}`
                   )}
                 >
                   -.--
@@ -101,7 +101,7 @@ function TimerSection({
                   setSpacebarDown(true);
                 }}
               >
-                <InspectionCountdown className="text-2xl"
+                <InspectionCountdown className="text-4xl"
                   onFinishInspection={endInspectionCallback}
                 />
               </KeyListener>
@@ -115,19 +115,21 @@ function TimerSection({
               <StopwatchTimer
                 startTime={keyboardTimerStartTime}
                 onFinishTimer={endTimerCallback}
-                className="text-2xl"
+                className="text-4xl"
               />
             </>
           );
         case "SUBMITTING":
-          return <div className="text-2xl">{localResult.toString()}</div>;
+          return <div className="text-4xl">{localResult.toString()}</div>;
         case "FINISHED":
-        default:
           return (
             <>
               <div>Waiting for others to finish</div>
             </>
           );
+        default:
+          return <></>;
+          
       }
       break;
     default:
