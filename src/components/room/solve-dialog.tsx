@@ -31,10 +31,15 @@ export default function SolveDialog({
         </DialogTitle>
         {/* TODO change this once a version of cubing-js or scramble-display with react support comes out */}
         <div
+          // dangerouslySetInnerHTML={{
+          //   __html: `<scramble-display scramble="${scramble}" event="${ROOM_EVENT_JS_NAME_MAP.get(
+          //     event
+          //   )}"></scramble-display>`,
+          // }}
           dangerouslySetInnerHTML={{
-            __html: `<scramble-display scramble="${scramble}" event="${ROOM_EVENT_JS_NAME_MAP.get(
+            __html: `<twisty-player experimental-setup-alg="${scramble}" puzzle="${ROOM_EVENT_JS_NAME_MAP.get(
               event
-            )}"></scramble-display>`,
+            )}" visualization="2D" background="none" control-panel="none"></twisty-player>`,
           }}
         />
         <div>{scramble}</div>

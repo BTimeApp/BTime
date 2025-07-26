@@ -47,6 +47,7 @@ You can view BTime on [http://0.0.0.0:8080](http://0.0.0.0:8080). Others on your
 
 
 ## Licensed Work
-Cube icons are from [icons.cubing.net](https://icons.cubing.net/), which is under the MIT License.
+Cube icons are from [icons.cubing.net](https://icons.cubing.net/), which is under the [MIT License](https://opensource.org/license/mit).
 
-Scramble drawings are from the [scramble-display](https://github.com/cubing/scramble-display) library under the GPL license (v3+).
+Scramble drawings are from the [cubing.js/twisty](https://js.cubing.net/cubing/twisty/) library under the [Mozilla Public License](https://www.mozilla.org/en-US/MPL/).
+<!-- Scramble drawings are from the [scramble-display](https://github.com/cubing/scramble-display) library under the GPL license (v3+). -->
