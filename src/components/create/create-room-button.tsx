@@ -18,7 +18,6 @@ export default function CreateRoomButton({
     const active = (user && socket.connected && roomSettings.roomName !== "");
     const handleClick = () => {
         if (!user || !socket.connected) {
-            console.log("Create Room Button: No user logged in or socket is not connected.")
             return;
         }
 
@@ -34,9 +33,21 @@ export default function CreateRoomButton({
 
         socket.emit("create_room", {roomSettings: roomSettings}, transportToRoom);
     }
+
+    let errorText = "";
+    if (!user) {
+      errorText = "User must be logged in."
+    } else if (roomSettings.roomName == "") {
+      errorText = "Room name cannot be empty.";
+    }
   return (
-    <Button variant={ active ? "primary": "primary_inactive"} size="lg" className={cn("p-0 w-42")} onClick={handleClick}>
-        <h1 className="font-bold text-center text-2xl">Create Room</h1>
-    </Button>
+    <>
+      <Button variant={ active ? "primary": "primary_inactive"} size="lg" className={cn("p-0 w-42")} onClick={handleClick}>
+          <h1 className="font-bold text-center text-2xl">Create Room</h1>
+      </Button>
+      <div className="text-sm text-error">
+        {errorText}
+      </div>
+    </>
   );
 }

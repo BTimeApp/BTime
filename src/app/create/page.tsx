@@ -162,7 +162,7 @@ export default function Page() {
         <div className="w-1/3 h-full bg-primary-foreground) ">
           <h1 className="section-title">INFO</h1>
           <CreateSubtitle subtitle="Name*" />
-          <CreateInput placeholder="Name" onChange={setName}></CreateInput>
+          <CreateInput placeholder="Name" onChange={setName} className={name?"":"border-error"}></CreateInput>
           <div className="mt-8 mb-8">
             <CreateSubtitle subtitle="Room Type" />
             <CreateRoomDropdown
