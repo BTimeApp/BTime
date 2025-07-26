@@ -44,7 +44,11 @@ export default function GlobalTimeList({
           </TableRow>
         </TableHeader>
         <TableBody className="flex-1 overflow-auto">
-          {solves.map((solve, index) => {
+          {solves.map((_, i, arr) => {
+            //render in reverse order without explicit reversal
+            const index = arr.length - 1 - i;
+            const solve = arr[index];
+
             const solveWinner: string | undefined = solve.solveWinner;
             const setWinners: string[] | undefined = solve.setWinners;
 
