@@ -27,7 +27,7 @@ export default function GlobalTimeList({
   roomEvent,
 }: GlobalTimeListProps) {
   return (
-    <div className="max-h-[50%] w-full mt-auto flex flex-col bg-inherit">
+    <div className="max-h-[50vh] w-full mt-auto flex flex-col bg-inherit">
       <div className="flex-1 text-foreground text-2xl">Time List</div>
       <Table className="w-full border-collapse bg-inherit">
         <TableHeader className="sticky top-0 z-10 shadow-sm bg-inherit">
