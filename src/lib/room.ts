@@ -215,6 +215,9 @@ export function checkRoomSolveFinished(room: IRoom): boolean {
     (user) => user.competing
   );
 
+  //if no competing users, don't consider this solve finished.
+  if (competingUsers.length == 0) return false;
+
   let allUsersFinished: boolean = true;
   for (const roomUser of competingUsers) {
     if (

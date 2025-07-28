@@ -100,6 +100,15 @@ const listenSocketEvents = (io: Server) => {
       return rooms.get(socket.roomId);
     }
 
+    async function handleSolveFinished(room: IRoom) {
+      
+      finishRoomSolve(room);
+      io.to(room.id).emit("solve_finished");
+      if ((room.state as RoomState) !== "FINISHED") {
+        await newRoomSolve(room);
+      }
+    }
+
     function handleDisconnect() {
       // TODO - this logic may be moved to an express API call later
       if (socket.roomId && socket.user) {
@@ -376,14 +385,9 @@ const listenSocketEvents = (io: Server) => {
         room.users[socket.user?.id].userStatus = "FINISHED";
         room.users[socket.user?.id].currentResult = result;
 
-        //TODO - if all users are done, update set and solve counts...
         const solveFinished: boolean = checkRoomSolveFinished(room);
         if (solveFinished) {
-          finishRoomSolve(room);
-          io.to(socket.roomId.toString()).emit("solve_finished");
-          if ((room.state as RoomState) !== "FINISHED") {
-            await newRoomSolve(room);
-          }
+          handleSolveFinished(room);
         }
         io.to(socket.roomId.toString()).emit("room_update", room);
       }
@@ -400,6 +404,13 @@ const listenSocketEvents = (io: Server) => {
           } in room ${socket.roomId}`
         );
         room.users[socket.user?.id].competing = competing;
+
+        // when user spectates, need to check if all competing users are done, then advance room
+        const solveFinished: boolean = checkRoomSolveFinished(room);
+        if (solveFinished) {
+          handleSolveFinished(room);
+        }
+
         io.to(socket.roomId.toString())
           .emit("room_update", room);
       } else {
