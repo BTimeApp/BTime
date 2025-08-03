@@ -1,39 +1,40 @@
 import { cn } from "@/lib/utils";
-import { RoomEvent, RoomState } from "@/types/room";
+import { ROOM_EVENT_JS_NAME_MAP, RoomEvent, RoomState } from "@/types/room";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/common/header";
 import { useCallback } from "react";
 import { Socket } from "socket.io-client";
 
 type RoomHeaderContentProps = {
-    socket: Socket;
-    roomState: RoomState;
-    scramble?: string;
-    formatTipText?: string;
-    currentSet?: number;
-    currentSolve?: number;
-    isHost: boolean;
+  socket: Socket;
+  roomState: RoomState;
+  scramble?: string;
+  currentSet?: number;
+  currentSolve?: number;
+  isHost: boolean;
 };
 
 type RoomHeaderProps = {
-    passwordAuthenticated: boolean;
-    socket: Socket;
-    roomState: RoomState;
-    scramble?: string;
-    formatTipText?: string;
-    currentSet?: number;
-    currentSolve?: number;
-    isHost: boolean;
-    roomName: string;
-    roomEvent: RoomEvent;
+  passwordAuthenticated: boolean;
+  socket: Socket;
+  roomState: RoomState;
+  scramble?: string;
+  currentSet?: number;
+  currentSolve?: number;
+  drawScramble?: boolean;
+  isHost: boolean;
+  roomName: string;
+  roomEvent: RoomEvent;
 };
 
-
-
-
-function RoomHeaderContent({socket, roomState, scramble, formatTipText, isHost, currentSet, currentSolve}: RoomHeaderContentProps) {
-  
-
+function RoomHeaderContent({
+  socket,
+  roomState,
+  scramble,
+  isHost,
+  currentSet,
+  currentSolve,
+}: RoomHeaderContentProps) {
   const getNextScramble = useCallback(() => {
     if (isHost) {
       socket.emit("skip_scramble");
@@ -59,11 +60,10 @@ function RoomHeaderContent({socket, roomState, scramble, formatTipText, isHost, 
       );
       break;
     case "STARTED":
-    //   const scramble = currentSolve > 0 ? solves.at(-1)!.solve.scramble : "";
+      //   const scramble = currentSolve > 0 ? solves.at(-1)!.solve.scramble : "";
       mainContent = (
         <>
           <h2 className={cn("text-2xl")}>{scramble}</h2>
-          <div className={cn("text-md")}>{formatTipText}</div>
         </>
       );
       break;
@@ -137,7 +137,17 @@ function RoomHeaderContent({socket, roomState, scramble, formatTipText, isHost, 
   );
 }
 
-export function RoomHeader({passwordAuthenticated, socket, roomState, scramble, formatTipText, isHost, currentSet, currentSolve, roomName, roomEvent}: RoomHeaderProps) {
+export function RoomHeader({
+  passwordAuthenticated,
+  socket,
+  roomState,
+  scramble,
+  isHost,
+  currentSet,
+  currentSolve,
+  roomName,
+  roomEvent,
+}: RoomHeaderProps) {
   if (!passwordAuthenticated) {
     return (
       <Header>
@@ -150,8 +160,15 @@ export function RoomHeader({passwordAuthenticated, socket, roomState, scramble, 
   } else {
     return (
       <Header>
-        <RoomHeaderContent roomState={roomState} isHost={isHost} socket={socket} scramble={scramble} formatTipText={formatTipText} currentSet={currentSet} currentSolve={currentSolve} />
+        <RoomHeaderContent
+          roomState={roomState}
+          isHost={isHost}
+          socket={socket}
+          scramble={scramble}
+          currentSet={currentSet}
+          currentSolve={currentSolve}
+        />
       </Header>
     );
   }
-};
+}

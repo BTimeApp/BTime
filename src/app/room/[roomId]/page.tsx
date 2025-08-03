@@ -834,7 +834,6 @@ export default function Page() {
         roomName={roomName}
         roomEvent={roomEvent}
         scramble={currentSolve > 0 ? solves.at(-1)!.solve.scramble : ""}
-        formatTipText={formatTipText}
         currentSet={currentSet}
         currentSolve={currentSolve}
       />
