@@ -191,13 +191,13 @@ const listenSocketEvents = (io: Server) => {
         }
 
         // check if the room needs to be reset
+        const needsReset = checkRoomUpdateRequireReset(room, roomSettings);
         
-
         // update room object
         await updateRoom( room, roomSettings );
 
         // reset room object if needed
-        if (checkRoomUpdateRequireReset(room, roomSettings)) {
+        if (needsReset) {
           resetRoom(room);
         }
 
