@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { Socket } from "socket.io-client";
 import { getSocket } from "@/lib/socket";
-import { useSession } from "@/context/sessionContext";
+import { useSession } from "@/context/session-context";
 
 interface SocketContextValue {
   socket: Socket;

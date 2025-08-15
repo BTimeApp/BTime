@@ -6,12 +6,12 @@ export default function Header({
     children: React.ReactNode;
   }>) {
     return (
-        <div className="flex p-2 bg-primary">
-            <SidebarTrigger className="-ml-1 -mt-1 text-foreground fixed" />
-            <div className = "flex-row grow text-primary-foreground content-center">
-                {children}
-            </div>
-        </div>
+          <div className="flex items-stretch p-2 bg-primary">
+              <SidebarTrigger className="-ml-1 -mt-1 text-foreground fixed" />
+              <div className = "flex-row grow text-primary-foreground content-center">
+                  {children}
+              </div>
+          </div>
     );
   }
   

@@ -1,11 +1,377 @@
-export default function RoomPanel({
-  className,
-  children,
-}: Readonly<{
+import { useRoomStore } from "@/context/room-context";
+import { cn } from "@/lib/utils";
+import React, { useEffect, useState } from "react";
+import { getFormatText, getVerboseFormatText } from "@/types/room";
+import GlobalTimeList from "./global-time-list";
+import { IRoomUser } from "@/types/room-user";
+import { Result } from "@/types/result";
+import { Button } from "../ui/button";
+import { Settings } from "lucide-react";
+import TimerSection from "./timer-section";
+import RoomSubmittingButtons from "./room-submitting-buttons";
+import UserRoomSettingsDialog from "./user-room-settings-dialog";
+
+type RoomPanelProps = {
   className?: string;
-  children: React.ReactNode;
-}>) {
+  /**
+   * Type of Room Panel we want to render.
+   *   user - displays info about a user or the user's active panel for the room
+   *   summary - displays summary info about the room. use for when the room is STARTED
+   *   info - displays high-level info about the room. use for when the room is WAITING or FINISHED
+   *   userlist - displays info about users in the room (competitors, spectators)
+   */
+  type?: "user" | "summary" | "info" | "userlist";
+  /**
+   * whether this panel belongs on the left or right (in a web display). On small screens, might be top and bottom.
+   */
+  side?: "left" | "right";
+  userId?: string; //if this is a user panel, the userId corresponding to the user
+  isLocalUser?: boolean;
+  inCarousel?: boolean; //if we are in a carousel
+};
+
+/**
+ * Common props for all sub room panel types
+ */
+type SubRoomPanelBaseProps = {
+  side?: "left" | "right";
+  className?: string;
+};
+
+type UserRoomPanelProps = SubRoomPanelBaseProps & {
+  userId: string; //user associated with this panel
+  isLocalUser?: boolean;
+};
+
+type SummaryRoomPanelProps = SubRoomPanelBaseProps & {};
+
+type InfoRoomPanelProps = SubRoomPanelBaseProps & {};
+
+type UserListRoomPanelProps = SubRoomPanelBaseProps & {};
+
+// TODO: buggy - exceeds height limits and causes room to scroll
+// function UserTimeList({
+//   userId,
+//   className = "",
+// }: {
+//   userId: string;
+//   className?: string;
+// }) {
+//   const [solves, currentSet] = useRoomStore((s) => [s.solves, s.currentSet]);
+
+//   return (
+//     <div className={cn("flex flex-col", className)}>
+//       <p>Times</p>
+//       <div className="flex-1 min-h-0">
+//         {solves //all solves
+//           .filter((userResult) => userResult.setIndex == currentSet) //from current set
+//           .map((solve) => solve.solve.results[userId]) //get result belonging to local user
+//           .slice(0, -1) //exclude current solve
+//           .reverse()
+//           .map((userResult, index) =>
+//             userResult === undefined ? (
+//               <p key={index}>---</p>
+//             ) : (
+//               <p key={index}>{Result.fromIResult(userResult).toString()}</p>
+//             )
+//           )}
+//       </div>
+//     </div>
+//   );
+// }
+
+function UserStatusSection({
+  className,
+  userId,
+}: {
+  className?: string;
+  userId: string;
+}) {
+  const [users] = useRoomStore((s) => [s.users]);
   return (
-    <div className={"flex flex-col text-center " + className}>{children}</div>
+    <div className={className}>
+      <p>{users[userId].userStatus}</p>
+    </div>
   );
+}
+
+function UserCenterSection({
+  className = "",
+  // side,
+  userId,
+  isLocalUser = false,
+}: UserRoomPanelProps) {
+  const [users, solveStatus] = useRoomStore((s) => [
+    s.users,
+    s.localSolveStatus,
+  ]);
+
+  if (!users[userId]) {
+    return null;
+  }
+
+  if (users[userId].competing) {
+    return (
+      <div
+        className={cn(
+          "flex flex-row justify-center items-center w-full h-full",
+          className
+        )}
+      >
+        {/* TODO: figure out why the time lists cause the screen to get longer */}
+        {/* {side === "right" && (
+          <UserTimeList userId={userId} className="max-h-[50%]" />
+        )} */}
+        <div className="flex flex-col justify-center grow">
+          <div className="mx-auto">
+            {isLocalUser ? (
+              <>
+                <TimerSection />
+                {solveStatus === "SUBMITTING" && <RoomSubmittingButtons />}
+              </>
+            ) : (
+              <UserStatusSection
+                className="text-2xl font-bold"
+                userId={userId}
+              />
+            )}
+          </div>
+        </div>
+        {/* {side === "left" && (
+          <UserTimeList userId={userId} className="max-h-[50%]" />
+        )} */}
+      </div>
+    );
+  } else {
+    if (isLocalUser) {
+      return (
+        <div className={cn("text-xl", className)}>
+          You are spectating. Join to use timer.
+        </div>
+      );
+    } else {
+      return (
+        <div className={cn("text-2xl font-bold", className)}>SPECTATING</div>
+      );
+    }
+  }
+}
+
+function UserRoomPanel({
+  className,
+  side,
+  userId,
+  isLocalUser,
+}: UserRoomPanelProps) {
+  const [users] = useRoomStore((s) => [s.users]);
+
+  return (
+    <div className={cn(["flex flex-col text-center h-full p-2", className])}>
+      <div className="flex flex-row w-full shrink-0">
+        <div className="grow">
+          <p className="text- 2xl font-bold">{users[userId]?.user.userName}</p>
+        </div>
+        {isLocalUser && (
+          <div className="ml-auto">
+            <UserRoomSettingsDialog>
+              <Button size="icon" className="self-end" variant="icon" onKeyDown={(e) => e.preventDefault()}>
+                <Settings className="size-8" />
+              </Button>
+            </UserRoomSettingsDialog>
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-col flex-1 min-h-0 justify-center">
+        <UserCenterSection
+          className={className}
+          side={side}
+          userId={userId}
+          isLocalUser={isLocalUser}
+        />
+      </div>
+      <div className="flex flex-row justify-end"></div>
+    </div>
+  );
+}
+
+function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
+  const [users, solves, roomEvent, roomFormat, roomState] = useRoomStore((s) => [
+    s.users,
+    s.solves,
+    s.roomEvent,
+    s.roomFormat,
+    s.roomState
+  ]);
+  const [sortedUsers, setSortedUsers] = useState<IRoomUser[]>(
+    Object.values(users)
+  );
+
+  function userStatusText(user: IRoomUser) {
+    if (!user.competing) {
+      return "SPECTATING";
+    } else {
+      if (user.userStatus == "FINISHED" && user.currentResult) {
+        return Result.fromIResult(user.currentResult).toString();
+      } else {
+        return user.userStatus;
+      }
+    }
+  }
+
+  useEffect(() => {
+    setSortedUsers(
+      Object.values(users).sort((u1, u2) => {
+        if (u2.setWins !== u1.setWins) {
+          return u2.setWins - u1.setWins;
+        } else {
+          return u2.points - u1.points;
+        }
+      })
+    );
+  }, [users]);
+
+  return (
+    <div className={cn(["flex flex-col text-center h-full p-2", className])}>
+      <div className="flex flex-col basis-[50%] max-h-[50%]">
+        <div className="grid grid-cols-12">
+          <div className="col-span-5">User</div>
+          {roomState === "STARTED" && <div className="col-span-3">Time</div>}
+          {roomFormat === "RACING" && <div className="col-span-2">Sets</div>}
+          <div className="col-span-2">Solves</div>
+        </div>
+        <div className="flex flex-col overflow-y-auto">
+          {sortedUsers.map((user, index) => (
+            <div key={index} className="grid grid-cols-12">
+              <div className="col-span-5">{user.user.userName}</div>
+              {roomState === "STARTED" && <div className="col-span-3">{userStatusText(user)}</div>}
+              {roomFormat === "RACING" && (
+                <div className="col-span-2">{user.setWins}</div>
+              )}
+              <div className="col-span-2">{user.points}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <GlobalTimeList
+        users={Object.values(users)}
+        solves={solves}
+        roomEvent={roomEvent}
+        roomFormat={roomFormat}
+        className="max-h-[50vh] w-full"
+      />
+    </div>
+  );
+}
+
+function InfoRoomPanel({ className }: InfoRoomPanelProps) {
+  const [
+    roomName,
+    roomEvent,
+    roomFormat,
+    matchFormat,
+    setFormat,
+    nSets,
+    nSolves,
+  ] = useRoomStore((s) => [
+    s.roomName,
+    s.roomEvent,
+    s.roomFormat,
+    s.matchFormat,
+    s.setFormat,
+    s.nSets,
+    s.nSolves,
+  ]);
+  return (
+    <div className={cn(["flex flex-col text-center h-full p-2", className])}>
+      <div>
+        <h2 className={cn("text-2xl md-1")}>Room: {roomName}</h2>
+      </div>
+      <div className={cn("text-left")}>
+        <h2 className="text-2xl">Event: {roomEvent}</h2>
+      </div>
+      <div className={cn("text-left")}>
+        <h2 className="text-2xl">
+          {getFormatText(roomFormat, matchFormat, setFormat, nSets, nSolves)}
+        </h2>
+      </div>
+      <div className={cn("text-left mx-2")}>
+        {getVerboseFormatText(
+          roomFormat,
+          matchFormat,
+          setFormat,
+          nSets,
+          nSolves
+        )}
+      </div>
+    </div>
+  );
+}
+
+function UserListRoomPanel({ className }: UserListRoomPanelProps) {
+  const [users, roomState, roomWinners] = useRoomStore((s) => [s.users, s.roomState, s.roomWinners]);
+  return (
+    <div className={cn(["flex flex-col text-center h-full p-2", className])}>
+      {
+        roomState === "FINISHED" && 
+        <div className="flex-1 text-center">
+          <h2 className="text-xl font-bold">Winner{roomWinners.length > 1 ? "s" : ""}: {roomWinners.join(", ")}</h2>
+        </div>
+      }
+      <div className="flex flex-col flex-1 align-center">
+        <h2 className="text-xl font-bold">Competitors</h2>
+        {Object.values(users)
+          .filter((roomUser) => roomUser.competing)
+          .map((roomUser, idx) => {
+            return (
+              <p className="text-md" key={idx}>
+                {roomUser.user.userName}
+              </p>
+            );
+          })}
+      </div>
+      <div className="flex flex-col flex-1 align-center">
+        <h2 className="text-xl font-bold">Spectators</h2>
+        {Object.values(users)
+          .filter((roomUser) => !roomUser.competing)
+          .map((roomUser, idx) => {
+            return (
+              <p className="text-md" key={idx}>
+                {roomUser.user.userName}
+              </p>
+            );
+          })}
+      </div>
+    </div>
+  );
+}
+
+export default function RoomPanel({
+  className = "",
+  type = "user",
+  side,
+  userId,
+  isLocalUser = false,
+}: RoomPanelProps) {
+  switch (type) {
+    case "user":
+      if (!userId) return null;
+
+      return (
+        <UserRoomPanel
+          className={className}
+          userId={userId!}
+          side={side}
+          isLocalUser={isLocalUser}
+        />
+      );
+    case "summary":
+      return <SummaryRoomPanel className={className} />;
+    case "info":
+      return <InfoRoomPanel className={className} />;
+    case "userlist":
+      return <UserListRoomPanel className={className} />;
+    default:
+      return null;
+  }
 }

@@ -16,7 +16,7 @@ import {
   SidebarContent,
   SidebarFooter,
 } from "@/components/ui/sidebar"
-import { useSession } from "@/context/sessionContext"
+import { useSession } from "@/context/session-context"
 
 import ThemeToggle from "@/components/sidebar/theme-toggle"
 

@@ -7,15 +7,11 @@ import { IUser } from "@/types/user";
 import { ObjectId } from "bson";
 import bcrypt from "bcrypt";
 
-export async function createRoom({
-  roomSettings,
-  roomId,
-  initialHost,
-}: {
-  roomSettings: IRoomSettings;
-  roomId?: string;
-  initialHost?: IUser;
-}): Promise<IRoom> {
+export async function createRoom(
+  roomSettings: IRoomSettings,
+  roomId?: string,
+  initialHost?: IUser
+): Promise<IRoom> {
   const room: IRoom = {
     id: roomId ? roomId : new ObjectId().toString(),
     roomName: roomSettings.roomName,
@@ -30,7 +26,7 @@ export async function createRoom({
     state: "WAITING",
   };
 
-  if (roomSettings.roomFormat == "RACING") {
+  if (roomSettings.roomFormat !== "CASUAL") {
     room.matchFormat = roomSettings.matchFormat;
     room.setFormat = roomSettings.setFormat;
     room.nSets = roomSettings.nSets;
@@ -44,6 +40,51 @@ export async function createRoom({
   }
 
   return room;
+}
+
+export async function updateRoom(
+  room: IRoom,
+  newRoomSettings: IRoomSettings
+): Promise<void> {
+  room.roomName = newRoomSettings.roomName;
+  room.roomEvent = newRoomSettings.roomEvent;
+  room.roomFormat = newRoomSettings.roomFormat;
+  room.isPrivate = newRoomSettings.isPrivate;
+
+  if (newRoomSettings.roomFormat !== "CASUAL") {
+    room.matchFormat = newRoomSettings.matchFormat;
+    room.setFormat = newRoomSettings.setFormat;
+    room.nSets = newRoomSettings.nSets;
+    room.nSolves = newRoomSettings.nSolves;
+  }
+
+  if (newRoomSettings.isPrivate) {
+    room.password = newRoomSettings.password
+      ? await bcrypt.hash(newRoomSettings.password, 10)
+      : undefined;
+  }
+}
+
+export function checkRoomUpdateRequireReset(
+  room: IRoom,
+  roomSettings: IRoomSettings
+): boolean {
+  let needsReset = true;
+  if (room.roomFormat === "CASUAL" && roomSettings.roomFormat === "CASUAL") {
+    // don't need to reset casual rooms
+    needsReset = false;
+  } else if (
+    room.roomFormat === roomSettings.roomFormat &&
+    room.matchFormat === roomSettings.matchFormat &&
+    room.setFormat === roomSettings.setFormat &&
+    room.roomEvent === roomSettings.roomEvent &&
+    room.nSets === roomSettings.nSets &&
+    room.nSolves === roomSettings.nSolves
+  ) {
+    // allowed to edit room name, privacy, password at any time
+    needsReset = false;
+  }
+  return needsReset;
 }
 
 /**

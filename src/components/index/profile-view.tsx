@@ -1,5 +1,5 @@
 "use client";
-import { useSession } from "@/context/sessionContext";
+import { useSession } from "@/context/session-context";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import LoginButton from "@/components/common/login-button";

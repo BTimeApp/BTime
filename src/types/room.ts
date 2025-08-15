@@ -84,6 +84,11 @@ export const ROOM_FORMATS = [
   //TODO: add a competitive mode with ranking, etc
 ] as const;
 
+export const ROOM_FORMAT_MAP = new Map<RoomFormat, string>([
+  ["CASUAL", "Casual"],
+  ["RACING", "Racing"]
+])
+
 //match formats - how to win a race based on number of sets won
 export const MATCH_FORMATS = [
   "BEST_OF", //best of n sets wins
@@ -122,6 +127,37 @@ export const SET_FORMAT_ABBREVIATION_MAP = new Map<SetFormat, string>([
   ["AVERAGE_OF", "ao"],
   ["MEAN_OF", "mo"],
 ]);
+
+export function getFormatText(
+  roomFormat: RoomFormat,
+  matchFormat: MatchFormat,
+  setFormat: SetFormat,
+  nSets: number,
+  nSolves: number
+): string {
+  if (roomFormat === "CASUAL") {
+    return "casual"
+  } else {
+    let raceFormatText =
+      "Format: " +
+      SET_FORMAT_MAP.get(setFormat) +
+      " " +
+      nSolves +
+      " solve" +
+      (nSolves > 1 ? "s" : "");
+    if (nSets > 1) {
+      raceFormatText +=
+        ", " +
+        MATCH_FORMAT_MAP.get(matchFormat) +
+        " " +
+        nSets +
+        " set" +
+        (nSets > 1 ? "s" : "");
+    }
+
+    return raceFormatText;
+  }
+}
 
 export function getVerboseFormatText(
   roomFormat: RoomFormat,

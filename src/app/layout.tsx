@@ -4,9 +4,10 @@ import "./styles/global.css";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { ThemeProvider } from "next-themes";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { SessionProvider } from "@/context/sessionContext";
-import { SocketProvider } from "@/context/socketContext";
+import { SessionProvider } from "@/context/session-context";
+import { SocketProvider } from "@/context/socket-context";
 import Script from "next/script";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "BTime",
@@ -59,6 +60,7 @@ export default function RootLayout({
             </ThemeProvider>
           </SocketProvider>
         </SessionProvider>
+        <Toaster position="top-center" richColors/>
       </body>
     </html>
   );

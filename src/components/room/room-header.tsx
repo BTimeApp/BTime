@@ -1,174 +1,245 @@
 import { cn } from "@/lib/utils";
-import { ROOM_EVENT_JS_NAME_MAP, RoomEvent, RoomState } from "@/types/room";
+import { ROOM_EVENT_DISPLAY_NAME_MAP } from "@/types/room";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/common/header";
 import { useCallback } from "react";
-import { Socket } from "socket.io-client";
+import { useRoomStore } from "@/context/room-context";
+import { useSocket } from "@/context/socket-context";
+import { useSession } from "@/context/session-context";
+import { Settings } from "lucide-react";
+import RoomSettingsDialog from "./room-settings-dialog";
 
-type RoomHeaderContentProps = {
-  socket: Socket;
-  roomState: RoomState;
-  scramble?: string;
-  currentSet?: number;
-  currentSolve?: number;
-  isHost: boolean;
-};
+export function RoomHeader() {
+  const [
+    roomName,
+    isPasswordAuthenticated,
+    roomState,
+    roomEvent,
+    roomFormat,
+    currentSet,
+    currentSolve,
+    solves,
+    users,
+    isUserHost,
+  ] = useRoomStore((s) => [
+    s.roomName,
+    s.isPasswordAuthenticated,
+    s.roomState,
+    s.roomEvent,
+    s.roomFormat,
+    s.currentSet,
+    s.currentSolve,
+    s.solves,
+    s.users,
+    s.isUserHost,
+  ]);
 
-type RoomHeaderProps = {
-  passwordAuthenticated: boolean;
-  socket: Socket;
-  roomState: RoomState;
-  scramble?: string;
-  currentSet?: number;
-  currentSolve?: number;
-  drawScramble?: boolean;
-  isHost: boolean;
-  roomName: string;
-  roomEvent: RoomEvent;
-};
+  const { user } = useSession();
+  const { socket } = useSocket();
 
-function RoomHeaderContent({
-  socket,
-  roomState,
-  scramble,
-  isHost,
-  currentSet,
-  currentSolve,
-}: RoomHeaderContentProps) {
   const getNextScramble = useCallback(() => {
-    if (isHost) {
+    if (user && isUserHost(user.id)) {
       socket.emit("skip_scramble");
     }
-  }, [socket, isHost]);
+  }, [user, socket, isUserHost]);
 
-  const resetRoom = useCallback(() => {
-    if (isHost) {
-      socket.emit("reset_room");
+  const startRoom = useCallback(() => {
+    if (user && isUserHost(user.id)) {
+      socket.emit("start_room");
     }
-  }, [socket, isHost]);
+  }, [user, isUserHost, socket]);
 
-  let mainContent = <></>;
+  const rematchRoom = useCallback(() => {
+    if (user && isUserHost(user.id)) {
+      socket.emit("rematch_room");
+    }
+  }, [user, isUserHost, socket]);
 
-  switch (roomState) {
-    case "WAITING":
-      mainContent = (
-        <>
-          <h2 className={cn("text-2xl")}>
-            Scramble will display after starting
-          </h2>
-        </>
+  // This is meant specifically to be used when the user toggles their spectating/competing status
+  const toggleCompeting = useCallback(() => {
+    if (user) {
+      //submit the NEW competing boolean - true if currently spectating
+      socket.emit(
+        "user_toggle_competing_spectating",
+        !users[user.id].competing
       );
-      break;
-    case "STARTED":
-      //   const scramble = currentSolve > 0 ? solves.at(-1)!.solve.scramble : "";
-      mainContent = (
-        <>
-          <h2 className={cn("text-2xl")}>{scramble}</h2>
-        </>
-      );
-      break;
-    case "FINISHED":
-      mainContent = (
-        <>
-          <h2 className={cn("text-2xl")}>Room has finished!</h2>
-        </>
-      );
-      break;
-    default:
-      break;
-  }
+    }
 
-  return (
-    <>
-      <div className={cn("grid grid-cols-8 text-center")}>
-        <div className={cn("col-span-1 grid grid-rows-3")}>
-          {roomState == "STARTED" ? (
-            <div className={cn("row-span-1 text-lg")}>Set {currentSet}</div>
-          ) : (
-            <></>
-          )}
-          {roomState == "STARTED" && isHost ? (
-            <div className={cn("row-span-1 row-start-3")}>
-              <Button
-                variant="outline"
-                size="lg"
-                className={cn("px-1")}
-                onClick={getNextScramble}
-              >
-                <h1 className={cn("font-bold text-center text-md")}>
-                  NEXT SCRAMBLE
-                </h1>
-              </Button>
-            </div>
-          ) : (
-            <></>
-          )}
-        </div>
+  }, [user, users, socket]);
 
-        <div className={cn("col-span-6 content-center grid-row")}>
-          {mainContent}
-        </div>
-
-        <div className={cn("col-span-1 grid grid-rows-3")}>
-          {roomState == "STARTED" ? (
-            <div className={cn("row-span-1 text-lg")}>Solve {currentSolve}</div>
-          ) : (
-            <></>
-          )}
-          {roomState == "STARTED" && isHost ? (
-            <div className={cn("row-span-1 row-start-3")}>
-              <Button
-                variant="reset"
-                size="lg"
-                className={cn("px-1")}
-                onClick={resetRoom}
-              >
-                <h1 className={cn("font-bold text-center text-md")}>
-                  RESET ROOM
-                </h1>
-              </Button>
-            </div>
-          ) : (
-            <></>
-          )}
-        </div>
-      </div>
-    </>
-  );
-}
-
-export function RoomHeader({
-  passwordAuthenticated,
-  socket,
-  roomState,
-  scramble,
-  isHost,
-  currentSet,
-  currentSolve,
-  roomName,
-  roomEvent,
-}: RoomHeaderProps) {
-  if (!passwordAuthenticated) {
+  if (!isPasswordAuthenticated || !user) {
     return (
       <Header>
-        <div className="text-center">
-          <h2 className={cn("text-2xl")}>{roomName}</h2>
-          <div>{roomEvent}</div>
-        </div>
+        <></>
       </Header>
     );
   } else {
-    return (
-      <Header>
-        <RoomHeaderContent
-          roomState={roomState}
-          isHost={isHost}
-          socket={socket}
-          scramble={scramble}
-          currentSet={currentSet}
-          currentSolve={currentSolve}
-        />
-      </Header>
-    );
+    switch (roomState) {
+      case "WAITING":
+        return (
+          <Header>
+            <div className="flex flex-row gap-3 items-center justify-center text-center items-stretch">
+              <div className="flex-1 flex flex-col gap-3">
+                {isUserHost(user.id) && (
+                  <div className="flex-1 flex flex-col justify-end">
+                    <Button
+                      variant="outline"
+                      size="default"
+                      className={cn("px-1 self-end")}
+                      onClick={startRoom}
+                      onKeyDown={(e) => e.preventDefault()}
+                    >
+                      <p className={cn("font-bold text-center text-md")}>
+                        START ROOM
+                      </p>
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <div className="flex-5 md:flex-10 text-center flex flex-col overflow-wrap">
+                <h2 className="text-3xl font-bold">{roomName}</h2>
+                <h4 className="text-lg">
+                  {ROOM_EVENT_DISPLAY_NAME_MAP.get(roomEvent)}
+                </h4>
+              </div>
+              <div className="flex-1 flex flex-col gap-3">
+                {isUserHost(user.id) && (
+                  <div className="flex-1 flex flex-col justify-start">
+                    <RoomSettingsDialog>
+                      <Button size="icon" className="self-end" variant="icon">
+                        <Settings className="size-8" />
+                      </Button>
+                    </RoomSettingsDialog>
+                  </div>
+                )}
+                <div className="flex-1 flex flex-col justify-end">
+                  <Button
+                    className="mt-auto"
+                    variant="outline"
+                    onClick={toggleCompeting}
+                  >
+                    <p className="font-bold text-center text-md">
+                      {users[user.id]?.competing ? "SPECTATE" : "COMPETE"}
+                    </p>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Header>
+        );
+      case "STARTED":
+        return (
+          <Header>
+            <div className="flex flex-row gap-3 items-center justify-center text-center items-stretch">
+              <div className="flex-1 flex flex-col gap-3">
+                {isUserHost(user.id) && (
+                  <div className="flex-1 text-center flex flex-col justify-end">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className={cn("px-1")}
+                      onClick={getNextScramble}
+                      onKeyDown={(e) => e.preventDefault()}
+                    >
+                      <h1 className={cn("font-bold text-center text-md")}>
+                        NEXT SCRAMBLE
+                      </h1>
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-5 md:flex-10 text-center flex flex-col overflow-wrap justify-center">
+                {roomFormat === "RACING" && (
+                  <p className="text-lg">
+                    Set {currentSet} Solve {currentSolve}
+                  </p>
+                )}
+                <p className="text-2xl">
+                  {solves.at(-1)?.solve.scramble ?? ""}
+                </p>
+              </div>
+
+              <div className="flex-1 flex flex-col gap-3">
+                {isUserHost(user.id) && (
+                  <div className="flex-1 flex flex-col justify-start">
+                    <RoomSettingsDialog>
+                      <Button size="icon" className="self-end" variant="icon" onKeyDown={(e) => e.preventDefault()}>
+                        <Settings className="size-8" />
+                      </Button>
+                    </RoomSettingsDialog>
+                  </div>
+                )}
+                <div className="flex-1 flex flex-col justify-end">
+                  <Button
+                    className="mt-auto"
+                    variant="outline"
+                    onClick={toggleCompeting}
+                    onKeyDown={(e) => e.preventDefault()}
+                  >
+                    <p className="font-bold text-center text-md">
+                      {users[user.id]?.competing ? "SPECTATE" : "COMPETE"}
+                    </p>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Header>
+        );
+      case "FINISHED":
+        return (
+          <Header>
+            <div className="flex flex-row gap-3 items-center justify-center text-center items-stretch">
+              <div className="flex-1 flex flex-col gap-3">
+                {isUserHost(user.id) && (
+                  <div className="flex-1 flex flex-col justify-end">
+                    <Button
+                      variant="outline"
+                      size="default"
+                      className={cn("px-1 self-end")}
+                      onClick={rematchRoom}
+                      onKeyDown={(e) => e.preventDefault()}
+                    >
+                      <h1 className={cn("font-bold text-center text-md")}>
+                        REMATCH
+                      </h1>
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <div className="flex-5 md:flex-10 text-center flex flex-col overflow-wrap">
+                <h2 className="text-3xl font-bold">{roomName}</h2>
+                <h4 className="text-lg">
+                  {ROOM_EVENT_DISPLAY_NAME_MAP.get(roomEvent)}
+                </h4>
+              </div>
+              <div className="flex-1 flex flex-col gap-3">
+                {isUserHost(user.id) && (
+                  <div className="flex-1 flex flex-col justify-start">
+                    <RoomSettingsDialog>
+                      <Button size="icon" className="self-end" variant="icon">
+                        <Settings className="size-8" />
+                      </Button>
+                    </RoomSettingsDialog>
+                  </div>
+                )}
+                <div className="flex-1 flex flex-col justify-end">
+                  <Button
+                    className="mt-auto"
+                    variant="outline"
+                    onClick={toggleCompeting}
+                  >
+                    <p className="font-bold text-center text-md">
+                      {users[user.id]?.competing ? "SPECTATE" : "COMPETE"}
+                    </p>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Header>
+        );
+      default:
+        break;
+    }
   }
 }

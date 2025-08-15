@@ -12,12 +12,14 @@ import { IRoomUser } from "@/types/room-user";
 import { IRoomSolve } from "@/types/room-solve";
 import { RoomEvent, RoomFormat } from "@/types/room";
 import { Result } from "@/types/result";
+import { cn } from "@/lib/utils";
 
 type GlobalTimeListProps = {
   users: IRoomUser[];
   solves: IRoomSolve[];
   roomFormat: RoomFormat;
   roomEvent: RoomEvent;
+  className?: string;
 };
 
 export default function GlobalTimeList({
@@ -25,9 +27,10 @@ export default function GlobalTimeList({
   solves,
   roomFormat,
   roomEvent,
+  className
 }: GlobalTimeListProps) {
   return (
-    <div className="max-h-[50vh] w-full mt-auto flex flex-col bg-inherit">
+    <div className={cn("flex flex-col bg-inherit", className)}>
       <div className="flex-1 text-foreground text-2xl">Time List</div>
       <Table className="w-full border-collapse bg-inherit">
         <TableHeader className="sticky top-0 z-10 shadow-sm bg-inherit">

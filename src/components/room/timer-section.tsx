@@ -1,41 +1,67 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import KeyListener from "@/components/common/key-listener";
 import StopwatchTimer from "@/components/room/stopwatch-timer";
 import { Penalty, Result } from "@/types/result";
-import { SolveStatus } from "@/types/status";
-import { TimerType } from "@/types/timer-type";
 import { CallbackInput } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import InspectionCountdown from "./inspection-countdown";
+import { useRoomStore } from "@/context/room-context";
 
-type TimerSectionProps = {
-  timerType: TimerType;
-  userStatus: SolveStatus;
-  useInspection?: boolean;
-  localResult: Result;
-  keyboardTimerStartTime: number | undefined;
-  manualInputCallback?: (value: string) => void;
-  startInspectionCallback?: () => void;
-  endInspectionCallback?: (penalty: Penalty) => void;
-  endTimerCallback?: (value: number) => void;
-};
 
-function TimerSection({
-  timerType,
-  userStatus,
-  useInspection = true,
-  localResult,
-  keyboardTimerStartTime,
-  manualInputCallback,
-  startInspectionCallback,
-  endInspectionCallback,
-  endTimerCallback,
-}: TimerSectionProps) {
+function TimerSection() {
   const [spacebarDown, setSpacebarDown] = useState<boolean>(false);
+  const [
+    localPenalty,
+    localResult,
+    timerType,
+    localSolveStatus,
+    useInspection,
+    liveTimerStartTime,
+    setLocalPenalty,
+    setLocalResult,
+    updateLocalSolveStatus,
+  ] = useRoomStore((s) => [
+    s.localPenalty,
+    s.localResult,
+    s.timerType,
+    s.localSolveStatus,
+    s.useInspection,
+    s.liveTimerStartTime,
+    s.setLocalPenalty,
+    s.setLocalResult,
+    s.updateLocalSolveStatus,
+  ]);
+
+  const endStringTimerCallback = useCallback(
+    (value: string) => {
+      try {
+        setLocalResult(new Result(value, localPenalty));
+        updateLocalSolveStatus();
+      } catch {
+        //do not handle error - is likely an invalid time string
+      }
+    },
+    [updateLocalSolveStatus, setLocalResult, localPenalty]
+  );
+
+  const endNumberTimerCallback = useCallback(
+    (timerValue: number) => {
+      setLocalResult(new Result(timerValue, localPenalty));
+      updateLocalSolveStatus();
+    },
+    [updateLocalSolveStatus, setLocalResult, localPenalty]
+  );
+
+  const endInspectionCallback = useCallback((penalty: Penalty) => {
+    setLocalPenalty(penalty);
+    updateLocalSolveStatus();
+  }, [updateLocalSolveStatus, setLocalPenalty]);
 
   switch (timerType) {
     case "TYPING":
-      switch (userStatus) {
+      switch (localSolveStatus) {
+        case "IDLE":
+          return null;
         case "SOLVING":
           return (
             <>
@@ -43,7 +69,7 @@ function TimerSection({
               <CallbackInput
                 type="text"
                 className="text-center"
-                onEnter={manualInputCallback}
+                onEnter={endStringTimerCallback}
               />
             </>
           );
@@ -59,7 +85,7 @@ function TimerSection({
       }
       break;
     case "KEYBOARD":
-      switch (userStatus) {
+      switch (localSolveStatus) {
         case "IDLE":
           return (
             <>
@@ -71,7 +97,7 @@ function TimerSection({
               <KeyListener
                 keyName="Space"
                 onKeyUp={() => {
-                  startInspectionCallback?.();
+                  updateLocalSolveStatus(); //updateLocalSolveStatus
                   setSpacebarDown(false);
                 }}
                 onKeyDown={() => {
@@ -101,7 +127,8 @@ function TimerSection({
                   setSpacebarDown(true);
                 }}
               >
-                <InspectionCountdown className="text-4xl"
+                <InspectionCountdown
+                  className="text-4xl"
                   onFinishInspection={endInspectionCallback}
                 />
               </KeyListener>
@@ -113,8 +140,8 @@ function TimerSection({
               <div>Press Space to Stop</div>
               {/* TODO - make this hold the amount of time left in inspection */}
               <StopwatchTimer
-                startTime={keyboardTimerStartTime}
-                onFinishTimer={endTimerCallback}
+                startTime={liveTimerStartTime}
+                onFinishTimer={endNumberTimerCallback}
                 className="text-4xl"
               />
             </>
@@ -129,7 +156,6 @@ function TimerSection({
           );
         default:
           return <></>;
-          
       }
       break;
     default:

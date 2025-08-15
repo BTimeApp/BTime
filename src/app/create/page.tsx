@@ -7,8 +7,8 @@ import Header from "@/components/common/header";
 import CreateInput from "@/components/create/create-input";
 import CreateToggleButton from "@/components/create/create-toggle";
 import { useState, useEffect, useMemo } from "react";
-import { useSession } from "@/context/sessionContext";
-import { useSocket } from "@/context/socketContext";
+import { useSession } from "@/context/session-context";
+import { useSocket } from "@/context/socket-context";
 import {
   IRoomSettings,
   MatchFormat,

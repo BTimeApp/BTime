@@ -16,15 +16,17 @@ const buttonVariants = cva(
         outline:
           "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/70",
         foreground:
-          "grow bg-primary-foreground text-primary shadow-xs hover:bg-primary-foreground/80 hover:text-primary-accent/80",
+          "bg-primary-foreground text-primary shadow-xs hover:bg-primary-foreground/80 hover:text-primary-accent/80",
         primary:
-          "grow bg-primary text-primary-foreground shadow-xs hover:bg-primary/80 hover:text-primary-accent/80 active:bg-primary/60",
+          "bg-primary text-primary-foreground shadow-xs hover:bg-primary/80 hover:text-primary-accent/80 active:bg-primary/60",
         primary_inactive:
           "bg-primary-inactive text-primary-foreground shadow-xs",
         secondary:
-          "grow bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80 hover:text-secondary-accent/80 active:bg-secondary/60",
+          "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80 hover:text-secondary-accent/80 active:bg-secondary/60",
         ghost:
           "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
+        icon:
+          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 px-0",
         reset:
           "bg-error text-error-foreground hover:bg-error/80 hover:text-error-foreground/80",
         link: "text-primary underline-offset-4 hover:underline",

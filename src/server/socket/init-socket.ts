@@ -10,6 +10,8 @@ import {
   finishRoomSolve,
   checkRoomSolveFinished,
   createRoom,
+  updateRoom,
+  checkRoomUpdateRequireReset,
 } from "@/lib/room";
 import { IUser } from "@/types/user";
 import { IRoomUser } from "@/types/room-user";
@@ -101,7 +103,6 @@ const listenSocketEvents = (io: Server) => {
     }
 
     async function handleSolveFinished(room: IRoom) {
-      
       finishRoomSolve(room);
       io.to(room.id).emit("solve_finished");
       if ((room.state as RoomState) !== "FINISHED") {
@@ -169,14 +170,42 @@ const listenSocketEvents = (io: Server) => {
         while (rooms.get(roomId)) {
           roomId = new ObjectId().toString();
         }
-        const room: IRoom = await createRoom({
-          roomSettings: roomSettings,
-          roomId: roomId,
-          initialHost: socket.user,
-        });
+        const room: IRoom = await createRoom(
+          roomSettings,
+          roomId,
+          socket.user,
+        );
 
         rooms.set(room.id, room);
         callback(roomId);
+      }
+    );
+
+    socket.on(
+      "update_room",
+      async (roomSettings: IRoomSettings, roomId: string, userId: string) => {
+        const room: IRoom | undefined = rooms.get(roomId);
+        if (!room || userId !== room.host?.id) {
+          console.log(userId, room?.host);
+          return;
+        }
+
+        // check if the room needs to be reset
+        
+
+        // update room object
+        await updateRoom( room, roomSettings );
+
+        // reset room object if needed
+        if (checkRoomUpdateRequireReset(room, roomSettings)) {
+          resetRoom(room);
+        }
+
+        // don't need to update room store b/c modified room object in-place
+        // TODO change this if no longer using in-memory room store
+
+        // broadcast room update
+        io.to(roomId).emit("room_update", room);
       }
     );
 
@@ -327,9 +356,7 @@ const listenSocketEvents = (io: Server) => {
 
       if (room.state == "FINISHED") {
         resetRoom(room);
-        await newRoomSolve(room);
-        room.state = "STARTED";
-        console.log();
+        room.state = "WAITING";
         io.to(room.id.toString()).emit("room_update", room);
       } else {
         console.log(
@@ -354,8 +381,7 @@ const listenSocketEvents = (io: Server) => {
             `User ${socket.user?.id} submitted new user status ${newUserStatus} to room ${socket.roomId}`
           );
           room.users[socket.user?.id].userStatus = newUserStatus;
-          io.to(socket.roomId.toString())
-            .emit("room_update", room);
+          io.to(socket.roomId.toString()).emit("room_update", room);
         }
       }
     });
@@ -396,6 +422,7 @@ const listenSocketEvents = (io: Server) => {
     socket.on("user_toggle_competing_spectating", (competing: boolean) => {
       if (socket.roomId && socket.user) {
         const room = rooms.get(socket.roomId);
+        console.log("toggle call");
         if (!room || room.users[socket.user?.id].competing == competing) return;
 
         console.log(
@@ -406,13 +433,14 @@ const listenSocketEvents = (io: Server) => {
         room.users[socket.user?.id].competing = competing;
 
         // when user spectates, need to check if all competing users are done, then advance room
-        const solveFinished: boolean = checkRoomSolveFinished(room);
-        if (solveFinished) {
-          handleSolveFinished(room);
+        if (room.state === "STARTED") {
+          const solveFinished: boolean = checkRoomSolveFinished(room);
+          if (solveFinished) {
+            handleSolveFinished(room);
+          }
         }
 
-        io.to(socket.roomId.toString())
-          .emit("room_update", room);
+        io.to(socket.roomId.toString()).emit("room_update", room);
       } else {
         console.log(
           `Either roomId or userId not set on socket: ${socket.roomId}, ${socket.user?.id}`

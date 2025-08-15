@@ -4,7 +4,7 @@ import LoginButton from "@/components/common/login-button";
 import HomeHeaderContent from "@/components/index/home-header-content";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useSession } from "@/context/sessionContext";
+import { useSession } from "@/context/session-context";
 import Image from "next/image";
 import { useCallback, useState } from "react";
 
