@@ -293,7 +293,7 @@ export function finishRoomSolve(room: IRoom) {
   if (room.setFormat == "BEST_OF" || room.setFormat == "FIRST_TO") {
     const eligibleResults: [string, IResult][] = Object.entries(
       currentResults
-    ).filter(([userId]) => room.users[userId]?.competing);
+    )
 
     let fastest_uid = null;
     let fastest_result: Result | undefined = undefined;
