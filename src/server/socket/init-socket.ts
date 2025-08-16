@@ -378,14 +378,23 @@ const listenSocketEvents = (io: Server) => {
           );
         } else {
           console.log(
-            `User ${socket.user?.id} submitted new user status ${newUserStatus} to room ${socket.roomId}`
+            `User ${socket.user?.userName} submitted new user status ${newUserStatus} to room ${socket.roomId}`
           );
           room.users[socket.user?.id].userStatus = newUserStatus;
+          
+
+          if (newUserStatus==="FINISHED") {
+            const solveFinished: boolean = checkRoomSolveFinished(room);
+            if (solveFinished) {
+              handleSolveFinished(room);
+            }
+          }
+
           io.to(socket.roomId.toString()).emit("room_update", room);
         }
       }
     });
-    socket.on("user_submit_result", async (result: IResult) => {
+    socket.on("user_submit_result", async (result: IResult, onSuccessCallback?: () => void) => {
       // we store results as an easily-serializable type and reconstruct on client when needed.
       // Socket.io does not preserve complex object types over the network, so it makes it hard to pass Result types around anyways.
       if (socket.roomId && socket.user) {
@@ -405,17 +414,18 @@ const listenSocketEvents = (io: Server) => {
           return;
         }
 
+        console.log(
+          `User ${socket.user?.userName} submitted new rseult ${result} to room ${socket.roomId}`
+        );
+
         const solveObject: IRoomSolve = room.solves.at(-1)!;
         solveObject.solve.results[socket.user?.id] = result;
 
-        room.users[socket.user?.id].userStatus = "FINISHED";
+        // room.users[socket.user?.id].userStatus = "FINISHED";
         room.users[socket.user?.id].currentResult = result;
 
-        const solveFinished: boolean = checkRoomSolveFinished(room);
-        if (solveFinished) {
-          handleSolveFinished(room);
-        }
         io.to(socket.roomId.toString()).emit("room_update", room);
+        onSuccessCallback?.();
       }
     });
 

@@ -11,8 +11,7 @@ function RoomSubmittingButtons() {
   const submitButtonRef = useRef<HTMLButtonElement>(null);
 
   const submitLocalResult = useCallback(() => {
-    updateLocalSolveStatus("SUBMIT_TIME");
-    socket.emit("user_submit_result", localResult.toIResult());
+    socket.emit("user_submit_result", localResult.toIResult(), () => {updateLocalSolveStatus("SUBMIT_TIME");});
   }, [socket, localResult, updateLocalSolveStatus]);
 
 
