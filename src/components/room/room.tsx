@@ -10,6 +10,9 @@ import { useCallback, useEffect } from "react";
 import LoadingSpinner from "@/components/common/loading-spinner";
 import RoomContent from "@/components/room/room-content";
 import RoomEventHandler from "./room-event-handler";
+import PasswordPrompt from "./password-prompt";
+import LoginButton from "../common/login-button";
+import { toast } from "sonner";
 
 export default function Room() {
   // grab the roomId from the URL (from "params")
@@ -23,11 +26,13 @@ export default function Room() {
   // required state variables for this component
   const [
     isRoomValid,
+    isPasswordAuthenticated,
     handleRoomUpdate,
     setIsRoomValid,
     setIsPasswordAuthenticated,
   ] = useRoomStore((s) => [
     s.isRoomValid,
+    s.isPasswordAuthenticated,
     s.handleRoomUpdate,
     s.setIsRoomValid,
     s.setIsPasswordAuthenticated,
@@ -38,26 +43,25 @@ export default function Room() {
   /**
    * We will send this callback to the websocket to call upon requested to join room.
    */
-  const passwordValidationCallback = useCallback(
-    (passwordValid: boolean, roomValid: boolean, room?: IRoom) => {
+  const joinRoomCallback = useCallback(
+    (roomValid: boolean, room?: IRoom, extraData?: Record<string, string>) => {
       if (!roomValid) {
         setIsRoomValid(false);
         return;
       }
 
-      if (passwordValid) {
-        setIsPasswordAuthenticated(passwordValid);
-        if (room) {
-          // as long as this function only has setStates inside, no need to add to dependency list
-          //TODO reimplement
-          handleRoomUpdate(room);
-        } else {
-          // this should not happen - if it does, needs to be handled properly
-          console.log("Password is valid but room not received...");
+      if (room) {
+        // as long as a room object is returned, we consider the join attempt successful.
+        setIsPasswordAuthenticated(true);
+        handleRoomUpdate(room);
+        return;
+      }
+      
+      // use extraData in case of failure
+      if (extraData) {
+        if (Object.keys(extraData).includes("WRONG_PASSWORD")) {
+          toast.error('Wrong password entered. Try again.');
         }
-      } else {
-        //TODO - trigger some error behavior saying "password bad" or smth
-        console.log("Password not valid!");
       }
     },
     [handleRoomUpdate, setIsPasswordAuthenticated, setIsRoomValid]
@@ -85,12 +89,12 @@ export default function Room() {
     socket.emit(
       "join_room",
       { userId: user.id, roomId: roomId, password: undefined },
-      passwordValidationCallback
+      joinRoomCallback
     );
 
     // ignore socket missing - we don't want to always rerun this on socket change
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId, user, socketConnected, passwordValidationCallback]);
+  }, [roomId, user, socketConnected, joinRoomCallback]);
 
   /**
    * Emit the user_disconnect websocket event upon room unload
@@ -129,9 +133,26 @@ export default function Room() {
     return (
       <div className="flex flex-col h-screen">
         <RoomHeader />
-        <div className="grow font-bold text-xl text-center content-center">
-          You are not logged in. Please log in to join the room.
+        <div className="flex flex-col">
+          <div className="grow font-bold text-xl text-center content-center">
+            You are not logged in. Please log in to join the room.
+          </div>
+          <LoginButton />
         </div>
+      </div>
+    );
+  }
+
+  // if not password authenticated, render blank screen with dialog
+  if (!isPasswordAuthenticated) {
+    return (
+      <div className="flex flex-col h-screen">
+        <PasswordPrompt
+          socket={socket}
+          roomId={roomId}
+          userId={user.id}
+          passwordValidationCallback={joinRoomCallback}
+        />
       </div>
     );
   }

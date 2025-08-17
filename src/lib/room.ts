@@ -36,7 +36,7 @@ export async function createRoom(
   if (roomSettings.isPrivate) {
     room.password = roomSettings.password
       ? await bcrypt.hash(roomSettings.password, 10)
-      : undefined;
+      : ''; //never let a private room have an undefined password
   }
 
   return room;

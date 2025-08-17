@@ -170,11 +170,7 @@ const listenSocketEvents = (io: Server) => {
         while (rooms.get(roomId)) {
           roomId = new ObjectId().toString();
         }
-        const room: IRoom = await createRoom(
-          roomSettings,
-          roomId,
-          socket.user,
-        );
+        const room: IRoom = await createRoom(roomSettings, roomId, socket.user);
 
         rooms.set(room.id, room);
         callback(roomId);
@@ -192,9 +188,9 @@ const listenSocketEvents = (io: Server) => {
 
         // check if the room needs to be reset
         const needsReset = checkRoomUpdateRequireReset(room, roomSettings);
-        
+
         // update room object
-        await updateRoom( room, roomSettings );
+        await updateRoom(room, roomSettings);
 
         // reset room object if needed
         if (needsReset) {
@@ -221,12 +217,14 @@ const listenSocketEvents = (io: Server) => {
           userId: string;
           password?: string;
         },
-        passwordValidationCallback: (
-          passwordValid: boolean,
-          roomIdValid: boolean,
-          room?: IRoom
+        joinRoomCallback: (
+          roomValid: boolean,
+          room?: IRoom,
+          extraData?: Record<string, string>
         ) => void
       ) => {
+        console.log("join room");
+
         //validate real user
         const user: IUser | undefined = users.get(userId);
         if (!user) {
@@ -242,37 +240,32 @@ const listenSocketEvents = (io: Server) => {
           console.log(
             `User ${userId} trying to join nonexistent room ${roomId}`
           );
-          passwordValidationCallback(false, false, undefined);
+          joinRoomCallback(false, undefined, {'INVALID_ROOM': ''});
           return;
         }
 
         //validate user is not already in this room
         if (Object.keys(room.users).includes(userId)) {
           console.log(`User ${userId} double join in room ${roomId}.`);
-          passwordValidationCallback(true, true, room);
+          joinRoomCallback(true, room, {'DUPLICATE_JOIN': ''});
           return;
         }
 
         //validate password if room is private AND user isn't host
         if (room.isPrivate && userId !== room.host?.id) {
           if (!password) {
-            console.log(`User ${userId} an empty password to room ${roomId}.`);
-            passwordValidationCallback(false, true, undefined);
-            return;
-          } else if (!room.password) {
-            console.log(
-              `User ${userId} submitted the wrong password to room ${roomId}.`
-            );
-            passwordValidationCallback(false, true, undefined);
+            //this should only occur upon the first join_room ping - safe to return early
+            joinRoomCallback(true, undefined, {});
             return;
           }
 
-          const passwordValid = await bcrypt.compare(password, room.password);
-          if (!passwordValid) {
+          //room password should never be undefined, but just in case, cast to empty string
+          const correctPassword = await bcrypt.compare(password, room.password ?? '');
+          if (!correctPassword) {
             console.log(
               `User ${userId} submitted the wrong password to room ${roomId}.`
             );
-            passwordValidationCallback(false, true, undefined);
+            joinRoomCallback(true, undefined, {'WRONG_PASSWORD': ''});
             return;
           }
         }
@@ -293,7 +286,7 @@ const listenSocketEvents = (io: Server) => {
         room.users[userId] = roomUser;
         socket.join(roomId);
         socket.roomId = roomId;
-        passwordValidationCallback(true, true, room);
+        joinRoomCallback(true, room, {});
 
         //broadcast update to all other users
         io.to(roomId).except(userId).emit("room_update", room);
@@ -381,9 +374,8 @@ const listenSocketEvents = (io: Server) => {
             `User ${socket.user?.userName} submitted new user status ${newUserStatus} to room ${socket.roomId}`
           );
           room.users[socket.user?.id].userStatus = newUserStatus;
-          
 
-          if (newUserStatus==="FINISHED") {
+          if (newUserStatus === "FINISHED") {
             const solveFinished: boolean = checkRoomSolveFinished(room);
             if (solveFinished) {
               handleSolveFinished(room);
@@ -394,40 +386,43 @@ const listenSocketEvents = (io: Server) => {
         }
       }
     });
-    socket.on("user_submit_result", async (result: IResult, onSuccessCallback?: () => void) => {
-      // we store results as an easily-serializable type and reconstruct on client when needed.
-      // Socket.io does not preserve complex object types over the network, so it makes it hard to pass Result types around anyways.
-      if (socket.roomId && socket.user) {
-        const room = rooms.get(socket.roomId);
-        if (!room) return;
+    socket.on(
+      "user_submit_result",
+      async (result: IResult, onSuccessCallback?: () => void) => {
+        // we store results as an easily-serializable type and reconstruct on client when needed.
+        // Socket.io does not preserve complex object types over the network, so it makes it hard to pass Result types around anyways.
+        if (socket.roomId && socket.user) {
+          const room = rooms.get(socket.roomId);
+          if (!room) return;
 
-        if (room.state !== "STARTED") {
+          if (room.state !== "STARTED") {
+            console.log(
+              `User ${socket.user?.id} tried to submit a result to ${socket.roomId} in the wrong room state. Ignoring message.`
+            );
+            return;
+          }
+          if (room.solves.length == 0) {
+            console.log(
+              `User ${socket.user?.id} tried to submit a result to ${socket.roomId} when there are no solves in the room.`
+            );
+            return;
+          }
+
           console.log(
-            `User ${socket.user?.id} tried to submit a result to ${socket.roomId} in the wrong room state. Ignoring message.`
+            `User ${socket.user?.userName} submitted new rseult ${result} to room ${socket.roomId}`
           );
-          return;
+
+          const solveObject: IRoomSolve = room.solves.at(-1)!;
+          solveObject.solve.results[socket.user?.id] = result;
+
+          // room.users[socket.user?.id].userStatus = "FINISHED";
+          room.users[socket.user?.id].currentResult = result;
+
+          io.to(socket.roomId.toString()).emit("room_update", room);
+          onSuccessCallback?.();
         }
-        if (room.solves.length == 0) {
-          console.log(
-            `User ${socket.user?.id} tried to submit a result to ${socket.roomId} when there are no solves in the room.`
-          );
-          return;
-        }
-
-        console.log(
-          `User ${socket.user?.userName} submitted new rseult ${result} to room ${socket.roomId}`
-        );
-
-        const solveObject: IRoomSolve = room.solves.at(-1)!;
-        solveObject.solve.results[socket.user?.id] = result;
-
-        // room.users[socket.user?.id].userStatus = "FINISHED";
-        room.users[socket.user?.id].currentResult = result;
-
-        io.to(socket.roomId.toString()).emit("room_update", room);
-        onSuccessCallback?.();
       }
-    });
+    );
 
     socket.on("user_toggle_competing_spectating", (competing: boolean) => {
       if (socket.roomId && socket.user) {
