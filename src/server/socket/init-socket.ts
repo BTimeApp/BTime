@@ -179,7 +179,7 @@ const listenSocketEvents = (io: Server) => {
 
     socket.on(
       "update_room",
-      async (roomSettings: IRoomSettings, roomId: string, userId: string) => {
+      async (roomSettings: IRoomSettings, roomId: string, userId: string, onSuccessCallback?: () => void) => {
         const room: IRoom | undefined = rooms.get(roomId);
         if (!room || userId !== room.host?.id) {
           console.log(userId, room?.host);
@@ -202,6 +202,9 @@ const listenSocketEvents = (io: Server) => {
 
         // broadcast room update
         io.to(roomId).emit("room_update", room);
+
+        // upon successful update, call success callback
+        onSuccessCallback?.();
       }
     );
 

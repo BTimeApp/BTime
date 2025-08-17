@@ -37,16 +37,15 @@ import {
 } from "@/types/room";
 import { Switch } from "@/components/ui/switch";
 import { useSession } from "@/context/session-context";
-import { parseIntNaN } from "@/lib/utils";
 import { toast } from "sonner";
 
 const formSchema = z.object({
   roomName: z
     .string()
-    .min(2, {
-      message: "Username must be at least 2 characters.",
+    .min(1, {
+      message: "Room name cannot be empty.",
     })
-    .max(100, { message: "Username must not be over 50 characters." }),
+    .max(100, { message: "Room name must not be over 100 characters." }),
   roomFormat: z.enum(ROOM_FORMATS),
   roomEvent: z.enum(ROOM_EVENTS),
   isPrivate: z.boolean(),
@@ -66,10 +65,11 @@ type RoomSettingsFormProps = {
   setFormat?: SetFormat;
   nSets?: number;
   nSolves?: number;
-  roomId: string;
+  roomId?: string;
   createNewRoom: boolean;
   submitButtonRef?: React.RefObject<HTMLButtonElement>;
-  onSubmitCallback?: () => void;
+  onCreateCallback?: (roomId: string) => void; 
+  onUpdateCallback?: () => void;
 };
 
 /**
@@ -87,7 +87,8 @@ export default function RoomSettingsForm({
   roomId,
   createNewRoom,
   submitButtonRef,
-  onSubmitCallback,
+  onCreateCallback,
+  onUpdateCallback,
 }: RoomSettingsFormProps) {
   const { user } = useSession();
   const { socket } = useSocket();
@@ -110,7 +111,6 @@ export default function RoomSettingsForm({
 
   const onSubmit = useCallback(
     (values: z.infer<typeof formSchema>) => {
-      console.log("onSubmit call");
       if (!socket || !user) {
         console.log(socket, user);
         return;
@@ -119,17 +119,14 @@ export default function RoomSettingsForm({
       //this cast should be safe
       const newRoomSettings: IRoomSettings = values as IRoomSettings;
 
-      //send event thru socket
+      //send room create/update event
       if (createNewRoom) {
-        socket.emit("", {});
+        socket.emit("create_room", {roomSettings: newRoomSettings}, onCreateCallback);
       } else {
-        socket.emit("update_room", newRoomSettings, roomId, user.id);
+        socket.emit("update_room", newRoomSettings, roomId, user.id, onUpdateCallback);
       }
-
-      //only call submit callback when successful submit
-      onSubmitCallback?.();
     },
-    [socket, createNewRoom, onSubmitCallback, roomId, user]
+    [socket, user]
   );
 
   const onError = useCallback((errors: FieldErrors<FieldValues>) => {
@@ -145,13 +142,14 @@ export default function RoomSettingsForm({
     useState<RoomFormat>(roomFormat);
 
   return (
+    <div className="m-1">
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit, onError)}
         className="space-y-8"
       >
         <div className="grid grid-cols-3 gap-3">
-          <div className="space-y-3">
+          <div className="space-x-5 space-y-3">
             <p className="text-xl font-bold">INFO</p>
             <FormField
               control={form.control}
@@ -312,7 +310,7 @@ export default function RoomSettingsForm({
                           step="1"
                           {...field}
                           onChange={(e) =>
-                            field.onChange(parseIntNaN(e.target.value))
+                            field.onChange(isNaN(parseInt(e.target.value)) ? "" : parseInt(e.target.value))
                           }
                         />
                       </FormControl>
@@ -362,7 +360,7 @@ export default function RoomSettingsForm({
                           step="1"
                           {...field}
                           onChange={(e) =>
-                            field.onChange(parseIntNaN(e.target.value))
+                            field.onChange(isNaN(parseInt(e.target.value)) ? "" : parseInt(e.target.value))
                           }
                         />
                       </FormControl>
@@ -381,13 +379,14 @@ export default function RoomSettingsForm({
           <Button
             variant="primary"
             type="submit"
-            className="font-bold"
+            className="text-lg font-bold"
             ref={submitButtonRef}
           >
-            Submit
+            {createNewRoom ? "CREATE" : "UPDATE"}
           </Button>
         </div>
       </form>
     </Form>
+    </div>
   );
 }

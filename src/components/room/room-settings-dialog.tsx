@@ -60,7 +60,7 @@ export default function RoomSettingsDialog({
           nSolves={nSolves}
           roomId={roomId}
           createNewRoom={false}
-          onSubmitCallback={handleSubmit}
+          onUpdateCallback={handleSubmit}
         />
       </DialogContent>
     </Dialog>
