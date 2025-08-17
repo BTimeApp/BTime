@@ -5,7 +5,7 @@ import { getFormatText, getVerboseFormatText } from "@/types/room";
 import GlobalTimeList from "./global-time-list";
 import { IRoomUser } from "@/types/room-user";
 import { Result } from "@/types/result";
-import { Button } from "../ui/button";
+import { Button } from "@/components/ui/button";
 import { Settings } from "lucide-react";
 import TimerSection from "./timer-section";
 import RoomSubmittingButtons from "./room-submitting-buttons";

@@ -11,7 +11,7 @@ import LoadingSpinner from "@/components/common/loading-spinner";
 import RoomContent from "@/components/room/room-content";
 import RoomEventHandler from "./room-event-handler";
 import PasswordPrompt from "./password-prompt";
-import LoginButton from "../common/login-button";
+import LoginButton from "@/components/common/login-button";
 import { toast } from "sonner";
 
 export default function Room() {

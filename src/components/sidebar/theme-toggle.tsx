@@ -2,7 +2,7 @@
 
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import { SidebarMenuItem, SidebarMenuButton } from "../ui/sidebar";
+import { SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
 import { IconMoon, IconSun } from "@tabler/icons-react";
 
 export default function ThemeToggle() {

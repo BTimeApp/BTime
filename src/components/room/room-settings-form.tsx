@@ -19,7 +19,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../ui/select";
+} from "@/components/ui/select";
 import {
   IRoomSettings,
   MATCH_FORMAT_MAP,
@@ -35,7 +35,7 @@ import {
   SET_FORMATS,
   SetFormat,
 } from "@/types/room";
-import { Switch } from "../ui/switch";
+import { Switch } from "@/components/ui/switch";
 import { useSession } from "@/context/session-context";
 import { parseIntNaN } from "@/lib/utils";
 import { toast } from "sonner";

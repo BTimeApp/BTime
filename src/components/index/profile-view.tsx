@@ -3,7 +3,7 @@ import { useSession } from "@/context/session-context";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import LoginButton from "@/components/common/login-button";
-import LogoutButton from "../common/logout-button";
+import LogoutButton from "@/components/common/logout-button";
 import Link from "next/link";
 
 /**

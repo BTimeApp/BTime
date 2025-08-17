@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "../ui/button";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { IRoomSettings } from "@/types/room";
 import { Socket } from "socket.io-client";
