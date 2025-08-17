@@ -27,6 +27,9 @@ function CallbackInput( { className, type, onEnter, ...props} : CallbackInputPro
     if (e.key === "Enter" && onEnter) {
       onEnter(e.currentTarget.value);
       e.currentTarget.value = "";
+
+      e.preventDefault();
+      e.stopPropagation();
     }
 
     // if custom onKeyDown is passed, trigger
