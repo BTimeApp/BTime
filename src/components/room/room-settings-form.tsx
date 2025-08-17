@@ -135,7 +135,7 @@ export default function RoomSettingsForm({
       setFormError(false);
       setFormErrorText("");
     }
-  }, [user, socket, socketConnected]);
+  }, [user, userLoading, socket, socketConnected]);
 
   const onSubmit = useCallback(
     (values: z.infer<typeof formSchema>) => {
@@ -164,7 +164,7 @@ export default function RoomSettingsForm({
         );
       }
     },
-    [socket, user]
+    [socket, user, createNewRoom, onCreateCallback, onUpdateCallback, roomId]
   );
 
   const onError = useCallback((errors: FieldErrors<FieldValues>) => {
