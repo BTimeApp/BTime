@@ -1,7 +1,7 @@
 import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
 import { Types } from "mongoose";
-import { rooms, users } from "@/server/server-objects";
+import { rooms, users, UserSession } from "@/server/server-objects";
 import { IRoom, RoomState, IRoomSettings } from "@/types/room";
 import {
   skipScramble,
@@ -23,6 +23,7 @@ import { NextFunction } from "express";
 import { ObjectId } from "bson";
 import passport from "passport";
 import bcrypt from "bcrypt";
+import { userSessions } from "@/server/server-objects";
 
 //defines useful state variables we want to maintain over the lifestyle of a socket connection (only visible server-side)
 interface CustomSocket extends Socket {
@@ -157,6 +158,12 @@ const listenSocketEvents = (io: Server) => {
           );
           io.to(socket.roomId.toString()).emit("room_update", room);
         }
+
+        // handle case that this user was the last one to submit a time/compete
+        if (checkRoomSolveFinished(room)) {
+          handleSolveFinished(room);
+          io.to(socket.roomId.toString()).emit("room_update", room);
+        }
       }
     }
 
@@ -179,7 +186,12 @@ const listenSocketEvents = (io: Server) => {
 
     socket.on(
       "update_room",
-      async (roomSettings: IRoomSettings, roomId: string, userId: string, onSuccessCallback?: () => void) => {
+      async (
+        roomSettings: IRoomSettings,
+        roomId: string,
+        userId: string,
+        onSuccessCallback?: () => void
+      ) => {
         const room: IRoom | undefined = rooms.get(roomId);
         if (!room || userId !== room.host?.id) {
           console.log(userId, room?.host);
@@ -226,8 +238,6 @@ const listenSocketEvents = (io: Server) => {
           extraData?: Record<string, string>
         ) => void
       ) => {
-        console.log("join room");
-
         //validate real user
         const user: IUser | undefined = users.get(userId);
         if (!user) {
@@ -243,14 +253,24 @@ const listenSocketEvents = (io: Server) => {
           console.log(
             `User ${userId} trying to join nonexistent room ${roomId}`
           );
-          joinRoomCallback(false, undefined, {'INVALID_ROOM': ''});
+          joinRoomCallback(false, undefined, { INVALID_ROOM: "" });
           return;
         }
 
         //validate user is not already in this room
         if (Object.keys(room.users).includes(userId)) {
           console.log(`User ${userId} double join in room ${roomId}.`);
-          joinRoomCallback(true, room, {'DUPLICATE_JOIN': ''});
+
+          //clear any session DC/RC related timeouts
+          if (!userSessions.get(userId)) {
+            // create a map for this user
+            userSessions.set(userId, new Map<string, UserSession>());
+          } else {
+            // clear the timeout associated with this user-room combo so we don't actually DC them
+            clearTimeout(userSessions.get(userId)?.get(roomId)?.timeout);
+          }
+
+          joinRoomCallback(true, room, { DUPLICATE_JOIN: "" });
           return;
         }
 
@@ -263,14 +283,25 @@ const listenSocketEvents = (io: Server) => {
           }
 
           //room password should never be undefined, but just in case, cast to empty string
-          const correctPassword = await bcrypt.compare(password, room.password ?? '');
+          const correctPassword = await bcrypt.compare(
+            password,
+            room.password ?? ""
+          );
           if (!correctPassword) {
             console.log(
               `User ${userId} submitted the wrong password to room ${roomId}.`
             );
-            joinRoomCallback(true, undefined, {'WRONG_PASSWORD': ''});
+            joinRoomCallback(true, undefined, { WRONG_PASSWORD: "" });
             return;
           }
+        }
+        //clear any session DC/RC related timeouts
+        if (!userSessions.get(userId)) {
+          // create a map for this user
+          userSessions.set(userId, new Map<string, UserSession>());
+        } else {
+          // clear the timeout associated with this user-room combo so we don't actually DC them
+          clearTimeout(userSessions.get(userId)?.get(roomId)?.timeout);
         }
 
         //add user to room
@@ -287,6 +318,12 @@ const listenSocketEvents = (io: Server) => {
         };
 
         room.users[userId] = roomUser;
+
+        // if there is no host for some reason, promote this user to be host
+        if (!room.host) {
+          room.host = user;
+        }
+
         socket.join(roomId);
         socket.roomId = roomId;
         joinRoomCallback(true, room, {});
@@ -412,7 +449,7 @@ const listenSocketEvents = (io: Server) => {
           }
 
           console.log(
-            `User ${socket.user?.userName} submitted new rseult ${result} to room ${socket.roomId}`
+            `User ${socket.user?.userName} submitted new result ${result} to room ${socket.roomId}`
           );
 
           const solveObject: IRoomSolve = room.solves.at(-1)!;
@@ -458,12 +495,36 @@ const listenSocketEvents = (io: Server) => {
 
     //manual trigger (e.g. on client leaving the room page)
     socket.on("user_disconnect", () => {
-      handleDisconnect();
+      if (socket.roomId) {
+        console.log(`User ${userId} disconnect from room ${socket.roomId}`)
+        if (!userSessions.get(userId)) {
+          userSessions.set(userId, new Map<string, UserSession>());
+        }
+
+        userSessions.get(userId)!.set(socket.roomId, {
+          timeout: setTimeout(() => {
+            handleDisconnect();
+            userSessions.get(userId)?.delete(socket.roomId!);
+          }, 2000),
+        }); //wait for 2 seconds before actually DCing user)
+      }
     });
 
     //socket disconnection - automatically trigger on client closing all webpages
     socket.on("disconnect", () => {
-      handleDisconnect();
+      if (socket.roomId) {
+        console.log(`User ${userId} disconnect from socket`)
+        if (!userSessions.get(userId)) {
+          userSessions.set(userId, new Map<string, UserSession>());
+        }
+
+        userSessions.get(userId)!.set(socket.roomId, {
+          timeout: setTimeout(() => {
+            handleDisconnect();
+            userSessions.get(userId)?.delete(socket.roomId!);
+          }, 2000),
+        }); //wait for 2 seconds before actually DCing user)
+      }
     });
   });
 };

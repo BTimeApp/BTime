@@ -61,7 +61,6 @@ export default function RoomEventHandler() {
     socket.on("room_update", handleRoomUpdate);
 
     return () => {
-      // socketRef.current?.disconnect();
       socket.off("room_update", handleRoomUpdate);
     };
   }, [handleRoomUpdate, socket]);
