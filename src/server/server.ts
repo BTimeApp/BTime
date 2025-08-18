@@ -8,10 +8,8 @@ import { createAuthRouter } from "@/server/auth";
 import { api } from "@/server/api";
 import passport from 'passport';
 import session from 'express-session';
-import { rooms, users } from "@/server/server-objects";
+import { users } from "@/server/server-objects";
 import { rateLimit } from "express-rate-limit";
-import { createRoom } from "@/lib/room";
-import { IRoom } from "@/types/room";
 import addDevExtras from "./dev-extras";
 
 export async function startServer(): Promise<void> {
