@@ -58,27 +58,6 @@ function PasswordPrompt({
   }
 
   return (
-    // <div className="flex flex-col">
-    //   <div>This room is password-protected. Please enter password to join:</div>
-    //   <div className="flex flex-row gap-2">
-    //     <CallbackInput
-    //       type="text"
-    //       className="text-center"
-    //       onChange={(e) => {
-    //         setPassword(e.target.value);
-    //       }}
-    //       onEnter={checkPassword}
-    //     />
-    //     <Button
-    //       variant="primary"
-    //       size="sm"
-    //       className="font-bold"
-    //       onClick={checkPassword}
-    //     >
-    //       <div>Submit</div>
-    //     </Button>
-    //   </div>
-    // </div>
     <Dialog open={true}>
       <DialogContent
         onInteractOutside={(e) => {
@@ -102,9 +81,15 @@ function PasswordPrompt({
               )}
             />
 
-            <Button variant="primary" type="submit" className="font-bold">
-              Submit
-            </Button>
+            <div className="flex flex-row">
+              <Button variant="primary" type="submit" className="font-bold">
+                Submit
+              </Button>
+
+              <Button variant="primary" className="font-bold ml-auto" onClick={() => {window.location.href="/"}}>
+                Back to Home
+              </Button>
+            </div>
           </form>
         </Form>
       </DialogContent>
