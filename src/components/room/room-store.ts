@@ -59,6 +59,7 @@ export type RoomStore = {
   setIsRoomValid: (isRoomValid: boolean) => void;
   setIsPasswordAuthenticated: (isAuthenticated: boolean) => void;
 
+  //only handles room information - not any local user info
   handleRoomUpdate: (room: IRoom) => void;
 };
 

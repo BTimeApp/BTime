@@ -54,7 +54,6 @@ export default function Room() {
         // as long as a room object is returned, we consider the join attempt successful.
         setIsPasswordAuthenticated(true);
         handleRoomUpdate(room);
-        return;
       }
       
       // use extraData in case of failure

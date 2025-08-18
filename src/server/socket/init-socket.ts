@@ -118,7 +118,7 @@ const listenSocketEvents = (io: Server) => {
         if (!room) return;
 
         //remove user from room
-        delete room.users[socket.user?.id];
+        delete room.users[userId];
         io.to(socket.roomId.toString()).emit("room_update", room);
 
         //check if no more users, if so, delete room.
@@ -129,7 +129,7 @@ const listenSocketEvents = (io: Server) => {
         }
 
         //check if user is host OR there is somehow no host.
-        if ((room.host && room.host.id == socket.user.id) || !room.host) {
+        if ((room.host && room.host.id == userId) || !room.host) {
           if (room.host) {
             console.log(
               `Host has left room ${socket.roomId}. Promoting a new host.`
@@ -158,6 +158,9 @@ const listenSocketEvents = (io: Server) => {
           );
           io.to(socket.roomId.toString()).emit("room_update", room);
         }
+
+        //delete the user's submission for most recent solve, if it exists
+        delete room.solves.at(-1)?.solve.results?.[userId];
 
         // handle case that this user was the last one to submit a time/compete
         if (checkRoomSolveFinished(room)) {
