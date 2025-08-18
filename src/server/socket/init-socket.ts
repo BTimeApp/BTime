@@ -508,8 +508,8 @@ const listenSocketEvents = (io: Server) => {
           timeout: setTimeout(() => {
             handleDisconnect();
             userSessions.get(userId)?.delete(socket.roomId!);
-          }, 2000),
-        }); //wait for 2 seconds before actually DCing user)
+          }, 1000),
+        }); //wait for 1 second before actually DCing user
       }
     });
 
