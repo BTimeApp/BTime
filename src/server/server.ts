@@ -8,8 +8,11 @@ import { createAuthRouter } from "@/server/auth";
 import { api } from "@/server/api";
 import passport from 'passport';
 import session from 'express-session';
-import { users } from "@/server/server-objects";
+import { rooms, users } from "@/server/server-objects";
 import { rateLimit } from "express-rate-limit";
+import { createRoom } from "@/lib/room";
+import { IRoom } from "@/types/room";
+import addDevExtras from "./dev-extras";
 
 export async function startServer(): Promise<void> {
   // handle config with dotenv
@@ -128,4 +131,11 @@ export async function startServer(): Promise<void> {
   httpServer.listen(PORT, "0.0.0.0", () => {
     console.log(`> Server listening on http://0.0.0.0:${PORT}`);
   });
+
+  // Create test rooms
+  if (!isProd) {
+    await addDevExtras();
+  }
 }
+
+
