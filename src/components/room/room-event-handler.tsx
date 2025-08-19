@@ -1,8 +1,10 @@
 import { useRoomStore } from "@/context/room-context";
 import { useSocket } from "@/context/socket-context";
+import { useCallbackOnTransition } from "@/hooks/useCallbackOnTransition";
 import { useStartTimeOnTransition } from "@/hooks/useStartTimeOnTransition";
 import { Result } from "@/types/result";
 import { SolveStatus } from "@/types/status";
+import { isLiveTimer } from "@/types/timer-type";
 import { useCallback, useEffect } from "react";
 
 /**
@@ -20,6 +22,10 @@ export default function RoomEventHandler() {
     setLiveTimerStartTime,
     handleRoomUpdate,
     resetLocalSolveStatus,
+    addUserLiveStartTime,
+    addUserLiveStopTime,
+    clearUserLiveStartTimes,
+    clearUserLiveTimes,
   ] = useRoomStore((s) => [
     s.localPenalty,
     s.localResult,
@@ -31,8 +37,12 @@ export default function RoomEventHandler() {
     s.setLiveTimerStartTime,
     s.handleRoomUpdate,
     s.resetLocalSolveStatus,
+    s.addUserLiveStartTime,
+    s.addUserLiveStopTime,
+    s.clearUserLiveStartTimes,
+    s.clearUserLiveTimes,
   ]);
-  const { socket } = useSocket();
+  const { socket, socketConnected } = useSocket();
 
   //live update for start time
   const liveTimerStartTime = useStartTimeOnTransition<SolveStatus>(
@@ -71,7 +81,14 @@ export default function RoomEventHandler() {
   const solveFinishedHandler = useCallback(() => {
     resetLocalSolveStatus();
     setLocalPenalty("OK");
-  }, [resetLocalSolveStatus, setLocalPenalty]);
+    clearUserLiveStartTimes();
+    clearUserLiveTimes();
+  }, [
+    resetLocalSolveStatus,
+    setLocalPenalty,
+    clearUserLiveStartTimes,
+    clearUserLiveTimes,
+  ]);
 
   // listen for solve finished websocket event
   useEffect(() => {
@@ -97,6 +114,63 @@ export default function RoomEventHandler() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomState, timerType]);
 
+  const broadcastStartLiveTimerCallback = useCallback(() => {
+    if (socket && socket.connected && isLiveTimer(timerType)) {
+      socket.emit("user_start_live_timer");
+    }
+  }, [socket, timerType]);
+
+  const broadcastStopLiveTimerCallback = useCallback(() => {
+    if (socket && socket.connected && isLiveTimer(timerType)) {
+      socket.emit("user_stop_live_timer");
+    }
+  }, [socket, timerType]);
+
+  useCallbackOnTransition<SolveStatus>(
+    localSolveStatus,
+    "SOLVING",
+    broadcastStartLiveTimerCallback
+  );
+  useCallbackOnTransition<SolveStatus>(
+    localSolveStatus,
+    "SUBMITTING",
+    broadcastStopLiveTimerCallback
+  );
+
+  const userStartedLiveTimerCallback = useCallback(
+    (userId: string) => {
+      addUserLiveStartTime(userId, performance.now());
+    },
+    [addUserLiveStartTime]
+  );
+
+  const userStoppedLiveTimerCallback = useCallback(
+    (userId: string) => {
+      addUserLiveStopTime(userId, performance.now());
+    },
+    [addUserLiveStopTime]
+  );
+
+  /**
+   * For all socket listen events
+   */
+  useEffect(() => {
+    if (socket.connected) {
+      socket.on("user_started_live_timer", userStartedLiveTimerCallback);
+      socket.on("user_stopped_live_timer", userStoppedLiveTimerCallback);
+    }
+
+    return () => {
+      socket.off("user_started_live_timer", userStartedLiveTimerCallback);
+      socket.off("user_stopped_live_timer", userStoppedLiveTimerCallback);
+    };
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    socketConnected,
+    userStartedLiveTimerCallback,
+    userStoppedLiveTimerCallback,
+  ]);
   // this component should never render. it will house all logic though.
   return null;
 }

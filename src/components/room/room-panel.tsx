@@ -10,6 +10,7 @@ import { Settings } from "lucide-react";
 import TimerSection from "./timer-section";
 import RoomSubmittingButtons from "./room-submitting-buttons";
 import UserRoomSettingsDialog from "./user-room-settings-dialog";
+import UserLiveTimer from "./user-live-timer";
 
 type RoomPanelProps = {
   className?: string;
@@ -196,12 +197,14 @@ function UserRoomPanel({
 }
 
 function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
-  const [users, solves, roomEvent, roomFormat, roomState] = useRoomStore((s) => [
+  const [users, solves, roomEvent, roomFormat, roomState, userLiveTimerStartTimes, userLiveTimes] = useRoomStore((s) => [
     s.users,
     s.solves,
     s.roomEvent,
     s.roomFormat,
-    s.roomState
+    s.roomState,
+    s.userLiveTimerStartTimes,
+    s.userLiveTimes
   ]);
   const [sortedUsers, setSortedUsers] = useState<IRoomUser[]>(
     Object.values(users)
@@ -213,7 +216,11 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
     } else {
       if (user.userStatus == "FINISHED" && user.currentResult) {
         return Result.fromIResult(user.currentResult).toString();
-      } else {
+      } else if (user.userStatus === "SOLVING" && userLiveTimerStartTimes.get(user.user.id)) {
+        return <UserLiveTimer startTime={(userLiveTimerStartTimes.get(user.user.id)!)}/>
+      } else if (user.userStatus === "SUBMITTING" && userLiveTimes.get(user.user.id)) {
+        return <p className="italic">{Result.timeToString(Math.floor(userLiveTimes.get(user.user.id)! / 10))}</p>;
+      }else {
         return user.userStatus;
       }
     }

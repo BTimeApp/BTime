@@ -336,6 +336,9 @@ const listenSocketEvents = (io: Server) => {
       }
     );
 
+    /**
+     * Upon host pressing skip scramble button
+     */
     socket.on("skip_scramble", async () => {
       console.log(
         `User ${socket.user?.id} is trying to skip the scramble in room ${socket.roomId}.`
@@ -351,6 +354,9 @@ const listenSocketEvents = (io: Server) => {
       }
     });
 
+    /**
+     * Upon host starting the room
+     */
     socket.on("start_room", async () => {
       console.log(
         `User ${socket.user?.id} is trying to start room ${socket.roomId}.`
@@ -367,6 +373,9 @@ const listenSocketEvents = (io: Server) => {
       }
     });
 
+    /**
+     * Upon host pressing reset button
+     */
     socket.on("reset_room", () => {
       console.log(
         `User ${socket.user?.id} is trying to reset room ${socket.roomId}.`
@@ -382,6 +391,9 @@ const listenSocketEvents = (io: Server) => {
       }
     });
 
+    /**
+     * Upon host pressing rematch button
+     */
     socket.on("rematch_room", async () => {
       console.log(
         `User ${socket.user?.id} is trying to rematch room ${socket.roomId}.`
@@ -401,6 +413,9 @@ const listenSocketEvents = (io: Server) => {
       }
     });
 
+    /**
+     * Upon user updating their status
+     */
     socket.on("user_update_status", (newUserStatus: SolveStatus) => {
       if (socket.roomId && socket.user) {
         const room = rooms.get(socket.roomId);
@@ -429,6 +444,34 @@ const listenSocketEvents = (io: Server) => {
         }
       }
     });
+
+    /**
+     * Upon user starting any live timer option (only keyboard as of now)
+     */
+    socket.on("user_start_live_timer", () => {
+      if (socket.roomId && socket.user) {
+        const room = rooms.get(socket.roomId);
+        if (!room) return;
+
+        io.to(socket.roomId.toString()).except(userId).emit("user_started_live_timer", userId);
+      }
+    });
+
+    /**
+     * Upon user stopping any live timer option (only keyboard as of now)
+     */
+    socket.on("user_stop_live_timer", () => {
+      if (socket.roomId && socket.user) {
+        const room = rooms.get(socket.roomId);
+        if (!room) return;
+
+        io.to(socket.roomId.toString()).except(userId).emit("user_stopped_live_timer", userId);
+      }
+    });
+
+    /**
+     * Upon user submitting a new result
+     */
     socket.on(
       "user_submit_result",
       async (result: IResult, onSuccessCallback?: () => void) => {
@@ -467,6 +510,9 @@ const listenSocketEvents = (io: Server) => {
       }
     );
 
+    /**
+     * Upon user pressing compete/spectate button
+     */
     socket.on("user_toggle_competing_spectating", (competing: boolean) => {
       if (socket.roomId && socket.user) {
         const room = rooms.get(socket.roomId);
@@ -496,7 +542,9 @@ const listenSocketEvents = (io: Server) => {
       }
     });
 
-    //manual trigger (e.g. on client leaving the room page)
+    /**
+     * Upon user disconnecting from a room
+     */
     socket.on("user_disconnect", () => {
       if (socket.roomId) {
         console.log(`User ${userId} disconnect from room ${socket.roomId}`)
@@ -513,7 +561,9 @@ const listenSocketEvents = (io: Server) => {
       }
     });
 
-    //socket disconnection - automatically trigger on client closing all webpages
+    /**
+     * Upon socket disconnection - automatically trigger on client closing all webpages
+     */
     socket.on("disconnect", () => {
       if (socket.roomId) {
         console.log(`User ${userId} disconnect from socket`)

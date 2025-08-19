@@ -41,6 +41,13 @@ export type RoomStore = {
   isRoomValid: boolean; //is there a room with this roomid?
   isPasswordAuthenticated: boolean; //has password been accepted?
 
+  /**
+   * Map from user IDs to timestamps of when each user (potentially) started a live timer.
+   * This is used to implement live time sharing (storage in client side) b/c storing on server makes calculating that live time difficult.
+   */
+  userLiveTimerStartTimes: Map<string, number>;
+  userLiveTimes: Map<string, number>;
+
   setLocalPenalty: (penalty: Penalty) => void;
   setLocalResult: (result: Result) => void;
   setRoomName: (roomName: string) => void;
@@ -58,6 +65,11 @@ export type RoomStore = {
 
   setIsRoomValid: (isRoomValid: boolean) => void;
   setIsPasswordAuthenticated: (isAuthenticated: boolean) => void;
+
+  addUserLiveStartTime: (userId: string, startTime: number) => void;
+  clearUserLiveStartTimes: () => void;
+  addUserLiveStopTime: (userId: string, startTime: number) => void;
+  clearUserLiveTimes: () => void;
 
   //only handles room information - not any local user info
   handleRoomUpdate: (room: IRoom) => void;
@@ -92,19 +104,25 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
     isRoomValid: true,
     isPasswordAuthenticated: false,
 
+    userLiveTimerStartTimes: new Map<string, number>(),
+    userLiveTimes: new Map<string, number>(),
+
     setLocalPenalty: (penalty: Penalty) =>
       set(() => ({ localPenalty: penalty })),
     setLocalResult: (result: Result) => set(() => ({ localResult: result })),
     setRoomName: (roomName: string) => set(() => ({ roomName: roomName })),
     setHostId: (hostId: string) => set(() => ({ hostId: hostId })),
-    setLiveTimerStartTime: (time: number) => set(() => ({liveTimerStartTime: time})),
+    setLiveTimerStartTime: (time: number) =>
+      set(() => ({ liveTimerStartTime: time })),
     isUserHost: (userId: string) => {
       const hostId = get().hostId;
       return userId === hostId;
     },
 
-    setUseInspection: (useInspection: boolean) => set(() => ({useInspection: useInspection})),
-    setTimerType: (timerType: TimerType) => set(() => ({timerType: timerType})),
+    setUseInspection: (useInspection: boolean) =>
+      set(() => ({ useInspection: useInspection })),
+    setTimerType: (timerType: TimerType) =>
+      set(() => ({ timerType: timerType })),
     getMostRecentScramble: () => {
       const solves = get().solves;
       if (!solves || solves.length === 0) {
@@ -166,6 +184,37 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
       set(() => ({ isRoomValid: isRoomValid })),
     setIsPasswordAuthenticated: (isPasswordAuthenticated: boolean) =>
       set(() => ({ isPasswordAuthenticated: isPasswordAuthenticated })),
+
+    /**
+     * We need to create an entire new Map here to adhere to the Zustand rules
+     * This shouldn't cause any big issues since we expect not to have massive rooms but TODO find a better way to handle this
+     */
+    addUserLiveStartTime: (userId: string, time: number) =>
+      set(() => ({
+        userLiveTimerStartTimes: new Map<string, number>(
+          get().userLiveTimerStartTimes
+        ).set(userId, time),
+      })),
+
+    clearUserLiveStartTimes: () =>
+      set(() => ({ userLiveTimerStartTimes: new Map<string, number>() })),
+
+    addUserLiveStopTime: (userId: string, time: number) => {
+      const startTime = get().userLiveTimerStartTimes.get(userId);
+      if (startTime === undefined) return;
+
+      set(() => ({
+        userLiveTimerStartTimes: new Map<string, number>(
+          get().userLiveTimerStartTimes.entries().filter(x => x[0] !== userId)
+        ),
+        userLiveTimes: new Map<string, number>(
+          get().userLiveTimes
+        ).set(userId, time - startTime),
+      }))
+    },
+
+    clearUserLiveTimes: () =>
+      set(() => ({ userLiveTimes: new Map<string, number>() })),
 
     handleRoomUpdate: (room: IRoom) =>
       set(() => ({
