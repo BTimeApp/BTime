@@ -6,8 +6,8 @@ import { initSocket, SocketMiddleware } from "@/server/socket/init-socket";
 import { handleConfig } from "@/server/load-config";
 import { createAuthRouter } from "@/server/auth";
 import { api } from "@/server/api";
-import passport from 'passport';
-import session from 'express-session';
+import passport from "passport";
+import session from "express-session";
 import { users } from "@/server/server-objects";
 import { rateLimit } from "express-rate-limit";
 import addDevExtras from "./dev-extras";
@@ -15,8 +15,8 @@ import addDevExtras from "./dev-extras";
 export async function startServer(): Promise<void> {
   // handle config with dotenv
   handleConfig();
-  console.log(`Running server with ${process.env.NODE_ENV} settings.`)
-  const isProd = (process.env.NODE_ENV === "production");
+  console.log(`Running server with ${process.env.NODE_ENV} settings.`);
+  const isProd = process.env.NODE_ENV === "production";
 
   // connect to the DB
   await connectToDB();
@@ -31,13 +31,13 @@ export async function startServer(): Promise<void> {
   const httpServer = createServer(app);
 
   // configure express app, add middleware
-  app.set('prod', isProd);
+  app.set("prod", isProd);
   app.use(express.json()); // for parsing application/json
   app.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
   if (isProd) {
-    app.set('trust proxy', 1);
+    app.set("trust proxy", 1);
   }
-  
+
   // set up session
   const sessionMiddleware = session({
     secret: process.env.SESSION_SECRET,
@@ -48,42 +48,40 @@ export async function startServer(): Promise<void> {
       httpOnly: true,
       sameSite: "lax",
       maxAge: 1000 * 60 * 60 * 7, //1 week in milliseconds
-    }
-  })
+    },
+  });
 
-  app.use(sessionMiddleware); 
+  app.use(sessionMiddleware);
 
   // allow passport to use session
-  app.use(passport.initialize())
-  app.use(passport.session())
+  app.use(passport.initialize());
+  app.use(passport.session());
 
   // Set up auth and logout routes
   app.use("/auth", createAuthRouter(passport));
-  app.get('/logout', (req, res, nextfn) => {
-    const redirect = req.query.redirect as string || '/';
-  
+  app.get("/logout", (req, res, nextfn) => {
+    const redirect = (req.query.redirect as string) || "/";
+
     // req.logout will automatically clear the req.user field before calling its callback, so store user id first.
     const userId = req.user?.id;
-    req.logout?.(err => {
+    req.logout?.((err) => {
       if (err) {
-        res.status(500).send('Logout failed');
+        res.status(500).send("Logout failed");
         res.redirect(redirect);
         return nextfn(err);
-  }
+      }
 
-  
-
-      req.session?.destroy((err: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      req.session?.destroy((err: any) => {
         if (err) {
-          res.status(500).send('Logout failed');
+          res.status(500).send("Logout failed");
           res.redirect(redirect);
           return nextfn(err);
         }
 
         //clear the cookie that defines the session
-        res.clearCookie('connect.sid', {
-          path: '/',
+        res.clearCookie("connect.sid", {
+          path: "/",
           httpOnly: true,
           secure: isProd,
         });
@@ -98,26 +96,25 @@ export async function startServer(): Promise<void> {
     });
   });
 
-  /** 
+  /**
    * Rate Limiter
    */
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     limit: 1000, // Limit each IP to 100 requests per `window` (here, per 15 minutes).
-    standardHeaders: 'draft-8', // draft-6: `RateLimit-*` headers; draft-7 & draft-8: combined `RateLimit` header
+    standardHeaders: "draft-8", // draft-6: `RateLimit-*` headers; draft-7 & draft-8: combined `RateLimit` header
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers.
-    // store: ... , // Redis, Memcached, etc. 
-  })
-  
+    // store: ... , // Redis, Memcached, etc.
+  });
+
   // Apply the rate limiting middleware to all requests.
   app.use(limiter);
-  
+
   // Set up api routes
-  app.use('/api', api());
+  app.use("/api", api());
 
   // set up socket.io server listener
   initSocket(httpServer, sessionMiddleware as SocketMiddleware);
-
 
   // Let Next.js handle all other requests
   app.use((req: Request, res: Response) => {
@@ -135,5 +132,3 @@ export async function startServer(): Promise<void> {
     await addDevExtras();
   }
 }
-
-

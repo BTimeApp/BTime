@@ -86,7 +86,7 @@ const listenSocketEvents = (io: Server) => {
 
     //since we require a user to log in, access and set first.
     socket.user = socket.request.user;
-    console.log(`User connected to socket: ${JSON.stringify(socket.user)}`);
+    console.log(`User ${socket.user?.name} (${socket.user?.id}) connected via websocket.`);
 
     if (!socket.user) {
       console.log(`Socket received empty/undefined user. Disconnecting.`);
@@ -565,8 +565,9 @@ const listenSocketEvents = (io: Server) => {
      * Upon socket disconnection - automatically trigger on client closing all webpages
      */
     socket.on("disconnect", () => {
-      if (socket.roomId) {
-        console.log(`User ${userId} disconnect from socket`)
+      console.log(`User ${socket.user?.userName} (${userId}) disconnect from socket`)
+
+      if (socket.roomId) {  
         if (!userSessions.get(userId)) {
           userSessions.set(userId, new Map<string, UserSession>());
         }
