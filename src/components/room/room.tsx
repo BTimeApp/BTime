@@ -13,6 +13,7 @@ import RoomEventHandler from "./room-event-handler";
 import PasswordPrompt from "./password-prompt";
 import LoginButton from "@/components/common/login-button";
 import { toast } from "sonner";
+import { SOCKET_CLIENT } from "@/types/socket_protocol";
 
 export default function Room() {
   // grab the roomId from the URL (from "params")
@@ -55,11 +56,11 @@ export default function Room() {
         setIsPasswordAuthenticated(true);
         handleRoomUpdate(room);
       }
-      
+
       // use extraData in case of failure
       if (extraData) {
         if (Object.keys(extraData).includes("WRONG_PASSWORD")) {
-          toast.error('Wrong password entered. Try again.');
+          toast.error("Wrong password entered. Try again.");
         }
       }
     },
@@ -86,7 +87,7 @@ export default function Room() {
     }
     //only join room upon login
     socket.emit(
-      "join_room",
+      SOCKET_CLIENT.JOIN_ROOM,
       { userId: user.id, roomId: roomId, password: undefined },
       joinRoomCallback
     );
@@ -100,7 +101,7 @@ export default function Room() {
    */
   useEffect(() => {
     return () => {
-      socket.emit("user_disconnect", {});
+      socket.emit(SOCKET_CLIENT.USER_DISCONNECT_ROOM, {});
     };
   }, [socket]);
 

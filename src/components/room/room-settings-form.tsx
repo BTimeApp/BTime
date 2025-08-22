@@ -38,6 +38,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { useSession } from "@/context/session-context";
 import { toast } from "sonner";
+import { SOCKET_CLIENT } from "@/types/socket_protocol";
 
 const formSchema = z.object({
   roomName: z
@@ -150,13 +151,13 @@ export default function RoomSettingsForm({
       //send room create/update event
       if (createNewRoom) {
         socket.emit(
-          "create_room",
+          SOCKET_CLIENT.CREATE_ROOM,
           { roomSettings: newRoomSettings },
           onCreateCallback
         );
       } else {
         socket.emit(
-          "update_room",
+          SOCKET_CLIENT.UPDATE_ROOM,
           newRoomSettings,
           roomId,
           user.id,

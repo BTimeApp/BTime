@@ -8,6 +8,7 @@ import { useSocket } from "@/context/socket-context";
 import { useSession } from "@/context/session-context";
 import { Settings } from "lucide-react";
 import RoomSettingsDialog from "./room-settings-dialog";
+import { SOCKET_CLIENT } from "@/types/socket_protocol";
 
 export function RoomHeader() {
   const [
@@ -39,19 +40,19 @@ export function RoomHeader() {
 
   const getNextScramble = useCallback(() => {
     if (user && isUserHost(user.id)) {
-      socket.emit("skip_scramble");
+      socket.emit(SOCKET_CLIENT.SKIP_SCRAMBLE);
     }
   }, [user, socket, isUserHost]);
 
   const startRoom = useCallback(() => {
     if (user && isUserHost(user.id)) {
-      socket.emit("start_room");
+      socket.emit(SOCKET_CLIENT.START_ROOM);
     }
   }, [user, isUserHost, socket]);
 
   const rematchRoom = useCallback(() => {
     if (user && isUserHost(user.id)) {
-      socket.emit("rematch_room");
+      socket.emit(SOCKET_CLIENT.REMATCH_ROOM);
     }
   }, [user, isUserHost, socket]);
 
@@ -59,12 +60,8 @@ export function RoomHeader() {
   const toggleCompeting = useCallback(() => {
     if (user) {
       //submit the NEW competing boolean - true if currently spectating
-      socket.emit(
-        "user_toggle_competing_spectating",
-        !users[user.id].competing
-      );
+      socket.emit(SOCKET_CLIENT.TOGGLE_COMPETING, !users[user.id].competing);
     }
-
   }, [user, users, socket]);
 
   if (!isPasswordAuthenticated || !user) {
@@ -164,7 +161,12 @@ export function RoomHeader() {
                 {isUserHost(user.id) && (
                   <div className="flex-1 flex flex-col justify-start">
                     <RoomSettingsDialog>
-                      <Button size="icon" className="self-end" variant="icon" onKeyDown={(e) => e.preventDefault()}>
+                      <Button
+                        size="icon"
+                        className="self-end"
+                        variant="icon"
+                        onKeyDown={(e) => e.preventDefault()}
+                      >
                         <Settings className="size-8" />
                       </Button>
                     </RoomSettingsDialog>

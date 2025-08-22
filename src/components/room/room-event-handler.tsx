@@ -3,6 +3,7 @@ import { useSocket } from "@/context/socket-context";
 import { useCallbackOnTransition } from "@/hooks/useCallbackOnTransition";
 import { useStartTimeOnTransition } from "@/hooks/useStartTimeOnTransition";
 import { Result } from "@/types/result";
+import { SOCKET_CLIENT } from "@/types/socket_protocol";
 import { SolveStatus } from "@/types/status";
 import { isLiveTimer } from "@/types/timer-type";
 import { useCallback, useEffect } from "react";
@@ -60,7 +61,7 @@ export default function RoomEventHandler() {
    * Update user status on backend whenever frontend updates.
    */
   useEffect(() => {
-    socket.emit("user_update_status", localSolveStatus);
+    socket.emit(SOCKET_CLIENT.UPDATE_SOLVE_STATUS, localSolveStatus);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localSolveStatus]);
 
@@ -116,13 +117,13 @@ export default function RoomEventHandler() {
 
   const broadcastStartLiveTimerCallback = useCallback(() => {
     if (socket && socket.connected && isLiveTimer(timerType)) {
-      socket.emit("user_start_live_timer");
+      socket.emit(SOCKET_CLIENT.START_LIVE_TIMER);
     }
   }, [socket, timerType]);
 
   const broadcastStopLiveTimerCallback = useCallback(() => {
     if (socket && socket.connected && isLiveTimer(timerType)) {
-      socket.emit("user_stop_live_timer");
+      socket.emit(SOCKET_CLIENT.STOP_LIVE_TIMER);
     }
   }, [socket, timerType]);
 

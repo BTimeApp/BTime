@@ -3,11 +3,19 @@ import { Button } from "@/components/ui/button";
 import { useCallback } from "react";
 import { IRoom } from "@/types/room";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
+import { SOCKET_CLIENT } from "@/types/socket_protocol";
 
 const formSchema = z.object({
   password: z.string(),
@@ -45,7 +53,7 @@ function PasswordPrompt({
       if (!socket) return;
       //emit a socket event with roomId, userId, password, and onPasswordValid callback.
       socket.emit(
-        "join_room",
+        SOCKET_CLIENT.JOIN_ROOM,
         { roomId: roomId, userId: userId, password: values.password },
         passwordValidationCallback
       );
@@ -86,7 +94,13 @@ function PasswordPrompt({
                 Submit
               </Button>
 
-              <Button variant="primary" className="font-bold ml-auto" onClick={() => {window.location.href="/"}}>
+              <Button
+                variant="primary"
+                className="font-bold ml-auto"
+                onClick={() => {
+                  window.location.href = "/";
+                }}
+              >
                 Back to Home
               </Button>
             </div>

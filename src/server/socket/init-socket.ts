@@ -24,6 +24,7 @@ import { ObjectId } from "bson";
 import passport from "passport";
 import bcrypt from "bcrypt";
 import { userSessions } from "@/server/server-objects";
+import { SOCKET_CLIENT, SOCKET_SERVER } from "@/types/socket_protocol";
 
 //defines useful state variables we want to maintain over the lifestyle of a socket connection (only visible server-side)
 interface CustomSocket extends Socket {
@@ -86,7 +87,9 @@ const listenSocketEvents = (io: Server) => {
 
     //since we require a user to log in, access and set first.
     socket.user = socket.request.user;
-    console.log(`User ${socket.user?.name} (${socket.user?.id}) connected via websocket.`);
+    console.log(
+      `User ${socket.user?.name} (${socket.user?.id}) connected via websocket.`
+    );
 
     if (!socket.user) {
       console.log(`Socket received empty/undefined user. Disconnecting.`);
@@ -105,7 +108,7 @@ const listenSocketEvents = (io: Server) => {
 
     async function handleSolveFinished(room: IRoom) {
       finishRoomSolve(room);
-      io.to(room.id).emit("solve_finished");
+      io.to(room.id).emit(SOCKET_SERVER.SOLVE_FINISHED_EVENT);
       if ((room.state as RoomState) !== "FINISHED") {
         await newRoomSolve(room);
       }
@@ -119,7 +122,7 @@ const listenSocketEvents = (io: Server) => {
 
         //remove user from room
         delete room.users[userId];
-        io.to(socket.roomId.toString()).emit("room_update", room);
+        io.to(socket.roomId.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
 
         //check if no more users, if so, delete room.
         if (Object.keys(room.users).length == 0) {
@@ -156,7 +159,7 @@ const listenSocketEvents = (io: Server) => {
           console.log(
             `Room ${socket.roomId} promoted a new host: ${room.host}.`
           );
-          io.to(socket.roomId.toString()).emit("room_update", room);
+          io.to(socket.roomId.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
         }
 
         //delete the user's submission for most recent solve, if it exists
@@ -165,13 +168,13 @@ const listenSocketEvents = (io: Server) => {
         // handle case that this user was the last one to submit a time/compete
         if (checkRoomSolveFinished(room)) {
           handleSolveFinished(room);
-          io.to(socket.roomId.toString()).emit("room_update", room);
+          io.to(socket.roomId.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
         }
       }
     }
 
     socket.on(
-      "create_room",
+      SOCKET_CLIENT.CREATE_ROOM,
       async (
         { roomSettings }: { roomSettings: IRoomSettings },
         callback: (roomId: string) => void
@@ -188,7 +191,7 @@ const listenSocketEvents = (io: Server) => {
     );
 
     socket.on(
-      "update_room",
+      SOCKET_CLIENT.UPDATE_ROOM,
       async (
         roomSettings: IRoomSettings,
         roomId: string,
@@ -216,7 +219,7 @@ const listenSocketEvents = (io: Server) => {
         // TODO change this if no longer using in-memory room store
 
         // broadcast room update
-        io.to(roomId).emit("room_update", room);
+        io.to(roomId).emit(SOCKET_SERVER.ROOM_UPDATE, room);
 
         // upon successful update, call success callback
         onSuccessCallback?.();
@@ -224,7 +227,7 @@ const listenSocketEvents = (io: Server) => {
     );
 
     socket.on(
-      "join_room",
+      SOCKET_CLIENT.JOIN_ROOM,
       async (
         {
           roomId,
@@ -332,14 +335,14 @@ const listenSocketEvents = (io: Server) => {
         joinRoomCallback(true, room, {});
 
         //broadcast update to all other users
-        io.to(roomId).except(userId).emit("room_update", room);
+        io.to(roomId).except(userId).emit(SOCKET_SERVER.ROOM_UPDATE, room);
       }
     );
 
     /**
      * Upon host pressing skip scramble button
      */
-    socket.on("skip_scramble", async () => {
+    socket.on(SOCKET_CLIENT.SKIP_SCRAMBLE, async () => {
       console.log(
         `User ${socket.user?.id} is trying to skip the scramble in room ${socket.roomId}.`
       );
@@ -348,7 +351,7 @@ const listenSocketEvents = (io: Server) => {
 
       if (room.state == "STARTED") {
         await skipScramble(room);
-        io.to(room.id).emit("room_update", room);
+        io.to(room.id).emit(SOCKET_SERVER.ROOM_UPDATE, room);
       } else {
         console.log(`Cannot skip scramble when room state is ${room.state}`);
       }
@@ -357,7 +360,7 @@ const listenSocketEvents = (io: Server) => {
     /**
      * Upon host starting the room
      */
-    socket.on("start_room", async () => {
+    socket.on(SOCKET_CLIENT.START_ROOM, async () => {
       console.log(
         `User ${socket.user?.id} is trying to start room ${socket.roomId}.`
       );
@@ -367,7 +370,7 @@ const listenSocketEvents = (io: Server) => {
       if (room.state == "WAITING" || room.state == "FINISHED") {
         room.state = "STARTED";
         await newRoomSolve(room);
-        io.to(room.id.toString()).emit("room_update", room);
+        io.to(room.id.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
       } else {
         console.log(`Cannot start room when room state is ${room.state}`);
       }
@@ -376,7 +379,7 @@ const listenSocketEvents = (io: Server) => {
     /**
      * Upon host pressing reset button
      */
-    socket.on("reset_room", () => {
+    socket.on(SOCKET_CLIENT.RESET_ROOM, () => {
       console.log(
         `User ${socket.user?.id} is trying to reset room ${socket.roomId}.`
       );
@@ -385,7 +388,7 @@ const listenSocketEvents = (io: Server) => {
 
       if (room.state == "STARTED" || room.state == "FINISHED") {
         resetRoom(room);
-        io.to(room.id.toString()).emit("room_update", room);
+        io.to(room.id.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
       } else {
         console.log(`Cannot reset room when room state is ${room.state}`);
       }
@@ -394,7 +397,7 @@ const listenSocketEvents = (io: Server) => {
     /**
      * Upon host pressing rematch button
      */
-    socket.on("rematch_room", async () => {
+    socket.on(SOCKET_CLIENT.REMATCH_ROOM, async () => {
       console.log(
         `User ${socket.user?.id} is trying to rematch room ${socket.roomId}.`
       );
@@ -405,7 +408,7 @@ const listenSocketEvents = (io: Server) => {
       if (room.state == "FINISHED") {
         resetRoom(room);
         room.state = "WAITING";
-        io.to(room.id.toString()).emit("room_update", room);
+        io.to(room.id.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
       } else {
         console.log(
           `Cannot trigger a room rematch when room state is ${room.state}`
@@ -416,56 +419,66 @@ const listenSocketEvents = (io: Server) => {
     /**
      * Upon user updating their status
      */
-    socket.on("user_update_status", (newUserStatus: SolveStatus) => {
-      if (socket.roomId && socket.user) {
-        const room = rooms.get(socket.roomId);
-        if (!room) return;
+    socket.on(
+      SOCKET_CLIENT.UPDATE_SOLVE_STATUS,
+      (newUserStatus: SolveStatus) => {
+        if (socket.roomId && socket.user) {
+          const room = rooms.get(socket.roomId);
+          if (!room) return;
 
-        const currentUserStatus: SolveStatus =
-          room.users[socket.user?.id].userStatus;
-        if (newUserStatus == currentUserStatus) {
-          console.log(
-            `User ${socket.user?.id} submitted new user status to room ${socket.roomId} which is the same as old user status.`
-          );
-        } else {
-          console.log(
-            `User ${socket.user?.userName} submitted new user status ${newUserStatus} to room ${socket.roomId}`
-          );
-          room.users[socket.user?.id].userStatus = newUserStatus;
+          const currentUserStatus: SolveStatus =
+            room.users[socket.user?.id].userStatus;
+          if (newUserStatus == currentUserStatus) {
+            console.log(
+              `User ${socket.user?.id} submitted new user status to room ${socket.roomId} which is the same as old user status.`
+            );
+          } else {
+            console.log(
+              `User ${socket.user?.userName} submitted new user status ${newUserStatus} to room ${socket.roomId}`
+            );
+            room.users[socket.user?.id].userStatus = newUserStatus;
 
-          if (newUserStatus === "FINISHED") {
-            const solveFinished: boolean = checkRoomSolveFinished(room);
-            if (solveFinished) {
-              handleSolveFinished(room);
+            if (newUserStatus === "FINISHED") {
+              const solveFinished: boolean = checkRoomSolveFinished(room);
+              if (solveFinished) {
+                handleSolveFinished(room);
+              }
             }
-          }
 
-          io.to(socket.roomId.toString()).emit("room_update", room);
+            io.to(socket.roomId.toString()).emit(
+              SOCKET_SERVER.ROOM_UPDATE,
+              room
+            );
+          }
         }
       }
-    });
+    );
 
     /**
      * Upon user starting any live timer option (only keyboard as of now)
      */
-    socket.on("user_start_live_timer", () => {
+    socket.on(SOCKET_CLIENT.START_LIVE_TIMER, () => {
       if (socket.roomId && socket.user) {
         const room = rooms.get(socket.roomId);
         if (!room) return;
 
-        io.to(socket.roomId.toString()).except(userId).emit("user_started_live_timer", userId);
+        io.to(socket.roomId.toString())
+          .except(userId)
+          .emit(SOCKET_SERVER.USER_START_LIVE_TIMER, userId);
       }
     });
 
     /**
      * Upon user stopping any live timer option (only keyboard as of now)
      */
-    socket.on("user_stop_live_timer", () => {
+    socket.on(SOCKET_CLIENT.STOP_LIVE_TIMER, () => {
       if (socket.roomId && socket.user) {
         const room = rooms.get(socket.roomId);
         if (!room) return;
 
-        io.to(socket.roomId.toString()).except(userId).emit("user_stopped_live_timer", userId);
+        io.to(socket.roomId.toString())
+          .except(userId)
+          .emit(SOCKET_SERVER.USER_STOP_LIVE_TIMER, userId);
       }
     });
 
@@ -473,7 +486,7 @@ const listenSocketEvents = (io: Server) => {
      * Upon user submitting a new result
      */
     socket.on(
-      "user_submit_result",
+      SOCKET_CLIENT.SUBMIT_RESULT,
       async (result: IResult, onSuccessCallback?: () => void) => {
         // we store results as an easily-serializable type and reconstruct on client when needed.
         // Socket.io does not preserve complex object types over the network, so it makes it hard to pass Result types around anyways.
@@ -504,7 +517,7 @@ const listenSocketEvents = (io: Server) => {
           // room.users[socket.user?.id].userStatus = "FINISHED";
           room.users[socket.user?.id].currentResult = result;
 
-          io.to(socket.roomId.toString()).emit("room_update", room);
+          io.to(socket.roomId.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
           onSuccessCallback?.();
         }
       }
@@ -513,7 +526,7 @@ const listenSocketEvents = (io: Server) => {
     /**
      * Upon user pressing compete/spectate button
      */
-    socket.on("user_toggle_competing_spectating", (competing: boolean) => {
+    socket.on(SOCKET_CLIENT.TOGGLE_COMPETING, (competing: boolean) => {
       if (socket.roomId && socket.user) {
         const room = rooms.get(socket.roomId);
         console.log("toggle call");
@@ -534,7 +547,7 @@ const listenSocketEvents = (io: Server) => {
           }
         }
 
-        io.to(socket.roomId.toString()).emit("room_update", room);
+        io.to(socket.roomId.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
       } else {
         console.log(
           `Either roomId or userId not set on socket: ${socket.roomId}, ${socket.user?.id}`
@@ -545,9 +558,9 @@ const listenSocketEvents = (io: Server) => {
     /**
      * Upon user disconnecting from a room
      */
-    socket.on("user_disconnect", () => {
+    socket.on(SOCKET_CLIENT.USER_DISCONNECT_ROOM, () => {
       if (socket.roomId) {
-        console.log(`User ${userId} disconnect from room ${socket.roomId}`)
+        console.log(`User ${userId} disconnect from room ${socket.roomId}`);
         if (!userSessions.get(userId)) {
           userSessions.set(userId, new Map<string, UserSession>());
         }
@@ -565,9 +578,11 @@ const listenSocketEvents = (io: Server) => {
      * Upon socket disconnection - automatically trigger on client closing all webpages
      */
     socket.on("disconnect", () => {
-      console.log(`User ${socket.user?.userName} (${userId}) disconnect from socket`)
+      console.log(
+        `User ${socket.user?.userName} (${userId}) disconnect from socket`
+      );
 
-      if (socket.roomId) {  
+      if (socket.roomId) {
         if (!userSessions.get(userId)) {
           userSessions.set(userId, new Map<string, UserSession>());
         }
