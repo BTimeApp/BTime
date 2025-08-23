@@ -109,6 +109,8 @@ const listenSocketEvents = (io: Server) => {
     if(!userSessions.get(userId)!.has(socket.id)) {
       userSessions.get(userId)!.add(socket.id);
     }
+    //add user to user store if not already
+    if(!users.has(userId)) users.set(userId, socket.user);
   }
 
   function handleDebug() {
