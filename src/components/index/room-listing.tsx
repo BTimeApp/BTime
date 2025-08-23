@@ -10,7 +10,12 @@ import {
 import JoinRoomButton from "@/components/index/join-room-button";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, User, Globe, GlobeLock } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { ScrollArea } from "../ui/scroll-area";
 
 export default function RoomListing() {
   const [rooms, setRooms] = useState<Map<string, IRoomSummary>>(
@@ -35,8 +40,8 @@ export default function RoomListing() {
   }, []);
 
   return (
-    <div className="flex flex-col px-3 gap-1 rounded-lg shadow-lg p-1 bg-container-1">
-      <div className="flex flex-row px-1">
+    <div className="flex flex-col px-3 gap-1 rounded-lg shadow-lg p-1 bg-container-1 h-60 lg:h-120">
+      <div className="flex shrink flex-row px-1">
         <h2 className="grow font-semibold text-center text-xl">Rooms</h2>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -48,9 +53,9 @@ export default function RoomListing() {
             <div>Refresh</div>
           </TooltipContent>
         </Tooltip>
-        
       </div>
-      <div className="px-1">
+
+      <div className="px-1 flex-1 flex flex-col overflow-hidden">
         <div className="grid grid-cols-10 gap-3 px-1 py-1 text-left shadow-sm rounded-sm">
           <div className="col-span-3">Room Name</div>
           <div>Users</div>
@@ -58,6 +63,7 @@ export default function RoomListing() {
           <div>Format</div>
           <div className="col-start-8">Privacy</div>
         </div>
+        <ScrollArea className="h-full">
         {rooms.size != 0 ? (
           [...rooms.entries()].map(([roomId, room]) => (
             <div
@@ -66,7 +72,7 @@ export default function RoomListing() {
             >
               <div className="col-span-3">{room.roomName}</div>
               <div className="flex flex-row">
-                <User/>
+                <User />
                 <div>{room.numUsers}</div>
               </div>
               <div className="flex flex-row">
@@ -95,25 +101,18 @@ export default function RoomListing() {
                 )}
               </div>
 
-              {/* TODO: allow users to only need to type password for room once */}
-              {/* {room.isPrivate ? (
-                <JoinPrivateRoomDialog roomId={room.id} roomName={room.roomName}></JoinPrivateRoomDialog>
-              ) : (
-                <JoinRoomButton roomId={room.id}></JoinRoomButton>
-              )} */}
               <div className="col-start-8 flex flex-row">
-                {
-                  room.isPrivate ? 
+                {room.isPrivate ? (
                   <>
-                    <GlobeLock/>
+                    <GlobeLock />
                     <div>Private</div>
                   </>
-                   : 
+                ) : (
                   <>
-                    <Globe/>
+                    <Globe />
                     <div>Public</div>
                   </>
-                }
+                )}
               </div>
               <div className="col-start-10">
                 <JoinRoomButton roomId={room.id}></JoinRoomButton>
@@ -123,6 +122,7 @@ export default function RoomListing() {
         ) : (
           <div className="text-center">No rooms currently available!</div>
         )}
+        </ScrollArea>
       </div>
     </div>
   );

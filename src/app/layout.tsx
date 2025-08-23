@@ -50,8 +50,8 @@ export default function RootLayout({
               <SidebarProvider defaultOpen={false}>
                 <AppSidebar />
                 <SidebarInset>
-                  <div className="flex flex-1 flex-col gap-4 pt-0">
-                    <div className="flex flex-col flex-1 h-screen rounded-xl bg-background">
+                  <div className="flex flex-1 flex-col gap-4 pt-0 h-full">
+                    <div className="flex flex-col flex-1 rounded-xl bg-background h-full">
                       {children}
                     </div>
                   </div>
