@@ -3,6 +3,7 @@ import HomeHeaderContent from "@/components/index/home-header-content";
 import CreateRoomButton from "@/components/index/create-room-button";
 import RoomListing from "@/components/index/room-listing";
 import ProfileView from "@/components/index/profile-view";
+// import DebugButton from "@/components/common/debug-button";
 
 export default function Home() {
   return (
@@ -20,8 +21,8 @@ export default function Home() {
         <div className="flex-1 px-2">
           <ProfileView />
         </div>
+        {/* <DebugButton/> */}
       </div>
     </div>
-    // TODO: add a room listing/about section (refer to canva)
   );
 }

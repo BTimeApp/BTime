@@ -3,7 +3,7 @@ import { useSocket } from "@/context/socket-context";
 import { useCallbackOnTransition } from "@/hooks/useCallbackOnTransition";
 import { useStartTimeOnTransition } from "@/hooks/useStartTimeOnTransition";
 import { Result } from "@/types/result";
-import { SOCKET_CLIENT } from "@/types/socket_protocol";
+import { SOCKET_CLIENT, SOCKET_SERVER } from "@/types/socket_protocol";
 import { SolveStatus } from "@/types/status";
 import { isLiveTimer } from "@/types/timer-type";
 import { useCallback, useEffect } from "react";
@@ -69,10 +69,10 @@ export default function RoomEventHandler() {
    * Connect incoming room_update events from websocket with zustand store handleRoomUpdate
    */
   useEffect(() => {
-    socket.on("room_update", handleRoomUpdate);
+    socket.on(SOCKET_SERVER.ROOM_UPDATE, handleRoomUpdate);
 
     return () => {
-      socket.off("room_update", handleRoomUpdate);
+      socket.off(SOCKET_SERVER.ROOM_UPDATE, handleRoomUpdate);
     };
   }, [handleRoomUpdate, socket]);
 
@@ -93,9 +93,9 @@ export default function RoomEventHandler() {
 
   // listen for solve finished websocket event
   useEffect(() => {
-    socket.on("solve_finished", solveFinishedHandler);
+    socket.on(SOCKET_SERVER.SOLVE_FINISHED_EVENT, solveFinishedHandler);
     return () => {
-      socket.off("solve_finished", solveFinishedHandler);
+      socket.off(SOCKET_SERVER.SOLVE_FINISHED_EVENT, solveFinishedHandler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [solveFinishedHandler]);
@@ -157,13 +157,13 @@ export default function RoomEventHandler() {
    */
   useEffect(() => {
     if (socket.connected) {
-      socket.on("user_started_live_timer", userStartedLiveTimerCallback);
-      socket.on("user_stopped_live_timer", userStoppedLiveTimerCallback);
+      socket.on(SOCKET_SERVER.USER_START_LIVE_TIMER, userStartedLiveTimerCallback);
+      socket.on(SOCKET_SERVER.USER_STOP_LIVE_TIMER, userStoppedLiveTimerCallback);
     }
 
     return () => {
-      socket.off("user_started_live_timer", userStartedLiveTimerCallback);
-      socket.off("user_stopped_live_timer", userStoppedLiveTimerCallback);
+      socket.off(SOCKET_SERVER.USER_START_LIVE_TIMER, userStartedLiveTimerCallback);
+      socket.off(SOCKET_SERVER.USER_STOP_LIVE_TIMER, userStoppedLiveTimerCallback);
     };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -172,6 +172,7 @@ export default function RoomEventHandler() {
     userStartedLiveTimerCallback,
     userStoppedLiveTimerCallback,
   ]);
+  
   // this component should never render. it will house all logic though.
   return null;
 }

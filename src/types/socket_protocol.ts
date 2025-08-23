@@ -66,6 +66,11 @@ export enum SOCKET_CLIENT {
    * User disconnects from the room. This is distinct from disconnecting from the socket as a whole, which is handled in the socket context provider with socket.close()
    */
   USER_DISCONNECT_ROOM = "USER_DISCONNECT_ROOM",
+
+  /**
+   * Used for debugging.
+   */
+  DEBUG_EVENT = "DEBUG_EVENT",
 }
 
 /**

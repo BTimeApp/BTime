@@ -3,7 +3,7 @@ import { createRoom } from "@/lib/room";
 import { rooms } from "@/server/server-objects";
 
 async function addTestRooms() {
-  for (let i = 1; i < 101; i++) {
+  for (let i = 1; i < 31; i++) {
     const room: IRoom = await createRoom(
       {
         roomName: "test_room_" + i,

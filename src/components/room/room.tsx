@@ -97,7 +97,7 @@ export default function Room() {
   }, [roomId, user, socketConnected, joinRoomCallback]);
 
   /**
-   * Emit the user_disconnect websocket event upon room unload
+   * Emit the room disconnect websocket event upon unloading this component
    */
   useEffect(() => {
     return () => {
