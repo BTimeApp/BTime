@@ -5,11 +5,14 @@ import Image from "next/image";
 import LoginButton from "@/components/common/login-button";
 import LogoutButton from "@/components/common/logout-button";
 import Link from "next/link";
+import { Card, CardHeader, CardTitle } from "../ui/card";
 
 /**
  * This component serves as a card-like summary of a user profile.
  */
 export default function ProfileView() {
+  // I am going to change these components! (8/21)
+
   const { user, loading } = useSession();
   const [username, setUsername] = useState<string>("Profile");
   const [avatarURL, setAvatarURL] = useState<string | undefined>(undefined);
@@ -22,34 +25,57 @@ export default function ProfileView() {
   }, [user, loading]);
 
   return (
-    <div className="flex flex-col rounded-lg shadow-lg p-2 bg-container-1 gap-1">
-      <div className="flex flex-row justify-center items-center">
-        <div>
-        <Link
-          href="/profile"
-          className="flex font-semibold text-xl hover:font-bold hover:underline"
-        >
-          {username}
-        </Link>
+    <div>
+      <Card> 
+        <CardHeader className="flex flex-row justify-center items-center font-semibold text-2xl font-bold underline">
+          <Link href="/profile">{username}</Link>
+        </CardHeader>
+          <div className="flex flex-row justify-center items-center">
+            <Link href="/profile">
+              <Image
+                src={avatarURL ? avatarURL : "/images/C_logo.png"}
+                alt="/images/C_logo.png"
+                width="120"
+                height="120"
+                className="rounded-[50%] shadow-lg"
+              />
+          </Link>
+       </div> {/* TODO - add more user info */}
+        <div className="flex flex-row justify-center items-cente mt-5">
+          {user? <LogoutButton className="text-base hover:text-lg px-5" size="sm"/> : <LoginButton className="text-base hover:text-lg" size="sm"/>}
         </div>
-      </div>
-      <div className="flex flex-row justify-center items-center">
-        <Image
-          src={avatarURL ? avatarURL : "/images/C_logo.png"}
-          alt="/images/C_logo.png"
-          width="120"
-          height="120"
-          className="rounded-[50%] shadow-lg"
-        />
-      </div>
-      {/* TODO - add more user info */}
-      <div className="">
-        {user ? (
-          <LogoutButton className="px-1" size="sm" />
-        ) : (
-          <LoginButton className="px-1" size="sm" />
-        )}
-      </div>
+      </Card>
     </div>
+    
+    // <div className="flex flex-col rounded-lg shadow-lg p-2 bg-container-1 gap-1">
+    //   <div className="flex flex-row justify-center items-center">
+    //     <div>
+    //     <Link
+    //       href="/profile"
+    //       className="flex font-semibold text-xl hover:font-bold hover:underline"
+    //     >
+    //       {username}
+    //     </Link>
+    //     </div>
+    //   </div>
+    //   <div className="flex flex-row justify-center items-center">
+    //     <Image
+    //       src={avatarURL ? avatarURL : "/images/C_logo.png"}
+    //       alt="/images/C_logo.png"
+    //       width="120"
+    //       height="120"
+    //       className="rounded-[50%] shadow-lg"
+    //     />
+    //   </div>
+    //   {/* TODO - add more user info */}
+    //   <div className="">
+    //     {user ? (
+    //       <LogoutButton className="px-1" size="sm" />
+    //     ) : (
+    //       <LoginButton className="px-1" size="sm" />
+    //     )}
+    //   </div>
+    // </div>
+    
   );
 }
