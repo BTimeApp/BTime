@@ -1,15 +1,17 @@
 "use client";
 import Header from "@/components/common/header";
 import LoginButton from "@/components/common/login-button";
+import LogoutButton from "@/components/common/logout-button";
 import HomeHeaderContent from "@/components/index/home-header-content";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSession } from "@/context/session-context";
 import Image from "next/image";
 import { useCallback, useState } from "react";
+import { Card, CardHeader } from "@/components/ui/card";
 
 /** TODO
- *    - find a good way to format this page
+ *    - find a good way to format this page (working on this -HC 8/25)
  *
  */
 
@@ -49,9 +51,6 @@ export default function Page() {
       setUsernameFieldClass("animate-flash-success");
       setTimeout(() => setUsernameFieldClass(""), 2000); // Clear after animation
     }
-  
-    
-
     //reset fillable fields
     setUsername("");
 
@@ -62,18 +61,76 @@ export default function Page() {
   let body = <></>;
   if (localUser) {
     body = (
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <Image
-            src={
-              localUser.avatarURL ? localUser.avatarURL : "/images/C_logo.png"
-            }
-            alt="/images/C_logo.png"
-            width="200"
-            height="200"
-          />
+      <div className="flex space-x-20 > *">
+        <div className="p-50">
+            <Card className="w-[300px] p-4">
+              <h1 className="pl-23 text-2xl font-semibold">{localUser.userName}</h1>
+              {/* <CardHeader className="flex font-semibold text-2xl font-bold p-10 shadow-lg bg-blue">Avatar</CardHeader> */}
+              <Image
+                src={
+                  localUser.avatarURL ? localUser.avatarURL : "/images/C_logo.png"
+                }
+                alt="/images/C_logo.png"
+                width="350"
+                height="350"
+                className="p-10"
+                />
+            </Card>
         </div>
-        <div className="p-3">
+        <div className="p-15">
+          <Card className="w-[700px] h-[700px] p-8">
+              <h1 className="flex font-semibold text-2xl">Username</h1>
+            <div className="flex">
+                <Input
+                  value={username}
+                  placeholder={localUser.userName}
+                  onChange={(event) => {
+                    setUsername(event.target.value);
+                  }}
+                  className="flex w-full max-w-sm items-center"
+                  // className={`${usernameFieldClass} border-2 w-100 h-12 my-2`}
+                  >
+                  </Input>
+                    <Button
+                  variant="primary"
+                  size="sm"
+                  className="text-xl font-bold p-5 mx-5"
+                  onClick={() => {
+                    submitProfileChanges();
+                  }}
+                  onSubmit={submitProfileChanges}
+                >
+                  Submit Changes
+                </Button>
+                                  
+
+            </div>
+            {usernameFieldError && <div className="text-xs text-error">{usernameFieldError}</div>}
+                <div className="">
+                  <div className="mt-5">
+                      <h1 className="flex font-semibold text-xl underline">Additional Information</h1>
+                    <h1 className="flex font-semibold text-2xl mt-3">Email: {localUser.email}</h1>
+                    <h1 className="flex font-semibold text-2xl mt-3">WCAID: {localUser.wcaId? localUser.wcaId : "No WCAID"}</h1>
+                  </div>
+            </div>
+            <div className="mt-5 object-right-bottom relatve origin-bottom-right">
+                  <LogoutButton className="text-xl text-red-500 font-bold bg-color-clear border-2 border-red-500 origin-bottom-right
+                            hover:bg-color-clear hover:text-red-600  hover:scale-110 "/>
+                  
+                </div>
+          </Card>
+        </div>
+      </div>
+      
+    )
+      // <div className="grid grid-cols-2 gap-2">
+      //   <div>
+      //     <Card>
+            
+      //     </Card>
+          
+      //   </div>
+        {/* <div className="p-3">
           <div className="flex flex-row items-center gap-2">
             <div>Username</div>
             <Input
@@ -98,13 +155,14 @@ export default function Page() {
           >
             Submit Changes
           </Button>
-        </div>
-      </div>
-    );
+          <LogoutButton></LogoutButton>
+        </div> */}
+      // </div>
+    // );
   } else {
     body = (
-      <div className="text-center">
-        <div>You must be logged in to view your profile.</div>
+      <div className="text-center text-3xl">
+        <h1>You must be logged in to view your profile.</h1>
         <LoginButton></LoginButton>
       </div>
     );
