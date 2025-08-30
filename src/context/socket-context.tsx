@@ -1,10 +1,5 @@
 "use client";
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { Socket } from "socket.io-client";
 import { getSocket } from "@/lib/socket";
 import { useSession } from "@/context/session-context";
@@ -30,12 +25,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
     const onConnect = () => {
       setSocketConnected(true);
-    }
+    };
 
     const onDisconnect = () => {
       setSocketConnected(false);
       clearInterval(heartbeatInterval);
-    }
+    };
 
     window.addEventListener("beforeunload", onDisconnect);
 
