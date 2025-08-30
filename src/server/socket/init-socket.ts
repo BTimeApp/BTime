@@ -1,7 +1,7 @@
 import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
 import { Types } from "mongoose";
-import { rooms, users, UserSession, userSessions, userRoomSessions } from "@/server/server-objects";
+import { rooms, users } from "@/server/server-objects";
 import { IRoom, RoomState, IRoomSettings } from "@/types/room";
 import {
   skipScramble,
@@ -24,6 +24,12 @@ import { ObjectId } from "bson";
 import passport from "passport";
 import bcrypt from "bcrypt";
 import { SOCKET_CLIENT, SOCKET_SERVER } from "@/types/socket_protocol";
+import {
+  createRoomSession,
+  createUserSession,
+  heartbeatRoomSession,
+  heartbeatUserSession,
+} from "./socket-session";
 
 //defines useful state variables we want to maintain over the lifestyle of a socket connection (only visible server-side)
 interface CustomSocket extends Socket {
@@ -98,26 +104,19 @@ const listenSocketEvents = (io: Server) => {
     // user joins "their" room by default
     socket.join(userId);
 
-    // add this socket to user session store and user room session store
-    if (!userSessions.get(userId)) {
-      userSessions.set(userId, new Set<string>());
-    }
-    if (!userRoomSessions.get(userId)) {
-      userRoomSessions.set(userId, new Map<string, UserSession>());
-    }
-    
-    if(!userSessions.get(userId)!.has(socket.id)) {
-      userSessions.get(userId)!.add(socket.id);
-    }
     //add user to user store if not already
-    if(!users.has(userId)) users.set(userId, socket.user);
+    if (!users.has(userId)) users.set(userId, socket.user);
+
+    //start live session
+    createUserSession(userId, () => {});
   }
 
-  function handleDebug() {
-    console.log("ROOMS \n", Array.from(rooms.values().map(entry => entry.roomName)));
-    console.log("USERS \n", Array.from(users.values().map(entry => entry.userName)));
-    console.log("USER ROOM SESSIONS \n", Array.from(userRoomSessions.entries().map(entry => `${entry[0]}: ${Array.from(entry[1].entries())}`)));
-    console.log("USER SESSIONS\n", Array.from(userSessions.entries().map(entry => `${entry[0]}: ${Array.from(entry[1])}`)))
+  async function handleSolveFinished(room: IRoom) {
+    finishRoomSolve(room);
+    io.to(room.id).emit(SOCKET_SERVER.SOLVE_FINISHED_EVENT);
+    if ((room.state as RoomState) !== "FINISHED") {
+      await newRoomSolve(room);
+    }
   }
 
   io.on("connection", (socket: CustomSocket) => {
@@ -128,98 +127,66 @@ const listenSocketEvents = (io: Server) => {
     }
     const userId = socket.user!.id;
 
+    function handleRoomDisconnect(userId: string, roomId: string) {
+      if (!userId || !roomId) return;
+      console.log(`User ${userId} disconnected from room ${roomId}`);
+      const room = rooms.get(roomId);
+      if (!room) return;
+
+      //remove user from room
+      delete room.users[userId];
+      io.to(roomId.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
+
+      //check if no more users, if so, delete room.
+      if (Object.keys(room.users).length == 0) {
+        console.log(`Room ${roomId} is empty. Deleting room.`);
+        rooms.delete(roomId);
+        return;
+      }
+
+      //check if user is host OR there is somehow no host.
+      if ((room.host && room.host.id == userId) || !room.host) {
+        if (room.host) {
+          console.log(`Host has left room ${roomId}. Promoting a new host.`);
+        } else {
+          console.log(
+            `User left room without a host: ${roomId}. Promoting a new host.`
+          );
+        }
+
+        let earliestID = null;
+        let earliestUser: IRoomUser | null = null;
+
+        for (const userID in room.users) {
+          const user = room.users[userID];
+
+          if (!earliestUser || user.joinedAt < earliestUser.joinedAt) {
+            earliestUser = user;
+            earliestID = new Types.ObjectId(userID);
+          }
+        }
+
+        room.host = room.users[earliestID!.toString()].user;
+        io.to(roomId.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
+      }
+
+      //delete the user's submission for most recent solve, if it exists
+      delete room.solves.at(-1)?.solve.results?.[userId];
+
+      // handle case that this user was the last one to submit a time/compete
+      if (checkRoomSolveFinished(room)) {
+        handleSolveFinished(room);
+        io.to(roomId.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
+      }
+
+      // remove the room from this socket.
+      socket.leave(roomId);
+      socket.roomId = undefined;
+    }
 
     function getSocketRoom(): IRoom | undefined {
       if (!socket.roomId) return undefined;
       return rooms.get(socket.roomId);
-    }
-
-    async function handleSolveFinished(room: IRoom) {
-      finishRoomSolve(room);
-      io.to(room.id).emit(SOCKET_SERVER.SOLVE_FINISHED_EVENT);
-      if ((room.state as RoomState) !== "FINISHED") {
-        await newRoomSolve(room);
-      }
-    }
-
-    function checkAndClearUserSessions(userId: string) {
-      //checks if both userSessions and userRoomSessions are either empty or missing for a user and deletes keys if so
-      if (userSessions.get(userId)?.size === 0 && userRoomSessions.get(userId)?.size === 0 ) {
-        userSessions.delete(userId);
-        userRoomSessions.delete(userId);
-        users.delete(userId);
-      } 
-    }
-
-    function handleRoomDisconnect() {
-      console.log(socket.roomId, socket.user);
-      // TODO - this logic may be moved to an express API call later
-      if (socket.roomId && socket.user) {
-        console.log(`User ${socket.user.userName} disconnected from room ${socket.roomId}`)
-        const room = rooms.get(socket.roomId);
-        if (!room) return;
-
-        //remove user from room
-        delete room.users[userId];
-        io.to(socket.roomId.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
-
-        //check if no more users, if so, delete room.
-        if (Object.keys(room.users).length == 0) {
-          console.log(`Room ${socket.roomId} is empty. Deleting room.`);
-          rooms.delete(socket.roomId);
-          return;
-        }
-
-        //check if user is host OR there is somehow no host.
-        if ((room.host && room.host.id == userId) || !room.host) {
-          if (room.host) {
-            console.log(
-              `Host has left room ${socket.roomId}. Promoting a new host.`
-            );
-          } else {
-            console.log(
-              `User left room without a host: ${socket.roomId}. Promoting a new host.`
-            );
-          }
-
-          let earliestID = null;
-          let earliestUser: IRoomUser | null = null;
-
-          for (const userID in room.users) {
-            const user = room.users[userID];
-
-            if (!earliestUser || user.joinedAt < earliestUser.joinedAt) {
-              earliestUser = user;
-              earliestID = new Types.ObjectId(userID);
-            }
-          }
-
-          room.host = room.users[earliestID!.toString()].user;
-          io.to(socket.roomId.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
-        }
-
-        //delete the user's submission for most recent solve, if it exists
-        delete room.solves.at(-1)?.solve.results?.[userId];
-
-        // handle case that this user was the last one to submit a time/compete
-        if (checkRoomSolveFinished(room)) {
-          handleSolveFinished(room);
-          io.to(socket.roomId.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
-        }
-      }
-      //remove the userRoomSession
-      if (socket.roomId) userRoomSessions.get(userId)?.delete(socket.roomId);
-
-      //if all userSessions and userRoomSessions for this user are empty, delete both keys
-      checkAndClearUserSessions(userId);
-    }
-
-    function handleDisconnect() {
-      //remove from userSessions
-      userSessions.get(userId)?.delete(socket.id);
-      
-      //if all userSessions and userRoomSessions for this user are empty, delete both keys
-      checkAndClearUserSessions(userId);
     }
 
     socket.on(
@@ -316,15 +283,6 @@ const listenSocketEvents = (io: Server) => {
         if (Object.keys(room.users).includes(userId)) {
           console.log(`User ${userId} double join in room ${roomId}.`);
 
-          //clear any session DC/RC related timeouts
-          if (!userRoomSessions.get(userId)) {
-            // create a map for this user
-            userRoomSessions.set(userId, new Map<string, UserSession>());
-          } else {
-            // clear the timeout associated with this user-room combo so we don't actually DC them
-            clearTimeout(userRoomSessions.get(userId)?.get(roomId)?.timeout);
-          }
-
           joinRoomCallback(true, room, { DUPLICATE_JOIN: "" });
           return;
         }
@@ -350,14 +308,9 @@ const listenSocketEvents = (io: Server) => {
             return;
           }
         }
-        //clear any session DC/RC related timeouts
-        if (!userRoomSessions.get(userId)) {
-          // create a map for this user
-          userRoomSessions.set(userId, new Map<string, UserSession>());
-        } else {
-          // clear the timeout associated with this user-room combo so we don't actually DC them
-          clearTimeout(userRoomSessions.get(userId)?.get(roomId)?.timeout);
-        }
+
+        //start room session
+        createRoomSession(userId, roomId, handleRoomDisconnect);
 
         //add user to room
         console.log(`User ${userId} joining room ${roomId}.`);
@@ -604,52 +557,35 @@ const listenSocketEvents = (io: Server) => {
       }
     });
 
-    /**
-     * Upon user disconnecting from a room
-     */
-    socket.on(SOCKET_CLIENT.USER_DISCONNECT_ROOM, () => {
-      console.log(`User ${userId} disconnect from room ${socket.roomId}`);
-
-      if (socket.roomId) {
-        if (!userRoomSessions.get(userId)) {
-          userRoomSessions.set(userId, new Map<string, UserSession>());
-        }
-
-        userRoomSessions.get(userId)!.set(socket.roomId, {
-          timeout: setTimeout(() => {
-            handleRoomDisconnect();
-            userRoomSessions.get(userId)?.delete(socket.roomId!);
-          }, 1000),
-        }); //wait for 1 second before actually DCing user
+    socket.on(SOCKET_CLIENT.HEARTBEAT, () => {
+      if (socket.user) {
+        // console.log(`Received heartbeat from ${socket.user.userName}.`);
+        heartbeatUserSession(socket.user.id);
+      } else {
+        console.log("Socket heartbeat without defined user");
       }
     });
 
-    socket.on(SOCKET_CLIENT.DEBUG_EVENT, () => {
-      handleDebug();
+    socket.on(SOCKET_CLIENT.ROOM_HEARTBEAT, () => {
+      if (socket.user && socket.roomId) {
+        // console.log(
+        //   `Received room heartbeat from ${socket.user.userName} for room ${socket.roomId}.`
+        // );
+        heartbeatRoomSession(socket.user.id, socket.roomId);
+      } else {
+        console.log(
+          "Socket heartbeat without defined user or without defined roomId."
+        );
+      }
     });
 
     /**
      * Upon socket disconnection - automatically trigger on client closing all webpages
      */
-    socket.on("disconnect", () => {
+    socket.on("disconnect", (reason) => {
       console.log(
-        `User ${socket.user?.userName} (${userId}) disconnect from socket`
+        `User ${socket.user?.userName} (${userId}) disconnect from socket with reason: ${reason}`
       );
-      
-      if (socket.roomId) {
-        if (!userRoomSessions.get(userId)) {
-          userRoomSessions.set(userId, new Map<string, UserSession>());
-        }
-
-        userRoomSessions.get(userId)!.set(socket.roomId, {
-          timeout: setTimeout(() => {
-            handleRoomDisconnect();
-            userRoomSessions.get(userId)?.delete(socket.roomId!);
-          }, 1000),
-        });
-      }
-
-      handleDisconnect();
     });
   });
 };

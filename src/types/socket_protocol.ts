@@ -63,9 +63,14 @@ export enum SOCKET_CLIENT {
   SKIP_SCRAMBLE = "SKIP_SCRAMBLE",
 
   /**
-   * User disconnects from the room. This is distinct from disconnecting from the socket as a whole, which is handled in the socket context provider with socket.close()
+   * Signals a heartbeat event
    */
-  USER_DISCONNECT_ROOM = "USER_DISCONNECT_ROOM",
+  HEARTBEAT = "HEARTBEAT",
+
+  /**
+   * Signals a heartbeat event specifically for rooms
+   */
+  ROOM_HEARTBEAT = "ROOM_HEARTBEAT",
 
   /**
    * Used for debugging.

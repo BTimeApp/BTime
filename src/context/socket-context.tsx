@@ -1,7 +1,6 @@
 "use client";
 import {
   createContext,
-  useCallback,
   useContext,
   useEffect,
   useState,
@@ -9,6 +8,7 @@ import {
 import { Socket } from "socket.io-client";
 import { getSocket } from "@/lib/socket";
 import { useSession } from "@/context/session-context";
+import { SOCKET_CLIENT } from "@/types/socket_protocol";
 
 interface SocketContextValue {
   socket: Socket;
@@ -22,13 +22,22 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [socketConnected, setSocketConnected] = useState(socket.connected);
   const { user } = useSession();
 
-  const onDisconnect = useCallback(() => {
-    socket.close();
-    setSocketConnected(false);
-  }, [socket]);
-
   useEffect(() => {
-    const onConnect = () => setSocketConnected(true);
+    // emit heartbeat every 5 seconds
+    const heartbeatInterval = setInterval(() => {
+      socket.emit(SOCKET_CLIENT.ROOM_HEARTBEAT);
+    }, 5000);
+
+    const onConnect = () => {
+      setSocketConnected(true);
+    }
+
+    const onDisconnect = () => {
+      setSocketConnected(false);
+      clearInterval(heartbeatInterval);
+    }
+
+    window.addEventListener("beforeunload", onDisconnect);
 
     if (user && !socket.connected) {
       socket.connect();
@@ -37,12 +46,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       socket.off("connect", onConnect);
+      onDisconnect();
+      window.removeEventListener("beforeunload", onDisconnect);
     };
   }, [socket, user]);
-
-  useEffect(() => {
-    window.addEventListener("beforeunload", onDisconnect);
-  }, [onDisconnect]);
 
   return (
     <SocketContext.Provider value={{ socket, socketConnected }}>

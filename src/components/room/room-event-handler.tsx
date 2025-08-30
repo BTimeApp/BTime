@@ -45,6 +45,24 @@ export default function RoomEventHandler() {
   ]);
   const { socket, socketConnected } = useSocket();
 
+  useEffect(() => {
+    // emit room heartbeat every 2 seconds
+    const interval = setInterval(() => {
+      socket.emit(SOCKET_CLIENT.ROOM_HEARTBEAT);
+    }, 2000);
+
+    const removeInterval = () => {
+      clearInterval(interval);
+    }
+
+    window.addEventListener("beforeunload", removeInterval);
+
+    return () => {
+      removeInterval();
+      window.removeEventListener("beforeunload", removeInterval);
+    };
+  }, [socket]);
+
   //live update for start time
   const liveTimerStartTime = useStartTimeOnTransition<SolveStatus>(
     localSolveStatus,
@@ -157,13 +175,25 @@ export default function RoomEventHandler() {
    */
   useEffect(() => {
     if (socket.connected) {
-      socket.on(SOCKET_SERVER.USER_START_LIVE_TIMER, userStartedLiveTimerCallback);
-      socket.on(SOCKET_SERVER.USER_STOP_LIVE_TIMER, userStoppedLiveTimerCallback);
+      socket.on(
+        SOCKET_SERVER.USER_START_LIVE_TIMER,
+        userStartedLiveTimerCallback
+      );
+      socket.on(
+        SOCKET_SERVER.USER_STOP_LIVE_TIMER,
+        userStoppedLiveTimerCallback
+      );
     }
 
     return () => {
-      socket.off(SOCKET_SERVER.USER_START_LIVE_TIMER, userStartedLiveTimerCallback);
-      socket.off(SOCKET_SERVER.USER_STOP_LIVE_TIMER, userStoppedLiveTimerCallback);
+      socket.off(
+        SOCKET_SERVER.USER_START_LIVE_TIMER,
+        userStartedLiveTimerCallback
+      );
+      socket.off(
+        SOCKET_SERVER.USER_STOP_LIVE_TIMER,
+        userStoppedLiveTimerCallback
+      );
     };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -172,7 +202,7 @@ export default function RoomEventHandler() {
     userStartedLiveTimerCallback,
     userStoppedLiveTimerCallback,
   ]);
-  
+
   // this component should never render. it will house all logic though.
   return null;
 }

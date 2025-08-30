@@ -85,7 +85,7 @@ export default function Room() {
         console.log("Socket connected. ");
       });
     }
-    //only join room upon login
+    // only join room upon login
     socket.emit(
       SOCKET_CLIENT.JOIN_ROOM,
       { userId: user.id, roomId: roomId, password: undefined },
@@ -95,15 +95,6 @@ export default function Room() {
     // ignore socket missing - we don't want to always rerun this on socket change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, user, socketConnected, joinRoomCallback]);
-
-  /**
-   * Emit the room disconnect websocket event upon unloading this component
-   */
-  useEffect(() => {
-    return () => {
-      socket.emit(SOCKET_CLIENT.USER_DISCONNECT_ROOM, {});
-    };
-  }, [socket]);
 
   /**
    * If the room is not valid, route the user back to home page automatically
