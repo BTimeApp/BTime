@@ -4,7 +4,7 @@ import StopwatchTimer from "@/components/room/stopwatch-timer";
 import { Penalty, Result } from "@/types/result";
 import { CallbackInput } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import InspectionCountdown from "./inspection-countdown";
+import InspectionCountdown from "@/components/room/inspection-countdown";
 import { useRoomStore } from "@/context/room-context";
 
 

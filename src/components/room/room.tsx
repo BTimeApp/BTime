@@ -1,5 +1,5 @@
 "use client";
-import { RoomHeader } from "./room-header";
+import { RoomHeader } from "@/components/room/room-header";
 
 import { useRoomStore } from "@/context/room-context";
 import { useSession } from "@/context/session-context";
@@ -9,8 +9,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect } from "react";
 import LoadingSpinner from "@/components/common/loading-spinner";
 import RoomContent from "@/components/room/room-content";
-import RoomEventHandler from "./room-event-handler";
-import PasswordPrompt from "./password-prompt";
+import RoomEventHandler from "@/components/room/room-event-handler";
+import PasswordPrompt from "@/components/room/password-prompt";
 import LoginButton from "@/components/common/login-button";
 import { toast } from "sonner";
 import { SOCKET_CLIENT } from "@/types/socket_protocol";

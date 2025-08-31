@@ -1,6 +1,6 @@
 import { IUser } from '@/types/user';
-import { SolveStatus } from './status';
-import { IResult } from './result';
+import { SolveStatus } from '@/types/status';
+import { IResult } from '@/types/result';
 
 export interface IRoomUser {
   user: IUser;

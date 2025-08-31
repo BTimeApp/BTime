@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { inter } from "@/app/ui/fonts";
-import "./styles/global.css";
+import "@/app/styles/global.css";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { ThemeProvider } from "next-themes";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";

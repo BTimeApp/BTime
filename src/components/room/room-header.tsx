@@ -7,7 +7,7 @@ import { useRoomStore } from "@/context/room-context";
 import { useSocket } from "@/context/socket-context";
 import { useSession } from "@/context/session-context";
 import { Settings } from "lucide-react";
-import RoomSettingsDialog from "./room-settings-dialog";
+import RoomSettingsDialog from "@/components/room/room-settings-dialog";
 import { SOCKET_CLIENT } from "@/types/socket_protocol";
 
 export function RoomHeader() {

@@ -1,4 +1,4 @@
-import { ISolve } from "./solve";
+import { ISolve } from "@/types/solve";
 
 export interface IRoomSolve {
   solve: ISolve;

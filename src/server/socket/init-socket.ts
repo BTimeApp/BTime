@@ -29,7 +29,7 @@ import {
   createUserSession,
   heartbeatRoomSession,
   heartbeatUserSession,
-} from "./socket-session";
+} from "@/server/socket/socket-session";
 
 //defines useful state variables we want to maintain over the lifestyle of a socket connection (only visible server-side)
 interface CustomSocket extends Socket {

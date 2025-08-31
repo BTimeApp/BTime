@@ -2,7 +2,7 @@
  * This defines user sessions ig
  */
 
-import { roomSessions, userSessions } from "../server-objects";
+import { roomSessions, userSessions } from "@/server/server-objects";
 
 export interface UserSession {
   timeout: NodeJS.Timeout;

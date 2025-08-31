@@ -10,7 +10,7 @@ import passport from "passport";
 import session from "express-session";
 import { users } from "@/server/server-objects";
 import { rateLimit } from "express-rate-limit";
-import addDevExtras from "./dev-extras";
+import addDevExtras from "@/server/dev-extras";
 
 export async function startServer(): Promise<void> {
   // handle config with dotenv

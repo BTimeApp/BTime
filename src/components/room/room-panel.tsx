@@ -2,15 +2,15 @@ import { useRoomStore } from "@/context/room-context";
 import { cn } from "@/lib/utils";
 import React, { useEffect, useState } from "react";
 import { getFormatText, getVerboseFormatText } from "@/types/room";
-import GlobalTimeList from "./global-time-list";
+import GlobalTimeList from "@/components/room/global-time-list";
 import { IRoomUser } from "@/types/room-user";
 import { Result } from "@/types/result";
 import { Button } from "@/components/ui/button";
 import { Settings } from "lucide-react";
-import TimerSection from "./timer-section";
-import RoomSubmittingButtons from "./room-submitting-buttons";
-import UserRoomSettingsDialog from "./user-room-settings-dialog";
-import UserLiveTimer from "./user-live-timer";
+import TimerSection from "@/components/room/timer-section";
+import RoomSubmittingButtons from "@/components/room/room-submitting-buttons";
+import UserRoomSettingsDialog from "@/components/room/user-room-settings-dialog";
+import UserLiveTimer from "@/components/room/user-live-timer";
 
 type RoomPanelProps = {
   className?: string;

@@ -5,7 +5,7 @@ import {
   DialogTrigger
 } from "@/components/ui/dialog";
 import React, { useCallback, useState } from "react";
-import RoomSettingsForm from "./room-settings-form";
+import RoomSettingsForm from "@/components/room/room-settings-form";
 import { useRoomStore } from "@/context/room-context";
 import { useParams } from "next/navigation";
 

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { v0 } from "./v0";
+import { v0 } from "@/server/api/v0";
 
 
 /** Adds API routes to an application. Meant to be used from the main server.ts file. ([btime]/api/...)

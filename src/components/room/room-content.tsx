@@ -1,6 +1,6 @@
 "use client";
 import { useRoomStore } from "@/context/room-context";
-import RoomPanel from "./room-panel";
+import RoomPanel from "@/components/room/room-panel";
 import { useSession } from "@/context/session-context";
 import { ScreenSize, useScreenSize } from "@/hooks/use-screen-size";
 
