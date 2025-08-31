@@ -36,10 +36,13 @@ export type RoomStore = {
   localResult: Result; //result associated with current solve
   localSolveStatus: SolveStatus; //current solving state of client
   liveTimerStartTime: number; //the start time for the client's current solve
-  timerType: TimerType; //type of timer client is using
-  useInspection: boolean; //is inspection on?
   isRoomValid: boolean; //is there a room with this roomid?
   isPasswordAuthenticated: boolean; //has password been accepted?
+
+  //user settings
+  timerType: TimerType; //type of timer client is using
+  useInspection: boolean; //is inspection on?
+  drawScramble: boolean; //should we draw the scramble?
 
   /**
    * Map from user IDs to timestamps of when each user (potentially) started a live timer.
@@ -56,6 +59,7 @@ export type RoomStore = {
 
   setUseInspection: (useInspection: boolean) => void;
   setTimerType: (timerType: TimerType) => void;
+  setDrawScramble: (drawScramble: boolean) => void;
 
   isUserHost: (userId: string) => boolean;
   getMostRecentScramble: () => string;
@@ -99,10 +103,13 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
     localResult: new Result(""),
     localSolveStatus: "IDLE",
     liveTimerStartTime: 0,
-    timerType: "KEYBOARD",
-    useInspection: false,
     isRoomValid: true,
     isPasswordAuthenticated: false,
+
+    //user settings
+    timerType: "KEYBOARD",
+    useInspection: false,
+    drawScramble: true,
 
     userLiveTimerStartTimes: new Map<string, number>(),
     userLiveTimes: new Map<string, number>(),
@@ -123,6 +130,8 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
       set(() => ({ useInspection: useInspection })),
     setTimerType: (timerType: TimerType) =>
       set(() => ({ timerType: timerType })),
+    setDrawScramble: (drawScramble: boolean) =>
+      set(() => ({ drawScramble: drawScramble })),
     getMostRecentScramble: () => {
       const solves = get().solves;
       if (!solves || solves.length === 0) {

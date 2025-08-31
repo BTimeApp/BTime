@@ -27,13 +27,14 @@
         "./src/*"
       ]
     },
-    "noEmit": false,
+    "noEmit": false
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
     "next-env.d.ts",
-    ".next/types/**/*.ts",
+    "src/types/custom-elements.d.ts",
+    ".next/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

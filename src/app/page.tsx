@@ -7,7 +7,7 @@ import ProfileView from "@/components/index/profile-view";
 
 export default function Home() {
   return (
-    <div className="flex-col h-full">
+    <div className="flex-col h-full w-full">
       <Header>
         <HomeHeaderContent/>
       </Header>

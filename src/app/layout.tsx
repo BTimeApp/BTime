@@ -33,10 +33,10 @@ export default function RootLayout({
         />
 
       {/* scramble-display - can switch back to this once ready to open source */}
-      {/* <Script src="https://cdn.cubing.net/v0/js/scramble-display" type="module"></Script> */}
+      <Script src="https://cdn.cubing.net/v0/js/scramble-display" type="module"></Script>
       
       {/* Cubing/twisty */}
-      <Script src="https://cdn.cubing.net/v0/js/cubing/twisty" type="module"></Script>
+      {/* <Script src="https://cdn.cubing.net/v0/js/cubing/twisty" type="module"></Script> */}
 
       </head>
       <body className={`${inter.className} antialiased h-screen flex flex-col`}>
@@ -50,8 +50,8 @@ export default function RootLayout({
               <SidebarProvider defaultOpen={false}>
                 <AppSidebar />
                 <SidebarInset>
-                  <div className="flex flex-1 flex-col gap-4 pt-0 h-full">
-                    <div className="flex flex-col flex-1 rounded-xl bg-background h-full">
+                  <div className="flex flex-1 flex-col gap-4 pt-0 h-full w-full">
+                    <div className="flex flex-col flex-1 rounded-xl bg-background h-full w-full">
                       {children}
                     </div>
                   </div>

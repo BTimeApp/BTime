@@ -110,7 +110,7 @@ export default function Room() {
   // render a loading icon if loading
   if (sessionLoading) {
     return (
-      <div className="flex flex-col h-screen">
+      <div className="flex flex-col h-screen w-full">
         <RoomHeader />
         <div className="grow">
           <LoadingSpinner />
@@ -122,7 +122,7 @@ export default function Room() {
   // if not logged in, make the user log in first.
   if (!user) {
     return (
-      <div className="flex flex-col h-screen">
+      <div className="flex flex-col h-screen w-full">
         <RoomHeader />
         <div className="flex flex-col">
           <div className="grow font-bold text-xl text-center content-center">
@@ -137,7 +137,7 @@ export default function Room() {
   // if not password authenticated, render blank screen with dialog
   if (!isPasswordAuthenticated) {
     return (
-      <div className="flex flex-col h-screen">
+      <div className="flex flex-col h-screen w-full">
         <PasswordPrompt
           socket={socket}
           roomId={roomId}
@@ -149,7 +149,7 @@ export default function Room() {
   }
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen w-full">
       <RoomHeader />
       <RoomContent />
       <RoomEventHandler />

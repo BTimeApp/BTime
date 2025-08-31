@@ -33,7 +33,7 @@ function RoomSubmittingButtons() {
   }, []);
 
   return (
-    <div className="mx-auto flex flex-row gap-2 px-2">
+    <div className="mx-auto flex flex-row justify-center gap-2 px-2">
       <Button variant="destructive" size="xs" onClick={resetLocalSolveStatus}>
         <h1 className={cn("font-bold text-center text-md")}>REDO</h1>
       </Button>

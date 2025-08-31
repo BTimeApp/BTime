@@ -58,24 +58,43 @@ export const ROOM_EVENT_ICON_SRC_MAP = new Map<RoomEvent, string>([
   ["5bld", "event-555bf"],
 ]);
 
-// These are currently updated to be used with cubing.js/twisty. The scramble-display names are the event names above without "event-".
+// These are currently updated to be used with cubing.js/twisty.
 export const ROOM_EVENT_JS_NAME_MAP = new Map<RoomEvent, string>([
-  ["333", "3x3x3"],
-  ["222", "2x2x2"],
-  ["444", "4x4x4"],
-  ["555", "5x5x5"],
-  ["666", "6x6x6"],
-  ["777", "7x7x7"],
-  ["megaminx", "megaminx"],
-  ["pyraminx", "pyraminx"],
+  ["333", "333"],
+  ["222", "222"],
+  ["444", "444"],
+  ["555", "555"],
+  ["666", "666"],
+  ["777", "777"],
+  ["megaminx", "minx"],
+  ["pyraminx", "pyram"],
   ["skewb", "skewb"],
   ["clock", "clock"],
-  ["sq1", "square1"],
-  ["3oh", "3x3x3"],
-  ["3bld", "3x3x3"],
-  ["4bld", "4x4x4"],
-  ["5bld", "5x5x5"],
+  ["sq1", "sq1"],
+  ["3oh", "333oh"],
+  ["3bld", "333bf"],
+  ["4bld", "444bf"],
+  ["5bld", "555bf"],
 ]);
+
+// These are currently updated to be used with cubing.js/twisty. 
+// export const ROOM_EVENT_JS_NAME_MAP = new Map<RoomEvent, string>([
+//   ["333", "3x3x3"],
+//   ["222", "2x2x2"],
+//   ["444", "4x4x4"],
+//   ["555", "5x5x5"],
+//   ["666", "6x6x6"],
+//   ["777", "7x7x7"],
+//   ["megaminx", "megaminx"],
+//   ["pyraminx", "pyraminx"],
+//   ["skewb", "skewb"],
+//   ["clock", "clock"],
+//   ["sq1", "square1"],
+//   ["3oh", "3x3x3"],
+//   ["3bld", "3x3x3"],
+//   ["4bld", "4x4x4"],
+//   ["5bld", "5x5x5"],
+// ]);
 
 //defines all legal formats (more to come hopefully)
 export const ROOM_FORMATS = [

@@ -22,7 +22,7 @@ export default function UserRoomSettingsDialog({
   // const [] = useRoomStore((s) => []);
   const { setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const [useInspection, timerType, setUseInspection, setTimerType] = useRoomStore((s) => [s.useInspection, s.timerType, s.setUseInspection, s.setTimerType]);
+  const [useInspection, timerType, drawScramble, setUseInspection, setTimerType, setDrawScramble] = useRoomStore((s) => [s.useInspection, s.timerType, s.drawScramble, s.setUseInspection, s.setTimerType, s.setDrawScramble]);
 
 
   // Prevent mismatch between server and client
@@ -51,6 +51,10 @@ export default function UserRoomSettingsDialog({
                 <SelectItem value="KEYBOARD">Keyboard</SelectItem>
             </SelectContent>
             </Select>
+        </div>
+        <div>
+            <p>Draw Scramble</p>
+            <Switch defaultChecked={drawScramble} checked={drawScramble} onCheckedChange={setDrawScramble}/>
         </div>
         <div>
             <p>Toggle Theme</p>

@@ -12,7 +12,7 @@ export default function RoomContent() {
   switch (localRoomState) {
     case "WAITING":
       return (
-        <div className="flex-1 grow grid grid-rows-2 md:grid-rows-1 md:grid-cols-2">
+        <div className="flex-1 grow grid grid-rows-2 md:grid-rows-1 md:grid-cols-2 w-full">
           <RoomPanel
             type="info"
             side={screenSize >= ScreenSize.MD ? "left" : undefined}
@@ -29,7 +29,7 @@ export default function RoomContent() {
       // );
 
       return (
-        <div className="flex-1 grow grid grid-rows-2 md:grid-rows-1 md:grid-cols-2">
+        <div className="flex-1 grow grid grid-rows-2 md:grid-rows-1 md:grid-cols-2 w-full">
           <RoomPanel
             side={screenSize >= ScreenSize.MD ? "left" : undefined}
             type="user"
@@ -80,7 +80,7 @@ export default function RoomContent() {
       );
     case "FINISHED":
       return (
-        <div className="flex-1 grow grid grid-rows-2 md:grid-rows-1 md:grid-cols-2">
+        <div className="flex-1 grow grid grid-rows-2 md:grid-rows-1 md:grid-cols-2 w-full">
           <RoomPanel
             type="summary"
             side={screenSize >= ScreenSize.MD ? "left" : undefined}

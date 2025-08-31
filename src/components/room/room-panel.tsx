@@ -1,7 +1,11 @@
 import { useRoomStore } from "@/context/room-context";
 import { cn } from "@/lib/utils";
 import React, { useEffect, useState } from "react";
-import { getFormatText, getVerboseFormatText } from "@/types/room";
+import {
+  getFormatText,
+  getVerboseFormatText,
+  ROOM_EVENT_JS_NAME_MAP,
+} from "@/types/room";
 import GlobalTimeList from "@/components/room/global-time-list";
 import { IRoomUser } from "@/types/room-user";
 import { Result } from "@/types/result";
@@ -102,29 +106,27 @@ function UserCenterSection({
   userId,
   isLocalUser = false,
 }: UserRoomPanelProps) {
-  const [users, solveStatus] = useRoomStore((s) => [
-    s.users,
-    s.localSolveStatus,
-  ]);
+  const [users, solveStatus, solves, roomEvent, drawScramble] = useRoomStore(
+    (s) => [s.users, s.localSolveStatus, s.solves, s.roomEvent, s.drawScramble]
+  );
 
   if (!users[userId]) {
     return null;
   }
 
   if (users[userId].competing) {
+    const currScramble = solves.length > 0 ? solves.at(-1)?.solve.scramble : "";
     return (
-      <div
-        className={cn(
-          "flex flex-row justify-center items-center w-full h-full",
-          className
-        )}
-      >
+      <div className={cn("flex flex-row w-full h-full", className)}>
         {/* TODO: figure out why the time lists cause the screen to get longer */}
         {/* {side === "right" && (
           <UserTimeList userId={userId} className="max-h-[50%]" />
         )} */}
-        <div className="flex flex-col justify-center grow">
-          <div className="mx-auto">
+        <div className="flex flex-col grow w-full">
+          <div className="flex-0 flex flex-col">
+            <div className="text-2xl">{currScramble}</div>
+          </div>
+          <div className="flex-1 flex flex-col justify-center">
             {isLocalUser ? (
               <>
                 <TimerSection />
@@ -134,6 +136,15 @@ function UserCenterSection({
               <UserStatusSection
                 className="text-2xl font-bold"
                 userId={userId}
+              />
+            )}
+          </div>
+          <div className="flex-0 flex flex-col">
+            {drawScramble && (
+              <scramble-display
+                className="w-full h-45"
+                scramble={currScramble}
+                event={ROOM_EVENT_JS_NAME_MAP.get(roomEvent) ?? null}
               />
             )}
           </div>
@@ -167,7 +178,9 @@ function UserRoomPanel({
   const [users] = useRoomStore((s) => [s.users]);
 
   return (
-    <div className={cn(["flex flex-col text-center h-full p-2", className])}>
+    <div
+      className={cn(["flex flex-col text-center h-full w-full p-2", className])}
+    >
       <div className="flex flex-row w-full shrink-0">
         <div className="grow">
           <p className="text- 2xl font-bold">{users[userId]?.user.userName}</p>
@@ -175,7 +188,12 @@ function UserRoomPanel({
         {isLocalUser && (
           <div className="ml-auto">
             <UserRoomSettingsDialog>
-              <Button size="icon" className="self-end" variant="icon" onKeyDown={(e) => e.preventDefault()}>
+              <Button
+                size="icon"
+                className="self-end"
+                variant="icon"
+                onKeyDown={(e) => e.preventDefault()}
+              >
                 <Settings className="size-8" />
               </Button>
             </UserRoomSettingsDialog>
@@ -197,14 +215,22 @@ function UserRoomPanel({
 }
 
 function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
-  const [users, solves, roomEvent, roomFormat, roomState, userLiveTimerStartTimes, userLiveTimes] = useRoomStore((s) => [
+  const [
+    users,
+    solves,
+    roomEvent,
+    roomFormat,
+    roomState,
+    userLiveTimerStartTimes,
+    userLiveTimes,
+  ] = useRoomStore((s) => [
     s.users,
     s.solves,
     s.roomEvent,
     s.roomFormat,
     s.roomState,
     s.userLiveTimerStartTimes,
-    s.userLiveTimes
+    s.userLiveTimes,
   ]);
   const [sortedUsers, setSortedUsers] = useState<IRoomUser[]>(
     Object.values(users)
@@ -216,11 +242,27 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
     } else {
       if (user.userStatus == "FINISHED" && user.currentResult) {
         return Result.fromIResult(user.currentResult).toString();
-      } else if (user.userStatus === "SOLVING" && userLiveTimerStartTimes.get(user.user.id)) {
-        return <UserLiveTimer startTime={(userLiveTimerStartTimes.get(user.user.id)!)}/>
-      } else if (user.userStatus === "SUBMITTING" && userLiveTimes.get(user.user.id)) {
-        return <p className="italic">{Result.timeToString(Math.floor(userLiveTimes.get(user.user.id)! / 10))}</p>;
-      }else {
+      } else if (
+        user.userStatus === "SOLVING" &&
+        userLiveTimerStartTimes.get(user.user.id)
+      ) {
+        return (
+          <UserLiveTimer
+            startTime={userLiveTimerStartTimes.get(user.user.id)!}
+          />
+        );
+      } else if (
+        user.userStatus === "SUBMITTING" &&
+        userLiveTimes.get(user.user.id)
+      ) {
+        return (
+          <p className="italic">
+            {Result.timeToString(
+              Math.floor(userLiveTimes.get(user.user.id)! / 10)
+            )}
+          </p>
+        );
+      } else {
         return user.userStatus;
       }
     }
@@ -239,7 +281,9 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
   }, [users]);
 
   return (
-    <div className={cn(["flex flex-col text-center h-full p-2", className])}>
+    <div
+      className={cn(["flex flex-col text-center h-full w-full p-2", className])}
+    >
       <div className="flex flex-col basis-[50%] max-h-[50%]">
         <div className="grid grid-cols-12">
           <div className="col-span-5">User</div>
@@ -251,7 +295,9 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
           {sortedUsers.map((user, index) => (
             <div key={index} className="grid grid-cols-12">
               <div className="col-span-5">{user.user.userName}</div>
-              {roomState === "STARTED" && <div className="col-span-3">{userStatusText(user)}</div>}
+              {roomState === "STARTED" && (
+                <div className="col-span-3">{userStatusText(user)}</div>
+              )}
               {roomFormat === "RACING" && (
                 <div className="col-span-2">{user.setWins}</div>
               )}
@@ -290,7 +336,9 @@ function InfoRoomPanel({ className }: InfoRoomPanelProps) {
     s.nSolves,
   ]);
   return (
-    <div className={cn(["flex flex-col text-center h-full p-2", className])}>
+    <div
+      className={cn(["flex flex-col text-center h-full w-full p-2", className])}
+    >
       <div>
         <h2 className={cn("text-2xl md-1")}>Room: {roomName}</h2>
       </div>
@@ -316,15 +364,22 @@ function InfoRoomPanel({ className }: InfoRoomPanelProps) {
 }
 
 function UserListRoomPanel({ className }: UserListRoomPanelProps) {
-  const [users, roomState, roomWinners] = useRoomStore((s) => [s.users, s.roomState, s.roomWinners]);
+  const [users, roomState, roomWinners] = useRoomStore((s) => [
+    s.users,
+    s.roomState,
+    s.roomWinners,
+  ]);
   return (
-    <div className={cn(["flex flex-col text-center h-full p-2", className])}>
-      {
-        roomState === "FINISHED" && 
+    <div
+      className={cn(["flex flex-col text-center h-full w-full p-2", className])}
+    >
+      {roomState === "FINISHED" && (
         <div className="flex-1 text-center">
-          <h2 className="text-xl font-bold">Winner{roomWinners.length > 1 ? "s" : ""}: {roomWinners.join(", ")}</h2>
+          <h2 className="text-xl font-bold">
+            Winner{roomWinners.length > 1 ? "s" : ""}: {roomWinners.join(", ")}
+          </h2>
         </div>
-      }
+      )}
       <div className="flex flex-col flex-1 align-center">
         <h2 className="text-xl font-bold">Competitors</h2>
         {Object.values(users)

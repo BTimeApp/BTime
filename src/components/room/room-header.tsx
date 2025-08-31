@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { ROOM_EVENT_DISPLAY_NAME_MAP } from "@/types/room";
+import { MATCH_FORMAT_ABBREVIATION_MAP, ROOM_EVENT_DISPLAY_NAME_MAP, SET_FORMAT_ABBREVIATION_MAP } from "@/types/room";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/common/header";
 import { useCallback } from "react";
@@ -19,8 +19,11 @@ export function RoomHeader() {
     roomFormat,
     currentSet,
     currentSolve,
-    solves,
     users,
+    matchFormat,
+    setFormat,
+    numSets,
+    numSolves,
     isUserHost,
   ] = useRoomStore((s) => [
     s.roomName,
@@ -30,8 +33,11 @@ export function RoomHeader() {
     s.roomFormat,
     s.currentSet,
     s.currentSolve,
-    s.solves,
     s.users,
+    s.matchFormat,
+    s.setFormat,
+    s.nSets,
+    s.nSolves,
     s.isUserHost,
   ]);
 
@@ -147,14 +153,15 @@ export function RoomHeader() {
               </div>
 
               <div className="flex-5 md:flex-10 text-center flex flex-col overflow-wrap justify-center">
+                <h2 className="text-3xl font-bold">{roomName}</h2>
+                <h4 className="text-lg">
+                  {ROOM_EVENT_DISPLAY_NAME_MAP.get(roomEvent)}{MATCH_FORMAT_ABBREVIATION_MAP.has(matchFormat) && roomFormat!=="CASUAL" ? " | " + MATCH_FORMAT_ABBREVIATION_MAP.get(matchFormat) + numSets.toString() + " sets | " : ""}{SET_FORMAT_ABBREVIATION_MAP.has(setFormat) && roomFormat!=="CASUAL" ? SET_FORMAT_ABBREVIATION_MAP.get(setFormat) + numSolves.toString() + " solves" : ""} 
+                </h4>
                 {roomFormat === "RACING" && (
                   <p className="text-lg">
                     Set {currentSet} Solve {currentSolve}
                   </p>
                 )}
-                <p className="text-2xl">
-                  {solves.at(-1)?.solve.scramble ?? ""}
-                </p>
               </div>
 
               <div className="flex-1 flex flex-col gap-3">
