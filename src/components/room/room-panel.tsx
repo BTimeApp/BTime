@@ -181,12 +181,12 @@ function UserRoomPanel({
     <div
       className={cn(["flex flex-col text-center h-full w-full p-2", className])}
     >
-      <div className="flex flex-row w-full shrink-0">
+      <div className="flex flex-row w-full shrink-0 relative">
         <div className="grow">
           <p className="text-2xl font-bold">{users[userId]?.user.userName}</p>
         </div>
         {isLocalUser && (
-          <div className="ml-auto">
+          <div className="absolute top-0 right-0">
             <UserRoomSettingsDialog>
               <Button
                 size="icon"
