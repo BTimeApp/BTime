@@ -108,7 +108,7 @@ const listenSocketEvents = (io: Server) => {
     if (!users.has(userId)) users.set(userId, socket.user);
 
     //start live session
-    createUserSession(userId, () => {});
+    createUserSession(userId, () => {socket.disconnect()});
   }
 
   async function handleSolveFinished(room: IRoom) {
