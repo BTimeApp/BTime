@@ -183,7 +183,7 @@ function UserRoomPanel({
     >
       <div className="flex flex-row w-full shrink-0">
         <div className="grow">
-          <p className="text- 2xl font-bold">{users[userId]?.user.userName}</p>
+          <p className="text-2xl font-bold">{users[userId]?.user.userName}</p>
         </div>
         {isLocalUser && (
           <div className="ml-auto">
