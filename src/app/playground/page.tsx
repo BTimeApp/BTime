@@ -13,7 +13,8 @@ export default function Page() {
       </Header>
       <div className="flex flex-col h-full w-full py-3">
         <div className="text-center">
-          (Dev) Use this page to prototype quickly. 
+          (Dev) Use this page to prototype quickly. Please don't commit changes
+          to this file.
         </div>
       </div>
     </div>
