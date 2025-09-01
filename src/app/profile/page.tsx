@@ -61,10 +61,10 @@ export default function Page() {
   let body = <></>;
   if (localUser) {
     body = (
-      <div className="flex space-x-20 > *">
-        <div className="p-50">
-            <Card className="w-[300px] p-4">
-              <h1 className="pl-23 text-2xl font-semibold">{localUser.userName}</h1>
+      <div className="flex flex-col md:flex-row justify-center items-center">
+        <div className="flex-2 lg:pl-45 md:pl-0">
+            <Card className="w-[300px] h-[350px] p-4">
+              <h1 className="flex text-2xl font-semibold justify-center">{localUser.userName}</h1>
               {/* <CardHeader className="flex font-semibold text-2xl font-bold p-10 shadow-lg bg-blue">Avatar</CardHeader> */}
               <Image
                 src={
@@ -77,9 +77,9 @@ export default function Page() {
                 />
             </Card>
         </div>
-        <div className="p-15">
-          <Card className="w-[700px] h-[700px] p-8">
-              <h1 className="flex font-semibold text-2xl">Username</h1>
+        <div className="flex-3 lg:p-40 md:p-20">
+          <Card className=" flex w-[700px] h-[500px] p-8">
+              <h1 className="flex font-semibold text-2xl whitespace-nowrap">Username</h1>
             <div className="flex">
                 <Input
                   value={username}
@@ -105,12 +105,12 @@ export default function Page() {
                                   
 
             </div>
-            {usernameFieldError && <div className="text-xs text-error">{usernameFieldError}</div>}
-                <div className="">
+            {usernameFieldError && <div className="text-xs text-error whitespace-nowrap">{usernameFieldError}</div>}
+                <div className="flex">
                   <div className="mt-5">
                       <h1 className="flex font-semibold text-xl underline">Additional Information</h1>
-                    <h1 className="flex font-semibold text-2xl mt-3">Email: {localUser.email}</h1>
-                    <h1 className="flex font-semibold text-2xl mt-3">WCAID: {localUser.wcaId? localUser.wcaId : "No WCAID"}</h1>
+                    <h1 className="flex font-semibold text-2xl mt-3 whitespace-nowrap">Email: {localUser.email}</h1>
+                    <h1 className="flex font-semibold text-2xl mt-3 whitespace-nowrap">WCAID: {localUser.wcaId? localUser.wcaId : "No WCAID"}</h1>
                   </div>
             </div>
             <div className="mt-5 object-right-bottom relatve origin-bottom-right">
