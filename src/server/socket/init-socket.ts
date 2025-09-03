@@ -1,7 +1,7 @@
 import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
 import { Types } from "mongoose";
-import { rooms, users } from "@/server/server-objects";
+import { rooms, users, roomTimeouts, userSessions } from "@/server/server-objects";
 import { IRoom, RoomState, IRoomSettings } from "@/types/room";
 import {
   skipScramble,
@@ -24,12 +24,6 @@ import { ObjectId } from "bson";
 import passport from "passport";
 import bcrypt from "bcrypt";
 import { SOCKET_CLIENT, SOCKET_SERVER } from "@/types/socket_protocol";
-import {
-  createRoomSession,
-  createUserSession,
-  heartbeatRoomSession,
-  heartbeatUserSession,
-} from "@/server/socket/socket-session";
 
 //defines useful state variables we want to maintain over the lifestyle of a socket connection (only visible server-side)
 interface CustomSocket extends Socket {
@@ -51,6 +45,8 @@ export const initSocket = (
     cors: {
       credentials: true,
     },
+    "pingInterval": 2000,
+    "pingTimeout": 10000
   });
 
   // middleware should be taken care of in the main server script
@@ -106,9 +102,8 @@ const listenSocketEvents = (io: Server) => {
 
     //add user to user store if not already
     if (!users.has(userId)) users.set(userId, socket.user);
-
-    //start live session
-    createUserSession(userId, () => {socket.disconnect()});
+    if (!userSessions.has(userId)) userSessions.set(userId, new Set<string>());
+    userSessions.get(userId)!.add(socket.id);
   }
 
   async function handleSolveFinished(room: IRoom) {
@@ -127,6 +122,14 @@ const listenSocketEvents = (io: Server) => {
     }
     const userId = socket.user!.id;
 
+    function handleUserDisconnect(userId: string) {
+      userSessions.get(userId)?.delete(socket.id);
+
+      if (!userSessions.has(userId) || userSessions.get(userId)?.size === 0) {
+        users.delete(userId);
+      }
+    }
+
     function handleRoomDisconnect(userId: string, roomId: string) {
       if (!userId || !roomId) return;
       console.log(`User ${userId} disconnected from room ${roomId}`);
@@ -137,10 +140,13 @@ const listenSocketEvents = (io: Server) => {
       delete room.users[userId];
       io.to(roomId.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
 
-      //check if no more users, if so, delete room.
+      //check if no more users, if so, schedule room deletion.
       if (Object.keys(room.users).length == 0) {
-        console.log(`Room ${roomId} is empty. Deleting room.`);
-        rooms.delete(roomId);
+        console.log(`Room ${roomId} is empty. Scheduling room for deletion.`);
+        roomTimeouts.set(roomId, setTimeout(() => {
+          rooms.delete(roomId);
+          roomTimeouts.delete(roomId);
+        }, 5000));
         return;
       }
 
@@ -310,7 +316,7 @@ const listenSocketEvents = (io: Server) => {
         }
 
         //start room session
-        createRoomSession(userId, roomId, handleRoomDisconnect);
+        // createRoomSession(userId, roomId, handleRoomDisconnect);
 
         //add user to room
         console.log(`User ${userId} joining room ${roomId}.`);
@@ -335,6 +341,12 @@ const listenSocketEvents = (io: Server) => {
         socket.join(roomId);
         socket.roomId = roomId;
         joinRoomCallback(true, room, {});
+
+        // if this room is scheduled for deletion, don't delete it
+        if (roomTimeouts.has(roomId)) {
+          clearTimeout(roomTimeouts.get(roomId));
+          roomTimeouts.delete(roomId);
+        }
 
         //broadcast update to all other users
         io.to(roomId).except(userId).emit(SOCKET_SERVER.ROOM_UPDATE, room);
@@ -557,26 +569,14 @@ const listenSocketEvents = (io: Server) => {
       }
     });
 
-    socket.on(SOCKET_CLIENT.HEARTBEAT, () => {
-      if (socket.user) {
-        // console.log(`Received heartbeat from ${socket.user.userName}.`);
-        heartbeatUserSession(socket.user.id);
-      } else {
-        console.log("Socket heartbeat without defined user");
-      }
-    });
-
-    socket.on(SOCKET_CLIENT.ROOM_HEARTBEAT, () => {
-      if (socket.user && socket.roomId) {
-        // console.log(
-        //   `Received room heartbeat from ${socket.user.userName} for room ${socket.roomId}.`
-        // );
-        heartbeatRoomSession(socket.user.id, socket.roomId);
-      } else {
-        console.log(
-          "Socket heartbeat without defined user or without defined roomId."
-        );
-      }
+    /**
+     * User has left the room. Handle
+     */
+    socket.on(SOCKET_CLIENT.LEAVE_ROOM, (roomId: string) => {
+      // console.log(
+      //   `User ${socket.user?.userName} (${userId}) left room ${roomId} `
+      // );
+      handleRoomDisconnect(userId, roomId);
     });
 
     /**
@@ -586,6 +586,13 @@ const listenSocketEvents = (io: Server) => {
       console.log(
         `User ${socket.user?.userName} (${userId}) disconnect from socket with reason: ${reason}`
       );
+      //handle potential room DC
+      if (socket.roomId) {
+        handleRoomDisconnect(userId, socket.roomId);
+      }
+      
+      //handle user DC
+      handleUserDisconnect(userId);
     });
   });
 };

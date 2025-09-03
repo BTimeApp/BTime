@@ -1,5 +1,9 @@
 import { cn } from "@/lib/utils";
-import { MATCH_FORMAT_ABBREVIATION_MAP, ROOM_EVENT_DISPLAY_NAME_MAP, SET_FORMAT_ABBREVIATION_MAP } from "@/types/room";
+import {
+  MATCH_FORMAT_ABBREVIATION_MAP,
+  ROOM_EVENT_DISPLAY_NAME_MAP,
+  SET_FORMAT_ABBREVIATION_MAP,
+} from "@/types/room";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/common/header";
 import { useCallback } from "react";
@@ -155,7 +159,20 @@ export function RoomHeader() {
               <div className="flex-5 md:flex-10 text-center flex flex-col overflow-wrap justify-center">
                 <h2 className="text-3xl font-bold">{roomName}</h2>
                 <h4 className="text-lg">
-                  {ROOM_EVENT_DISPLAY_NAME_MAP.get(roomEvent)}{MATCH_FORMAT_ABBREVIATION_MAP.has(matchFormat) && roomFormat!=="CASUAL" ? " | " + MATCH_FORMAT_ABBREVIATION_MAP.get(matchFormat) + numSets.toString() + " sets | " : ""}{SET_FORMAT_ABBREVIATION_MAP.has(setFormat) && roomFormat!=="CASUAL" ? SET_FORMAT_ABBREVIATION_MAP.get(setFormat) + numSolves.toString() + " solves" : ""} 
+                  {ROOM_EVENT_DISPLAY_NAME_MAP.get(roomEvent)}
+                  {MATCH_FORMAT_ABBREVIATION_MAP.has(matchFormat) &&
+                  roomFormat !== "CASUAL"
+                    ? " | " +
+                      MATCH_FORMAT_ABBREVIATION_MAP.get(matchFormat) +
+                      numSets.toString() +
+                      " sets | "
+                    : ""}
+                  {SET_FORMAT_ABBREVIATION_MAP.has(setFormat) &&
+                  roomFormat !== "CASUAL"
+                    ? SET_FORMAT_ABBREVIATION_MAP.get(setFormat) +
+                      numSolves.toString() +
+                      " solves"
+                    : ""}
                 </h4>
                 {roomFormat === "RACING" && (
                   <p className="text-lg">

@@ -56,6 +56,9 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-timer-ready: var(--timer-ready);
+  --color-timer-notready: var(--timer-notready);
 }
 
 :root {
@@ -110,6 +113,10 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Cubing-related style */
+  --timer-ready: oklch(0.723 0.219 149.58); /* Analogous to green light on stackmat. Shows that timer is ready to start. */
+  --timer-notready: oklch(0.637 0.237 25.33); /* Analogous to red light on stackmat. Shows that timer is not ready to start. */
 }
 
 .dark {
@@ -163,6 +170,10 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* Cubing-related style */
+  --timer-ready: oklch(0.723 0.219 149.58); /* Analogous to green light on stackmat. Shows that timer is ready to start. */
+  --timer-notready: oklch(0.637 0.237 25.33); /* Analogous to red light on stackmat. Shows that timer is not ready to start. */
 }
 
 @layer base {

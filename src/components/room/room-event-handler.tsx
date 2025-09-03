@@ -6,12 +6,17 @@ import { Result } from "@/types/result";
 import { SOCKET_CLIENT, SOCKET_SERVER } from "@/types/socket_protocol";
 import { SolveStatus } from "@/types/status";
 import { isLiveTimer } from "@/types/timer-type";
+import { useParams } from "next/navigation";
 import { useCallback, useEffect } from "react";
+import { toast } from "sonner";
 
 /**
  * Handles all events for the room so that the room component itself doesn't have to re-render upon state udates
  */
 export default function RoomEventHandler() {
+  const params = useParams<{ roomId: string }>();
+  const roomId = params.roomId;
+
   const [
     localPenalty,
     localResult,
@@ -46,22 +51,17 @@ export default function RoomEventHandler() {
   const { socket, socketConnected } = useSocket();
 
   useEffect(() => {
-    // emit room heartbeat every 2 seconds
-    const interval = setInterval(() => {
-      socket.emit(SOCKET_CLIENT.ROOM_HEARTBEAT);
-    }, 2000);
+    const leaveRoom = () => {
+      // clearInterval(interval);
+      socket.emit(SOCKET_CLIENT.LEAVE_ROOM, roomId);
+    };
 
-    const removeInterval = () => {
-      clearInterval(interval);
-    }
-
-    window.addEventListener("beforeunload", removeInterval);
+    window.addEventListener("beforeunload", leaveRoom);
 
     return () => {
-      removeInterval();
-      window.removeEventListener("beforeunload", removeInterval);
+      window.removeEventListener("beforeunload", leaveRoom);
     };
-  }, [socket]);
+  }, [socket, roomId]);
 
   //live update for start time
   const liveTimerStartTime = useStartTimeOnTransition<SolveStatus>(
@@ -202,6 +202,19 @@ export default function RoomEventHandler() {
     userStartedLiveTimerCallback,
     userStoppedLiveTimerCallback,
   ]);
+
+  useEffect(() => {
+    const onSocketDisconnect = () => {
+      toast.error("Socket disconnected...");
+      window.location.href = "/";
+    };
+    if (socket) {
+      socket.on("disconnect", onSocketDisconnect);
+    }
+    return () => {
+      socket.off("disconnect", onSocketDisconnect);
+    };
+  }, [socket]);
 
   // this component should never render. it will house all logic though.
   return null;

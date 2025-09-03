@@ -63,14 +63,9 @@ export enum SOCKET_CLIENT {
   SKIP_SCRAMBLE = "SKIP_SCRAMBLE",
 
   /**
-   * Signals a heartbeat event
+   * User is leaving a room
    */
-  HEARTBEAT = "HEARTBEAT",
-
-  /**
-   * Signals a heartbeat event specifically for rooms
-   */
-  ROOM_HEARTBEAT = "ROOM_HEARTBEAT",
+  LEAVE_ROOM = "LEAVE_ROOM",
 
   /**
    * Used for debugging.

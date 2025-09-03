@@ -9,7 +9,7 @@ import { IRoomSolve } from "@/types/room-solve";
 import { IRoomUser } from "@/types/room-user";
 import { RoomState } from "@/types/room";
 import { StoreApi, createStore } from "zustand";
-import { TimerType } from "@/types/timer-type";
+import { timerAllowsInspection, TimerType } from "@/types/timer-type";
 import { Penalty, Result } from "@/types/result";
 import { SolveStatus } from "@/types/status";
 
@@ -146,17 +146,25 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
      * @param event event causing status update.
      */
     updateLocalSolveStatus: (event?: string) => {
+      console.log("updateLocalSolveStatus call");
       switch (get().localSolveStatus) {
         case "IDLE":
-          if (get().useInspection && get().timerType === "KEYBOARD") {
-            //inspection only works with keyboard timer
+          if (
+            get().useInspection &&
+            timerAllowsInspection(get().timerType) &&
+            event !== "TIMER_START"
+          ) {
             set(() => ({ localSolveStatus: "INSPECTING" }));
           } else {
             set(() => ({ localSolveStatus: "SOLVING" }));
           }
           break;
         case "INSPECTING":
-          set(() => ({ localSolveStatus: "SOLVING" }));
+          if (get().timerType === "GANTIMER" && event === "TIMER_RESET") {
+            set(() => ({ localSolveStatus: "IDLE" }));
+          } else {
+            set(() => ({ localSolveStatus: "SOLVING" }));
+          }
           break;
         case "SOLVING":
           set(() => ({ localSolveStatus: "SUBMITTING" }));
@@ -165,11 +173,7 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
           if (event === "SUBMIT_TIME") {
             set(() => ({ localSolveStatus: "FINISHED" }));
           } else if (event === "REDO_SOLVE") {
-            if (get().useInspection && get().timerType === "KEYBOARD") {
-              set(() => ({ localSolveStatus: "INSPECTING" }));
-            } else {
-              set(() => ({ localSolveStatus: "SOLVING" }));
-            }
+            get().resetLocalSolveStatus();
           }
           break;
         case "FINISHED":
@@ -185,6 +189,9 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
           break;
         case "TYPING":
           set(() => ({ localSolveStatus: "SOLVING" }));
+          break;
+        case "GANTIMER":
+          set(() => ({ localSolveStatus: "IDLE" }));
           break;
       }
     },
@@ -214,12 +221,15 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
 
       set(() => ({
         userLiveTimerStartTimes: new Map<string, number>(
-          get().userLiveTimerStartTimes.entries().filter(x => x[0] !== userId)
+          get()
+            .userLiveTimerStartTimes.entries()
+            .filter((x) => x[0] !== userId)
         ),
-        userLiveTimes: new Map<string, number>(
-          get().userLiveTimes
-        ).set(userId, time - startTime),
-      }))
+        userLiveTimes: new Map<string, number>(get().userLiveTimes).set(
+          userId,
+          time - startTime
+        ),
+      }));
     },
 
     clearUserLiveTimes: () =>

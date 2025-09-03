@@ -92,6 +92,13 @@ export default function Room() {
       joinRoomCallback
     );
 
+    return () => {
+      // emit leave room
+      if (socket && socket.connected) {
+        socket.emit(SOCKET_CLIENT.LEAVE_ROOM, roomId);
+      }
+    }
+
     // ignore socket missing - we don't want to always rerun this on socket change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, user, socketConnected, joinRoomCallback]);

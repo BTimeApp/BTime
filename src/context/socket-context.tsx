@@ -3,7 +3,6 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { Socket } from "socket.io-client";
 import { getSocket } from "@/lib/socket";
 import { useSession } from "@/context/session-context";
-import { SOCKET_CLIENT } from "@/types/socket_protocol";
 
 interface SocketContextValue {
   socket: Socket;
@@ -18,18 +17,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const { user } = useSession();
 
   useEffect(() => {
-    // emit heartbeat every 5 seconds
-    const heartbeatInterval = setInterval(() => {
-      socket.emit(SOCKET_CLIENT.ROOM_HEARTBEAT);
-    }, 5000);
-
     const onConnect = () => {
       setSocketConnected(true);
     };
 
     const onDisconnect = () => {
       setSocketConnected(false);
-      clearInterval(heartbeatInterval);
     };
 
     window.addEventListener("beforeunload", onDisconnect);

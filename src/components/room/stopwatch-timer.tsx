@@ -1,14 +1,21 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Result } from "@/types/result";
 import KeyListener from "@/components/common/key-listener";
+import { TimerType } from "@/types/timer-type";
 
 type StopwatchTimerProps = {
   startTime?: number;
   onFinishTimer?: (timerValue: number) => void;
+  timerType: TimerType;
   className?: string;
 };
 
-function StopwatchTimer({ startTime, onFinishTimer, className }: StopwatchTimerProps) {
+function StopwatchTimer({
+  startTime,
+  onFinishTimer,
+  timerType,
+  className,
+}: StopwatchTimerProps) {
   const [elapsed, setElapsed] = useState<number>(0);
   const startRef = useRef<number>(startTime ? startTime : performance.now());
   const animationRef = useRef<number>(0);
@@ -35,13 +42,10 @@ function StopwatchTimer({ startTime, onFinishTimer, className }: StopwatchTimerP
 
   return (
     <div className={className}>
-      <KeyListener
-        keyName="Space"
-        onKeyDown={handleKeyDown}
-      />
-      <div>
-        {Result.timeToString(Math.floor(elapsed / 10))}
-      </div>
+      {timerType === "KEYBOARD" && (
+        <KeyListener keyName="Space" onKeyDown={handleKeyDown} />
+      )}
+      <div>{Result.timeToString(Math.floor(elapsed / 10))}</div>
     </div>
   );
 }

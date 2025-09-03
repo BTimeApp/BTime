@@ -6,7 +6,7 @@ import { CallbackInput } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import InspectionCountdown from "@/components/room/inspection-countdown";
 import { useRoomStore } from "@/context/room-context";
-
+import { GanTimer } from "@/components/room/gan-timer";
 
 function TimerSection() {
   const [spacebarDown, setSpacebarDown] = useState<boolean>(false);
@@ -52,10 +52,13 @@ function TimerSection() {
     [updateLocalSolveStatus, setLocalResult, localPenalty]
   );
 
-  const endInspectionCallback = useCallback((penalty: Penalty) => {
-    setLocalPenalty(penalty);
-    updateLocalSolveStatus();
-  }, [updateLocalSolveStatus, setLocalPenalty]);
+  const endInspectionCallback = useCallback(
+    (penalty: Penalty) => {
+      setLocalPenalty(penalty);
+      updateLocalSolveStatus();
+    },
+    [updateLocalSolveStatus, setLocalPenalty]
+  );
 
   switch (timerType) {
     case "TYPING":
@@ -68,13 +71,13 @@ function TimerSection() {
               <div>Press Enter to submit time</div>
               <CallbackInput
                 type="text"
-                className="text-center"
+                className="text-center text-4xl mx-auto"
                 onEnter={endStringTimerCallback}
               />
             </>
           );
         case "SUBMITTING":
-          return <div className="text-2xl">{localResult.toString()}</div>;
+          return <div className="text-4xl">{localResult.toString()}</div>;
         case "FINISHED":
         default:
           return (
@@ -129,6 +132,7 @@ function TimerSection() {
               >
                 <InspectionCountdown
                   className="text-4xl"
+                  timerType={timerType}
                   onFinishInspection={endInspectionCallback}
                 />
               </KeyListener>
@@ -138,11 +142,11 @@ function TimerSection() {
           return (
             <>
               <div>Press Space to Stop</div>
-              {/* TODO - make this hold the amount of time left in inspection */}
               <StopwatchTimer
                 startTime={liveTimerStartTime}
                 onFinishTimer={endNumberTimerCallback}
                 className="text-4xl"
+                timerType={timerType}
               />
             </>
           );
@@ -157,6 +161,14 @@ function TimerSection() {
         default:
           return <></>;
       }
+      break;
+    case "GANTIMER":
+      return (
+        <GanTimer
+          onFinishInspection={endInspectionCallback}
+          onFinishTimer={endNumberTimerCallback}
+        />
+      );
       break;
     default:
       return;

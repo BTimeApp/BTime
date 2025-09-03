@@ -2,13 +2,19 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Penalty } from "@/types/result";
 import KeyListener from "@/components/common/key-listener";
 import { cn } from "@/lib/utils";
+import { TimerType } from "@/types/timer-type";
 
 type InspectionCountdownProps = {
   onFinishInspection?: (penalty: Penalty) => void;
+  timerType: TimerType;
   className?: string;
 };
 
-function InspectionCountdown({ onFinishInspection, className }: InspectionCountdownProps) {
+function InspectionCountdown({
+  onFinishInspection,
+  timerType,
+  className,
+}: InspectionCountdownProps) {
   const [remainingTime, setRemainingTime] = useState<number>(15); //performance.now() uses milliseconds
   const [penalty, setPenalty] = useState<Penalty>("OK");
   const [spacebarDown, setSpacebarDown] = useState<boolean>(false);
@@ -18,7 +24,9 @@ function InspectionCountdown({ onFinishInspection, className }: InspectionCountd
 
   useEffect(() => {
     const update = () => {
-      const newTime = Math.floor((15000 - (performance.now() - startRef.current)) / 1000)
+      const newTime = Math.floor(
+        (15000 - (performance.now() - startRef.current)) / 1000
+      );
       if (newTime != remainingTime) {
         setRemainingTime(newTime);
       }
@@ -42,7 +50,7 @@ function InspectionCountdown({ onFinishInspection, className }: InspectionCountd
     } else if (remainingTime < 0) {
       newPenalty = "+2";
     }
-    
+
     if (penalty !== newPenalty) {
       setPenalty(newPenalty);
       penaltyRef.current = newPenalty;
@@ -51,22 +59,42 @@ function InspectionCountdown({ onFinishInspection, className }: InspectionCountd
 
   const handleKeyDown = useCallback(() => {
     setSpacebarDown(true);
-  }, [])
+  }, []);
 
   const handleKeyUp = useCallback(() => {
     setSpacebarDown(false);
     onFinishInspection?.(penaltyRef.current);
   }, [onFinishInspection]);
 
+  useEffect(() => {
+    return () => {
+      if (timerType === "GANTIMER") {
+        onFinishInspection?.(penaltyRef.current);
+      }
+    };
+  }, [onFinishInspection, timerType]);
+
   return (
     <>
-      <KeyListener
-        keyName="Space"
-        onKeyDown={handleKeyDown}
-        onKeyUp={handleKeyUp}
-      />
-      <div className={cn(className, spacebarDown && "text-green-500", penalty === "DNF" && "text-error")}>
-        {penalty === "DNF" ? "DNF" : penalty === "+2" ? "+2" : remainingTime.toString()}
+      {timerType === "KEYBOARD" && (
+        <KeyListener
+          keyName="Space"
+          onKeyDown={handleKeyDown}
+          onKeyUp={handleKeyUp}
+        />
+      )}
+      <div
+        className={cn(
+          className,
+          spacebarDown && "text-green-500",
+          penalty === "DNF" && "text-error"
+        )}
+      >
+        {penalty === "DNF"
+          ? "DNF"
+          : penalty === "+2"
+          ? "+2"
+          : remainingTime.toString()}
       </div>
     </>
   );
