@@ -1,5 +1,4 @@
 import "react";
-import { string } from "zod";
 
 declare module "react" {
   namespace JSX {
