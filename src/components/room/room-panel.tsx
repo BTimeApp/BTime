@@ -141,10 +141,18 @@ function UserCenterSection({
           </div>
           <div className="flex-0 flex flex-col">
             {drawScramble && (
-              <scramble-display
+              // <scramble-display
+              //   className="w-full h-45"
+              //   scramble={currScramble}
+              //   event={ROOM_EVENT_JS_NAME_MAP.get(roomEvent) ?? null}
+              // />
+              <twisty-player
+                experimental-setup-alg={currScramble}
+                puzzle={ROOM_EVENT_JS_NAME_MAP.get(roomEvent) ?? "3x3x3"}
+                visualization="2D"
+                control-panel="none"
                 className="w-full h-45"
-                scramble={currScramble}
-                event={ROOM_EVENT_JS_NAME_MAP.get(roomEvent) ?? null}
+                background="none"
               />
             )}
           </div>

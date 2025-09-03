@@ -30,7 +30,14 @@ export default function SolveDialog({
           {setIndex && `Set ${setIndex}`} {`Solve ${solveIndex}`}
         </DialogTitle>
         <div>
-          <scramble-display scramble={scramble} event={ROOM_EVENT_JS_NAME_MAP.get(event)}></scramble-display>
+          {/* <scramble-display scramble={scramble} event={ROOM_EVENT_JS_NAME_MAP.get(event)}></scramble-display> */}
+          <twisty-player
+            experimental-setup-alg={scramble}
+            puzzle={ROOM_EVENT_JS_NAME_MAP.get(event) ?? "3x3x3"}
+            visualization="2D"
+            control-panel="none"
+            background="none"
+          />
         </div>
         <div>{scramble}</div>
       </DialogContent>

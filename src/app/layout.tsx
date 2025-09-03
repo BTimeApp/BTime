@@ -33,10 +33,10 @@ export default function RootLayout({
         />
 
       {/* scramble-display - can switch back to this once ready to open source */}
-      <Script src="https://cdn.cubing.net/v0/js/scramble-display" type="module"></Script>
+      {/* <Script src="https://cdn.cubing.net/v0/js/scramble-display" type="module"></Script> */}
       
       {/* Cubing/twisty */}
-      {/* <Script src="https://cdn.cubing.net/v0/js/cubing/twisty" type="module"></Script> */}
+      <Script src="https://cdn.cubing.net/v0/js/cubing/twisty" type="module"></Script>
 
       </head>
       <body className={`${inter.className} antialiased h-screen flex flex-col`}>
