@@ -36,7 +36,7 @@ export async function createRoom(
   if (roomSettings.isPrivate) {
     room.password = roomSettings.password
       ? await bcrypt.hash(roomSettings.password, 10)
-      : ''; //never let a private room have an undefined password
+      : ""; //never let a private room have an undefined password
   }
 
   return room;
@@ -97,7 +97,7 @@ export function findSetWinners(room: IRoom): string[] {
   if (room.roomFormat == "CASUAL") return [];
 
   const competingUsers = Object.values(room.users).filter(
-    (user) => user.competing
+    (user) => user.competing && user.active
   );
 
   //no set win possible if no competing users exist
@@ -253,7 +253,7 @@ export function checkRoomSolveFinished(room: IRoom): boolean {
   if (room.solves.length == 0) return false;
   const currentSolve = room.solves.at(-1);
   const competingUsers = Object.values(room.users).filter(
-    (user) => user.competing
+    (user) => user.competing && user.active
   );
 
   //if no competing users, don't consider this solve finished.
@@ -263,7 +263,7 @@ export function checkRoomSolveFinished(room: IRoom): boolean {
   for (const roomUser of competingUsers) {
     if (
       roomUser.userStatus !== "FINISHED" ||
-      !Object.keys(currentSolve!.solve.results).includes(roomUser.user.id)
+      !Object.hasOwn(currentSolve!.solve.results, roomUser.user.id)
     ) {
       allUsersFinished = false;
       break;
@@ -291,9 +291,7 @@ export function finishRoomSolve(room: IRoom) {
   const currentResults = currentSolve.solve.results;
 
   if (room.setFormat == "BEST_OF" || room.setFormat == "FIRST_TO") {
-    const eligibleResults: [string, IResult][] = Object.entries(
-      currentResults
-    )
+    const eligibleResults: [string, IResult][] = Object.entries(currentResults);
 
     let fastest_uid = null;
     let fastest_result: Result | undefined = undefined;

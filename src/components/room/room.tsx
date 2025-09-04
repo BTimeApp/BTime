@@ -29,12 +29,14 @@ export default function Room() {
     isRoomValid,
     isPasswordAuthenticated,
     handleRoomUpdate,
+    handleRoomUserUpdate,
     setIsRoomValid,
     setIsPasswordAuthenticated,
   ] = useRoomStore((s) => [
     s.isRoomValid,
     s.isPasswordAuthenticated,
     s.handleRoomUpdate,
+    s.handleRoomUserUpdate,
     s.setIsRoomValid,
     s.setIsPasswordAuthenticated,
   ]);
@@ -62,9 +64,19 @@ export default function Room() {
         if (Object.keys(extraData).includes("WRONG_PASSWORD")) {
           toast.error("Wrong password entered. Try again.");
         }
+
+        if (Object.keys(extraData).includes("EXISTING_USER_INFO")) {
+          //special process user info
+          handleRoomUserUpdate(room!.users[extraData["EXISTING_USER_INFO"]]);
+        }
       }
     },
-    [handleRoomUpdate, setIsPasswordAuthenticated, setIsRoomValid]
+    [
+      handleRoomUpdate,
+      handleRoomUserUpdate,
+      setIsPasswordAuthenticated,
+      setIsRoomValid,
+    ]
   );
 
   /**
@@ -97,7 +109,7 @@ export default function Room() {
       if (socket && socket.connected) {
         socket.emit(SOCKET_CLIENT.LEAVE_ROOM, roomId);
       }
-    }
+    };
 
     // ignore socket missing - we don't want to always rerun this on socket change
     // eslint-disable-next-line react-hooks/exhaustive-deps

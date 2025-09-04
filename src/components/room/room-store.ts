@@ -77,6 +77,9 @@ export type RoomStore = {
 
   //only handles room information - not any local user info
   handleRoomUpdate: (room: IRoom) => void;
+
+  //update room user information from server - used when initializing the user on client side
+  handleRoomUserUpdate: (roomUser: IRoomUser) => void;
 };
 
 export const createRoomStore = (): StoreApi<RoomStore> =>
@@ -251,5 +254,14 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         roomState: room.state,
         roomWinners: room.winners || [],
         isPrivate: room.isPrivate,
+      })),
+
+    handleRoomUserUpdate: (roomUser: IRoomUser) =>
+      set(() => ({
+        localPenalty: roomUser.currentResult?.penalty ?? "OK",
+        localResult: roomUser.currentResult
+          ? Result.fromIResult(roomUser.currentResult)
+          : new Result(""),
+        localSolveStatus: roomUser.userStatus,
       })),
   }));

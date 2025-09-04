@@ -129,12 +129,14 @@ function UserCenterSection({
         </div>
         <div className="flex-1 flex flex-col justify-center">
           {isLocalUser ? (
-            users[userId].competing ?
-            <>
-              <TimerSection />
-              {solveStatus === "SUBMITTING" && <RoomSubmittingButtons />}
-            </> : 
-            <div>You are spectating. Compete to use timer.</div>
+            users[userId].competing ? (
+              <>
+                <TimerSection />
+                {solveStatus === "SUBMITTING" && <RoomSubmittingButtons />}
+              </>
+            ) : (
+              <div>You are spectating. Compete to use timer.</div>
+            )
           ) : (
             <UserStatusSection className="text-2xl font-bold" userId={userId} />
           )}
@@ -227,8 +229,8 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
     s.userLiveTimerStartTimes,
     s.userLiveTimes,
   ]);
-  const [sortedUsers, setSortedUsers] = useState<IRoomUser[]>(
-    Object.values(users)
+  const [sortedActiveUsers, setSortedActiveUsers] = useState<IRoomUser[]>(
+    Object.values(users).filter((roomUser) => roomUser.active)
   );
 
   function userStatusText(user: IRoomUser) {
@@ -264,14 +266,16 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
   }
 
   useEffect(() => {
-    setSortedUsers(
-      Object.values(users).sort((u1, u2) => {
-        if (u2.setWins !== u1.setWins) {
-          return u2.setWins - u1.setWins;
-        } else {
-          return u2.points - u1.points;
-        }
-      })
+    setSortedActiveUsers(
+      Object.values(users)
+        .filter((roomUser) => roomUser.active)
+        .sort((u1, u2) => {
+          if (u2.setWins !== u1.setWins) {
+            return u2.setWins - u1.setWins;
+          } else {
+            return u2.points - u1.points;
+          }
+        })
     );
   }, [users]);
 
@@ -287,7 +291,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
           <div className="col-span-2">Solves</div>
         </div>
         <div className="flex flex-col overflow-y-auto">
-          {sortedUsers.map((user, index) => (
+          {sortedActiveUsers.map((user, index) => (
             <div key={index} className="grid grid-cols-12">
               <div className="col-span-5">{user.user.userName}</div>
               {roomState === "STARTED" && (
@@ -302,7 +306,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
         </div>
       </div>
       <GlobalTimeList
-        users={Object.values(users)}
+        users={Object.values(users).filter((roomUser) => roomUser.active)}
         solves={solves}
         roomEvent={roomEvent}
         roomFormat={roomFormat}

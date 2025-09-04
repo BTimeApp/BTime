@@ -7,7 +7,7 @@ import { RoomEvent, RoomFormat, MatchFormat, SetFormat } from "@/types/room";
 export interface IRoomSummary {
   id: string;
   roomName: string;
-  numUsers: number;
+  numUsers: number; //number of active users
   roomEvent: RoomEvent;
   roomFormat: RoomFormat;
   matchFormat?: MatchFormat; //how many sets to take to win
@@ -21,11 +21,12 @@ export function roomToSummary(room: IRoom): IRoomSummary {
   const roomSummary: IRoomSummary = {
     id: room.id,
     roomName: room.roomName,
-    numUsers: Object.keys(room.users).length,
+    numUsers: Object.values(room.users).filter((roomUser) => roomUser.active)
+      .length,
     roomEvent: room.roomEvent,
     roomFormat: room.roomFormat,
     isPrivate: room.isPrivate,
-  }
+  };
   if (roomSummary.roomFormat === "RACING") {
     roomSummary.matchFormat = room.matchFormat;
     roomSummary.setFormat = room.setFormat;

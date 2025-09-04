@@ -1,7 +1,12 @@
 import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
 import { Types } from "mongoose";
-import { rooms, users, roomTimeouts, userSessions } from "@/server/server-objects";
+import {
+  rooms,
+  users,
+  roomTimeouts,
+  userSessions,
+} from "@/server/server-objects";
 import { IRoom, RoomState, IRoomSettings } from "@/types/room";
 import {
   skipScramble,
@@ -45,8 +50,8 @@ export const initSocket = (
     cors: {
       credentials: true,
     },
-    "pingInterval": 2000,
-    "pingTimeout": 10000
+    pingInterval: 2000,
+    pingTimeout: 10000,
   });
 
   // middleware should be taken care of in the main server script
@@ -136,17 +141,30 @@ const listenSocketEvents = (io: Server) => {
       const room = rooms.get(roomId);
       if (!room) return;
 
-      //remove user from room
-      delete room.users[userId];
+      // mark user as inactive
+      room.users[userId].active = false;
+
+      //TODO - this might not be safe in the future if a timer is supposed to default to something other than IDLE and we persist timertype
+      //unless the user already submitted a time, reset their solve status too
+      if (room.users[userId].userStatus !== "FINISHED") {
+        room.users[userId].userStatus = "IDLE";
+      }
+
       io.to(roomId.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
 
       //check if no more users, if so, schedule room deletion.
-      if (Object.keys(room.users).length == 0) {
+      if (
+        Object.values(room.users).filter((roomUser) => roomUser.active)
+          .length == 0
+      ) {
         console.log(`Room ${roomId} is empty. Scheduling room for deletion.`);
-        roomTimeouts.set(roomId, setTimeout(() => {
-          rooms.delete(roomId);
-          roomTimeouts.delete(roomId);
-        }, 5000));
+        roomTimeouts.set(
+          roomId,
+          setTimeout(() => {
+            rooms.delete(roomId);
+            roomTimeouts.delete(roomId);
+          }, 5000)
+        );
         return;
       }
 
@@ -175,9 +193,6 @@ const listenSocketEvents = (io: Server) => {
         room.host = room.users[earliestID!.toString()].user;
         io.to(roomId.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
       }
-
-      //delete the user's submission for most recent solve, if it exists
-      delete room.solves.at(-1)?.solve.results?.[userId];
 
       // handle case that this user was the last one to submit a time/compete
       if (checkRoomSolveFinished(room)) {
@@ -286,10 +301,16 @@ const listenSocketEvents = (io: Server) => {
         }
 
         //validate user is not already in this room
-        if (Object.keys(room.users).includes(userId)) {
+        if (
+          Object.keys(room.users).includes(userId) &&
+          room.users[userId].active
+        ) {
           console.log(`User ${userId} double join in room ${roomId}.`);
 
-          joinRoomCallback(true, room, { DUPLICATE_JOIN: "" });
+          joinRoomCallback(true, room, {
+            DUPLICATE_JOIN: "",
+            EXISTING_USER_INFO: userId,
+          });
           return;
         }
 
@@ -314,24 +335,41 @@ const listenSocketEvents = (io: Server) => {
             return;
           }
         }
-
-        //start room session
-        // createRoomSession(userId, roomId, handleRoomDisconnect);
+        // if this room is scheduled for deletion, don't delete it
+        if (roomTimeouts.has(roomId)) {
+          clearTimeout(roomTimeouts.get(roomId));
+          roomTimeouts.delete(roomId);
+        }
 
         //add user to room
-        console.log(`User ${userId} joining room ${roomId}.`);
+        console.log(`User ${user.userName} joining room ${roomId}.`);
 
-        const roomUser: IRoomUser = {
-          user: user,
-          points: 0,
-          setWins: 0,
-          joinedAt: new Date(),
-          competing: true,
-          userStatus: "IDLE",
-          currentResult: undefined,
-        };
+        const extraData: Record<string, string> = {};
 
-        room.users[userId] = roomUser;
+        console.log(
+          Object.keys(room.users),
+          userId,
+          Object.hasOwn(room.users, userId)
+        );
+        if (Object.hasOwn(room.users, userId)) {
+          room.users[userId].active = true;
+          room.users[userId].joinedAt = new Date();
+
+          extraData["EXISTING_USER_INFO"] = userId;
+        } else {
+          const roomUser: IRoomUser = {
+            user: user,
+            points: 0,
+            setWins: 0,
+            joinedAt: new Date(),
+            active: true,
+            competing: true,
+            userStatus: "IDLE",
+            currentResult: undefined,
+          };
+
+          room.users[userId] = roomUser;
+        }
 
         // if there is no host for some reason, promote this user to be host
         if (!room.host) {
@@ -340,13 +378,7 @@ const listenSocketEvents = (io: Server) => {
 
         socket.join(roomId);
         socket.roomId = roomId;
-        joinRoomCallback(true, room, {});
-
-        // if this room is scheduled for deletion, don't delete it
-        if (roomTimeouts.has(roomId)) {
-          clearTimeout(roomTimeouts.get(roomId));
-          roomTimeouts.delete(roomId);
-        }
+        joinRoomCallback(true, room, extraData);
 
         //broadcast update to all other users
         io.to(roomId).except(userId).emit(SOCKET_SERVER.ROOM_UPDATE, room);
@@ -590,7 +622,7 @@ const listenSocketEvents = (io: Server) => {
       if (socket.roomId) {
         handleRoomDisconnect(userId, socket.roomId);
       }
-      
+
       //handle user DC
       handleUserDisconnect(userId);
     });
