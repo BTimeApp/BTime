@@ -26,6 +26,7 @@ export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
   const connection = useRef<GanTimerConnection>(null);
   const [connected, setConnected] = useState<boolean>(false);
   const subscription = useRef<Subscription>(null);
+  const previousDisplayTimeMS = useRef<number>(0);
   const [textStyle, setTextStyle] = useState<string>("");
 
   const [localInspectionPenalty, setLocalInspectionPenalty] =
@@ -52,8 +53,7 @@ export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
    * Main callback logic for updating client state when gan timer pushes a new event
    */
   const ganTimerStateUpdateCallback = useCallback(
-    (evt: GanTimerEvent) => {
-      console.log(evt, localSolveStatus);
+    async (evt: GanTimerEvent) => {
       //evt.state is the new state coming in from the timer
       switch (evt.state) {
         case GanTimerState.HANDS_ON:
@@ -75,8 +75,9 @@ export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
 
           switch (localSolveStatus) {
             case "IDLE":
-              //proceed to inspection
-              if (useInspection) updateLocalSolveStatus("");
+              console.log(previousDisplayTimeMS.current);
+              //we cannot extract the current display time to check whether or not to inspect or not b/c upon receiving this event, the current display time is 0
+              if (useInspection && previousDisplayTimeMS.current === 0) updateLocalSolveStatus("");
               break;
             case "INSPECTING":
               //user cancels inspection - go back to idle.
@@ -85,6 +86,9 @@ export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
             default:
               break;
           }
+
+          //reset previous display time
+          previousDisplayTimeMS.current = 0;
           break;
         case GanTimerState.RUNNING:
           // prevent status updates when wrong localSolveStatus
@@ -108,14 +112,17 @@ export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
           break;
         case GanTimerState.STOPPED:
           // only allow advancing state on first cycle of solving -> stop timer.
+          const actualTimeMS = evt.recordedTime!.asTimestamp;
           if (localSolveStatus === "SOLVING") {
-            const actualTimeMS = evt.recordedTime!.asTimestamp;
             //truncate to hundredths + handle updaatelocalsolvestatus to update to SUBMITTING
             onFinishTimer(Math.floor(actualTimeMS / 10));
 
             if (socket && socket.connected)
               socket.emit(SOCKET_CLIENT.STOP_LIVE_TIMER);
           }
+
+          //update previous display time regardless of whether or not it matters for client state
+          previousDisplayTimeMS.current = actualTimeMS;
           break;
         case GanTimerState.DISCONNECT:
           toast.info("GAN Timer disconnected.");
@@ -165,6 +172,7 @@ export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
       connection.current = await connectGanTimer();
       setTimerState(GanTimerState.IDLE);
       setConnected(true);
+      previousDisplayTimeMS.current = (await connection.current.getRecordedTimes()).displayTime.asTimestamp;
       //eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error(err.message);
@@ -181,6 +189,7 @@ export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
         subscription.current?.unsubscribe();
         connection.current = null;
         subscription.current = null;
+        previousDisplayTimeMS.current = 0;
         setConnected(false);
       } catch (err) {
         console.log(err);

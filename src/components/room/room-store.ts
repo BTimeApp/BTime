@@ -146,7 +146,6 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
      * @param event event causing status update.
      */
     updateLocalSolveStatus: (event?: string) => {
-      console.log("updateLocalSolveStatus call");
       switch (get().localSolveStatus) {
         case "IDLE":
           if (
