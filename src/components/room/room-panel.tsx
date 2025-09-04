@@ -114,69 +114,54 @@ function UserCenterSection({
     return null;
   }
 
-  if (users[userId].competing) {
-    const currScramble = solves.length > 0 ? solves.at(-1)?.solve.scramble : "";
-    return (
-      <div className={cn("flex flex-row w-full h-full", className)}>
-        {/* TODO: figure out why the time lists cause the screen to get longer */}
-        {/* {side === "right" && (
+  const currScramble = solves.length > 0 ? solves.at(-1)?.solve.scramble : "";
+  return (
+    <div className={cn("flex flex-row w-full h-full", className)}>
+      {/* TODO: figure out why the time lists cause the screen to get longer */}
+      {/* {side === "right" && (
           <UserTimeList userId={userId} className="max-h-[50%]" />
         )} */}
-        <div className="flex flex-col grow w-full">
-          <div className="flex-0 flex flex-col">
-            {solveStatus !== "FINISHED" && (
-              <div className="text-2xl">{currScramble}</div>
-            )}
-          </div>
-          <div className="flex-1 flex flex-col justify-center">
-            {isLocalUser ? (
-              <>
-                <TimerSection />
-                {solveStatus === "SUBMITTING" && <RoomSubmittingButtons />}
-              </>
-            ) : (
-              <UserStatusSection
-                className="text-2xl font-bold"
-                userId={userId}
-              />
-            )}
-          </div>
-          <div className="flex-0 flex flex-col">
-            {drawScramble && solveStatus !== "FINISHED" && (
-              // <scramble-display
-              //   className="w-full h-45"
-              //   scramble={currScramble}
-              //   event={ROOM_EVENT_JS_NAME_MAP.get(roomEvent) ?? null}
-              // />
-              <twisty-player
-                experimental-setup-alg={currScramble}
-                puzzle={ROOM_EVENT_JS_NAME_MAP.get(roomEvent) ?? "3x3x3"}
-                visualization="2D"
-                control-panel="none"
-                className="w-full h-45"
-                background="none"
-              />
-            )}
-          </div>
+      <div className="flex flex-col grow w-full">
+        <div className="flex-0 flex flex-col">
+          {solveStatus !== "FINISHED" && (
+            <div className="text-2xl">{currScramble}</div>
+          )}
         </div>
-        {/* {side === "left" && (
-          <UserTimeList userId={userId} className="max-h-[50%]" />
-        )} */}
+        <div className="flex-1 flex flex-col justify-center">
+          {isLocalUser ? (
+            users[userId].competing ?
+            <>
+              <TimerSection />
+              {solveStatus === "SUBMITTING" && <RoomSubmittingButtons />}
+            </> : 
+            <div>You are spectating. Compete to use timer.</div>
+          ) : (
+            <UserStatusSection className="text-2xl font-bold" userId={userId} />
+          )}
+        </div>
+        <div className="flex-0 flex flex-col">
+          {drawScramble && solveStatus !== "FINISHED" && (
+            // <scramble-display
+            //   className="w-full h-45"
+            //   scramble={currScramble}
+            //   event={ROOM_EVENT_JS_NAME_MAP.get(roomEvent) ?? null}
+            // />
+            <twisty-player
+              experimental-setup-alg={currScramble}
+              puzzle={ROOM_EVENT_JS_NAME_MAP.get(roomEvent) ?? "3x3x3"}
+              visualization="2D"
+              control-panel="none"
+              className="w-full h-45"
+              background="none"
+            />
+          )}
+        </div>
       </div>
-    );
-  } else {
-    if (isLocalUser) {
-      return (
-        <div className={cn("text-xl", className)}>
-          You are spectating. Join to use timer.
-        </div>
-      );
-    } else {
-      return (
-        <div className={cn("text-2xl font-bold", className)}>SPECTATING</div>
-      );
-    }
-  }
+      {/* {side === "left" && (
+          <UserTimeList userId={userId} className="max-h-[50%]" />
+        )} */}
+    </div>
+  );
 }
 
 function UserRoomPanel({
