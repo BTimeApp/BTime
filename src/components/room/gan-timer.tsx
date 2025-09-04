@@ -75,7 +75,6 @@ export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
 
           switch (localSolveStatus) {
             case "IDLE":
-              console.log(previousDisplayTimeMS.current);
               //we cannot extract the current display time to check whether or not to inspect or not b/c upon receiving this event, the current display time is 0
               if (useInspection && previousDisplayTimeMS.current === 0) updateLocalSolveStatus("");
               break;
@@ -239,7 +238,7 @@ export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
       case "SUBMITTING":
         return <div className="text-4xl">{localResult.toString()}</div>;
       case "FINISHED":
-        return <div className="text-4xl">-.--</div>;
+        return <div>Waiting for others to finish</div>;
       default:
         break;
     }
