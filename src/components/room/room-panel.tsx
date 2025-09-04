@@ -124,7 +124,9 @@ function UserCenterSection({
         )} */}
         <div className="flex flex-col grow w-full">
           <div className="flex-0 flex flex-col">
-            <div className="text-2xl">{currScramble}</div>
+            {solveStatus !== "FINISHED" && (
+              <div className="text-2xl">{currScramble}</div>
+            )}
           </div>
           <div className="flex-1 flex flex-col justify-center">
             {isLocalUser ? (
@@ -140,7 +142,7 @@ function UserCenterSection({
             )}
           </div>
           <div className="flex-0 flex flex-col">
-            {drawScramble && (
+            {drawScramble && solveStatus !== "FINISHED" && (
               // <scramble-display
               //   className="w-full h-45"
               //   scramble={currScramble}
