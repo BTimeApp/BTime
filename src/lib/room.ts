@@ -168,7 +168,9 @@ export function findSetWinners(room: IRoom): string[] {
 
       const minAverage = Math.min(...Object.values(averages));
 
-      return eligibleIds.filter((uid) => averages[uid] === minAverage && averages[uid] !== Infinity);
+      return eligibleIds.filter(
+        (uid) => averages[uid] === minAverage && averages[uid] !== Infinity
+      );
     }
     case "MEAN_OF": {
       //requires that competing user have done ALL solves in this set
@@ -207,7 +209,9 @@ export function findSetWinners(room: IRoom): string[] {
 
       const minMean = Math.min(...Object.values(means));
 
-      return eligibleIds.filter((uid) => means[uid] === minMean && means[uid] !== Infinity);
+      return eligibleIds.filter(
+        (uid) => means[uid] === minMean && means[uid] !== Infinity
+      );
     }
     default:
       return [];
@@ -215,31 +219,62 @@ export function findSetWinners(room: IRoom): string[] {
 }
 
 /**
- * check if there is a match winner. return all match winner(s), although it should be rare to have multiple. Returns usernames instead of user IDs.
+ * check if there is a match winner. return all match winner(s), although it should be rare to have multiple.
+ * This function sHould ONLY be called if the set is finished, and should be called AFTER updating set wins
  */
 export function findMatchWinners(room: IRoom): string[] {
   //no set wins when room is a casual room
-  if (room.roomFormat == "CASUAL") return [];
-  const competingUsers = Object.values(room.users).filter(
-    (user) => user.competing
-  );
-  //no set win possible if no competing users exist
-  if (competingUsers.length == 0) return [];
+  if (room.roomFormat == "CASUAL" || room.solves.length === 0) return [];
+  const roomUsers = Object.values(room.users);
 
   switch (room.matchFormat) {
     case "BEST_OF":
-      //user has won for sure if they have the majority of solves
-      return competingUsers
+      //user has won for sure if they have the majority of sets
+      const candidateMatchWinners = roomUsers
         .filter((roomUser) => roomUser.setWins > room.nSets! / 2)
         .map((roomUser) => {
-          return roomUser.user.userName;
+          return roomUser.user.id;
         });
+      if (candidateMatchWinners.length > 0) {
+        return candidateMatchWinners;
+      }
+
+      // otherwise, it is possible to win w/o majority of sets. if the last set is done, need to check for max set wins of all users
+      const currentSolve = room.solves.at(-1)!;
+      if (currentSolve.setIndex === room.nSets! && currentSolve.finished) {
+        /**
+         * in AO/MO mode, set only finishes when all solves are done.
+         * in BO/FT mode, set can finish before the last solve when a user takes the set. In this case, we rely on other functions not checking for match winners before the set is finished (either by set win or by number of solves)
+         */
+        if (
+          ((room.setFormat === "AVERAGE_OF" || room.setFormat === "MEAN_OF") &&
+            currentSolve.solveIndex === room.nSolves!) ||
+          room.setFormat === "BEST_OF" ||
+          room.setFormat === "FIRST_TO"
+        ) {
+          //scan over all users. note that this includes users who are no longer competing or active.
+          let candidateWinners: string[] = [];
+          let maxSetWins = 1; //this prevents users with 0 set wins from counting as winners
+
+          for (const roomUser of Object.values(room.users)) {
+            if (roomUser.setWins === maxSetWins) {
+              candidateWinners.push(roomUser.user.id);
+            } else if (roomUser.setWins > maxSetWins) {
+              maxSetWins = roomUser.setWins;
+              candidateWinners = [roomUser.user.id];
+            }
+          }
+
+          return candidateWinners;
+        }
+      }
+      return [];
     case "FIRST_TO":
-      //user has won only when they win n solves.
-      return competingUsers
+      //user has won only when they win n sets.
+      return roomUsers
         .filter((roomUser) => roomUser.setWins >= room.nSets!)
         .map((roomUser) => {
-          return roomUser.user.userName;
+          return roomUser.user.id;
         });
     default:
       return [];
@@ -345,6 +380,9 @@ export function finishRoomSolve(room: IRoom) {
     }
   }
 
+  // Mark solve as finished
+  currentSolve.finished = true;
+
   // check for any set winners. if so, update room accordingly.
   const setWinners: string[] = findSetWinners(room);
   currentSolve.setWinners = setWinners;
@@ -357,15 +395,25 @@ export function finishRoomSolve(room: IRoom) {
       //handle match win
       room.winners = matchWinners;
       room.state = "FINISHED";
+      currentSolve.matchWinners = matchWinners;
     } else {
       //reset solve counter, update set counter
       room.currentSolve = 0;
       room.currentSet += 1;
 
-      //reset number of solves users have won
+      //reset all users' points
       Object.values(room.users).map((roomUser) => {
         roomUser.points = 0;
       });
+    }
+  } else {
+    // it is theoretically possible to have match winners without a set winner, so check again here
+    const matchWinners: string[] = findMatchWinners(room);
+    if (matchWinners.length > 0) {
+      //handle match win
+      room.winners = matchWinners;
+      room.state = "FINISHED";
+      currentSolve.matchWinners = matchWinners;
     }
   }
 }
@@ -388,6 +436,7 @@ export async function newRoomSolve(room: IRoom) {
     solve: solveObj,
     setIndex: room.currentSet,
     solveIndex: room.currentSolve + 1,
+    finished: false,
   };
   room.currentSolve += 1;
   room.solves.push(newSolve);
