@@ -315,6 +315,34 @@ export function finishRoomSolve(room: IRoom) {
       currentSolve.solveWinner = fastest_uid;
       room.users[fastest_uid].points += 1;
     }
+  } else if (room.setFormat === "AVERAGE_OF" || room.setFormat === "MEAN_OF") {
+    /**
+     * update points to reflect the current average/mean for each user.
+     * the average is taken by removing best and worst solves and taking mean of the rest.
+     * for now, any N <= 2 is a mean instead of an average
+     *
+     * we have to recalculate for active & competing users at each point.
+     */
+    const setResults = room.solves
+      .filter((solve) => solve.setIndex === room.currentSet)
+      .map((solve) => solve.solve.results);
+    const eligibleUsers = Object.values(room.users).filter(
+      (roomUser) => roomUser.active && roomUser.competing
+    );
+    for (const roomUser of eligibleUsers) {
+      //recalculate mean over recent set solves
+      const userResults = setResults.map((resultMap) =>
+        Object.hasOwn(resultMap, roomUser.user.id)
+          ? resultMap[roomUser.user.id]
+          : new Result(0, "DNF").toIResult()
+      );
+
+      if (room.setFormat === "AVERAGE_OF") {
+        room.users[roomUser.user.id].points = Result.iAverageOf(userResults);
+      } else {
+        room.users[roomUser.user.id].points = Result.iMeanOf(userResults);
+      }
+    }
   }
 
   // check for any set winners. if so, update room accordingly.

@@ -4,8 +4,8 @@ export const PENALTIES = ["OK", "+2", "DNF"];
 export type Penalty = (typeof PENALTIES)[number];
 
 export interface IResult {
-    time: number;
-    penalty: Penalty;
+  time: number;
+  penalty: Penalty;
 }
 
 /** This class represents an entire result
@@ -22,11 +22,17 @@ export class Result {
       //number should only be used internally.
       // Ex: string input of 10000 should parse to 1:00.00, but int input of 10000 will be 10000 centiseconds
       this.time = input;
+
+      // manually creates a DNF
+      if (input === Number.POSITIVE_INFINITY) {
+        this.time = 0;
+        penalty = "DNF";
+      }
     } else {
       throw new Error("Invalid input for Time");
     }
 
-    this.penalty = (penalty ? penalty : 'OK');
+    this.penalty = penalty ? penalty : "OK";
   }
 
   static parseTimeString(input: string): number {
@@ -41,9 +47,7 @@ export class Result {
       const seconds = parseIntNaN(paddedInput.slice(-4, -2));
       const centiseconds = parseIntNaN(paddedInput.slice(-2));
 
-      return (
-        minutes * 60 * 100 + seconds * 100 + centiseconds
-      );
+      return minutes * 60 * 100 + seconds * 100 + centiseconds;
     } else if (decimalStringMatch) {
       const [, seconds, centiseconds] = decimalStringMatch;
       return (
@@ -77,6 +81,8 @@ export class Result {
   }
 
   static applyPenalty(timeInCentiseconds: number, penalty?: Penalty): number {
+    if (timeInCentiseconds === Infinity || timeInCentiseconds == null)
+      return Number.POSITIVE_INFINITY;
     switch (penalty) {
       case undefined:
         return timeInCentiseconds;
@@ -103,25 +109,24 @@ export class Result {
   }
 
   /** Converts a time (in centiseconds) to a formatted time string (...mm:ss.xx). timeInCentiseconds should NOT have the penalty applied yet.
-   *  
+   *
    */
   static timeToString(timeInCentiseconds: number, penalty?: Penalty): string {
     const totalTime = Result.applyPenalty(timeInCentiseconds, penalty);
-
-    if (totalTime === Number.POSITIVE_INFINITY) {
+    if (totalTime === Infinity) {
       return "DNF";
     }
 
     const totalSeconds = Math.floor(totalTime / 100);
     const minutes = Math.floor(totalSeconds / 60);
-    const centiseconds = totalTime % 100;
+    const centiseconds = Math.floor(totalTime) % 100;
     const seconds = totalSeconds % 60;
-    let resultString = `${minutes ? minutes + ":" : ""}${seconds.toString().padStart(1, "0")}.${centiseconds
+    let resultString = `${minutes ? minutes + ":" : ""}${seconds
       .toString()
-      .padStart(2, "0")}`;
-    
-    if (penalty && penalty == '+2') {
-        resultString += '+';
+      .padStart(1, "0")}.${centiseconds.toString().padStart(2, "0")}`;
+
+    if (penalty && penalty == "+2") {
+      resultString += "+";
     }
 
     return resultString;
@@ -137,28 +142,57 @@ export class Result {
 
   toIResult(): IResult {
     return {
-        time: this.time,
-        penalty: this.penalty
-    }
+      time: this.time,
+      penalty: this.penalty,
+    };
   }
 
+  /**
+   * Returns the mean of a list of results.
+   * Any DNF included will DNF the mean.
+   * A mean of 0 is 0
+   */
   static meanOf(results: Result[]): number {
+    if (results.length === 0) return 0;
     return results.reduce((sum, res) => sum + res.toTime(), 0) / results.length;
   }
 
-  static averageOf(results: Result[]): number {
-    if (results.length <= 2) return Number.NEGATIVE_INFINITY;
+  static iMeanOf(results: IResult[]): number {
+    return Result.meanOf(results.map((iResult) => Result.fromIResult(iResult)));
+  }
 
-    return results.sort((a, b) => a.compare(b)).slice(1, -1).reduce((sum, res) => sum + res.toTime(), 0) / (results.length - 2);
+  /**
+   * Returns the average of a list of results (where average = mean of all but slowest and fastest)
+   * AoN with N <=2 is going to use the mean.
+   */
+  static averageOf(results: Result[]): number {
+    if (results.length <= 2) return Result.meanOf(results);
+
+    return (
+      results
+        .sort((a, b) => a.compare(b))
+        .slice(1, -1)
+        .reduce((sum, res) => sum + res.toTime(), 0) /
+      (results.length - 2)
+    );
+  }
+
+  static iAverageOf(results: IResult[]): number {
+    return Result.averageOf(
+      results.map((iResult) => Result.fromIResult(iResult))
+    );
   }
 
   compare(other: Result): number {
     const thisTime = this.toTime();
     const otherTime = other.toTime();
 
-    if (thisTime === Number.POSITIVE_INFINITY && otherTime === Number.POSITIVE_INFINITY) {
-        // inf - inf = NaN, so handle this case manually
-        return 0;
+    if (
+      thisTime === Number.POSITIVE_INFINITY &&
+      otherTime === Number.POSITIVE_INFINITY
+    ) {
+      // inf - inf = NaN, so handle this case manually
+      return 0;
     }
 
     return thisTime - otherTime;

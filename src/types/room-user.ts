@@ -4,7 +4,7 @@ import { IResult } from "@/types/result";
 
 export interface IRoomUser {
   user: IUser;
-  points: number;
+  points: number; //this is the variable that holds point value within a set. it can be solves won, average of solves done so far, mean of solves so far
   setWins: number;
   joinedAt: Date;
   active: boolean; //true = in room, false = not in room

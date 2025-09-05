@@ -1,6 +1,6 @@
 import { useRoomStore } from "@/context/room-context";
 import { cn } from "@/lib/utils";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   getFormatText,
   getVerboseFormatText,
@@ -218,6 +218,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
     roomEvent,
     roomFormat,
     roomState,
+    setFormat,
     userLiveTimerStartTimes,
     userLiveTimes,
   ] = useRoomStore((s) => [
@@ -226,11 +227,36 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
     s.roomEvent,
     s.roomFormat,
     s.roomState,
+    s.setFormat,
     s.userLiveTimerStartTimes,
     s.userLiveTimes,
   ]);
   const [sortedActiveUsers, setSortedActiveUsers] = useState<IRoomUser[]>(
     Object.values(users).filter((roomUser) => roomUser.active)
+  );
+
+  const userSortKeyCallback = useCallback(
+    (u1: IRoomUser, u2: IRoomUser) => {
+      //TODO - if we ever expand to match formats that don't use this logic, will need to update here.
+      const matchPtDiff = u2.setWins - u1.setWins;
+      if (matchPtDiff != 0) {
+        return matchPtDiff;
+      } else {
+        switch (setFormat) {
+          case "BEST_OF":
+            return u2.points - u1.points;
+          case "FIRST_TO":
+            return u2.points - u1.points;
+          case "AVERAGE_OF":
+            //sort by the LOWER average
+            return -(u2.points - u1.points);
+          case "MEAN_OF":
+            //sort by the LOWER mean
+            return -(u2.points - u1.points);
+        }
+      }
+    },
+    [setFormat]
   );
 
   function userStatusText(user: IRoomUser) {
@@ -269,15 +295,9 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
     setSortedActiveUsers(
       Object.values(users)
         .filter((roomUser) => roomUser.active)
-        .sort((u1, u2) => {
-          if (u2.setWins !== u1.setWins) {
-            return u2.setWins - u1.setWins;
-          } else {
-            return u2.points - u1.points;
-          }
-        })
+        .sort(userSortKeyCallback)
     );
-  }, [users]);
+  }, [users, userSortKeyCallback]);
 
   return (
     <div
@@ -288,7 +308,11 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
           <div className="col-span-5">User</div>
           {roomState === "STARTED" && <div className="col-span-3">Time</div>}
           {roomFormat === "RACING" && <div className="col-span-2">Sets</div>}
-          <div className="col-span-2">Solves</div>
+          {(setFormat === "BEST_OF" || setFormat === "FIRST_TO") && (
+            <div className="col-span-2">Solves</div>
+          )}
+          {setFormat === "AVERAGE_OF" && <div className="col-span-2">Avg</div>}
+          {setFormat === "MEAN_OF" && <div className="col-span-2">Mean</div>}
         </div>
         <div className="flex flex-col overflow-y-auto">
           {sortedActiveUsers.map((user, index) => (
@@ -300,7 +324,14 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
               {roomFormat === "RACING" && (
                 <div className="col-span-2">{user.setWins}</div>
               )}
-              <div className="col-span-2">{user.points}</div>
+              {(setFormat === "AVERAGE_OF" || setFormat === "MEAN_OF") && (
+                <div className="col-span-2">
+                  {Result.timeToString(user.points)}
+                </div>
+              )}
+              {(setFormat === "BEST_OF" || setFormat === "FIRST_TO") && (
+                <div className="col-span-2">{user.points}</div>
+              )}
             </div>
           ))}
         </div>
