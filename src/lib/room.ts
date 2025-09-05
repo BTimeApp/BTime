@@ -168,7 +168,7 @@ export function findSetWinners(room: IRoom): string[] {
 
       const minAverage = Math.min(...Object.values(averages));
 
-      return eligibleIds.filter((uid) => averages[uid] === minAverage);
+      return eligibleIds.filter((uid) => averages[uid] === minAverage && averages[uid] !== Infinity);
     }
     case "MEAN_OF": {
       //requires that competing user have done ALL solves in this set
@@ -207,7 +207,7 @@ export function findSetWinners(room: IRoom): string[] {
 
       const minMean = Math.min(...Object.values(means));
 
-      return eligibleIds.filter((uid) => means[uid] === minMean);
+      return eligibleIds.filter((uid) => means[uid] === minMean && means[uid] !== Infinity);
     }
     default:
       return [];
