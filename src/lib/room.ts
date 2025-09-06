@@ -383,7 +383,8 @@ export function finishRoomSolve(room: IRoom) {
   // Mark solve as finished
   currentSolve.finished = true;
 
-  // check for any set winners. if so, update room accordingly.
+  // Check if the set is finished. This happens where there are winner(s) or we are in BO, AO, MO modes with currentSolve.solveIndex === nSolves
+
   const setWinners: string[] = findSetWinners(room);
   currentSolve.setWinners = setWinners;
   if (setWinners.length > 0) {
@@ -406,6 +407,10 @@ export function finishRoomSolve(room: IRoom) {
         roomUser.points = 0;
       });
     }
+  } else if (room.roomFormat === "RACING" && (room.setFormat === "BEST_OF" || room.setFormat === "AVERAGE_OF" || room.setFormat === "MEAN_OF") && currentSolve.solveIndex === room.nSolves) {
+    // the set is over without a set winner. update accordingly
+    room.currentSolve = 0;
+    room.currentSet += 1;
   } else {
     // it is theoretically possible to have match winners without a set winner, so check again here
     const matchWinners: string[] = findMatchWinners(room);
