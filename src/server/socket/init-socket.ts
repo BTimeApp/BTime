@@ -50,8 +50,8 @@ export const initSocket = (
     cors: {
       credentials: true,
     },
-    pingInterval: 2000,
-    pingTimeout: 10000,
+    pingInterval: 5000,
+    pingTimeout: 20000,
   });
 
   // middleware should be taken care of in the main server script
