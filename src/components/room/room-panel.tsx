@@ -219,6 +219,8 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
     roomFormat,
     roomState,
     setFormat,
+    nSets,
+    nSolves,
     userLiveTimerStartTimes,
     userLiveTimes,
   ] = useRoomStore((s) => [
@@ -228,6 +230,8 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
     s.roomFormat,
     s.roomState,
     s.setFormat,
+    s.nSets,
+    s.nSolves,
     s.userLiveTimerStartTimes,
     s.userLiveTimes,
   ]);
@@ -341,6 +345,9 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
         solves={solves}
         roomEvent={roomEvent}
         roomFormat={roomFormat}
+        setFormat={setFormat}
+        nSets={nSets}
+        nSolves={nSolves}
         className="max-h-[50vh] w-full"
       />
     </div>
@@ -406,7 +413,7 @@ function UserListRoomPanel({ className }: UserListRoomPanelProps) {
       {roomState === "FINISHED" && (
         <div className="flex-1 text-center">
           <h2 className="text-xl font-bold">
-            Winner{roomWinners.length > 1 ? "s" : ""}: {roomWinners.join(", ")}
+            Winner{roomWinners.length > 1 ? "s" : ""}: {roomWinners.map(uid => users[uid]!.user.userName).join(", ")}
           </h2>
         </div>
       )}

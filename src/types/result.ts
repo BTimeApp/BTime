@@ -132,6 +132,10 @@ export class Result {
     return resultString;
   }
 
+  centiseconds(): number {
+    return this.time;
+  }
+
   toString(): string {
     return Result.timeToString(this.time, this.penalty);
   }

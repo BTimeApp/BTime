@@ -10,7 +10,7 @@ import { Crown } from "lucide-react";
 import SolveDialog from "@/components/room/solve-dialog";
 import { IRoomUser } from "@/types/room-user";
 import { IRoomSolve } from "@/types/room-solve";
-import { RoomEvent, RoomFormat } from "@/types/room";
+import { RoomEvent, RoomFormat, SetFormat } from "@/types/room";
 import { Result } from "@/types/result";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +18,10 @@ type GlobalTimeListProps = {
   users: IRoomUser[];
   solves: IRoomSolve[];
   roomFormat: RoomFormat;
+  setFormat: SetFormat;
   roomEvent: RoomEvent;
+  nSets?: number;
+  nSolves?: number;
   className?: string;
 };
 
@@ -26,9 +29,108 @@ export default function GlobalTimeList({
   users,
   solves,
   roomFormat,
+  setFormat,
   roomEvent,
-  className
+  nSets,
+  nSolves,
+  className,
 }: GlobalTimeListProps) {
+  /**
+   * Potential strategy for incorporating "summary" rows
+   *
+   * Create a list rows[]. both Solves and Summaries can be represented by IRoomSolve abstraction
+   *
+   * Iterate through solves and push to rows[]. We inject a summary when:
+   *   - current solve and next solve have diff set indices OR
+   *   - current solve has setWinners with nonzero length OR
+   *   - current solve has matchWinners with nonzero length OR
+   *   - current solve's solveIndex === nSolves && setIndex === nSets (this is nec since last solve in solves doesn't get caught in condition 1)
+   */
+  const rows: IRoomSolve[] = [];
+  for (let i = 0; i < solves.length; i++) {
+    const solve = solves[i];
+
+    // 1. push solve to rows
+    rows.push(solve);
+
+    // 2. check if we should generate a set summary row after this solve. if so, push onto rows
+    if (roomFormat !== "CASUAL") {
+      if (
+        (i < solves.length - 1 &&
+          solves[i].setIndex !== solves[i + 1].setIndex) ||
+        (solve.setWinners && solve.setWinners?.length > 0) ||
+        (solve.matchWinners && solve.matchWinners?.length > 0) ||
+        (solve.finished &&
+          solve.setIndex === nSets &&
+          solve.solveIndex === nSolves)
+      ) {
+        const roomSummaryRow: IRoomSolve = {
+          solve: {
+            id: -1,
+            scramble: "",
+            results: {},
+          },
+          setIndex: solve.setIndex,
+          solveIndex: -1,
+          finished: true,
+        };
+
+        /**
+         * TODO: consider moving this set calculation logic into a field within IRoom that represents a set
+         */
+
+        const setSolves = solves.filter(
+          (roomSolve) => roomSolve.setIndex === solve.setIndex
+        );
+
+        for (const roomUser of users) {
+          //user's results for the given set
+          const userSetResults = setSolves.map((solve) =>
+            Object.hasOwn(solve.solve.results, roomUser.user.id)
+              ? solve.solve.results[roomUser.user.id]
+              : new Result(0, "DNF").toIResult()
+          );
+
+          //calculate summary metric
+          let userPoints = Infinity;
+          switch (setFormat) {
+            case "BEST_OF":
+              userPoints = setSolves.filter(
+                (solve) => solve.solveWinner === roomUser.user.id
+              ).length;
+              break;
+            case "FIRST_TO":
+              userPoints = setSolves.filter(
+                (solve) => solve.solveWinner === roomUser.user.id
+              ).length;
+              break;
+            case "AVERAGE_OF":
+              userPoints = Result.iAverageOf(userSetResults);
+              break;
+            case "MEAN_OF":
+              userPoints = Result.iMeanOf(userSetResults);
+              break;
+            default:
+              break;
+          }
+
+          roomSummaryRow.solve.results[roomUser.user.id] = new Result(
+            userPoints
+          ).toIResult();
+        }
+
+        if (solve.setWinners && solve.setWinners?.length > 0) {
+          roomSummaryRow.setWinners = solve.setWinners;
+        }
+        if (solve.matchWinners && solve.matchWinners?.length > 0) {
+          roomSummaryRow.matchWinners = solve.matchWinners;
+        }
+
+        rows.push(roomSummaryRow);
+      }
+    }
+  }
+
   return (
     <div className={cn("flex flex-col bg-inherit", className)}>
       <div className="flex-1 text-foreground text-2xl">Time List</div>
@@ -47,14 +149,53 @@ export default function GlobalTimeList({
           </TableRow>
         </TableHeader>
         <TableBody className="flex-1 overflow-auto">
-          {solves.map((_, i, arr) => {
+          {rows.map((_, i, arr) => {
             //render in reverse order without explicit reversal
             const index = arr.length - 1 - i;
             const solve = arr[index];
 
             const solveWinner: string | undefined = solve.solveWinner;
             const setWinners: string[] | undefined = solve.setWinners;
+            const matchWinners: string[] | undefined = solve.matchWinners;
 
+            if (solve.solveIndex === -1) {
+              // row is a summary row
+              return (
+                <TableRow key={index}>
+                  <TableCell className="w-10">{solve.setIndex}</TableCell>
+                  {(setFormat === "BEST_OF" || setFormat === "FIRST_TO") && (
+                    <TableCell className="w-10">Pts</TableCell>
+                  )}
+                  {setFormat === "AVERAGE_OF" && (
+                    <TableCell className="w-10">Avg</TableCell>
+                  )}
+                  {setFormat === "MEAN_OF" && (
+                    <TableCell className="w-10">Mean</TableCell>
+                  )}
+
+                  {users.map((user) => {
+                    return (
+                      <TableCell key={user.user.id}>
+                        <div className="flex flex-row text-center items-center justify-center">
+                          {(setWinners?.includes(user.user.id) ||
+                            matchWinners?.includes(user.user.id)) && <Crown />}
+                          <div>
+                            {(setFormat === "AVERAGE_OF" || setFormat === "MEAN_OF") && ( solve.solve.results[user.user.id]
+                              ? Result.fromIResult(
+                                  solve.solve.results[user.user.id]
+                                ).toString() : "DNF")}
+                            {(setFormat === "BEST_OF" || setFormat === "FIRST_TO") && (solve.solve.results[user.user.id]
+                              ? Result.fromIResult(solve.solve.results[user.user.id]).centiseconds() : 0)}
+                          </div>
+                        </div>
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              );
+            }
+
+            // row is a solve row
             return (
               <SolveDialog
                 key={index}
@@ -76,7 +217,6 @@ export default function GlobalTimeList({
                     return (
                       <TableCell key={user.user.id} className={cellClassName}>
                         <div className="flex flex-row text-center items-center justify-center">
-                          {setWinners?.includes(user.user.id) && <Crown />}
                           <div>
                             {solve.solve.results[user.user.id]
                               ? Result.fromIResult(
