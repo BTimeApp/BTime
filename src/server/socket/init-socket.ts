@@ -237,7 +237,6 @@ const listenSocketEvents = (io: Server) => {
       ) => {
         const room: IRoom | undefined = rooms.get(roomId);
         if (!room || userId !== room.host?.id) {
-          console.log(userId, room?.host);
           return;
         }
 
@@ -346,11 +345,6 @@ const listenSocketEvents = (io: Server) => {
 
         const extraData: Record<string, string> = {};
 
-        console.log(
-          Object.keys(room.users),
-          userId,
-          Object.hasOwn(room.users, userId)
-        );
         if (Object.hasOwn(room.users, userId)) {
           room.users[userId].active = true;
           room.users[userId].joinedAt = new Date();
