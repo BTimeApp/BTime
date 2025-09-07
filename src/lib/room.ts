@@ -88,9 +88,56 @@ export function checkRoomUpdateRequireReset(
 }
 
 /**
+ * Check if the current set (given by room.currentSet) is finished.
+ * This function should be run BEFORE finding set winners and awarding set wins.
+ */
+export function checkSetFinished(room: IRoom): boolean {
+  /**
+   * Under current set formats:
+   * Ao/Mo - only way to finish the set is to do all solves.
+   * Bo - either finish all solves, or someone has to take majority (> N / 2) of points available
+   * Ft - someone has to get at least N points
+   */
+  if (room.solves.length === 0) return false;
+  const currentSolve = room.solves.at(-1)!;
+
+  switch (room.setFormat) {
+    case "AVERAGE_OF":
+      return (
+        currentSolve.finished &&
+        currentSolve.solveIndex === room.nSolves &&
+        currentSolve.setIndex === room.currentSet
+      );
+    case "MEAN_OF":
+      return (
+        currentSolve.finished &&
+        currentSolve.solveIndex === room.nSolves &&
+        currentSolve.setIndex === room.currentSet
+      );
+    case "BEST_OF":
+      return (
+        Object.values(room.users).filter(
+          (roomUser) => roomUser.points > room.nSolves! / 2
+        ).length > 0 ||
+        (currentSolve.finished &&
+          currentSolve.solveIndex === room.nSolves &&
+          currentSolve.setIndex === room.currentSet)
+      );
+    case "FIRST_TO":
+      return (
+        Object.values(room.users).filter(
+          (roomUser) => roomUser.points >= room.nSolves!
+        ).length > 0
+      );
+    default:
+      return false;
+  }
+}
+
+/**
  * check if there is a set winner.
  * return all set winner(s), although it should be rare to have multiple.
- * This function should ONLY be called when a solve is considered finished.
+ * This function should ONLY be called the set is considered finished.
  */
 export function findSetWinners(room: IRoom): string[] {
   //no set wins when room is a casual room
@@ -107,10 +154,11 @@ export function findSetWinners(room: IRoom): string[] {
     case "BEST_OF":
       //if N solves are done, user with the most wins has won. Ties count.
 
+      // prevent 0 points from being considered a max.
+      const maxPoints = Math.max(...competingUsers.map((s) => s.points), 1);
+      
       //this code assumes that the latest solve is the one we check for set winner on.
       if (room.currentSolve >= room.nSolves!) {
-        const maxPoints = Math.max(...competingUsers.map((s) => s.points));
-
         return competingUsers
           .filter((roomUser) => roomUser.points == maxPoints)
           .map((roomUser) => {
@@ -119,11 +167,13 @@ export function findSetWinners(room: IRoom): string[] {
       }
 
       //if <N solves are done, user has won for sure if they have the majority of solves. will return empty list if no winners yet.
-      return competingUsers
-        .filter((roomUser) => roomUser.points > room.nSolves! / 2)
-        .map((roomUser) => {
-          return roomUser.user.id;
-        });
+      if (maxPoints > room.nSolves! / 2) {
+        return competingUsers
+          .filter((roomUser) => roomUser.points > room.nSolves! / 2)
+          .map((roomUser) => {
+            return roomUser.user.id;
+          });
+      }
     case "FIRST_TO":
       //user has won only when they win n solves.
       return competingUsers
@@ -215,6 +265,38 @@ export function findSetWinners(room: IRoom): string[] {
     }
     default:
       return [];
+  }
+}
+
+/**
+ * Check if the match is finished.
+ * This function should be run BEFORE finding match winners
+ */
+export function checkMatchFinished(room: IRoom): boolean {
+  /**
+   * Under current match formats:
+   * Bo - either finish all sets, or someone has to take majority (> N / 2) of set wins available
+   * Ft - someone has to get at least N set wins
+   */
+  if (room.solves.length === 0) return false;
+
+  switch (room.matchFormat) {
+    case "BEST_OF":
+      const currentSolve = room.solves.at(-1)!;
+      return (
+        Object.values(room.users).filter(
+          (roomUser) => roomUser.setWins > room.nSets! / 2
+        ).length > 0 ||
+        (currentSolve.setIndex === room.nSets && checkSetFinished(room))
+      );
+    case "FIRST_TO":
+      return (
+        Object.values(room.users).filter(
+          (roomUser) => roomUser.setWins >= room.nSets!
+        ).length > 0
+      );
+    default:
+      return false;
   }
 }
 
@@ -383,43 +465,35 @@ export function finishRoomSolve(room: IRoom) {
   // Mark solve as finished
   currentSolve.finished = true;
 
-  // Check if the set is finished. This happens where there are winner(s) or we are in BO, AO, MO modes with currentSolve.solveIndex === nSolves
+  //check set finished.
+  const setFinished = checkSetFinished(room);
+  if (setFinished) {
+    // find set winners.
+    const setWinners: string[] = findSetWinners(room);
+    currentSolve.setWinners = setWinners;
 
-  const setWinners: string[] = findSetWinners(room);
-  currentSolve.setWinners = setWinners;
-  if (setWinners.length > 0) {
-    //update set wins for these users
+    // update set wins for set winners
     setWinners.map((uid) => (room.users[uid].setWins += 1));
 
-    const matchWinners: string[] = findMatchWinners(room);
-    if (matchWinners.length > 0) {
-      //handle match win
-      room.winners = matchWinners;
-      room.state = "FINISHED";
-      currentSolve.matchWinners = matchWinners;
-    } else {
-      //reset solve counter, update set counter
-      room.currentSolve = 0;
-      room.currentSet += 1;
-
-      //reset all users' points
-      Object.values(room.users).map((roomUser) => {
-        roomUser.points = 0;
-      });
+    // check match finished. right now a match can only be finished if the set is finished.
+    const matchFinished = checkMatchFinished(room);
+    if (matchFinished) {
+      const matchWinners: string[] = findMatchWinners(room);
+      if (matchWinners.length > 0) {
+        //handle match win
+        room.winners = matchWinners;
+        room.state = "FINISHED";
+        currentSolve.matchWinners = matchWinners;
+      }
     }
-  } else if (room.roomFormat === "RACING" && (room.setFormat === "BEST_OF" || room.setFormat === "AVERAGE_OF" || room.setFormat === "MEAN_OF") && currentSolve.solveIndex === room.nSolves) {
-    // the set is over without a set winner. update accordingly
+
+    // reset all users' points
+    Object.values(room.users).map((roomUser) => {
+      roomUser.points = 0;
+    });
+    // reset solve counter, update set counter
     room.currentSolve = 0;
     room.currentSet += 1;
-  } else {
-    // it is theoretically possible to have match winners without a set winner, so check again here
-    const matchWinners: string[] = findMatchWinners(room);
-    if (matchWinners.length > 0) {
-      //handle match win
-      room.winners = matchWinners;
-      room.state = "FINISHED";
-      currentSolve.matchWinners = matchWinners;
-    }
   }
 }
 
@@ -468,12 +542,12 @@ export function resetRoom(room: IRoom) {
   room.currentSolve = 0;
   room.winners = room.roomFormat == "RACING" ? [] : undefined;
 
-  Object.values(room.users).map((roomUser) => {
+  for (const roomUser of Object.values(room.users)) {
     roomUser.points = 0;
     roomUser.setWins = 0;
     roomUser.userStatus = "IDLE";
     roomUser.currentResult = undefined;
-  });
+  };
 }
 
 function getCurrentSolveId(room: IRoom) {
