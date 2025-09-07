@@ -18,7 +18,7 @@ import {
   updateRoom,
   checkRoomUpdateRequireReset,
 } from "@/lib/room";
-import { IUser } from "@/types/user";
+import { IUser, IUserInfo, iUserToIUserInfo } from "@/types/user";
 import { IRoomUser } from "@/types/room-user";
 import { IResult } from "@/types/result";
 import { SolveStatus } from "@/types/status";
@@ -106,7 +106,7 @@ const listenSocketEvents = (io: Server) => {
     socket.join(userId);
 
     //add user to user store if not already
-    if (!users.has(userId)) users.set(userId, socket.user);
+    if (!users.has(userId)) users.set(userId, iUserToIUserInfo(socket.user));
     if (!userSessions.has(userId)) userSessions.set(userId, new Set<string>());
     userSessions.get(userId)!.add(socket.id);
   }
@@ -281,7 +281,7 @@ const listenSocketEvents = (io: Server) => {
         ) => void
       ) => {
         //validate real user
-        const user: IUser | undefined = users.get(userId);
+        const user: IUserInfo | undefined = users.get(userId);
         if (!user) {
           console.log(
             `Nonexistent user with id ${userId} attempting to join room ${roomId}.`

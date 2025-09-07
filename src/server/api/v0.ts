@@ -3,7 +3,7 @@ import { authMiddleware } from "@/server/auth";
 import { rooms, users } from "@/server/server-objects";
 import { IRoomSummary, roomToSummary } from "@/types/room-listing-info";
 import { toIUser, UserDocument, UserModel } from "@/server/models/user";
-import { IUser } from "@/types/user";
+import { IUser, iUserToIUserInfo } from "@/types/user";
 
 /** Adds sub-API routes (v0) to an application. Meant to be used from within the /api route. ([btime]/api/v0/...)
  *
@@ -61,7 +61,7 @@ export function v0(): Router {
         const iUser: IUser = toIUser(updatedUser);
 
         //update the user in server object - this refreshes the user info for things like room creation
-        users.set(iUser.id, iUser);
+        users.set(iUser.id, iUserToIUserInfo(iUser));
 
         res
           .status(200)
