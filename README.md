@@ -45,6 +45,9 @@ This means the webapp is running on your local machine!
 
 You can view BTime on [http://0.0.0.0:8080](http://0.0.0.0:8080). Others on your local network can also use the url `http://[your_ip]:8080`to access the site if you've configured your machine's firewall correctly.
 
+#### Making Changes
+
+Please do NOT push to the main branch. This branch is reserved for production code. The working branch for this project is the **dev** branch. Make all pull requests and pushes on there.
 
 ## Licensed Work
 Cube icons are from [icons.cubing.net](https://icons.cubing.net/), which is under the [MIT License](https://opensource.org/license/mit).
