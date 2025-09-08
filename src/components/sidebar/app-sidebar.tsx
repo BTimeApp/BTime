@@ -1,24 +1,21 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
 import {
-  // IconFileDescription,
-  // IconHelp,
   IconHome,
   IconLibraryPlus,
-  // IconSettings,
-} from "@tabler/icons-react"
+} from "@tabler/icons-react";
 
-import { NavMain } from "@/components/sidebar/nav-main"
-import { NavUser } from "@/components/sidebar/nav-user"
+import { NavMain } from "@/components/sidebar/nav-main";
+import { NavUser } from "@/components/sidebar/nav-user";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-} from "@/components/ui/sidebar"
-import { useSession } from "@/context/session-context"
+  useSidebar,
+} from "@/components/ui/sidebar";
 
-import ThemeToggle from "@/components/sidebar/theme-toggle"
+import ThemeToggle from "@/components/sidebar/theme-toggle";
 
 const data = {
   navMain: [
@@ -29,11 +26,11 @@ const data = {
     },
     {
       title: "Create Room",
-      url: "/create", 
+      url: "/create",
       icon: IconLibraryPlus,
     },
   ],
-  
+
   navSecondary: [
     // {
     //   title: "Settings",
@@ -51,23 +48,33 @@ const data = {
     //   icon: IconFileDescription,
     // },
   ],
-}
+};
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-
   // this will automatically try to log in and fetch a user.
-  const { user } = useSession();
+  const { setOpen } = useSidebar();
 
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
+    <Sidebar
+      variant="sidebar"
+      collapsible="icon"
+      onMouseEnter={() => {
+        setOpen(true);
+      }}
+      onMouseLeave={() => {
+        setOpen(false);
+      }}
+      {...props}
+    >
       <SidebarContent>
         <NavMain items={data.navMain} />
         <NavMain items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
         <ThemeToggle />
-        <NavUser user={user} />
+        
+        <NavUser/>
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }
