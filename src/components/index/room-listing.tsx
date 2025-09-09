@@ -15,7 +15,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Card, CardContent, CardHeader } from "../ui/card";
 
 export default function RoomListing() {
   const [rooms, setRooms] = useState<Map<string, IRoomSummary>>(
@@ -40,90 +41,97 @@ export default function RoomListing() {
   }, []);
 
   return (
-    <div className="flex flex-col px-3 gap-1 rounded-lg shadow-lg p-1 bg-container-1 h-60 lg:h-120">
-      <div className="flex shrink flex-row px-1">
-        <h2 className="grow font-semibold text-center text-xl">Rooms</h2>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="outline" size="sm" onClick={updateRooms}>
-              <RefreshCw />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <div>Refresh</div>
-          </TooltipContent>
-        </Tooltip>
-      </div>
-
-      <div className="px-1 flex-1 flex flex-col overflow-hidden">
-        <div className="grid grid-cols-10 gap-3 px-1 py-1 text-left shadow-sm rounded-sm">
-          <div className="col-span-3">Room Name</div>
-          <div>Users</div>
-          <div>Event</div>
-          <div>Format</div>
-          <div className="col-start-8">Privacy</div>
+    <Card className="h-60 lg:h-120 w-full flex flex-col px-3 gap-1 rounded-lg shadow-lg p-1 bg-container-1">
+      <CardHeader className="shrink-0">
+        <div className="flex flex-row px-1">
+          <h2 className="grow font-semibold text-center text-xl">Rooms</h2>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="sm" onClick={updateRooms}>
+                <RefreshCw />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div>Refresh</div>
+            </TooltipContent>
+          </Tooltip>
         </div>
-        <ScrollArea className="h-full">
-        {rooms.size != 0 ? (
-          [...rooms.entries()].map(([roomId, room]) => (
-            <div
-              key={roomId}
-              className="grid grid-cols-10 gap-3 px-1 py-1 text-left items-center shadow-sm rounded-sm"
-            >
-              <div className="col-span-3">{room.roomName}</div>
-              <div className="flex flex-row">
-                <User />
-                <div>{room.numUsers}</div>
-              </div>
-              <div className="flex flex-row">
-                <span
-                  className={`cubing-icon ${ROOM_EVENT_ICON_SRC_MAP.get(
-                    room.roomEvent
-                  )}`}
-                />
-                <div>{ROOM_EVENT_DISPLAY_NAME_MAP.get(room.roomEvent)}</div>
-              </div>
-              <div>{room.roomFormat}</div>
-              <div className="grid grid-rows-2">
-                {room.roomFormat === "RACING" ? (
-                  <>
-                    <div>
-                      {MATCH_FORMAT_ABBREVIATION_MAP.get(room.matchFormat!)! +
-                        room.nSets!}
-                    </div>
-                    <div>
-                      {SET_FORMAT_ABBREVIATION_MAP.get(room.setFormat!)! +
-                        room.nSolves!}
-                    </div>
-                  </>
-                ) : (
-                  <></>
-                )}
-              </div>
+      </CardHeader>
 
-              <div className="col-start-8 flex flex-row">
-                {room.isPrivate ? (
-                  <>
-                    <GlobeLock />
-                    <div>Private</div>
-                  </>
-                ) : (
-                  <>
-                    <Globe />
-                    <div>Public</div>
-                  </>
-                )}
-              </div>
-              <div className="col-start-10">
-                <JoinRoomButton roomId={room.id}></JoinRoomButton>
-              </div>
+      <CardContent className="px-1 flex-1 min-h-0 overflow-hidden">
+        <ScrollArea className="h-full">
+          <div className="w-max">
+            <div className="grid grid-cols-10 gap-3 px-1 py-1 text-left shadow-sm rounded-sm sticky top-0 bg-container-1">
+              <div className="col-span-3">Room Name</div>
+              <div className="col-start-5">Users</div>
+              <div>Event</div>
+              <div>Format</div>
+              <div className="col-start-9">Privacy</div>
             </div>
-          ))
-        ) : (
-          <div className="text-center">No rooms currently available!</div>
-        )}
+            {rooms.size != 0 ? (
+              [...rooms.entries()].map(([roomId, room]) => (
+                <div
+                  key={roomId}
+                  className="grid grid-cols-10 gap-3 px-1 py-1 text-left items-center shadow-sm rounded-sm"
+                >
+                  <div className="col-span-3">{room.roomName}</div>
+                  <div>
+                    <JoinRoomButton roomId={room.id}></JoinRoomButton>
+                  </div>
+                  <div className="flex flex-row">
+                    <User />
+                    <div>{room.numUsers}</div>
+                  </div>
+                  <div className="flex flex-row">
+                    <span
+                      className={`cubing-icon ${ROOM_EVENT_ICON_SRC_MAP.get(
+                        room.roomEvent
+                      )}`}
+                    />
+                    <div>{ROOM_EVENT_DISPLAY_NAME_MAP.get(room.roomEvent)}</div>
+                  </div>
+                  <div>{room.roomFormat}</div>
+                  <div className="grid grid-rows-2">
+                    {room.roomFormat === "RACING" ? (
+                      <>
+                        <div>
+                          {MATCH_FORMAT_ABBREVIATION_MAP.get(
+                            room.matchFormat!
+                          )! + room.nSets!}
+                        </div>
+                        <div>
+                          {SET_FORMAT_ABBREVIATION_MAP.get(room.setFormat!)! +
+                            room.nSolves!}
+                        </div>
+                      </>
+                    ) : (
+                      <></>
+                    )}
+                  </div>
+
+                  <div className="col-start-9 flex flex-row">
+                    {room.isPrivate ? (
+                      <>
+                        <GlobeLock />
+                        <div>Private</div>
+                      </>
+                    ) : (
+                      <>
+                        <Globe />
+                        <div>Public</div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center">No rooms currently available!</div>
+            )}
+          </div>
+          <ScrollBar orientation="vertical" />
+          <ScrollBar orientation="horizontal" />
         </ScrollArea>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
