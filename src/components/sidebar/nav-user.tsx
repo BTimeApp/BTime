@@ -16,20 +16,25 @@ export function NavUser() {
   useEffect(() => {
     setPathName(window.location.pathname);
   }, []);
+
+  function handleUserLogin(path: string) {
+    if (!user) {
+      // user not logged in. log in.
+      window.location.href = `/auth/wca?redirect=${path}`;
+    } else {
+      // user logged in. log out
+      window.location.href = `/logout?redirect=${path}`;
+    }
+  }
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        {/* <DropdownMenu> */}
-        {/* <DropdownMenuTrigger asChild> */}
         <SidebarMenuButton
           size="lg"
           className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
           onClick={() => {
-            if (user) {
-              window.location.href = "/profile";
-            } else {
-              window.location.href = `/auth/wca?redirect=${pathname}`;
-            }
+            handleUserLogin(pathname);
           }}
         >
           <Avatar className="h-8 w-8 rounded-lg">
