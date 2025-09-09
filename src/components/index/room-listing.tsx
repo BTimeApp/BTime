@@ -61,20 +61,20 @@ export default function RoomListing() {
       <CardContent className="px-1 flex-1 min-h-0 overflow-hidden">
         <ScrollArea className="h-full">
           <div className="w-max">
-            <div className="grid grid-cols-10 gap-3 px-1 py-1 text-left shadow-sm rounded-sm sticky top-0 bg-container-1">
-              <div className="col-span-3">Room Name</div>
-              <div className="col-start-5">Users</div>
+            <div className="grid grid-cols-9 gap-3 px-1 py-1 text-left shadow-sm rounded-sm sticky top-0 bg-container-1">
+              <div className="col-span-2">Room Name</div>
+              <div className="col-start-4">Users</div>
               <div>Event</div>
               <div>Format</div>
-              <div className="col-start-9">Privacy</div>
+              <div className="col-start-8">Privacy</div>
             </div>
             {rooms.size != 0 ? (
               [...rooms.entries()].map(([roomId, room]) => (
                 <div
                   key={roomId}
-                  className="grid grid-cols-10 gap-3 px-1 py-1 text-left items-center shadow-sm rounded-sm"
+                  className="grid grid-cols-9 gap-3 px-1 py-1 text-left items-center shadow-sm rounded-sm"
                 >
-                  <div className="col-span-3">{room.roomName}</div>
+                  <div className="col-span-2">{room.roomName}</div>
                   <div>
                     <JoinRoomButton roomId={room.id}></JoinRoomButton>
                   </div>
@@ -109,7 +109,7 @@ export default function RoomListing() {
                     )}
                   </div>
 
-                  <div className="col-start-9 flex flex-row">
+                  <div className="col-start-8 flex flex-row">
                     {room.isPrivate ? (
                       <>
                         <GlobeLock />
