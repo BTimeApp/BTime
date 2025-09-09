@@ -7,23 +7,17 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { useSession } from "@/context/session-context";
-import { useEffect, useState } from "react";
 
 export function NavUser() {
   const { user } = useSession();
-  const [pathname, setPathName] = useState<string>("");
 
-  useEffect(() => {
-    setPathName(window.location.pathname);
-  }, []);
-
-  function handleUserLogin(path: string) {
+  function handleUserLogin() {
     if (!user) {
       // user not logged in. log in.
-      window.location.href = `/auth/wca?redirect=${path}`;
+      window.location.href = `/auth/wca?redirect=${window.location.pathname}`;
     } else {
-      // user logged in. log out
-      window.location.href = `/logout?redirect=${path}`;
+      // user logged in. go to profile
+      window.location.href = `/profile`;
     }
   }
 
@@ -33,9 +27,7 @@ export function NavUser() {
         <SidebarMenuButton
           size="lg"
           className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-          onClick={() => {
-            handleUserLogin(pathname);
-          }}
+          onClick={handleUserLogin}
         >
           <Avatar className="h-8 w-8 rounded-lg">
             <AvatarImage src={user ? user.avatarURL : "/images/C_logo.png"} />
