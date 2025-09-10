@@ -387,7 +387,7 @@ export function finishRoomSolve(room: IRoom) {
   }
   const currentResults = currentSolve.solve.results;
 
-  if (room.settings.setFormat == "BEST_OF" || room.settings.setFormat == "FIRST_TO") {
+  if (room.settings.setFormat == "BEST_OF" || room.settings.setFormat == "FIRST_TO" || room.settings.roomFormat === "CASUAL") {
     const eligibleResults: [string, IResult][] = Object.entries(currentResults);
 
     let fastest_uid = null;
