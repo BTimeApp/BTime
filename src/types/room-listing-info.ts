@@ -20,18 +20,18 @@ export interface IRoomSummary {
 export function roomToSummary(room: IRoom): IRoomSummary {
   const roomSummary: IRoomSummary = {
     id: room.id,
-    roomName: room.roomName,
+    roomName: room.settings.roomName,
     numUsers: Object.values(room.users).filter((roomUser) => roomUser.active)
       .length,
-    roomEvent: room.roomEvent,
-    roomFormat: room.roomFormat,
-    isPrivate: room.isPrivate,
+    roomEvent: room.settings.roomEvent,
+    roomFormat: room.settings.roomFormat,
+    isPrivate: room.settings.isPrivate,
   };
   if (roomSummary.roomFormat === "RACING") {
-    roomSummary.matchFormat = room.matchFormat;
-    roomSummary.setFormat = room.setFormat;
-    roomSummary.nSets = room.nSets;
-    roomSummary.nSolves = room.nSolves;
+    roomSummary.matchFormat = room.settings.matchFormat;
+    roomSummary.setFormat = room.settings.setFormat;
+    roomSummary.nSets = room.settings.nSets;
+    roomSummary.nSolves = room.settings.nSolves;
   }
 
   return roomSummary;

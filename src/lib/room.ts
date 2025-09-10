@@ -3,41 +3,31 @@ import { ISolve } from "@/types/solve";
 import { IRoomSolve } from "@/types/room-solve";
 import { IResult, Result } from "@/types/result";
 import { generateScramble } from "@/lib/utils";
-import { IUser } from "@/types/user";
 import { ObjectId } from "bson";
 import bcrypt from "bcrypt";
+import { IUserInfo } from "@/types/user";
 
 export async function createRoom(
   roomSettings: IRoomSettings,
   roomId?: string,
-  initialHost?: IUser
+  initialHost?: IUserInfo
 ): Promise<IRoom> {
   const room: IRoom = {
     id: roomId ? roomId : new ObjectId().toString(),
-    roomName: roomSettings.roomName,
-    host: initialHost?.userInfo,
     users: {},
     solves: [],
-    roomEvent: roomSettings.roomEvent,
-    roomFormat: roomSettings.roomFormat,
     currentSet: 1,
     currentSolve: 0,
-    isPrivate: roomSettings.isPrivate,
     state: "WAITING",
+    settings: roomSettings,
   };
 
-  if (roomSettings.roomFormat !== "CASUAL") {
-    room.matchFormat = roomSettings.matchFormat;
-    room.setFormat = roomSettings.setFormat;
-    room.nSets = roomSettings.nSets;
-    room.nSolves = roomSettings.nSolves;
-  }
-
   if (roomSettings.isPrivate) {
-    room.password = roomSettings.password
+    room.settings.password = roomSettings.password
       ? await bcrypt.hash(roomSettings.password, 10)
       : ""; //never let a private room have an undefined password
   }
+  room.host = initialHost;
 
   return room;
 }
@@ -46,20 +36,10 @@ export async function updateRoom(
   room: IRoom,
   newRoomSettings: IRoomSettings
 ): Promise<void> {
-  room.roomName = newRoomSettings.roomName;
-  room.roomEvent = newRoomSettings.roomEvent;
-  room.roomFormat = newRoomSettings.roomFormat;
-  room.isPrivate = newRoomSettings.isPrivate;
-
-  if (newRoomSettings.roomFormat !== "CASUAL") {
-    room.matchFormat = newRoomSettings.matchFormat;
-    room.setFormat = newRoomSettings.setFormat;
-    room.nSets = newRoomSettings.nSets;
-    room.nSolves = newRoomSettings.nSolves;
-  }
+  room.settings = newRoomSettings;
 
   if (newRoomSettings.isPrivate) {
-    room.password = newRoomSettings.password
+    room.settings.password = newRoomSettings.password
       ? await bcrypt.hash(newRoomSettings.password, 10)
       : undefined;
   }
@@ -70,16 +50,16 @@ export function checkRoomUpdateRequireReset(
   roomSettings: IRoomSettings
 ): boolean {
   let needsReset = true;
-  if (room.roomFormat === "CASUAL" && roomSettings.roomFormat === "CASUAL") {
+  if (room.settings.roomFormat === "CASUAL" && roomSettings.roomFormat === "CASUAL" && room.settings.roomEvent === roomSettings.roomEvent) {
     // don't need to reset casual rooms
     needsReset = false;
   } else if (
-    room.roomFormat === roomSettings.roomFormat &&
-    room.matchFormat === roomSettings.matchFormat &&
-    room.setFormat === roomSettings.setFormat &&
-    room.roomEvent === roomSettings.roomEvent &&
-    room.nSets === roomSettings.nSets &&
-    room.nSolves === roomSettings.nSolves
+    room.settings.roomFormat === roomSettings.roomFormat &&
+    room.settings.matchFormat === roomSettings.matchFormat &&
+    room.settings.setFormat === roomSettings.setFormat &&
+    room.settings.roomEvent === roomSettings.roomEvent &&
+    room.settings.nSets === roomSettings.nSets &&
+    room.settings.nSolves === roomSettings.nSolves
   ) {
     // allowed to edit room name, privacy, password at any time
     needsReset = false;
@@ -101,32 +81,32 @@ export function checkSetFinished(room: IRoom): boolean {
   if (room.solves.length === 0) return false;
   const currentSolve = room.solves.at(-1)!;
 
-  switch (room.setFormat) {
+  switch (room.settings.setFormat) {
     case "AVERAGE_OF":
       return (
         currentSolve.finished &&
-        currentSolve.solveIndex === room.nSolves &&
+        currentSolve.solveIndex === room.settings.nSolves &&
         currentSolve.setIndex === room.currentSet
       );
     case "MEAN_OF":
       return (
         currentSolve.finished &&
-        currentSolve.solveIndex === room.nSolves &&
+        currentSolve.solveIndex === room.settings.nSolves &&
         currentSolve.setIndex === room.currentSet
       );
     case "BEST_OF":
       return (
         Object.values(room.users).filter(
-          (roomUser) => roomUser.points > room.nSolves! / 2
+          (roomUser) => roomUser.points > room.settings.nSolves! / 2
         ).length > 0 ||
         (currentSolve.finished &&
-          currentSolve.solveIndex === room.nSolves &&
+          currentSolve.solveIndex === room.settings.nSolves &&
           currentSolve.setIndex === room.currentSet)
       );
     case "FIRST_TO":
       return (
         Object.values(room.users).filter(
-          (roomUser) => roomUser.points >= room.nSolves!
+          (roomUser) => roomUser.points >= room.settings.nSolves!
         ).length > 0
       );
     default:
@@ -141,7 +121,7 @@ export function checkSetFinished(room: IRoom): boolean {
  */
 export function findSetWinners(room: IRoom): string[] {
   //no set wins when room is a casual room
-  if (room.roomFormat == "CASUAL") return [];
+  if (room.settings.roomFormat == "CASUAL") return [];
 
   const competingUsers = Object.values(room.users).filter(
     (user) => user.competing && user.active
@@ -150,15 +130,15 @@ export function findSetWinners(room: IRoom): string[] {
   //no set win possible if no competing users exist
   if (competingUsers.length == 0) return [];
 
-  switch (room.setFormat) {
+  switch (room.settings.setFormat) {
     case "BEST_OF":
       //if N solves are done, user with the most wins has won. Ties count.
 
       // prevent 0 points from being considered a max.
       const maxPoints = Math.max(...competingUsers.map((s) => s.points), 1);
-      
+
       //this code assumes that the latest solve is the one we check for set winner on.
-      if (room.currentSolve >= room.nSolves!) {
+      if (room.currentSolve >= room.settings.nSolves!) {
         return competingUsers
           .filter((roomUser) => roomUser.points == maxPoints)
           .map((roomUser) => {
@@ -167,9 +147,9 @@ export function findSetWinners(room: IRoom): string[] {
       }
 
       //if <N solves are done, user has won for sure if they have the majority of solves. will return empty list if no winners yet.
-      if (maxPoints > room.nSolves! / 2) {
+      if (maxPoints > room.settings.nSolves! / 2) {
         return competingUsers
-          .filter((roomUser) => roomUser.points > room.nSolves! / 2)
+          .filter((roomUser) => roomUser.points > room.settings.nSolves! / 2)
           .map((roomUser) => {
             return roomUser.user.id;
           });
@@ -177,7 +157,7 @@ export function findSetWinners(room: IRoom): string[] {
     case "FIRST_TO":
       //user has won only when they win n solves.
       return competingUsers
-        .filter((roomUser) => roomUser.points >= room.nSolves!)
+        .filter((roomUser) => roomUser.points >= room.settings.nSolves!)
         .map((roomUser) => {
           return roomUser.user.id;
         });
@@ -186,7 +166,7 @@ export function findSetWinners(room: IRoom): string[] {
       const setSolves = room.solves.filter(
         (roomSolve) => roomSolve.setIndex == room.currentSet
       );
-      if (setSolves.length < (room.nSolves || Number.POSITIVE_INFINITY))
+      if (setSolves.length < (room.settings.nSolves || Number.POSITIVE_INFINITY))
         return [];
 
       let currentIds = new Set(
@@ -227,7 +207,7 @@ export function findSetWinners(room: IRoom): string[] {
       const setSolves = room.solves.filter(
         (roomSolve) => roomSolve.setIndex == room.currentSet
       );
-      if (setSolves.length < (room.nSolves || Number.POSITIVE_INFINITY))
+      if (setSolves.length < (room.settings.nSolves || Number.POSITIVE_INFINITY))
         return [];
 
       let currentIds = new Set(
@@ -280,19 +260,19 @@ export function checkMatchFinished(room: IRoom): boolean {
    */
   if (room.solves.length === 0) return false;
 
-  switch (room.matchFormat) {
+  switch (room.settings.matchFormat) {
     case "BEST_OF":
       const currentSolve = room.solves.at(-1)!;
       return (
         Object.values(room.users).filter(
-          (roomUser) => roomUser.setWins > room.nSets! / 2
+          (roomUser) => roomUser.setWins > room.settings.nSets! / 2
         ).length > 0 ||
-        (currentSolve.setIndex === room.nSets && checkSetFinished(room))
+        (currentSolve.setIndex === room.settings.nSets && checkSetFinished(room))
       );
     case "FIRST_TO":
       return (
         Object.values(room.users).filter(
-          (roomUser) => roomUser.setWins >= room.nSets!
+          (roomUser) => roomUser.setWins >= room.settings.nSets!
         ).length > 0
       );
     default:
@@ -306,14 +286,14 @@ export function checkMatchFinished(room: IRoom): boolean {
  */
 export function findMatchWinners(room: IRoom): string[] {
   //no set wins when room is a casual room
-  if (room.roomFormat == "CASUAL" || room.solves.length === 0) return [];
+  if (room.settings.roomFormat == "CASUAL" || room.solves.length === 0) return [];
   const roomUsers = Object.values(room.users);
 
-  switch (room.matchFormat) {
+  switch (room.settings.matchFormat) {
     case "BEST_OF":
       //user has won for sure if they have the majority of sets
       const candidateMatchWinners = roomUsers
-        .filter((roomUser) => roomUser.setWins > room.nSets! / 2)
+        .filter((roomUser) => roomUser.setWins > room.settings.nSets! / 2)
         .map((roomUser) => {
           return roomUser.user.id;
         });
@@ -323,16 +303,16 @@ export function findMatchWinners(room: IRoom): string[] {
 
       // otherwise, it is possible to win w/o majority of sets. if the last set is done, need to check for max set wins of all users
       const currentSolve = room.solves.at(-1)!;
-      if (currentSolve.setIndex === room.nSets! && currentSolve.finished) {
+      if (currentSolve.setIndex === room.settings.nSets! && currentSolve.finished) {
         /**
          * in AO/MO mode, set only finishes when all solves are done.
          * in BO/FT mode, set can finish before the last solve when a user takes the set. In this case, we rely on other functions not checking for match winners before the set is finished (either by set win or by number of solves)
          */
         if (
-          ((room.setFormat === "AVERAGE_OF" || room.setFormat === "MEAN_OF") &&
-            currentSolve.solveIndex === room.nSolves!) ||
-          room.setFormat === "BEST_OF" ||
-          room.setFormat === "FIRST_TO"
+          ((room.settings.setFormat === "AVERAGE_OF" || room.settings.setFormat === "MEAN_OF") &&
+            currentSolve.solveIndex === room.settings.nSolves!) ||
+          room.settings.setFormat === "BEST_OF" ||
+          room.settings.setFormat === "FIRST_TO"
         ) {
           //scan over all users. note that this includes users who are no longer competing or active.
           let candidateWinners: string[] = [];
@@ -354,7 +334,7 @@ export function findMatchWinners(room: IRoom): string[] {
     case "FIRST_TO":
       //user has won only when they win n sets.
       return roomUsers
-        .filter((roomUser) => roomUser.setWins >= room.nSets!)
+        .filter((roomUser) => roomUser.setWins >= room.settings.nSets!)
         .map((roomUser) => {
           return roomUser.user.id;
         });
@@ -407,7 +387,7 @@ export function finishRoomSolve(room: IRoom) {
   }
   const currentResults = currentSolve.solve.results;
 
-  if (room.setFormat == "BEST_OF" || room.setFormat == "FIRST_TO") {
+  if (room.settings.setFormat == "BEST_OF" || room.settings.setFormat == "FIRST_TO") {
     const eligibleResults: [string, IResult][] = Object.entries(currentResults);
 
     let fastest_uid = null;
@@ -432,7 +412,7 @@ export function finishRoomSolve(room: IRoom) {
       currentSolve.solveWinner = fastest_uid;
       room.users[fastest_uid].points += 1;
     }
-  } else if (room.setFormat === "AVERAGE_OF" || room.setFormat === "MEAN_OF") {
+  } else if (room.settings.setFormat === "AVERAGE_OF" || room.settings.setFormat === "MEAN_OF") {
     /**
      * update points to reflect the current average/mean for each user.
      * the average is taken by removing best and worst solves and taking mean of the rest.
@@ -454,7 +434,7 @@ export function finishRoomSolve(room: IRoom) {
           : new Result(0, "DNF").toIResult()
       );
 
-      if (room.setFormat === "AVERAGE_OF") {
+      if (room.settings.setFormat === "AVERAGE_OF") {
         room.users[roomUser.user.id].points = Result.iAverageOf(userResults);
       } else {
         room.users[roomUser.user.id].points = Result.iMeanOf(userResults);
@@ -505,7 +485,7 @@ export async function newRoomSolve(room: IRoom) {
   //get current solve Id. Consider storing a currentSolveId field in the room to not need to do this
   const currSolveId = getCurrentSolveId(room);
 
-  const newScramble: string = await generateScramble(room.roomEvent);
+  const newScramble: string = await generateScramble(room.settings.roomEvent);
   const solveObj: ISolve = {
     id: currSolveId + 1,
     scramble: newScramble,
@@ -528,7 +508,7 @@ export async function newRoomSolve(room: IRoom) {
 export async function skipScramble(room: IRoom) {
   if (room.solves.length == 0) return;
 
-  room.solves.at(-1)!.solve.scramble = await generateScramble(room.roomEvent);
+  room.solves.at(-1)!.solve.scramble = await generateScramble(room.settings.roomEvent);
   room.solves.at(-1)!.solve.results = {};
 }
 
@@ -540,14 +520,14 @@ export function resetRoom(room: IRoom) {
   room.solves = [];
   room.currentSet = 1;
   room.currentSolve = 0;
-  room.winners = room.roomFormat == "RACING" ? [] : undefined;
+  room.winners = room.settings.roomFormat == "RACING" ? [] : undefined;
 
   for (const roomUser of Object.values(room.users)) {
     roomUser.points = 0;
     roomUser.setWins = 0;
     roomUser.userStatus = "IDLE";
     roomUser.currentResult = undefined;
-  };
+  }
 }
 
 function getCurrentSolveId(room: IRoom) {

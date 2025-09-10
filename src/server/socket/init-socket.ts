@@ -220,7 +220,7 @@ const listenSocketEvents = (io: Server) => {
         while (rooms.get(roomId)) {
           roomId = new ObjectId().toString();
         }
-        const room: IRoom = await createRoom(roomSettings, roomId, socket.user);
+        const room: IRoom = await createRoom(roomSettings, roomId, socket.user?.userInfo);
 
         rooms.set(room.id, room);
         callback(roomId);
@@ -314,7 +314,7 @@ const listenSocketEvents = (io: Server) => {
         }
 
         //validate password if room is private AND user isn't host
-        if (room.isPrivate && userId !== room.host?.id) {
+        if (room.settings.isPrivate && userId !== room.host?.id) {
           if (!password) {
             //this should only occur upon the first join_room ping - safe to return early
             joinRoomCallback(true, undefined, {});
@@ -324,7 +324,7 @@ const listenSocketEvents = (io: Server) => {
           //room password should never be undefined, but just in case, cast to empty string
           const correctPassword = await bcrypt.compare(
             password,
-            room.password ?? ""
+            room.settings.password ?? ""
           );
           if (!correctPassword) {
             console.log(

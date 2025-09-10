@@ -239,21 +239,21 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
 
     handleRoomUpdate: (room: IRoom) =>
       set(() => ({
-        roomName: room.roomName,
+        roomName: room.settings.roomName,
         users: room.users,
         hostId: room.host ? room.host.id : "",
         solves: room.solves,
         currentSet: room.currentSet,
         currentSolve: room.currentSolve,
-        roomEvent: room.roomEvent,
-        roomFormat: room.roomFormat,
-        matchFormat: room.matchFormat ?? "BEST_OF",
-        setFormat: room.setFormat ?? "BEST_OF",
-        nSolves: room.nSolves ?? 1,
-        nSets: room.nSets ?? 1,
+        roomEvent: room.settings.roomEvent,
+        roomFormat: room.settings.roomFormat,
+        matchFormat: room.settings.matchFormat ?? "BEST_OF",
+        setFormat: room.settings.setFormat ?? "BEST_OF",
+        nSolves: room.settings.nSolves ?? 1,
+        nSets: room.settings.nSets ?? 1,
         roomState: room.state,
         roomWinners: room.winners || [],
-        isPrivate: room.isPrivate,
+        isPrivate: room.settings.isPrivate,
       })),
 
     handleRoomUserUpdate: (roomUser: IRoomUser) =>
