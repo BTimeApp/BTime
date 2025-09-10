@@ -66,7 +66,7 @@ export default function Page() {
         <div>
           <Image
             src={
-              localUser.avatarURL ? localUser.avatarURL : "/images/C_logo.png"
+              localUser.userInfo.avatarURL ? localUser.userInfo.avatarURL : "/images/C_logo.png"
             }
             alt="/images/C_logo.png"
             width="200"
@@ -78,7 +78,7 @@ export default function Page() {
             <div>Username</div>
             <Input
               value={username}
-              placeholder={localUser.userName}
+              placeholder={localUser.userInfo.userName}
               onChange={(event) => {
                 setUsername(event.target.value);
               }}
@@ -86,8 +86,8 @@ export default function Page() {
             ></Input>
           </div>
           {usernameFieldError && <div className="text-xs text-error">{usernameFieldError}</div>}
-          <div>Email: {localUser.email}</div>
-          <div>WCAID: {localUser.wcaId ? localUser.wcaId : "None"}</div>
+          <div>Email: {localUser.userPrivateInfo.email}</div>
+          <div>WCAID: {localUser.userPrivateInfo.wcaId ? localUser.userPrivateInfo.wcaId : "None"}</div>
           <Button
             variant="primary"
             size="sm"

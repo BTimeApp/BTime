@@ -33,7 +33,7 @@ export default function RoomContent() {
           <RoomPanel
             side={screenSize >= ScreenSize.MD ? "left" : undefined}
             type="user"
-            userId={user ? user.id : undefined}
+            userId={user ? user.userInfo.id : undefined}
             isLocalUser={true}
             className="bg-secondary"
           ></RoomPanel>

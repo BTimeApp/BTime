@@ -30,16 +30,16 @@ export function NavUser() {
           onClick={handleUserLogin}
         >
           <Avatar className="h-8 w-8 rounded-lg">
-            <AvatarImage src={user ? user.avatarURL : "/images/C_logo.png"} />
+            <AvatarImage src={user ? user.userInfo.avatarURL : "/images/C_logo.png"} />
             <AvatarFallback className="rounded-lg" />
           </Avatar>
 
           <div className="grid flex-1 text-left text-sm leading-tight">
             {user ? (
               <>
-                <span className="truncate">{user.userName}</span>
+                <span className="truncate">{user.userInfo.userName}</span>
                 <span className="text-muted-foreground truncate text-xs">
-                  {user.email}
+                  {user.userPrivateInfo.email}
                 </span>
               </>
             ) : (

@@ -63,7 +63,7 @@ export async function startServer(): Promise<void> {
     const redirect = (req.query.redirect as string) || "/";
 
     // req.logout will automatically clear the req.user field before calling its callback, so store user id first.
-    const userId = req.user?.id;
+    const userId = req.user?.userInfo.id;
     req.logout?.((err) => {
       if (err) {
         res.status(500).send("Logout failed");

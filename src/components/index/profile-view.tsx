@@ -16,8 +16,8 @@ export default function ProfileView() {
 
   useEffect(() => {
     if (user) {
-      setUsername(user.userName);
-      setAvatarURL(user.avatarURL);
+      setUsername(user.userInfo.userName);
+      setAvatarURL(user.userInfo.avatarURL);
     }
   }, [user, loading]);
 

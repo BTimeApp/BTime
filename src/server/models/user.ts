@@ -22,7 +22,7 @@ const userSchema = new Schema(
       maxlength: 25,
       match: /^[a-zA-Z0-9_.]+$/, // Only alphanumeric + underscore,
       unique: true,
-    }, 
+    },
     email: { type: String, required: true },
     wcaId: { type: String, required: false },
     wcaIdNo: { type: Number, required: false }, //the ID number stored in WCA databases. Used during WCA OAuth login
@@ -43,11 +43,15 @@ export const UserModel = model<UserDocument>("User", userSchema, "Users");
  */
 export function toIUser(user: UserDocument): IUser {
   return {
-    id: (user._id as ObjectId).toString(),
-    name: user.name,
-    email: user.email,
-    userName: user.userName,
-    wcaId: user.wcaId,
-    avatarURL: user.avatarURL,
+    userInfo: {
+      id: (user._id as ObjectId).toString(),
+      userName: user.userName,
+      avatarURL: user.avatarURL,
+    },
+    userPrivateInfo: {
+      name: user.name,
+      email: user.email,
+      wcaId: user.wcaId,
+    },
   };
 }

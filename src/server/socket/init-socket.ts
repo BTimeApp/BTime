@@ -18,7 +18,7 @@ import {
   updateRoom,
   checkRoomUpdateRequireReset,
 } from "@/lib/room";
-import { IUser, IUserInfo, iUserToIUserInfo } from "@/types/user";
+import { IUser, IUserInfo } from "@/types/user";
 import { IRoomUser } from "@/types/room-user";
 import { IResult } from "@/types/result";
 import { SolveStatus } from "@/types/status";
@@ -97,16 +97,16 @@ const listenSocketEvents = (io: Server) => {
     }
 
     console.log(
-      `User ${socket.user?.userName} (${socket.user?.id}) connected via websocket.`
+      `User ${socket.user?.userInfo.userName} (${socket.user?.userInfo.id}) connected via websocket.`
     );
 
-    const userId = socket.user!.id;
+    const userId = socket.user!.userInfo.id;
 
     // user joins "their" room by default
     socket.join(userId);
 
     //add user to user store if not already
-    if (!users.has(userId)) users.set(userId, iUserToIUserInfo(socket.user));
+    if (!users.has(userId)) users.set(userId, socket.user.userInfo);
     if (!userSessions.has(userId)) userSessions.set(userId, new Set<string>());
     userSessions.get(userId)!.add(socket.id);
   }
@@ -125,7 +125,7 @@ const listenSocketEvents = (io: Server) => {
     if (!socket.connected) {
       return;
     }
-    const userId = socket.user!.id;
+    const userId = socket.user!.userInfo.id;
 
     function handleUserDisconnect(userId: string) {
       userSessions.get(userId)?.delete(socket.id);
@@ -384,7 +384,7 @@ const listenSocketEvents = (io: Server) => {
      */
     socket.on(SOCKET_CLIENT.SKIP_SCRAMBLE, async () => {
       console.log(
-        `User ${socket.user?.id} is trying to skip the scramble in room ${socket.roomId}.`
+        `User ${socket.user?.userInfo.id} is trying to skip the scramble in room ${socket.roomId}.`
       );
       const room = getSocketRoom();
       if (!room) return;
@@ -402,7 +402,7 @@ const listenSocketEvents = (io: Server) => {
      */
     socket.on(SOCKET_CLIENT.START_ROOM, async () => {
       console.log(
-        `User ${socket.user?.id} is trying to start room ${socket.roomId}.`
+        `User ${socket.user?.userInfo.id} is trying to start room ${socket.roomId}.`
       );
       const room = getSocketRoom();
       if (!room) return;
@@ -421,7 +421,7 @@ const listenSocketEvents = (io: Server) => {
      */
     socket.on(SOCKET_CLIENT.RESET_ROOM, () => {
       console.log(
-        `User ${socket.user?.id} is trying to reset room ${socket.roomId}.`
+        `User ${socket.user?.userInfo.id} is trying to reset room ${socket.roomId}.`
       );
       const room = getSocketRoom();
       if (!room) return;
@@ -439,7 +439,7 @@ const listenSocketEvents = (io: Server) => {
      */
     socket.on(SOCKET_CLIENT.REMATCH_ROOM, async () => {
       console.log(
-        `User ${socket.user?.id} is trying to rematch room ${socket.roomId}.`
+        `User ${socket.user?.userInfo.id} is trying to rematch room ${socket.roomId}.`
       );
 
       const room = getSocketRoom();
@@ -467,16 +467,16 @@ const listenSocketEvents = (io: Server) => {
           if (!room) return;
 
           const currentUserStatus: SolveStatus =
-            room.users[socket.user?.id].userStatus;
+            room.users[socket.user?.userInfo.id].userStatus;
           if (newUserStatus == currentUserStatus) {
             console.log(
-              `User ${socket.user?.id} submitted new user status to room ${socket.roomId} which is the same as old user status.`
+              `User ${socket.user?.userInfo.id} submitted new user status to room ${socket.roomId} which is the same as old user status.`
             );
           } else {
             console.log(
-              `User ${socket.user?.userName} submitted new user status ${newUserStatus} to room ${socket.roomId}`
+              `User ${socket.user?.userInfo.userName} submitted new user status ${newUserStatus} to room ${socket.roomId}`
             );
-            room.users[socket.user?.id].userStatus = newUserStatus;
+            room.users[socket.user?.userInfo.id].userStatus = newUserStatus;
 
             if (newUserStatus === "FINISHED") {
               const solveFinished: boolean = checkRoomSolveFinished(room);
@@ -536,26 +536,26 @@ const listenSocketEvents = (io: Server) => {
 
           if (room.state !== "STARTED") {
             console.log(
-              `User ${socket.user?.id} tried to submit a result to ${socket.roomId} in the wrong room state. Ignoring message.`
+              `User ${socket.user?.userInfo.id} tried to submit a result to ${socket.roomId} in the wrong room state. Ignoring message.`
             );
             return;
           }
           if (room.solves.length == 0) {
             console.log(
-              `User ${socket.user?.id} tried to submit a result to ${socket.roomId} when there are no solves in the room.`
+              `User ${socket.user?.userInfo.id} tried to submit a result to ${socket.roomId} when there are no solves in the room.`
             );
             return;
           }
 
           console.log(
-            `User ${socket.user?.userName} submitted new result ${result} to room ${socket.roomId}`
+            `User ${socket.user?.userInfo.userName} submitted new result ${result} to room ${socket.roomId}`
           );
 
           const solveObject: IRoomSolve = room.solves.at(-1)!;
-          solveObject.solve.results[socket.user?.id] = result;
+          solveObject.solve.results[socket.user?.userInfo.id] = result;
 
-          // room.users[socket.user?.id].userStatus = "FINISHED";
-          room.users[socket.user?.id].currentResult = result;
+          // room.users[socket.user?.userInfo.id].userStatus = "FINISHED";
+          room.users[socket.user?.userInfo.id].currentResult = result;
 
           io.to(socket.roomId.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
           onSuccessCallback?.();
@@ -570,14 +570,14 @@ const listenSocketEvents = (io: Server) => {
       if (socket.roomId && socket.user) {
         const room = rooms.get(socket.roomId);
         console.log("toggle call");
-        if (!room || room.users[socket.user?.id].competing == competing) return;
+        if (!room || room.users[socket.user?.userInfo.id].competing == competing) return;
 
         console.log(
-          `User ${socket.user?.id} is now ${
+          `User ${socket.user?.userInfo.id} is now ${
             competing ? "competing" : "spectating"
           } in room ${socket.roomId}`
         );
-        room.users[socket.user?.id].competing = competing;
+        room.users[socket.user?.userInfo.id].competing = competing;
 
         // when user spectates, need to check if all competing users are done, then advance room
         if (room.state === "STARTED") {
@@ -590,7 +590,7 @@ const listenSocketEvents = (io: Server) => {
         io.to(socket.roomId.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
       } else {
         console.log(
-          `Either roomId or userId not set on socket: ${socket.roomId}, ${socket.user?.id}`
+          `Either roomId or userId not set on socket: ${socket.roomId}, ${socket.user?.userInfo.id}`
         );
       }
     });
@@ -600,7 +600,7 @@ const listenSocketEvents = (io: Server) => {
      */
     socket.on(SOCKET_CLIENT.LEAVE_ROOM, (roomId: string) => {
       // console.log(
-      //   `User ${socket.user?.userName} (${userId}) left room ${roomId} `
+      //   `User ${socket.user?.userInfo.userName} (${userId}) left room ${roomId} `
       // );
       handleRoomDisconnect(userId, roomId);
     });
@@ -610,7 +610,7 @@ const listenSocketEvents = (io: Server) => {
      */
     socket.on("disconnect", (reason) => {
       console.log(
-        `User ${socket.user?.userName} (${userId}) disconnect from socket with reason: ${reason}`
+        `User ${socket.user?.userInfo.userName} (${userId}) disconnect from socket with reason: ${reason}`
       );
       //handle potential room DC
       if (socket.roomId) {

@@ -49,19 +49,19 @@ export function RoomHeader() {
   const { socket } = useSocket();
 
   const getNextScramble = useCallback(() => {
-    if (user && isUserHost(user.id)) {
+    if (user && isUserHost(user.userInfo.id)) {
       socket.emit(SOCKET_CLIENT.SKIP_SCRAMBLE);
     }
   }, [user, socket, isUserHost]);
 
   const startRoom = useCallback(() => {
-    if (user && isUserHost(user.id)) {
+    if (user && isUserHost(user.userInfo.id)) {
       socket.emit(SOCKET_CLIENT.START_ROOM);
     }
   }, [user, isUserHost, socket]);
 
   const rematchRoom = useCallback(() => {
-    if (user && isUserHost(user.id)) {
+    if (user && isUserHost(user.userInfo.id)) {
       socket.emit(SOCKET_CLIENT.REMATCH_ROOM);
     }
   }, [user, isUserHost, socket]);
@@ -70,7 +70,7 @@ export function RoomHeader() {
   const toggleCompeting = useCallback(() => {
     if (user) {
       //submit the NEW competing boolean - true if currently spectating
-      socket.emit(SOCKET_CLIENT.TOGGLE_COMPETING, !users[user.id].competing);
+      socket.emit(SOCKET_CLIENT.TOGGLE_COMPETING, !users[user.userInfo.id].competing);
     }
   }, [user, users, socket]);
 
@@ -87,7 +87,7 @@ export function RoomHeader() {
           <Header>
             <div className="flex flex-row gap-3 items-center justify-center text-center items-stretch">
               <div className="flex-1 flex flex-col gap-3">
-                {isUserHost(user.id) && (
+                {isUserHost(user.userInfo.id) && (
                   <div className="flex-1 flex flex-col justify-end">
                     <Button
                       variant="outline"
@@ -110,7 +110,7 @@ export function RoomHeader() {
                 </h4>
               </div>
               <div className="flex-1 flex flex-col gap-3">
-                {isUserHost(user.id) && (
+                {isUserHost(user.userInfo.id) && (
                   <div className="flex-1 flex flex-col justify-start">
                     <RoomSettingsDialog>
                       <Button size="icon" className="self-end" variant="icon">
@@ -126,7 +126,7 @@ export function RoomHeader() {
                     onClick={toggleCompeting}
                   >
                     <p className="font-bold text-center text-md">
-                      {users[user.id]?.competing ? "SPECTATE" : "COMPETE"}
+                      {users[user.userInfo.id]?.competing ? "SPECTATE" : "COMPETE"}
                     </p>
                   </Button>
                 </div>
@@ -139,7 +139,7 @@ export function RoomHeader() {
           <Header>
             <div className="flex flex-row gap-3 items-center justify-center text-center items-stretch">
               <div className="flex-1 flex flex-col gap-3">
-                {isUserHost(user.id) && (
+                {isUserHost(user.userInfo.id) && (
                   <div className="flex-1 text-center flex flex-col justify-end">
                     <Button
                       variant="outline"
@@ -182,7 +182,7 @@ export function RoomHeader() {
               </div>
 
               <div className="flex-1 flex flex-col gap-3">
-                {isUserHost(user.id) && (
+                {isUserHost(user.userInfo.id) && (
                   <div className="flex-1 flex flex-col justify-start">
                     <RoomSettingsDialog>
                       <Button
@@ -204,7 +204,7 @@ export function RoomHeader() {
                     onKeyDown={(e) => e.preventDefault()}
                   >
                     <p className="font-bold text-center text-md">
-                      {users[user.id]?.competing ? "SPECTATE" : "COMPETE"}
+                      {users[user.userInfo.id]?.competing ? "SPECTATE" : "COMPETE"}
                     </p>
                   </Button>
                 </div>
@@ -217,7 +217,7 @@ export function RoomHeader() {
           <Header>
             <div className="flex flex-row gap-3 items-center justify-center text-center items-stretch">
               <div className="flex-1 flex flex-col gap-3">
-                {isUserHost(user.id) && (
+                {isUserHost(user.userInfo.id) && (
                   <div className="flex-1 flex flex-col justify-end">
                     <Button
                       variant="outline"
@@ -240,7 +240,7 @@ export function RoomHeader() {
                 </h4>
               </div>
               <div className="flex-1 flex flex-col gap-3">
-                {isUserHost(user.id) && (
+                {isUserHost(user.userInfo.id) && (
                   <div className="flex-1 flex flex-col justify-start">
                     <RoomSettingsDialog>
                       <Button size="icon" className="self-end" variant="icon">
@@ -256,7 +256,7 @@ export function RoomHeader() {
                     onClick={toggleCompeting}
                   >
                     <p className="font-bold text-center text-md">
-                      {users[user.id]?.competing ? "SPECTATE" : "COMPETE"}
+                      {users[user.userInfo.id]?.competing ? "SPECTATE" : "COMPETE"}
                     </p>
                   </Button>
                 </div>

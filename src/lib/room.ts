@@ -15,7 +15,7 @@ export async function createRoom(
   const room: IRoom = {
     id: roomId ? roomId : new ObjectId().toString(),
     roomName: roomSettings.roomName,
-    host: initialHost,
+    host: initialHost?.userInfo,
     users: {},
     solves: [],
     roomEvent: roomSettings.roomEvent,

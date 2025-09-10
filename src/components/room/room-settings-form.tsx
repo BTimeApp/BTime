@@ -160,7 +160,7 @@ export default function RoomSettingsForm({
           SOCKET_CLIENT.UPDATE_ROOM,
           newRoomSettings,
           roomId,
-          user.id,
+          user.userInfo.id,
           onUpdateCallback
         );
       }

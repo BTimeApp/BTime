@@ -3,7 +3,6 @@ import { PassportStatic } from "passport";
 import { users } from "@/server/server-objects";
 import { Strategy as CustomStrategy } from "passport-custom";
 import { UserModel, UserDocument, toIUser } from "@/server/models/user";
-import { iUserToIUserInfo } from "@/types/user";
 
 export function createWCAAuth(passport: PassportStatic): Router {
   // add WCA auth strategy to passport
@@ -143,11 +142,11 @@ export function createWCAAuth(passport: PassportStatic): Router {
           if (!user) {
             //this one should never happen...
             console.log("No User in auth wca callback...");
-          } else if (users.get(user.id)) {
+          } else if (users.get(user.userInfo.id)) {
             //already exists in users...
-            console.log(`User ${user.id} double login.`);
+            console.log(`User ${user.userInfo.id} double login.`);
           } else {
-            users.set(user.id, iUserToIUserInfo(user));
+            users.set(user.userInfo.id, user.userInfo);
           }
 
           res.redirect(redirectTo);

@@ -9,7 +9,7 @@ export function createAuthRouter(
 ) {
 
   passport.serializeUser((user: Express.User, done) => {
-    done(null, user.id);
+    done(null, user.userInfo.id);
   });
 
   passport.deserializeUser(async (id: string, done) => {

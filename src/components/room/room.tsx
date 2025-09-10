@@ -100,7 +100,7 @@ export default function Room() {
     // only join room upon login
     socket.emit(
       SOCKET_CLIENT.JOIN_ROOM,
-      { userId: user.id, roomId: roomId, password: undefined },
+      { userId: user.userInfo.id, roomId: roomId, password: undefined },
       joinRoomCallback
     );
 
@@ -160,7 +160,7 @@ export default function Room() {
         <PasswordPrompt
           socket={socket}
           roomId={roomId}
-          userId={user.id}
+          userId={user.userInfo.id}
           passwordValidationCallback={joinRoomCallback}
         />
       </div>
