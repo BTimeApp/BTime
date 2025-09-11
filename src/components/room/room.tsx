@@ -50,6 +50,7 @@ export default function Room() {
     (roomValid: boolean, room?: IRoom, extraData?: Record<string, string>) => {
       if (!roomValid) {
         setIsRoomValid(false);
+        toast.error("Room does not exist. Returning to home page.");
         return;
       }
 
