@@ -67,7 +67,7 @@ export default async function RootLayout({
             </ThemeProvider>
           </SocketProvider>
         </SessionProvider>
-        <Toaster position="top-center" richColors />
+        <Toaster position="top-center" richColors closeButton />
       </body>
     </html>
   );
