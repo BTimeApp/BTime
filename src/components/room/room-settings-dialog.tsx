@@ -2,12 +2,15 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
-  DialogTrigger
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import React, { useCallback, useState } from "react";
 import RoomSettingsForm from "@/components/room/room-settings-form";
 import { useRoomStore } from "@/context/room-context";
 import { useParams } from "next/navigation";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "../ui/button";
+import RoomActionsForm from "./room-actions-form";
 
 type RoomSettingsDialogProps = {
   children: React.ReactNode;
@@ -40,7 +43,7 @@ export default function RoomSettingsDialog({
   const roomId = params.roomId;
 
   const [open, setOpen] = useState<boolean>(false);
-  const handleSubmit = useCallback(() => {
+  const closeDialogCallback = useCallback(() => {
     setOpen(false);
   }, []);
 
@@ -48,20 +51,32 @@ export default function RoomSettingsDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent>
-        <DialogTitle>Edit Room Settings</DialogTitle>
-        <RoomSettingsForm
-          roomName={roomName}
-          roomEvent={roomEvent}
-          roomFormat={roomFormat}
-          matchFormat={matchFormat}
-          setFormat={setFormat}
-          isPrivate={isPrivate}
-          nSets={nSets}
-          nSolves={nSolves}
-          roomId={roomId}
-          createNewRoom={false}
-          onUpdateCallback={handleSubmit}
-        />
+        <DialogTitle>Room Settings</DialogTitle>
+
+        <Tabs defaultValue="actions">
+          <TabsList>
+            <TabsTrigger value="actions">Actions</TabsTrigger>
+            <TabsTrigger value="settings">Edit Room</TabsTrigger>
+          </TabsList>
+          <TabsContent value="actions">
+            <RoomActionsForm onSubmitCallback={closeDialogCallback}/>
+          </TabsContent>
+          <TabsContent value="settings">
+            <RoomSettingsForm
+              roomName={roomName}
+              roomEvent={roomEvent}
+              roomFormat={roomFormat}
+              matchFormat={matchFormat}
+              setFormat={setFormat}
+              isPrivate={isPrivate}
+              nSets={nSets}
+              nSolves={nSolves}
+              roomId={roomId}
+              createNewRoom={false}
+              onUpdateCallback={closeDialogCallback}
+            />
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

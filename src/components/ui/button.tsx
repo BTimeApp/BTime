@@ -26,7 +26,9 @@ const buttonVariants = cva(
         ghost:
           "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
         icon:
-          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 px-0",
+          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 px-0 hover:scale-105",
+        danger:
+        "text-error font-bold bg-color-clear border-2 border-error hover:text-error  hover:scale-105",
         reset:
           "bg-error text-error-foreground hover:bg-error/80 hover:text-error-foreground/80",
         link: "text-primary underline-offset-4 hover:underline",
