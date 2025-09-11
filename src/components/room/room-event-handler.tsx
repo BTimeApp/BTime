@@ -9,6 +9,7 @@ import { isLiveTimer } from "@/types/timer-type";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
+import { useSocketEvent } from "@/hooks/use-socket-event";
 
 /**
  * Handles all events for the room so that the room component itself doesn't have to re-render upon state udates
@@ -48,20 +49,7 @@ export default function RoomEventHandler() {
     s.clearUserLiveStartTimes,
     s.clearUserLiveTimes,
   ]);
-  const { socket, socketConnected } = useSocket();
-
-  useEffect(() => {
-    const leaveRoom = () => {
-      // clearInterval(interval);
-      socket.emit(SOCKET_CLIENT.LEAVE_ROOM, roomId);
-    };
-
-    window.addEventListener("beforeunload", leaveRoom);
-
-    return () => {
-      window.removeEventListener("beforeunload", leaveRoom);
-    };
-  }, [socket, roomId]);
+  const { socket } = useSocket();
 
   //live update for start time
   const liveTimerStartTime = useStartTimeOnTransition<SolveStatus>(
@@ -82,41 +70,6 @@ export default function RoomEventHandler() {
     socket.emit(SOCKET_CLIENT.UPDATE_SOLVE_STATUS, localSolveStatus);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localSolveStatus]);
-
-  /**
-   * Connect incoming room_update events from websocket with zustand store handleRoomUpdate
-   */
-  useEffect(() => {
-    socket.on(SOCKET_SERVER.ROOM_UPDATE, handleRoomUpdate);
-
-    return () => {
-      socket.off(SOCKET_SERVER.ROOM_UPDATE, handleRoomUpdate);
-    };
-  }, [handleRoomUpdate, socket]);
-
-  /**
-   * Callback for solve finish websocket event
-   */
-  const solveFinishedHandler = useCallback(() => {
-    resetLocalSolveStatus();
-    setLocalPenalty("OK");
-    clearUserLiveStartTimes();
-    clearUserLiveTimes();
-  }, [
-    resetLocalSolveStatus,
-    setLocalPenalty,
-    clearUserLiveStartTimes,
-    clearUserLiveTimes,
-  ]);
-
-  // listen for solve finished websocket event
-  useEffect(() => {
-    socket.on(SOCKET_SERVER.SOLVE_FINISHED_EVENT, solveFinishedHandler);
-    return () => {
-      socket.off(SOCKET_SERVER.SOLVE_FINISHED_EVENT, solveFinishedHandler);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [solveFinishedHandler]);
 
   // update local result upon local penalty update
   useEffect(() => {
@@ -145,17 +98,6 @@ export default function RoomEventHandler() {
     }
   }, [socket, timerType]);
 
-  useCallbackOnTransition<SolveStatus>(
-    localSolveStatus,
-    "SOLVING",
-    broadcastStartLiveTimerCallback
-  );
-  useCallbackOnTransition<SolveStatus>(
-    localSolveStatus,
-    "SUBMITTING",
-    broadcastStopLiveTimerCallback
-  );
-
   const userStartedLiveTimerCallback = useCallback(
     (userId: string) => {
       addUserLiveStartTime(userId, performance.now());
@@ -171,50 +113,75 @@ export default function RoomEventHandler() {
   );
 
   /**
-   * For all socket listen events
+   * Callback for solve finish websocket event
    */
-  useEffect(() => {
-    if (socket.connected) {
-      socket.on(
-        SOCKET_SERVER.USER_START_LIVE_TIMER,
-        userStartedLiveTimerCallback
-      );
-      socket.on(
-        SOCKET_SERVER.USER_STOP_LIVE_TIMER,
-        userStoppedLiveTimerCallback
-      );
-    }
-
-    return () => {
-      socket.off(
-        SOCKET_SERVER.USER_START_LIVE_TIMER,
-        userStartedLiveTimerCallback
-      );
-      socket.off(
-        SOCKET_SERVER.USER_STOP_LIVE_TIMER,
-        userStoppedLiveTimerCallback
-      );
-    };
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const solveFinishedHandler = useCallback(() => {
+    resetLocalSolveStatus();
+    setLocalPenalty("OK");
+    clearUserLiveStartTimes();
+    clearUserLiveTimes();
   }, [
-    socketConnected,
-    userStartedLiveTimerCallback,
-    userStoppedLiveTimerCallback,
+    resetLocalSolveStatus,
+    setLocalPenalty,
+    clearUserLiveStartTimes,
+    clearUserLiveTimes,
   ]);
 
+  const handleSocketDisconnect = useCallback(() => {
+    toast.error("Socket disconnected...");
+    window.location.href = "/";
+  }, []);
+
+  /**
+   * Trigger callbacks on state transitions
+   */
+  useCallbackOnTransition<SolveStatus>(
+    localSolveStatus,
+    "SOLVING",
+    broadcastStartLiveTimerCallback
+  );
+  useCallbackOnTransition<SolveStatus>(
+    localSolveStatus,
+    "SUBMITTING",
+    broadcastStopLiveTimerCallback
+  );
+
+  /**
+   * Trigger callbacks on socket events coming from server
+   */
+  useSocketEvent(
+    socket,
+    SOCKET_SERVER.USER_START_LIVE_TIMER,
+    userStartedLiveTimerCallback
+  );
+  useSocketEvent(
+    socket,
+    SOCKET_SERVER.USER_STOP_LIVE_TIMER,
+    userStoppedLiveTimerCallback
+  );
+  useSocketEvent(
+    socket,
+    SOCKET_SERVER.SOLVE_FINISHED_EVENT,
+    solveFinishedHandler
+  );
+  useSocketEvent(socket, SOCKET_SERVER.ROOM_UPDATE, handleRoomUpdate);
+  useSocketEvent(socket, SOCKET_SERVER.DISCONNECT, handleSocketDisconnect);
+
+  /**
+   * Set up window listener to push leave room event when window closes before component unmounts
+   */
   useEffect(() => {
-    const onSocketDisconnect = () => {
-      toast.error("Socket disconnected...");
-      window.location.href = "/";
+    const leaveRoom = () => {
+      // clearInterval(interval);
+      socket.emit(SOCKET_CLIENT.LEAVE_ROOM, roomId);
     };
-    if (socket) {
-      socket.on("disconnect", onSocketDisconnect);
-    }
+
+    window.addEventListener("beforeunload", leaveRoom);
+
     return () => {
-      socket.off("disconnect", onSocketDisconnect);
+      window.removeEventListener("beforeunload", leaveRoom);
     };
-  }, [socket]);
+  }, [socket, roomId]);
 
   // this component should never render. it will house all logic though.
   return null;

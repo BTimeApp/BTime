@@ -101,4 +101,9 @@ export enum SOCKET_SERVER {
    * Broadcast to all user that one user has stopped a live timer
    */
   USER_STOP_LIVE_TIMER = "USER_STOP_LIVE_TIMER",
+
+  /**
+   * Disconnect the socket
+   */
+  DISCONNECT = "DISCONNECT"
 }
