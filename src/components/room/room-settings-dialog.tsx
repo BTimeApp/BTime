@@ -9,7 +9,6 @@ import RoomSettingsForm from "@/components/room/room-settings-form";
 import { useRoomStore } from "@/context/room-context";
 import { useParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "../ui/button";
 import RoomActionsForm from "./room-actions-form";
 
 type RoomSettingsDialogProps = {

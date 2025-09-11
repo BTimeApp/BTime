@@ -1,5 +1,5 @@
-import { useEffect } from "react"
-import { Socket } from "socket.io-client"
+import { useEffect } from "react";
+import { Socket } from "socket.io-client";
 
 /**
  * A generic hook for attaching listeners (on the client side) for socket events coming in from the server.
@@ -10,22 +10,22 @@ import { Socket } from "socket.io-client"
  *  - once: if we listen for this event only once or not
  */
 export function useSocketEvent(
-    socket: Socket,
-    event: string,
-    handler: (...args: any[]) => void,
-    active: boolean = true,
-    once: boolean = false
-  ) {
-    useEffect(() => {
-      if (!socket || !active) return
-    
-      console.log(`Attaching socket event ${event}: ${handler}}`)
-  
-      if (once) socket.once(event, handler)
-      else socket.on(event, handler)
-  
-      return () => {
-        socket.off(event, handler)
-      }
-    }, [socket, event, handler, active, once])
-  }
+  socket: Socket,
+  event: string,
+  handler: (...args: any[]) => void, //eslint-disable @typescript-eslint/no-explicit-any
+  active: boolean = true,
+  once: boolean = false
+) {
+  useEffect(() => {
+    if (!socket || !active) return;
+
+    console.log(`Attaching socket event ${event}: ${handler}}`);
+
+    if (once) socket.once(event, handler);
+    else socket.on(event, handler);
+
+    return () => {
+      socket.off(event, handler);
+    };
+  }, [socket, event, handler, active, once]);
+}

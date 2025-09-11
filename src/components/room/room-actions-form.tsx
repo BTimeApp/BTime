@@ -15,14 +15,14 @@ export default function RoomActionsForm({onSubmitCallback}: RoomActionsFormProps
       socket.emit(SOCKET_CLIENT.RESET_ROOM);
       onSubmitCallback();
     }
-  }, [socket]);
+  }, [socket, onSubmitCallback]);
 
   const forceNextSolve = useCallback(() => {
     if (socket) {
         socket.emit(SOCKET_CLIENT.FORCE_NEXT_SOLVE);
         onSubmitCallback();
       }
-  }, [socket]);
+  }, [socket, onSubmitCallback]);
 
   if (!socket || !socket.connected) {
     return <div>
