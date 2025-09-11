@@ -63,6 +63,11 @@ export enum SOCKET_CLIENT {
   SKIP_SCRAMBLE = "SKIP_SCRAMBLE",
 
   /**
+   * Host is forcing a new solve
+   */
+  FORCE_NEXT_SOLVE = "FORCE_NEXT_SOLVE",
+
+  /**
    * User is leaving a room
    */
   LEAVE_ROOM = "LEAVE_ROOM",

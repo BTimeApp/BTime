@@ -135,7 +135,7 @@ const listenSocketEvents = (io: Server) => {
       }
     }
 
-    function handleRoomDisconnect(userId: string, roomId: string) {
+    async function handleRoomDisconnect(userId: string, roomId: string) {
       if (!userId || !roomId) return;
       console.log(`User ${userId} disconnected from room ${roomId}`);
       const room = rooms.get(roomId);
@@ -196,7 +196,7 @@ const listenSocketEvents = (io: Server) => {
 
       // handle case that this user was the last one to submit a time/compete
       if (checkRoomSolveFinished(room)) {
-        handleSolveFinished(room);
+        await handleSolveFinished(room);
         io.to(roomId.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
       }
 
@@ -397,6 +397,21 @@ const listenSocketEvents = (io: Server) => {
       }
     });
 
+    socket.on(SOCKET_CLIENT.FORCE_NEXT_SOLVE, async () =>{
+      console.log(
+        `User ${socket.user?.userInfo.id} is trying to skip the current solve in room ${socket.roomId}.`
+      );
+      const room = getSocketRoom();
+      if (!room) return;
+
+      if (room.state == "STARTED") {
+        await handleSolveFinished(room);
+        io.to(room.id).emit(SOCKET_SERVER.ROOM_UPDATE, room);
+      } else {
+        console.log(`Cannot skip scramble when room state is ${room.state}`);
+      }
+    });
+
     /**
      * Upon host starting the room
      */
@@ -461,7 +476,7 @@ const listenSocketEvents = (io: Server) => {
      */
     socket.on(
       SOCKET_CLIENT.UPDATE_SOLVE_STATUS,
-      (newUserStatus: SolveStatus) => {
+      async (newUserStatus: SolveStatus) => {
         if (socket.roomId && socket.user) {
           const room = rooms.get(socket.roomId);
           if (!room) return;
@@ -481,7 +496,7 @@ const listenSocketEvents = (io: Server) => {
             if (newUserStatus === "FINISHED") {
               const solveFinished: boolean = checkRoomSolveFinished(room);
               if (solveFinished) {
-                handleSolveFinished(room);
+                await handleSolveFinished(room);
               }
             }
 
@@ -598,23 +613,23 @@ const listenSocketEvents = (io: Server) => {
     /**
      * User has left the room. Handle
      */
-    socket.on(SOCKET_CLIENT.LEAVE_ROOM, (roomId: string) => {
+    socket.on(SOCKET_CLIENT.LEAVE_ROOM, async (roomId: string) => {
       // console.log(
       //   `User ${socket.user?.userInfo.userName} (${userId}) left room ${roomId} `
       // );
-      handleRoomDisconnect(userId, roomId);
+      await handleRoomDisconnect(userId, roomId);
     });
 
     /**
      * Upon socket disconnection - automatically trigger on client closing all webpages
      */
-    socket.on("disconnect", (reason) => {
+    socket.on("disconnect", async (reason) => {
       console.log(
         `User ${socket.user?.userInfo.userName} (${userId}) disconnect from socket with reason: ${reason}`
       );
       //handle potential room DC
       if (socket.roomId) {
-        handleRoomDisconnect(userId, socket.roomId);
+        await handleRoomDisconnect(userId, socket.roomId);
       }
 
       //handle user DC

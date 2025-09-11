@@ -149,7 +149,7 @@ export function RoomHeader() {
                       onKeyDown={(e) => e.preventDefault()}
                     >
                       <h1 className={cn("font-bold text-center text-md")}>
-                        NEXT SCRAMBLE
+                        NEW SCRAMBLE
                       </h1>
                     </Button>
                   </div>

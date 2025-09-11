@@ -17,6 +17,13 @@ export default function RoomActionsForm({onSubmitCallback}: RoomActionsFormProps
     }
   }, [socket]);
 
+  const forceNextSolve = useCallback(() => {
+    if (socket) {
+        socket.emit(SOCKET_CLIENT.FORCE_NEXT_SOLVE);
+        onSubmitCallback();
+      }
+  }, [socket]);
+
   if (!socket || !socket.connected) {
     return <div>
         <p>You are not connected to the socket.</p>
@@ -26,7 +33,7 @@ export default function RoomActionsForm({onSubmitCallback}: RoomActionsFormProps
   return (
     <div className="flex flex-col gap-2 w-fit">
       <Button onClick={resetRoom} variant="danger">Reset Room</Button>
-      {/* <Button variant="danger">Force Next Solve</Button> */}
+      <Button onClick={forceNextSolve} variant="danger">Force Next Solve</Button>
     </div>
   );
 }
