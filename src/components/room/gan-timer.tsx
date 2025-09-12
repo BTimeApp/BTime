@@ -9,8 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Subscription } from "react-hook-form/dist/utils/createSubject";
 import { toast } from "sonner";
 import { useRoomStore } from "@/context/room-context";
-import { useSocket } from "@/context/socket-context";
-import { SOCKET_CLIENT } from "@/types/socket_protocol";
 import InspectionCountdown from "@/components/room/inspection-countdown";
 import StopwatchTimer from "@/components/room/stopwatch-timer";
 import { Penalty } from "@/types/result";
@@ -47,7 +45,6 @@ export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
     s.updateLocalSolveStatus,
     s.resetLocalSolveStatus,
   ]);
-  const { socket } = useSocket();
 
   /**
    * Main callback logic for updating client state when gan timer pushes a new event
@@ -76,7 +73,8 @@ export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
           switch (localSolveStatus) {
             case "IDLE":
               //we cannot extract the current display time to check whether or not to inspect or not b/c upon receiving this event, the current display time is 0
-              if (useInspection && previousDisplayTimeMS.current === 0) updateLocalSolveStatus("");
+              if (useInspection && previousDisplayTimeMS.current === 0)
+                updateLocalSolveStatus("");
               break;
             case "INSPECTING":
               //user cancels inspection - go back to idle.
@@ -105,8 +103,6 @@ export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
           } else {
             updateLocalSolveStatus("TIMER_START");
           }
-          if (socket && socket.connected)
-            socket.emit(SOCKET_CLIENT.START_LIVE_TIMER);
           setTextStyle("");
           break;
         case GanTimerState.STOPPED:
@@ -115,9 +111,6 @@ export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
           if (localSolveStatus === "SOLVING") {
             //truncate to hundredths + handle updaatelocalsolvestatus to update to SUBMITTING
             onFinishTimer(Math.floor(actualTimeMS / 10));
-
-            if (socket && socket.connected)
-              socket.emit(SOCKET_CLIENT.STOP_LIVE_TIMER);
           }
 
           //update previous display time regardless of whether or not it matters for client state
@@ -141,7 +134,6 @@ export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
       localSolveStatus,
       useInspection,
       localInspectionPenalty,
-      socket,
       onFinishInspection,
       onFinishTimer,
       resetLocalSolveStatus,
@@ -171,7 +163,9 @@ export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
       connection.current = await connectGanTimer();
       setTimerState(GanTimerState.IDLE);
       setConnected(true);
-      previousDisplayTimeMS.current = (await connection.current.getRecordedTimes()).displayTime.asTimestamp;
+      previousDisplayTimeMS.current = (
+        await connection.current.getRecordedTimes()
+      ).displayTime.asTimestamp;
       //eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error(err.message);
