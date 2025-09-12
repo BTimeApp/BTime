@@ -61,7 +61,7 @@ export type RoomStore = {
   setTimerType: (timerType: TimerType) => void;
   setDrawScramble: (drawScramble: boolean) => void;
 
-  isUserHost: (userId: string) => boolean;
+  isUserHost: (userId: string | undefined) => boolean;
   getMostRecentScramble: () => string;
 
   updateLocalSolveStatus: (event?: string) => void;
@@ -124,7 +124,9 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
     setHostId: (hostId: string) => set(() => ({ hostId: hostId })),
     setLiveTimerStartTime: (time: number) =>
       set(() => ({ liveTimerStartTime: time })),
-    isUserHost: (userId: string) => {
+    isUserHost: (userId: string | undefined) => {
+      if (userId === undefined) return false;
+
       const hostId = get().hostId;
       return userId === hostId;
     },

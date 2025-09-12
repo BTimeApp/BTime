@@ -68,6 +68,21 @@ export enum SOCKET_CLIENT {
   FORCE_NEXT_SOLVE = "FORCE_NEXT_SOLVE",
 
   /**
+   * Kick user from room (host only)
+   */
+  KICK_USER = "KICK_USER",
+
+  /**
+   * Ban user from room (host only)
+   */
+  BAN_USER = "BAN_USER",
+
+  /**
+   * Unban user from room (host only)
+   */
+  UNBAN_USER = "UNBAN_USER",
+
+  /**
    * User is leaving a room
    */
   LEAVE_ROOM = "LEAVE_ROOM",
@@ -101,6 +116,16 @@ export enum SOCKET_SERVER {
    * Broadcast to all user that one user has stopped a live timer
    */
   USER_STOP_LIVE_TIMER = "USER_STOP_LIVE_TIMER",
+
+  /**
+   * This user is kicked
+   */
+  USER_KICKED = "USER_KICKED",
+
+  /**
+   * This user is banned
+   */
+  USER_BANNED = "USER_BANNED",
 
   /**
    * Disconnect the socket

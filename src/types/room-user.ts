@@ -9,6 +9,7 @@ export interface IRoomUser {
   joinedAt: Date;
   active: boolean; //true = in room, false = not in room
   competing: boolean; //false = spectating
+  banned: boolean; //true = banned
   userStatus: SolveStatus;
   currentResult?: IResult; //this should only ever hold a result for the CURRENT solve (duplicate data)
 }

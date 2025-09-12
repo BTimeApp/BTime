@@ -119,6 +119,25 @@ const listenSocketEvents = (io: Server) => {
     }
   }
 
+  function socketIntersection(roomA: string, roomB: string) {
+    /**
+     * As of v4, socket.io does not support intersection logic, only union logic.
+     * We implement the intersection with set intersect, which is O(min(|A|, |B|))
+     */
+    const setA = io.sockets.adapter.rooms.get(roomA);
+    const setB = io.sockets.adapter.rooms.get(roomB);
+
+    // Handle edge cases
+    if (!setA || !setB) return [];
+
+    // Always iterate over the smaller set for efficiency
+    const [smaller, larger] =
+      setA.size <= setB.size ? [setA, setB] : [setB, setA];
+
+    // Find intersection by filtering the smaller set
+    return [...smaller].filter((socketId) => larger.has(socketId));
+  }
+
   io.on("connection", (socket: CustomSocket) => {
     //since we require a user to log in, access and set first.
     onConnect(socket);
@@ -210,6 +229,13 @@ const listenSocketEvents = (io: Server) => {
       return rooms.get(socket.roomId);
     }
 
+    function userIsHost(): boolean {
+      const room = getSocketRoom();
+      if (!room || !socket.user) return false;
+
+      return room.host != null && room.host.id === socket.user?.userInfo.id;
+    }
+
     socket.on(
       SOCKET_CLIENT.CREATE_ROOM,
       async (
@@ -220,7 +246,11 @@ const listenSocketEvents = (io: Server) => {
         while (rooms.get(roomId)) {
           roomId = new ObjectId().toString();
         }
-        const room: IRoom = await createRoom(roomSettings, roomId, socket.user?.userInfo);
+        const room: IRoom = await createRoom(
+          roomSettings,
+          roomId,
+          socket.user?.userInfo
+        );
 
         rooms.set(room.id, room);
         callback(roomId);
@@ -299,6 +329,19 @@ const listenSocketEvents = (io: Server) => {
           return;
         }
 
+        //validate user isn't banned
+        if (
+          Object.keys(room.users).includes(userId) &&
+          room.users[userId].banned
+        ) {
+          console.log(`Banned user ${userId} trying to join room ${roomId}.`);
+
+          joinRoomCallback(true, undefined, {
+            USER_BANNED: "",
+          });
+          return;
+        }
+
         //validate user is not already in this room
         if (
           Object.keys(room.users).includes(userId) &&
@@ -358,6 +401,7 @@ const listenSocketEvents = (io: Server) => {
             joinedAt: new Date(),
             active: true,
             competing: true,
+            banned: false,
             userStatus: "IDLE",
             currentResult: undefined,
           };
@@ -397,7 +441,7 @@ const listenSocketEvents = (io: Server) => {
       }
     });
 
-    socket.on(SOCKET_CLIENT.FORCE_NEXT_SOLVE, async () =>{
+    socket.on(SOCKET_CLIENT.FORCE_NEXT_SOLVE, async () => {
       console.log(
         `User ${socket.user?.userInfo.id} is trying to skip the current solve in room ${socket.roomId}.`
       );
@@ -410,6 +454,67 @@ const listenSocketEvents = (io: Server) => {
       } else {
         console.log(`Cannot skip scramble when room state is ${room.state}`);
       }
+    });
+
+    socket.on(SOCKET_CLIENT.BAN_USER, (userId: string) => {
+      const room = getSocketRoom();
+      if (!room || !userIsHost()) return;
+
+      const banUser = room?.users[userId];
+      if (!banUser) return;
+      banUser.banned = true;
+
+      const banUserSockets = socketIntersection(userId, room.id);
+
+      // Emit to each socket in the intersection
+      banUserSockets.forEach((kickUserSocketId: string) => {
+        io.to(kickUserSocketId).emit(SOCKET_SERVER.USER_BANNED);
+      });
+
+      console.log(
+        `User ${socket.user?.userInfo.userName} banned user ${banUser.user.userName} from room ${socket.roomId}.`
+      );
+
+      //need to room update
+      io.to(room.id).emit(SOCKET_SERVER.ROOM_UPDATE, room);
+    });
+
+    socket.on(SOCKET_CLIENT.UNBAN_USER, (userId: string) => {
+      const room = getSocketRoom();
+      if (!room || !userIsHost()) return;
+
+      const banUser = room?.users[userId];
+      if (!banUser) return;
+      banUser.banned = false;
+
+      console.log(
+        `User ${socket.user?.userInfo.userName} unbanned user ${banUser.user.userName} from room ${socket.roomId}.`
+      );
+
+      //need to room update
+      io.to(room.id).emit(SOCKET_SERVER.ROOM_UPDATE, room);
+    });
+
+    socket.on(SOCKET_CLIENT.KICK_USER, async (userId: string) => {
+      const room = getSocketRoom();
+      if (!room || !userIsHost()) return;
+
+      const kickUser = room?.users[userId];
+      if (!kickUser) return;
+
+      const kickUserSockets = socketIntersection(userId, room.id);
+
+      // Emit to each socket in the intersection
+      kickUserSockets.forEach((kickUserSocketId: string) => {
+        io.to(kickUserSocketId).emit(SOCKET_SERVER.USER_KICKED);
+      });
+
+      console.log(
+        `User ${socket.user?.userInfo.userName} kicked user ${kickUser.user.userName} from room ${socket.roomId}.`
+      );
+
+      //need to room update
+      io.to(room.id).emit(SOCKET_SERVER.ROOM_UPDATE, room);
     });
 
     /**
@@ -585,7 +690,11 @@ const listenSocketEvents = (io: Server) => {
       if (socket.roomId && socket.user) {
         const room = rooms.get(socket.roomId);
         console.log("toggle call");
-        if (!room || room.users[socket.user?.userInfo.id].competing == competing) return;
+        if (
+          !room ||
+          room.users[socket.user?.userInfo.id].competing == competing
+        )
+          return;
 
         console.log(
           `User ${socket.user?.userInfo.id} is now ${

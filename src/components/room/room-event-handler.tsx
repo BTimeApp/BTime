@@ -127,6 +127,17 @@ export default function RoomEventHandler() {
     clearUserLiveTimes,
   ]);
 
+  const handleLocalUserKicked = useCallback(() => {
+    console.log("User kicked");
+    toast.warning("You were kicked from the room");
+    window.location.href = "/";
+  }, []);
+
+  const handleLocalUserBanned = useCallback(() => {
+    toast.error("You were banned from the room");
+    window.location.href = "/";
+  }, [])
+
   const handleSocketDisconnect = useCallback(() => {
     toast.error("Socket disconnected...");
     window.location.href = "/";
@@ -165,6 +176,9 @@ export default function RoomEventHandler() {
     solveFinishedHandler
   );
   useSocketEvent(socket, SOCKET_SERVER.ROOM_UPDATE, handleRoomUpdate);
+
+  useSocketEvent(socket, SOCKET_SERVER.USER_KICKED, handleLocalUserKicked);
+  useSocketEvent(socket, SOCKET_SERVER.USER_BANNED, handleLocalUserBanned);
   useSocketEvent(socket, SOCKET_SERVER.DISCONNECT, handleSocketDisconnect);
 
   /**

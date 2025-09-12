@@ -66,6 +66,11 @@ export default function Room() {
           toast.error("Wrong password entered. Try again.");
         }
 
+        if (Object.keys(extraData).includes("USER_BANNED")) {
+          router.push("/");
+          toast.error("You are banned from this room.");
+        }
+
         if (Object.keys(extraData).includes("EXISTING_USER_INFO")) {
           //special process user info
           handleRoomUserUpdate(room!.users[extraData["EXISTING_USER_INFO"]]);
@@ -77,6 +82,7 @@ export default function Room() {
       handleRoomUserUpdate,
       setIsPasswordAuthenticated,
       setIsRoomValid,
+      router
     ]
   );
 

@@ -15,6 +15,8 @@ import TimerSection from "@/components/room/timer-section";
 import RoomSubmittingButtons from "@/components/room/room-submitting-buttons";
 import UserRoomSettingsDialog from "@/components/room/user-room-settings-dialog";
 import UserLiveTimer from "@/components/room/user-live-timer";
+import RoomUserDialog from "./room-user-dialog";
+import { useSession } from "@/context/session-context";
 
 type RoomPanelProps = {
   className?: string;
@@ -212,6 +214,8 @@ function UserRoomPanel({
 }
 
 function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
+  const {user: localUser} = useSession();
+
   const [
     users,
     solves,
@@ -223,6 +227,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
     nSolves,
     userLiveTimerStartTimes,
     userLiveTimes,
+    isUserHost,
   ] = useRoomStore((s) => [
     s.users,
     s.solves,
@@ -234,6 +239,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
     s.nSolves,
     s.userLiveTimerStartTimes,
     s.userLiveTimes,
+    s.isUserHost,
   ]);
   const [sortedActiveUsers, setSortedActiveUsers] = useState<IRoomUser[]>(
     Object.values(users).filter((roomUser) => roomUser.active)
@@ -321,7 +327,9 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
         <div className="flex flex-col overflow-y-auto">
           {sortedActiveUsers.map((user, index) => (
             <div key={index} className="grid grid-cols-12">
-              <div className="col-span-5">{user.user.userName}</div>
+              <RoomUserDialog user={user} hostView={isUserHost(localUser?.userInfo.id)}>
+                <div className="col-span-5 hover:scale-105 hover:font-bold hover:underline">{user.user.userName}</div>
+              </RoomUserDialog>
               {roomState === "STARTED" && (
                 <div className="col-span-3">{userStatusText(user)}</div>
               )}
@@ -413,7 +421,8 @@ function UserListRoomPanel({ className }: UserListRoomPanelProps) {
       {roomState === "FINISHED" && (
         <div className="flex-1 text-center">
           <h2 className="text-xl font-bold">
-            Winner{roomWinners.length > 1 ? "s" : ""}: {roomWinners.map(uid => users[uid]!.user.userName).join(", ")}
+            Winner{roomWinners.length > 1 ? "s" : ""}:{" "}
+            {roomWinners.map((uid) => users[uid]!.user.userName).join(", ")}
           </h2>
         </div>
       )}
