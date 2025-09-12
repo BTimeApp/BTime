@@ -12,7 +12,8 @@ import { Socket } from "socket.io-client";
 export function useSocketEvent(
   socket: Socket,
   event: string,
-  handler: (...args: any[]) => void, //eslint-disable @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  handler: (...args: any[]) => void, 
   active: boolean = true,
   once: boolean = false
 ) {
