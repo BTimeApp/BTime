@@ -35,14 +35,14 @@ export default function RoomUserDialog({
         <DialogTitle>{user.user.userName}</DialogTitle>
         <div className="flex flex-row">
           <div className="flex-1">
-            <Avatar className="h-8 w-8 rounded-lg">
+            <Avatar className="h-40 w-40 rounded-lg">
               <AvatarImage src={user.user.avatarURL ?? "/images/C_logo.png"} />
               <AvatarFallback className="rounded-lg" />
             </Avatar>
           </div>
           <div className="flex-2 flex flex-col">
             {hostView && (
-              <div className="flex flex-row justify-self-end justify-end gap-1">
+              <div className="flex flex-row mt-auto justify-end gap-1">
                 {user.banned ? (
                   <UnbanUserButton
                     userId={user.user.id}
