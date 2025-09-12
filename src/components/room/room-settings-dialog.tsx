@@ -9,7 +9,8 @@ import RoomSettingsForm from "@/components/room/room-settings-form";
 import { useRoomStore } from "@/context/room-context";
 import { useParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import RoomActionsForm from "./room-actions-form";
+import RoomActionsForm from "@/components/room/room-actions-form";
+import { useSession } from "@/context/session-context";
 
 type RoomSettingsDialogProps = {
   children: React.ReactNode;
@@ -27,6 +28,7 @@ export default function RoomSettingsDialog({
     isPrivate,
     nSets,
     nSolves,
+    isUserHost
   ] = useRoomStore((s) => [
     s.roomName,
     s.roomEvent,
@@ -36,6 +38,7 @@ export default function RoomSettingsDialog({
     s.isPrivate,
     s.nSets,
     s.nSolves,
+    s.isUserHost
   ]);
 
   const params = useParams<{ roomId: string }>();
@@ -45,6 +48,13 @@ export default function RoomSettingsDialog({
   const closeDialogCallback = useCallback(() => {
     setOpen(false);
   }, []);
+
+  const {user} = useSession();
+
+  // this component is only meant to be accessible to the host. Do a sanity check here so we avoid rendering a dangerous form for non-host users
+  if (!isUserHost(user?.userInfo.id)) {
+    return <></>;
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

@@ -7,7 +7,7 @@ import {
   BanUserButton,
   KickUserButton,
   UnbanUserButton,
-} from "./user-action-buttons";
+} from "@/components/room/user-action-buttons";
 
 interface RoomUserDialogProps {
   user: IRoomUser;

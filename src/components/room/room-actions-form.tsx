@@ -3,7 +3,7 @@ import { useRoomStore } from "@/context/room-context";
 import { useSocket } from "@/context/socket-context";
 import { SOCKET_CLIENT } from "@/types/socket_protocol";
 import { useCallback } from "react";
-import RoomUserDialog from "./room-user-dialog";
+import RoomUserDialog from "@/components/room/room-user-dialog";
 import { useSession } from "@/context/session-context";
 
 interface RoomActionsFormProps {

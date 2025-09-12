@@ -15,7 +15,7 @@ import TimerSection from "@/components/room/timer-section";
 import RoomSubmittingButtons from "@/components/room/room-submitting-buttons";
 import UserRoomSettingsDialog from "@/components/room/user-room-settings-dialog";
 import UserLiveTimer from "@/components/room/user-live-timer";
-import RoomUserDialog from "./room-user-dialog";
+import RoomUserDialog from "@/components/room/room-user-dialog";
 import { useSession } from "@/context/session-context";
 
 type RoomPanelProps = {

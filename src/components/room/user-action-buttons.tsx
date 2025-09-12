@@ -1,6 +1,6 @@
 import { useSocket } from "@/context/socket-context";
 import { useCallback } from "react";
-import { Button } from "../ui/button";
+import { Button } from "@/components/ui/button";
 import { SOCKET_CLIENT } from "@/types/socket_protocol";
 
 interface UserActionButtonProps {
