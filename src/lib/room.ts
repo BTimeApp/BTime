@@ -82,7 +82,7 @@ export function checkSetFinished(room: IRoom): boolean {
    * Bo - either finish all solves, or someone has to take majority (> N / 2) of points available
    * Ft - someone has to get at least N points
    */
-  if (room.solves.length === 0) return false;
+  if (room.solves.length === 0 || room.settings.roomFormat === "CASUAL") return false;
   const currentSolve = room.solves.at(-1)!;
 
   switch (room.settings.setFormat) {
@@ -488,6 +488,9 @@ export function finishRoomSolve(room: IRoom) {
 
   // Mark solve as finished
   currentSolve.finished = true;
+
+  //if casual, no such thing as set or match win. return early.
+  if (room.settings.roomFormat === "CASUAL") return;
 
   //check set finished.
   const setFinished = checkSetFinished(room);
