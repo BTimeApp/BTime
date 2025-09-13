@@ -125,6 +125,7 @@ export const SET_FORMATS = [
   "FIRST_TO", //first to n solves
   "AVERAGE_OF", //average of n format (mean when dropping max and min) - n >= 3
   "MEAN_OF", //mean of n format
+  "FASTEST_OF", //fastest of n solves - same as Best of in WCA competitions
   //TOdO - support other formats like total time differential
 ] as const;
 
@@ -133,6 +134,7 @@ export const SET_FORMAT_MAP = new Map<SetFormat, string>([
   ["FIRST_TO", "First to"],
   ["AVERAGE_OF", "Average of"],
   ["MEAN_OF", "Mean of"],
+  ["FASTEST_OF", "Fastest of"]
 ]);
 
 export const MATCH_FORMAT_ABBREVIATION_MAP = new Map<MatchFormat, string>([
@@ -145,6 +147,7 @@ export const SET_FORMAT_ABBREVIATION_MAP = new Map<SetFormat, string>([
   ["FIRST_TO", "ft"],
   ["AVERAGE_OF", "ao"],
   ["MEAN_OF", "mo"],
+  ["FASTEST_OF", "fo"]
 ]);
 
 export function getFormatText(
@@ -228,6 +231,12 @@ export function getVerboseFormatText(
             nSolves +
             ` solve${nSolves > 1 ? "s" : ""}.`;
           break;
+        case "FASTEST_OF":
+          formatText +=
+            "Win a set by having the best single of " +
+            nSolves +
+            ` solve${nSolves > 1 ? "s" : ""}.`;
+          break;
       }
     } else {
       switch (setFormat) {
@@ -252,6 +261,12 @@ export function getVerboseFormatText(
         case "MEAN_OF":
           formatText +=
             "Win the match by having the best mean of " +
+            nSolves +
+            ` solve${nSolves > 1 ? "s" : ""}.`;
+          break;
+        case "FASTEST_OF":
+          formatText +=
+            "Win the match by having the best single of " +
             nSolves +
             ` solve${nSolves > 1 ? "s" : ""}.`;
           break;

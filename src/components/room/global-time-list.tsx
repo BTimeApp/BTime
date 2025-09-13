@@ -110,6 +110,9 @@ export default function GlobalTimeList({
             case "MEAN_OF":
               userPoints = Result.iMeanOf(userSetResults);
               break;
+            case "FASTEST_OF":
+              userPoints = Result.iMinOf(userSetResults);
+              break;
             default:
               break;
           }
@@ -172,6 +175,9 @@ export default function GlobalTimeList({
                   {setFormat === "MEAN_OF" && (
                     <TableCell className="w-10">Mean</TableCell>
                   )}
+                  {setFormat === "FASTEST_OF" && (
+                    <TableCell className="w-10">Best</TableCell>
+                  )}
 
                   {users.map((user) => {
                     return (
@@ -180,12 +186,12 @@ export default function GlobalTimeList({
                           {(setWinners?.includes(user.user.id) ||
                             matchWinners?.includes(user.user.id)) && <Crown />}
                           <div>
-                            {(setFormat === "AVERAGE_OF" || setFormat === "MEAN_OF") && ( solve.solve.results[user.user.id]
+                            {(setFormat === "AVERAGE_OF" || setFormat === "MEAN_OF" || setFormat === "FASTEST_OF") && ( solve.solve.results[user.user.id]
                               ? Result.fromIResult(
                                   solve.solve.results[user.user.id]
                                 ).toString() : "DNF")}
                             {(setFormat === "BEST_OF" || setFormat === "FIRST_TO") && (solve.solve.results[user.user.id]
-                              ? Result.fromIResult(solve.solve.results[user.user.id]).centiseconds() : 0)}
+                              ? Result.fromIResult(solve.solve.results[user.user.id]).getTime() : 0)}
                           </div>
                         </div>
                       </TableCell>

@@ -4,7 +4,7 @@ export const PENALTIES = ["OK", "+2", "DNF"];
 export type Penalty = (typeof PENALTIES)[number];
 
 export interface IResult {
-  time: number;
+  time: number; //centiseconds
   penalty: Penalty;
 }
 
@@ -12,7 +12,7 @@ export interface IResult {
  *
  */
 export class Result {
-  private time: number;
+  private time: number; //centiseconds
   private penalty: Penalty;
 
   constructor(input: string | number, penalty?: Penalty) {
@@ -132,10 +132,6 @@ export class Result {
     return resultString;
   }
 
-  centiseconds(): number {
-    return this.time;
-  }
-
   toString(): string {
     return Result.timeToString(this.time, this.penalty);
   }
@@ -184,6 +180,21 @@ export class Result {
   static iAverageOf(results: IResult[]): number {
     return Result.averageOf(
       results.map((iResult) => Result.fromIResult(iResult))
+    );
+  }
+
+  /**
+   * Returns the fastest result of the list in number format.
+   */
+  static minOf(results: Result[]): number {
+    return Math.min(...results.map((result) => result.toTime()));
+  }
+
+  static iMinOf(results: IResult[]): number {
+    return Math.min(
+      ...results.map((result) =>
+        Result.applyPenalty(result.time, result.penalty)
+      )
     );
   }
 

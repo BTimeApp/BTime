@@ -263,6 +263,9 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
           case "MEAN_OF":
             //sort by the LOWER mean
             return -(u2.points - u1.points);
+          case "FASTEST_OF":
+            //sort by the LOWER single
+            return (-u2.points - u1.points);
         }
       }
     },
@@ -323,6 +326,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
           )}
           {setFormat === "AVERAGE_OF" && <div className="col-span-2">Avg</div>}
           {setFormat === "MEAN_OF" && <div className="col-span-2">Mean</div>}
+          {setFormat === "FASTEST_OF" && <div className="col-span-2">Best</div>}
         </div>
         <div className="flex flex-col overflow-y-auto">
           {sortedActiveUsers.map((user, index) => (
@@ -341,7 +345,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
                   {Result.timeToString(user.points)}
                 </div>
               )}
-              {(setFormat === "BEST_OF" || setFormat === "FIRST_TO") && (
+              {(setFormat === "BEST_OF" || setFormat === "FIRST_TO" || setFormat === "FASTEST_OF") && (
                 <div className="col-span-2">{user.points}</div>
               )}
             </div>
