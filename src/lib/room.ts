@@ -257,9 +257,13 @@ export function findSetWinners(room: IRoom): string[] {
 
       const userMinTimes: Record<string, number> = roomUserIds.reduce(
         (acc, id) => {
-          acc[id] = Result.minOf(setSolves.map((roomSolve) =>
-            Object.keys(roomSolve.solve.results).includes(id) ? Result.fromIResult(roomSolve.solve.results[id]) : new Result(0, "DNF")
-          ));
+          acc[id] = Result.minOf(
+            setSolves.map((roomSolve) =>
+              Object.keys(roomSolve.solve.results).includes(id)
+                ? Result.fromIResult(roomSolve.solve.results[id])
+                : new Result(0, "DNF")
+            )
+          );
           return acc;
         },
         {} as Record<string, number>
@@ -268,9 +272,11 @@ export function findSetWinners(room: IRoom): string[] {
       // return all users better than the minimum time
       // prevent 0 points from being considered a max.
       const fastestTime = Math.min(...Object.values(userMinTimes));
-      if (fastestTime === Infinity) return [] //DNF was best
+      if (fastestTime === Infinity) return []; //DNF was best
 
-      return roomUserIds.filter(roomUser => userMinTimes[roomUser] == fastestTime);
+      return roomUserIds.filter(
+        (roomUser) => userMinTimes[roomUser] == fastestTime
+      );
     }
     default:
       throw Error(
@@ -341,12 +347,13 @@ export function findMatchWinners(room: IRoom): string[] {
         currentSolve.finished
       ) {
         /**
-         * in AO/MO mode, set only finishes when all solves are done.
+         * in AO/MO/FO mode, set only finishes when all solves are done.
          * in BO/FT mode, set can finish before the last solve when a user takes the set. In this case, we rely on other functions not checking for match winners before the set is finished (either by set win or by number of solves)
          */
         if (
           ((room.settings.setFormat === "AVERAGE_OF" ||
-            room.settings.setFormat === "MEAN_OF") &&
+            room.settings.setFormat === "MEAN_OF" ||
+            room.settings.setFormat === "FASTEST_OF") &&
             currentSolve.solveIndex === room.settings.nSolves!) ||
           room.settings.setFormat === "BEST_OF" ||
           room.settings.setFormat === "FIRST_TO"
@@ -425,8 +432,8 @@ export function finishRoomSolve(room: IRoom) {
   const currentResults = currentSolve.solve.results;
 
   if (
-    room.settings.setFormat == "BEST_OF" ||
-    room.settings.setFormat == "FIRST_TO" ||
+    room.settings.setFormat === "BEST_OF" ||
+    room.settings.setFormat === "FIRST_TO" ||
     room.settings.roomFormat === "CASUAL"
   ) {
     const eligibleResults: [string, IResult][] = Object.entries(currentResults);
@@ -455,7 +462,8 @@ export function finishRoomSolve(room: IRoom) {
     }
   } else if (
     room.settings.setFormat === "AVERAGE_OF" ||
-    room.settings.setFormat === "MEAN_OF"
+    room.settings.setFormat === "MEAN_OF" ||
+    room.settings.setFormat === "FASTEST_OF"
   ) {
     /**
      * update points to reflect the current average/mean for each user.
@@ -480,8 +488,11 @@ export function finishRoomSolve(room: IRoom) {
 
       if (room.settings.setFormat === "AVERAGE_OF") {
         room.users[roomUser.user.id].points = Result.iAverageOf(userResults);
-      } else {
+      } else if (room.settings.setFormat === "MEAN_OF") {
         room.users[roomUser.user.id].points = Result.iMeanOf(userResults);
+      } else if (room.settings.setFormat === "FASTEST_OF") {
+        // fastest of
+        room.users[roomUser.user.id].points = Result.iMinOf(userResults);
       }
     }
   }
@@ -503,12 +514,10 @@ export function finishRoomSolve(room: IRoom) {
     const matchFinished = checkMatchFinished(room);
     if (matchFinished) {
       const matchWinners: string[] = findMatchWinners(room);
-      if (matchWinners.length > 0) {
-        //handle match win
-        room.winners = matchWinners;
-        room.state = "FINISHED";
-        currentSolve.matchWinners = matchWinners;
-      }
+      //handle match finished
+      room.winners = matchWinners;
+      room.state = "FINISHED";
+      currentSolve.matchWinners = matchWinners;
     }
 
     // reset all users' points
