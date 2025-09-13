@@ -168,42 +168,36 @@ export function findSetWinners(room: IRoom): string[] {
           return roomUser.user.id;
         });
     case "AVERAGE_OF": {
-      //requires that competing user have done ALL solves in this set
       const setSolves = room.solves.filter(
         (roomSolve) => roomSolve.setIndex == room.currentSet
       );
+
       if (
         setSolves.length < (room.settings.nSolves || Number.POSITIVE_INFINITY)
       )
         return [];
 
-      let currentIds = new Set(roomUserIds);
-      for (const roomSolve of setSolves) {
-        const competedIds = new Set(Object.keys(roomSolve.solve.results));
-        currentIds = currentIds.intersection(competedIds);
-      }
-      const eligibleIds = [...currentIds];
-
-      if (eligibleIds.length == 0) return [];
-
-      const results: Record<string, Result[]> = eligibleIds.reduce(
+      const userAverages: Record<string, number> = roomUserIds.reduce(
         (acc, id) => {
-          acc[id] = setSolves.map((roomSolve) =>
-            Result.fromIResult(roomSolve.solve.results[id])
+          acc[id] = Result.averageOf(
+            setSolves.map((roomSolve) =>
+              Object.keys(roomSolve.solve.results).includes(id)
+                ? Result.fromIResult(roomSolve.solve.results[id])
+                : new Result(0, "DNF")
+            )
           );
           return acc;
         },
-        {} as Record<string, Result[]>
+        {} as Record<string, number>
       );
 
-      const averages: Record<string, number> = Object.fromEntries(
-        eligibleIds.map((id) => [id, Result.averageOf(results[id])])
-      );
+      // return all fastest users
+      const fastestAvg = Math.min(...Object.values(userAverages));
+      // prevent DNF from being considered a min
+      if (fastestAvg === Infinity) return []; //DNF was best
 
-      const minAverage = Math.min(...Object.values(averages));
-
-      return eligibleIds.filter(
-        (uid) => averages[uid] === minAverage && averages[uid] !== Infinity
+      return roomUserIds.filter(
+        (roomUser) => userAverages[roomUser] == fastestAvg
       );
     }
     case "MEAN_OF": {
@@ -211,38 +205,33 @@ export function findSetWinners(room: IRoom): string[] {
       const setSolves = room.solves.filter(
         (roomSolve) => roomSolve.setIndex == room.currentSet
       );
+
       if (
         setSolves.length < (room.settings.nSolves || Number.POSITIVE_INFINITY)
       )
         return [];
 
-      let currentIds = new Set(roomUserIds);
-      for (const roomSolve of setSolves) {
-        const competedIds = new Set(Object.keys(roomSolve.solve.results));
-        currentIds = currentIds.intersection(competedIds);
-      }
-      const eligibleIds = [...currentIds];
-
-      if (eligibleIds.length == 0) return [];
-
-      const results: Record<string, Result[]> = eligibleIds.reduce(
+      const userMeans: Record<string, number> = roomUserIds.reduce(
         (acc, id) => {
-          acc[id] = setSolves.map((roomSolve) =>
-            Result.fromIResult(roomSolve.solve.results[id])
+          acc[id] = Result.meanOf(
+            setSolves.map((roomSolve) =>
+              Object.keys(roomSolve.solve.results).includes(id)
+                ? Result.fromIResult(roomSolve.solve.results[id])
+                : new Result(0, "DNF")
+            )
           );
           return acc;
         },
-        {} as Record<string, Result[]>
+        {} as Record<string, number>
       );
 
-      const means: Record<string, number> = Object.fromEntries(
-        eligibleIds.map((id) => [id, Result.meanOf(results[id])])
-      );
+      // return all fastest users
+      const fastestMean = Math.min(...Object.values(userMeans));
+      // prevent DNF from being considered a min
+      if (fastestMean === Infinity) return []; //DNF was best
 
-      const minMean = Math.min(...Object.values(means));
-
-      return eligibleIds.filter(
-        (uid) => means[uid] === minMean && means[uid] !== Infinity
+      return roomUserIds.filter(
+        (roomUser) => userMeans[roomUser] == fastestMean
       );
     }
     case "FASTEST_OF": {
@@ -269,9 +258,9 @@ export function findSetWinners(room: IRoom): string[] {
         {} as Record<string, number>
       );
 
-      // return all users better than the minimum time
-      // prevent 0 points from being considered a max.
+      // return all fastest users
       const fastestTime = Math.min(...Object.values(userMinTimes));
+      // prevent DNF from being considered a min
       if (fastestTime === Infinity) return []; //DNF was best
 
       return roomUserIds.filter(
