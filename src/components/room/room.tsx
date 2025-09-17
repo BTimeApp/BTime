@@ -174,6 +174,9 @@ export default function Room() {
     );
   }
 
+  /**
+   * Only render proper content and set up event handling
+   */
   return (
     <div className="flex flex-col h-screen w-full">
       <RoomHeader />

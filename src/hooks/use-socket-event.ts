@@ -20,8 +20,6 @@ export function useSocketEvent(
   useEffect(() => {
     if (!socket || !active) return;
 
-    console.log(`Attaching socket event ${event}: ${handler}}`);
-
     if (once) socket.once(event, handler);
     else socket.on(event, handler);
 

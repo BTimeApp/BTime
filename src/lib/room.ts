@@ -1,7 +1,7 @@
 import { IRoom, IRoomSettings } from "@/types/room";
 import { ISolve } from "@/types/solve";
 import { IRoomSolve } from "@/types/room-solve";
-import { IResult, Result } from "@/types/result";
+import { Result } from "@/types/result";
 import { generateScramble } from "@/lib/utils";
 import { ObjectId } from "bson";
 import bcrypt from "bcrypt";
@@ -82,7 +82,8 @@ export function checkSetFinished(room: IRoom): boolean {
    * Bo - either finish all solves, or someone has to take majority (> N / 2) of points available
    * Ft - someone has to get at least N points
    */
-  if (room.solves.length === 0 || room.settings.roomFormat === "CASUAL") return false;
+  if (room.solves.length === 0 || room.settings.roomFormat === "CASUAL")
+    return false;
   const currentSolve = room.solves.at(-1)!;
 
   switch (room.settings.setFormat) {
@@ -413,10 +414,9 @@ export function finishRoomSolve(room: IRoom) {
 
   const currentSolve = room.solves.at(-1);
   if (!currentSolve) {
-    console.log(
+    throw Error(
       `finishRoomSolve: room ${room.id} has no currentSolve to finish`
     );
-    return;
   }
   const currentResults = currentSolve.solve.results;
 
@@ -425,29 +425,25 @@ export function finishRoomSolve(room: IRoom) {
     room.settings.setFormat === "FIRST_TO" ||
     room.settings.roomFormat === "CASUAL"
   ) {
-    const eligibleResults: [string, IResult][] = Object.entries(currentResults);
+    let currFastestResult: Result = new Result(0, "DNF");
+    let solveWinners: string[] = [];
 
-    let fastest_uid = null;
-    let fastest_result: Result | undefined = undefined;
-
-    for (const [userId, iResult] of eligibleResults) {
-      const result: Result = Result.fromIResult(iResult);
-      if (
-        result.getPenalty() !== "DNF" &&
-        (!fastest_result || result.isLessThan(fastest_result))
-      ) {
-        fastest_uid = userId;
-        fastest_result = result;
+    for (const [uid, iResult] of Object.entries(currentResults)) {
+      const result = Result.fromIResult(iResult);
+      if (iResult.penalty !== "DNF") {
+        if (result.isLessThan(currFastestResult)) {
+          solveWinners = [];
+          solveWinners.push(uid);
+          currFastestResult = result;
+        } else if (result.equals(currFastestResult) && iResult.penalty !== "DNF") {
+          solveWinners.push(uid);
+        }
       }
     }
 
-    if (fastest_result) {
-      if (!fastest_uid || !fastest_result) {
-        console.log(`Room ${room.id} has no winner for current solve. `);
-        return;
-      }
-      currentSolve.solveWinner = fastest_uid;
-      room.users[fastest_uid].points += 1;
+    currentSolve.solveWinners = solveWinners;
+    for (const uid of solveWinners) {
+      room.users[uid].points += 1;
     }
   } else if (
     room.settings.setFormat === "AVERAGE_OF" ||
@@ -464,10 +460,7 @@ export function finishRoomSolve(room: IRoom) {
     const setResults = room.solves
       .filter((solve) => solve.setIndex === room.currentSet)
       .map((solve) => solve.solve.results);
-    const eligibleUsers = Object.values(room.users).filter(
-      (roomUser) => roomUser.active && roomUser.competing
-    );
-    for (const roomUser of eligibleUsers) {
+    for (const roomUser of Object.values(room.users)) {
       //recalculate mean over recent set solves
       const userResults = setResults.map((resultMap) =>
         Object.hasOwn(resultMap, roomUser.user.id)
@@ -489,37 +482,37 @@ export function finishRoomSolve(room: IRoom) {
   // Mark solve as finished
   currentSolve.finished = true;
 
-  //if casual, no such thing as set or match win. return early.
-  if (room.settings.roomFormat === "CASUAL") return;
+  // //if casual, no such thing as set or match win. return early.
+  // if (room.settings.roomFormat === "CASUAL") return;
 
-  //check set finished.
-  const setFinished = checkSetFinished(room);
-  if (setFinished) {
-    // find set winners.
-    const setWinners: string[] = findSetWinners(room);
-    currentSolve.setWinners = setWinners;
+  // //check set finished.
+  // const setFinished = checkSetFinished(room);
+  // if (setFinished) {
+  //   // find set winners.
+  //   const setWinners: string[] = findSetWinners(room);
+  //   currentSolve.setWinners = setWinners;
 
-    // update set wins for set winners
-    setWinners.map((uid) => (room.users[uid].setWins += 1));
+  //   // update set wins for set winners
+  //   setWinners.map((uid) => (room.users[uid].setWins += 1));
 
-    // check match finished. right now a match can only be finished if the set is finished.
-    const matchFinished = checkMatchFinished(room);
-    if (matchFinished) {
-      const matchWinners: string[] = findMatchWinners(room);
-      //handle match finished
-      room.winners = matchWinners;
-      room.state = "FINISHED";
-      currentSolve.matchWinners = matchWinners;
-    }
+  //   // check match finished. right now a match can only be finished if the set is finished.
+  //   const matchFinished = checkMatchFinished(room);
+  //   if (matchFinished) {
+  //     const matchWinners: string[] = findMatchWinners(room);
+  //     //handle match finished
+  //     room.winners = matchWinners;
+  //     room.state = "FINISHED";
+  //     currentSolve.matchWinners = matchWinners;
+  //   }
 
-    // reset all users' points
-    Object.values(room.users).map((roomUser) => {
-      roomUser.points = 0;
-    });
-    // reset solve counter, update set counter
-    room.currentSolve = 0;
-    room.currentSet += 1;
-  }
+  //   // reset all users' points
+  //   Object.values(room.users).map((roomUser) => {
+  //     roomUser.points = 0;
+  //   });
+  //   // reset solve counter, update set counter
+  //   room.currentSolve = 0;
+  //   room.currentSet += 1;
+  // }
 }
 
 /** Generates a new solve for a room and its users. Does not update wins or points
@@ -548,15 +541,25 @@ export async function newRoomSolve(room: IRoom) {
   Object.values(room.users).map((roomUser) => {
     roomUser.currentResult = undefined;
   });
+
+  return newSolve;
 }
 
-export async function skipScramble(room: IRoom) {
+/**
+ * Resets the current solve to generate a new scramble
+ */
+export async function newScramble(room: IRoom) {
   if (room.solves.length == 0) return;
 
   room.solves.at(-1)!.solve.scramble = await generateScramble(
     room.settings.roomEvent
   );
   room.solves.at(-1)!.solve.results = {};
+
+  for (const roomUser of Object.values(room.users)) {
+    roomUser.currentResult = undefined;
+    roomUser.userStatus = "IDLE";
+  }
 }
 
 /**

@@ -10,7 +10,7 @@ import { IRoomUser } from "@/types/room-user";
 import { RoomState } from "@/types/room";
 import { StoreApi, createStore } from "zustand";
 import { timerAllowsInspection, TimerType } from "@/types/timer-type";
-import { Penalty, Result } from "@/types/result";
+import { IResult, Penalty, Result } from "@/types/result";
 import { SolveStatus } from "@/types/status";
 
 export type RoomStore = {
@@ -28,7 +28,7 @@ export type RoomStore = {
   nSets: number;
   nSolves: number;
   roomState: RoomState;
-  roomWinners: string[];
+  roomWinners: string[]; //user ids of all room winners
   isPrivate: boolean;
 
   //local (client) states
@@ -48,8 +48,8 @@ export type RoomStore = {
    * Map from user IDs to timestamps of when each user (potentially) started a live timer.
    * This is used to implement live time sharing (storage in client side) b/c storing on server makes calculating that live time difficult.
    */
-  userLiveTimerStartTimes: Map<string, number>;
-  userLiveTimes: Map<string, number>;
+  userLiveTimerStartTimes: Record<string, number>;
+  userLiveTimes: Record<string, number>;
 
   setLocalPenalty: (penalty: Penalty) => void;
   setLocalResult: (result: Result) => void;
@@ -80,6 +80,38 @@ export type RoomStore = {
 
   //update room user information from server - used when initializing the user on client side
   handleRoomUserUpdate: (roomUser: IRoomUser) => void;
+
+  addNewSolve: (newSolve: IRoomSolve) => void;
+
+  updateLatestSolve: (updatedSolve: IRoomSolve) => void;
+
+  resetLatestSolve: (newSolve: IRoomSolve) => void;
+
+  addNewSet: () => void;
+
+  finishSolve: (solve: IRoomSolve, users: Record<string, IRoomUser>) => void;
+
+  finishSet: (setWinners: string[]) => void;
+
+  finishMatch: (matchWinners: string[]) => void;
+
+  updateUserStatus: (userId: string, newStatus: SolveStatus) => void;
+
+  userToggleCompeting: (userId: string, newCompeting: boolean) => void;
+
+  userJoin: (user: IRoomUser) => void;
+
+  userUpdate: (user: IRoomUser) => void;
+
+  userBanned: (userId: string) => void;
+
+  userUnbanned: (userId: string) => void;
+
+  startRoom: (solve: IRoomSolve) => void;
+
+  resetRoom: () => void;
+
+  addResult: (userId: string, result: IResult) => void;
 };
 
 export const createRoomStore = (): StoreApi<RoomStore> =>
@@ -114,8 +146,8 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
     useInspection: false,
     drawScramble: true,
 
-    userLiveTimerStartTimes: new Map<string, number>(),
-    userLiveTimes: new Map<string, number>(),
+    userLiveTimerStartTimes: {},
+    userLiveTimes: {},
 
     setLocalPenalty: (penalty: Penalty) =>
       set(() => ({ localPenalty: penalty })),
@@ -210,34 +242,31 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
      * This shouldn't cause any big issues since we expect not to have massive rooms but TODO find a better way to handle this
      */
     addUserLiveStartTime: (userId: string, time: number) =>
-      set(() => ({
-        userLiveTimerStartTimes: new Map<string, number>(
-          get().userLiveTimerStartTimes
-        ).set(userId, time),
-      })),
+      set((state) => {
+        const updatedUserLiveStartTimes = { ...state.userLiveTimerStartTimes };
+        updatedUserLiveStartTimes[userId] = time;
+        return { userLiveTimerStartTimes: updatedUserLiveStartTimes };
+      }),
 
-    clearUserLiveStartTimes: () =>
-      set(() => ({ userLiveTimerStartTimes: new Map<string, number>() })),
+    clearUserLiveStartTimes: () => set(() => ({ userLiveTimerStartTimes: {} })),
 
-    addUserLiveStopTime: (userId: string, time: number) => {
-      const startTime = get().userLiveTimerStartTimes.get(userId);
-      if (startTime === undefined) return;
+    addUserLiveStopTime: (userId: string, time: number) =>
+      set((state) => {
+        const startTime = get().userLiveTimerStartTimes[userId];
+        if (startTime === undefined) return {};
 
-      set(() => ({
-        userLiveTimerStartTimes: new Map<string, number>(
-          get()
-            .userLiveTimerStartTimes.entries()
-            .filter((x) => x[0] !== userId)
-        ),
-        userLiveTimes: new Map<string, number>(get().userLiveTimes).set(
-          userId,
-          time - startTime
-        ),
-      }));
-    },
+        const updatedUserLiveStartTimes = { ...state.userLiveTimerStartTimes };
+        delete updatedUserLiveStartTimes[userId];
+        const updatedUserLiveTimes = { ...state.userLiveTimes };
+        updatedUserLiveTimes[userId] = time - startTime;
 
-    clearUserLiveTimes: () =>
-      set(() => ({ userLiveTimes: new Map<string, number>() })),
+        return {
+          userLiveTimerStartTimes: updatedUserLiveStartTimes,
+          userLiveTimes: updatedUserLiveTimes,
+        };
+      }),
+
+    clearUserLiveTimes: () => set(() => ({ userLiveTimes: {} })),
 
     handleRoomUpdate: (room: IRoom) =>
       set(() => ({
@@ -266,4 +295,196 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
           : new Result(""),
         localSolveStatus: roomUser.userStatus,
       })),
+
+    addNewSolve: (newSolve: IRoomSolve) =>
+      set(() => {
+        //reset every user's current result
+        const updatedUsers: Record<string, IRoomUser> = {};
+        for (const [userId, roomUser] of Object.entries(get().users)) {
+          updatedUsers[userId] = { ...roomUser, currentResult: undefined };
+        }
+
+        return {
+          solves: [...get().solves, newSolve],
+          users: updatedUsers,
+        };
+      }),
+
+    updateLatestSolve: (updatedSolve: IRoomSolve) =>
+      set((state) => {
+        const updated = [...state.solves];
+        updated[updated.length - 1] = updatedSolve;
+        return { solves: updated };
+      }),
+
+    resetLatestSolve: (newSolve: IRoomSolve) =>
+      set((state) => {
+        state.updateLatestSolve(newSolve);
+        // handle local solve status update - everyone's solve status will update later
+        state.resetLocalSolveStatus();
+
+        const updatedUsers = { ...state.users };
+        for (const roomUser of Object.values(updatedUsers)) {
+          roomUser.currentResult = undefined;
+          roomUser.userStatus = "IDLE";
+        }
+
+        // clear live times
+        state.clearUserLiveStartTimes();
+        state.clearUserLiveTimes();
+
+        // the only update we make in this function is to users
+        return { users: updatedUsers };
+      }),
+
+    addNewSet: () =>
+      set((state) => ({
+        currentSet: state.currentSet + 1,
+        currentSolve: 0,
+      })),
+
+    finishSolve: (solve: IRoomSolve, users: Record<string, IRoomUser>) =>
+      set((state) => {
+        const updated = [...state.solves];
+        updated[updated.length - 1] = solve;
+
+        //update points in users
+        const solveWinners = solve.solveWinners;
+        const updatedUsers = { ...get().users };
+        if (solveWinners) {
+          for (const uid of solveWinners) {
+            updatedUsers[uid].points = users[uid].points;
+          }
+        }
+
+        return { solves: updated };
+      }),
+
+    finishSet: (setWinners: string[]) =>
+      set((state) => {
+        //update set wins for set winners by 1
+        const updatedUsers: Record<string, IRoomUser> = { ...state.users };
+        const allUserIds = Object.keys(state.users);
+        for (const userId of allUserIds) {
+          const user = updatedUsers[userId]!;
+          updatedUsers[userId] = { ...user, points: 0 };
+        }
+        for (const userId of setWinners) {
+          const user = updatedUsers[userId]!;
+          updatedUsers[userId] = { ...user, setWins: user.setWins + 1 };
+        }
+
+        return {
+          users: updatedUsers,
+        };
+      }),
+
+    finishMatch: (matchWinners: string[]) =>
+      set(() => {
+        return { roomWinners: matchWinners, roomState: "FINISHED" };
+      }),
+
+    updateUserStatus: (userId: string, newStatus: SolveStatus) =>
+      set((state) => {
+        const updatedUsers: Record<string, IRoomUser> = { ...state.users };
+        if (!updatedUsers[userId]) return {};
+        updatedUsers[userId].userStatus = newStatus;
+        return { users: updatedUsers };
+      }),
+
+    userToggleCompeting: (userId: string, newCompeting: boolean) =>
+      set((state) => {
+        const updatedUsers: Record<string, IRoomUser> = { ...state.users };
+        if (
+          !updatedUsers[userId] ||
+          updatedUsers[userId].competing === newCompeting
+        ) {
+          return {};
+        }
+        updatedUsers[userId].competing = newCompeting;
+        return { users: updatedUsers };
+      }),
+
+    userJoin: (user: IRoomUser) =>
+      set((state) => {
+        const updatedUsers: Record<string, IRoomUser> = { ...state.users };
+        if (updatedUsers[user.user.id]) {
+          // user rejoining - just set active to true
+          updatedUsers[user.user.id].active = true;
+        } else {
+          // user first join - add whole IRoomUser object
+          updatedUsers[user.user.id] = user;
+        }
+
+        return { users: updatedUsers };
+      }),
+
+    userUpdate: (user: IRoomUser) =>
+      set((state) => {
+        const updatedUsers: Record<string, IRoomUser> = { ...state.users };
+        updatedUsers[user.user.id] = user;
+        return { users: updatedUsers };
+      }),
+
+    userBanned: (userId: string) =>
+      set((state) => {
+        const updatedUsers: Record<string, IRoomUser> = { ...state.users };
+        if (updatedUsers[userId]) {
+          updatedUsers[userId].banned = true;
+          return { users: updatedUsers };
+        } else {
+          return {};
+        }
+      }),
+
+    userUnbanned: (userId: string) =>
+      set((state) => {
+        const updatedUsers: Record<string, IRoomUser> = { ...state.users };
+        if (updatedUsers[userId]) {
+          updatedUsers[userId].banned = false;
+          return { users: updatedUsers };
+        } else {
+          return {};
+        }
+      }),
+
+    startRoom: (solve: IRoomSolve) =>
+      set(() => ({
+        roomState: "STARTED",
+        solves: [solve],
+      })),
+
+    resetRoom: () =>
+      set((state) => {
+        const updatedUsers = { ...state.users };
+        for (const roomUser of Object.values(updatedUsers)) {
+          roomUser.points = 0;
+          roomUser.setWins = 0;
+          roomUser.userStatus = "IDLE";
+          roomUser.currentResult = undefined;
+        }
+
+        return {
+          roomState: "WAITING",
+          solves: [],
+          currentSet: 1,
+          currentSolve: 0,
+          winners: state.roomFormat == "RACING" ? [] : undefined,
+          users: updatedUsers,
+        };
+      }),
+
+    addResult: (userId: string, result: IResult) =>
+      set((state) => {
+        const updatedUsers = { ...state.users };
+        const updatedSolves = [...state.solves];
+        if (updatedUsers[userId] && updatedSolves.length > 0) {
+          updatedUsers[userId].currentResult = result;
+          updatedSolves.at(-1)!.solve.results[userId] = result;
+        }
+        return {
+          users: updatedUsers,
+          solves: updatedSolves,
+        };
+      }),
   }));

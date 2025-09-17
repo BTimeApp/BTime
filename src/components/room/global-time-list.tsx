@@ -96,12 +96,12 @@ export default function GlobalTimeList({
           switch (setFormat) {
             case "BEST_OF":
               userPoints = setSolves.filter(
-                (solve) => solve.solveWinner === roomUser.user.id
+                (solve) => solve.solveWinners?.includes(roomUser.user.id)
               ).length;
               break;
             case "FIRST_TO":
               userPoints = setSolves.filter(
-                (solve) => solve.solveWinner === roomUser.user.id
+                (solve) => solve.solveWinners?.includes(roomUser.user.id)
               ).length;
               break;
             case "AVERAGE_OF":
@@ -157,7 +157,7 @@ export default function GlobalTimeList({
             const index = arr.length - 1 - i;
             const solve = arr[index];
 
-            const solveWinner: string | undefined = solve.solveWinner;
+            const solveWinners: string[] | undefined = solve.solveWinners;
             const setWinners: string[] | undefined = solve.setWinners;
             const matchWinners: string[] | undefined = solve.matchWinners;
 
@@ -217,7 +217,7 @@ export default function GlobalTimeList({
                   <TableCell className="w-10">{solve.solveIndex}</TableCell>
                   {users.map((user) => {
                     let cellClassName = "";
-                    if (solveWinner == user.user.id) {
+                    if (solveWinners?.includes(user.user.id)) {
                       cellClassName += "font-bold";
                     }
                     return (

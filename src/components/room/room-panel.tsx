@@ -280,21 +280,21 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
         return Result.fromIResult(user.currentResult).toString();
       } else if (
         user.userStatus === "SOLVING" &&
-        userLiveTimerStartTimes.get(user.user.id)
+        userLiveTimerStartTimes[user.user.id]
       ) {
         return (
           <UserLiveTimer
-            startTime={userLiveTimerStartTimes.get(user.user.id)!}
+            startTime={userLiveTimerStartTimes[user.user.id]!}
           />
         );
       } else if (
         user.userStatus === "SUBMITTING" &&
-        userLiveTimes.get(user.user.id)
+        userLiveTimes[user.user.id]
       ) {
         return (
           <p className="italic">
             {Result.timeToString(
-              Math.floor(userLiveTimes.get(user.user.id)! / 10)
+              Math.floor(userLiveTimes[user.user.id]! / 10)
             )}
           </p>
         );

@@ -1,6 +1,5 @@
 import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
-import { Types } from "mongoose";
 import {
   rooms,
   users,
@@ -9,7 +8,6 @@ import {
 } from "@/server/server-objects";
 import { IRoom, RoomState, IRoomSettings } from "@/types/room";
 import {
-  skipScramble,
   newRoomSolve,
   resetRoom,
   finishRoomSolve,
@@ -17,6 +15,11 @@ import {
   createRoom,
   updateRoom,
   checkRoomUpdateRequireReset,
+  checkSetFinished,
+  findSetWinners,
+  checkMatchFinished,
+  findMatchWinners,
+  newScramble,
 } from "@/lib/room";
 import { IUser, IUserInfo } from "@/types/user";
 import { IRoomUser } from "@/types/room-user";
@@ -113,9 +116,80 @@ const listenSocketEvents = (io: Server) => {
 
   async function handleSolveFinished(room: IRoom) {
     finishRoomSolve(room);
-    io.to(room.id).emit(SOCKET_SERVER.SOLVE_FINISHED_EVENT);
+    const currentSolve = room.solves.at(-1)!;
+
+    // only check set and match wins if not a casual room
+    if (room.settings.roomFormat !== "CASUAL") {
+      //check set finished.
+      const setFinished = checkSetFinished(room);
+      if (setFinished) {
+        // find set winners.
+        const setWinners: string[] = findSetWinners(room);
+        currentSolve.setWinners = setWinners;
+
+        // update set wins for set winners
+        setWinners.map((uid) => (room.users[uid].setWins += 1));
+
+        // reset all users' points
+        Object.values(room.users).map((roomUser) => {
+          roomUser.points = 0;
+        });
+
+        //publish set finished event with winners
+        io.to(room.id).emit(SOCKET_SERVER.SET_FINISHED_EVENT, setWinners);
+
+        // check match finished. right now a match can only be finished if the set is finished.
+        const matchFinished = checkMatchFinished(room);
+        if (matchFinished) {
+          const matchWinners: string[] = findMatchWinners(room);
+          //handle match finished
+          room.winners = matchWinners;
+          room.state = "FINISHED";
+          currentSolve.matchWinners = matchWinners;
+
+          //publish solve finished after updating match winners, but before sending match finished
+          io.to(room.id).emit(
+            SOCKET_SERVER.SOLVE_FINISHED_EVENT,
+            currentSolve,
+            room.users
+          );
+
+          //publish match finished event with winners
+          io.to(room.id).emit(SOCKET_SERVER.MATCH_FINISHED_EVENT, matchWinners);
+        } else {
+          //publish solve finished after updating set winners, but before creating a new set
+          io.to(room.id).emit(
+            SOCKET_SERVER.SOLVE_FINISHED_EVENT,
+            currentSolve,
+            room.users
+          );
+
+          // reset solve counter, update set counter - this is done AFTER match finish check so we dont create a non-existent set
+          room.currentSolve = 0;
+          room.currentSet += 1;
+
+          //TODO emit new set event
+          io.to(room.id).emit(SOCKET_SERVER.NEW_SET);
+        }
+      } else {
+        io.to(room.id).emit(
+          SOCKET_SERVER.SOLVE_FINISHED_EVENT,
+          currentSolve,
+          room.users
+        );
+      }
+    } else {
+      //publish solve finished event (casual case)
+      io.to(room.id).emit(
+        SOCKET_SERVER.SOLVE_FINISHED_EVENT,
+        currentSolve,
+        room.users
+      );
+    }
+
     if ((room.state as RoomState) !== "FINISHED") {
-      await newRoomSolve(room);
+      const newSolve: IRoomSolve = await newRoomSolve(room);
+      io.to(room.id).emit(SOCKET_SERVER.NEW_SOLVE, newSolve);
     }
   }
 
@@ -169,7 +243,7 @@ const listenSocketEvents = (io: Server) => {
         room.users[userId].userStatus = "IDLE";
       }
 
-      io.to(roomId.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
+      io.to(roomId).emit(SOCKET_SERVER.USER_UPDATE, room.users[userId]);
 
       //check if no more users, if so, schedule room deletion.
       if (
@@ -189,34 +263,31 @@ const listenSocketEvents = (io: Server) => {
 
       //check if user is host OR there is somehow no host.
       if ((room.host && room.host.id == userId) || !room.host) {
-        if (room.host) {
-          console.log(`Host has left room ${roomId}. Promoting a new host.`);
-        } else {
-          console.log(
-            `User left room without a host: ${roomId}. Promoting a new host.`
-          );
-        }
+        room.host = undefined;
 
-        let earliestID = null;
         let earliestUser: IRoomUser | null = null;
 
-        for (const userID in room.users) {
-          const user = room.users[userID];
+        const hostEligibleUsers = Object.values(room.users).filter(
+          (roomUser) => roomUser.active
+        );
 
-          if (!earliestUser || user.joinedAt < earliestUser.joinedAt) {
-            earliestUser = user;
-            earliestID = new Types.ObjectId(userID);
+        for (const roomUser of hostEligibleUsers) {
+          if (!earliestUser || roomUser.joinedAt < earliestUser.joinedAt) {
+            earliestUser = roomUser;
           }
         }
-
-        room.host = room.users[earliestID!.toString()].user;
-        io.to(roomId.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
+        if (earliestUser) {
+          room.host = earliestUser.user;
+          console.log(
+            `Room ${roomId} promoted a new host: ${room.host.userName}`
+          );
+          io.to(roomId).emit(SOCKET_SERVER.NEW_HOST, earliestUser.user.id);
+        }
       }
 
       // handle case that this user was the last one to submit a time/compete
       if (checkRoomSolveFinished(room)) {
         await handleSolveFinished(room);
-        io.to(roomId.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
       }
 
       // remove the room from this socket.
@@ -342,7 +413,7 @@ const listenSocketEvents = (io: Server) => {
           return;
         }
 
-        //validate user is not already in this room
+        //validate user is not already (active) in this room
         if (
           Object.keys(room.users).includes(userId) &&
           room.users[userId].active
@@ -377,6 +448,10 @@ const listenSocketEvents = (io: Server) => {
             return;
           }
         }
+        /**
+         * User is successfully joining the room at this point.
+         */
+
         // if this room is scheduled for deletion, don't delete it
         if (roomTimeouts.has(roomId)) {
           clearTimeout(roomTimeouts.get(roomId));
@@ -414,28 +489,32 @@ const listenSocketEvents = (io: Server) => {
           room.host = user;
         }
 
+        // formally add this socket connection to the room and call the join callback.
+        // this callback (for now) should have all of the room data the user needs, so they are excluded from the following broadcast event.
         socket.join(roomId);
         socket.roomId = roomId;
         joinRoomCallback(true, room, extraData);
 
         //broadcast update to all other users
-        io.to(roomId).except(userId).emit(SOCKET_SERVER.ROOM_UPDATE, room);
+        io.to(roomId)
+          .except(userId)
+          .emit(SOCKET_SERVER.USER_JOINED, room.users[userId]);
       }
     );
 
     /**
      * Upon host pressing skip scramble button
      */
-    socket.on(SOCKET_CLIENT.SKIP_SCRAMBLE, async () => {
+    socket.on(SOCKET_CLIENT.NEW_SCRAMBLE, async () => {
       console.log(
-        `User ${socket.user?.userInfo.id} is trying to skip the scramble in room ${socket.roomId}.`
+        `User ${socket.user?.userInfo.id} new scramble in room ${socket.roomId}.`
       );
       const room = getSocketRoom();
       if (!room) return;
 
       if (room.state == "STARTED") {
-        await skipScramble(room);
-        io.to(room.id).emit(SOCKET_SERVER.ROOM_UPDATE, room);
+        await newScramble(room);
+        io.to(room.id).emit(SOCKET_SERVER.SOLVE_RESET, room.solves.at(-1));
       } else {
         console.log(`Cannot skip scramble when room state is ${room.state}`);
       }
@@ -450,7 +529,6 @@ const listenSocketEvents = (io: Server) => {
 
       if (room.state == "STARTED") {
         await handleSolveFinished(room);
-        io.to(room.id).emit(SOCKET_SERVER.ROOM_UPDATE, room);
       } else {
         console.log(`Cannot skip scramble when room state is ${room.state}`);
       }
@@ -464,35 +542,28 @@ const listenSocketEvents = (io: Server) => {
       if (!banUser) return;
       banUser.banned = true;
 
-      const banUserSockets = socketIntersection(userId, room.id);
-
-      // Emit to each socket in the intersection
-      banUserSockets.forEach((kickUserSocketId: string) => {
-        io.to(kickUserSocketId).emit(SOCKET_SERVER.USER_BANNED);
-      });
-
       console.log(
         `User ${socket.user?.userInfo.userName} banned user ${banUser.user.userName} from room ${socket.roomId}.`
       );
 
-      //need to room update
-      io.to(room.id).emit(SOCKET_SERVER.ROOM_UPDATE, room);
+      //broadcast user update to the rest of the room
+      io.to(room.id).emit(SOCKET_SERVER.USER_BANNED, userId);
     });
 
     socket.on(SOCKET_CLIENT.UNBAN_USER, (userId: string) => {
       const room = getSocketRoom();
       if (!room || !userIsHost()) return;
 
-      const banUser = room?.users[userId];
-      if (!banUser) return;
-      banUser.banned = false;
+      const unbanUser = room?.users[userId];
+      if (!unbanUser) return;
+      unbanUser.banned = false;
 
       console.log(
-        `User ${socket.user?.userInfo.userName} unbanned user ${banUser.user.userName} from room ${socket.roomId}.`
+        `User ${socket.user?.userInfo.userName} unbanned user ${unbanUser.user.userName} from room ${socket.roomId}.`
       );
 
-      //need to room update
-      io.to(room.id).emit(SOCKET_SERVER.ROOM_UPDATE, room);
+      //broadcast user update to the rest of the room
+      io.to(room.id).emit(SOCKET_SERVER.USER_UNBANNED, userId);
     });
 
     socket.on(SOCKET_CLIENT.KICK_USER, async (userId: string) => {
@@ -513,8 +584,7 @@ const listenSocketEvents = (io: Server) => {
         `User ${socket.user?.userInfo.userName} kicked user ${kickUser.user.userName} from room ${socket.roomId}.`
       );
 
-      //need to room update
-      io.to(room.id).emit(SOCKET_SERVER.ROOM_UPDATE, room);
+      //we do not have to send anything to others - the kicked user will room DC, and that will broadcast to all users immediatley.
     });
 
     /**
@@ -529,8 +599,9 @@ const listenSocketEvents = (io: Server) => {
 
       if (room.state == "WAITING" || room.state == "FINISHED") {
         room.state = "STARTED";
-        await newRoomSolve(room);
-        io.to(room.id.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
+        const newSolve = await newRoomSolve(room);
+        io.to(room.id).emit(SOCKET_SERVER.ROOM_STARTED, newSolve);
+        // io.to(room.id.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
       } else {
         console.log(`Cannot start room when room state is ${room.state}`);
       }
@@ -548,7 +619,7 @@ const listenSocketEvents = (io: Server) => {
 
       if (room.state == "STARTED" || room.state == "FINISHED") {
         resetRoom(room);
-        io.to(room.id.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
+        io.to(room.id).emit(SOCKET_SERVER.ROOM_RESET);
       } else {
         console.log(`Cannot reset room when room state is ${room.state}`);
       }
@@ -557,22 +628,18 @@ const listenSocketEvents = (io: Server) => {
     /**
      * Upon host pressing rematch button
      */
-    socket.on(SOCKET_CLIENT.REMATCH_ROOM, async () => {
+    socket.on(SOCKET_CLIENT.REMATCH_ROOM, () => {
       console.log(
         `User ${socket.user?.userInfo.id} is trying to rematch room ${socket.roomId}.`
       );
-
       const room = getSocketRoom();
       if (!room) return;
 
       if (room.state == "FINISHED") {
         resetRoom(room);
-        room.state = "WAITING";
-        io.to(room.id.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
+        io.to(room.id).emit(SOCKET_SERVER.ROOM_RESET);
       } else {
-        console.log(
-          `Cannot trigger a room rematch when room state is ${room.state}`
-        );
+        console.log(`Cannot rematch room when room state is ${room.state}`);
       }
     });
 
@@ -604,10 +671,10 @@ const listenSocketEvents = (io: Server) => {
                 await handleSolveFinished(room);
               }
             }
-
-            io.to(socket.roomId.toString()).emit(
-              SOCKET_SERVER.ROOM_UPDATE,
-              room
+            io.to(socket.roomId).emit(
+              SOCKET_SERVER.USER_STATUS_UPDATE,
+              userId,
+              newUserStatus
             );
           }
         }
@@ -622,7 +689,7 @@ const listenSocketEvents = (io: Server) => {
         const room = rooms.get(socket.roomId);
         if (!room) return;
 
-        io.to(socket.roomId.toString())
+        io.to(socket.roomId)
           .except(userId)
           .emit(SOCKET_SERVER.USER_START_LIVE_TIMER, userId);
       }
@@ -636,7 +703,7 @@ const listenSocketEvents = (io: Server) => {
         const room = rooms.get(socket.roomId);
         if (!room) return;
 
-        io.to(socket.roomId.toString())
+        io.to(socket.roomId)
           .except(userId)
           .emit(SOCKET_SERVER.USER_STOP_LIVE_TIMER, userId);
       }
@@ -674,10 +741,14 @@ const listenSocketEvents = (io: Server) => {
           const solveObject: IRoomSolve = room.solves.at(-1)!;
           solveObject.solve.results[socket.user?.userInfo.id] = result;
 
-          // room.users[socket.user?.userInfo.id].userStatus = "FINISHED";
           room.users[socket.user?.userInfo.id].currentResult = result;
 
-          io.to(socket.roomId.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
+          //broadcast user submit event to other users
+          io.to(socket.roomId).emit(
+            SOCKET_SERVER.USER_SUBMITTED_RESULT,
+            userId,
+            result
+          );
           onSuccessCallback?.();
         }
       }
@@ -689,7 +760,6 @@ const listenSocketEvents = (io: Server) => {
     socket.on(SOCKET_CLIENT.TOGGLE_COMPETING, (competing: boolean) => {
       if (socket.roomId && socket.user) {
         const room = rooms.get(socket.roomId);
-        console.log("toggle call");
         if (
           !room ||
           room.users[socket.user?.userInfo.id].competing == competing
@@ -703,6 +773,12 @@ const listenSocketEvents = (io: Server) => {
         );
         room.users[socket.user?.userInfo.id].competing = competing;
 
+        io.to(socket.roomId).emit(
+          SOCKET_SERVER.USER_TOGGLE_COMPETING,
+          userId,
+          competing
+        );
+
         // when user spectates, need to check if all competing users are done, then advance room
         if (room.state === "STARTED") {
           const solveFinished: boolean = checkRoomSolveFinished(room);
@@ -710,8 +786,6 @@ const listenSocketEvents = (io: Server) => {
             handleSolveFinished(room);
           }
         }
-
-        io.to(socket.roomId.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
       } else {
         console.log(
           `Either roomId or userId not set on socket: ${socket.roomId}, ${socket.user?.userInfo.id}`
@@ -723,9 +797,9 @@ const listenSocketEvents = (io: Server) => {
      * User has left the room. Handle
      */
     socket.on(SOCKET_CLIENT.LEAVE_ROOM, async (roomId: string) => {
-      // console.log(
-      //   `User ${socket.user?.userInfo.userName} (${userId}) left room ${roomId} `
-      // );
+      console.log(
+        `User ${socket.user?.userInfo.userName} (${userId}) left room ${roomId} `
+      );
       await handleRoomDisconnect(userId, roomId);
     });
 

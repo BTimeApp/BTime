@@ -23,6 +23,7 @@ function RoomSubmittingButtons() {
 
   const submitLocalResult = useCallback(() => {
     socket.emit(SOCKET_CLIENT.SUBMIT_RESULT, localResult.toIResult(), () => {
+      console.log("SUBMIT RESULT CALLBACK");
       updateLocalSolveStatus("SUBMIT_TIME");
     });
   }, [socket, localResult, updateLocalSolveStatus]);

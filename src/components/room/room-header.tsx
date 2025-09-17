@@ -50,7 +50,7 @@ export function RoomHeader() {
 
   const getNextScramble = useCallback(() => {
     if (user && isUserHost(user.userInfo.id)) {
-      socket.emit(SOCKET_CLIENT.SKIP_SCRAMBLE);
+      socket.emit(SOCKET_CLIENT.NEW_SCRAMBLE);
     }
   }, [user, socket, isUserHost]);
 
