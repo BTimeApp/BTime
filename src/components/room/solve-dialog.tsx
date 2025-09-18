@@ -4,6 +4,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { IResult, Result } from "@/types/result";
 import { ROOM_EVENT_JS_NAME_MAP, RoomEvent } from "@/types/room";
 import React from "react";
 
@@ -12,6 +13,7 @@ type SolveDialogProps = {
   solveIndex: number;
   scramble: string;
   event: RoomEvent;
+  result?: IResult;
   children: React.ReactNode;
 };
 
@@ -20,6 +22,7 @@ export default function SolveDialog({
   solveIndex,
   scramble,
   event,
+  result,
   children,
 }: SolveDialogProps) {
   return (
@@ -39,7 +42,9 @@ export default function SolveDialog({
             background="none"
           />
         </div>
-        <div>{scramble}</div>
+        <div>{
+          result && 
+          Result.fromIResult(result).toString(true)+"\t"}{scramble}</div>
       </DialogContent>
     </Dialog>
   );

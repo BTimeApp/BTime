@@ -353,13 +353,14 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
         </div>
       </div>
       <GlobalTimeList
-        users={Object.values(users).filter((roomUser) => roomUser.active)}
+        users={Object.values(users)} //.filter((roomUser) => roomUser.active)}
         solves={solves}
         roomEvent={roomEvent}
         roomFormat={roomFormat}
         setFormat={setFormat}
         nSets={nSets}
         nSolves={nSolves}
+        userId={localUser?.userInfo.id}
         className="max-h-[50vh] w-full"
       />
     </div>

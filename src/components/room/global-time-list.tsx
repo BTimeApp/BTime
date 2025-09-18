@@ -20,6 +20,7 @@ type GlobalTimeListProps = {
   roomFormat: RoomFormat;
   setFormat: SetFormat;
   roomEvent: RoomEvent;
+  userId?: string;
   nSets?: number;
   nSolves?: number;
   className?: string;
@@ -31,6 +32,7 @@ export default function GlobalTimeList({
   roomFormat,
   setFormat,
   roomEvent,
+  userId,
   nSets,
   nSolves,
   className,
@@ -209,6 +211,7 @@ export default function GlobalTimeList({
                 solveIndex={solve.solveIndex}
                 scramble={solve.solve.scramble}
                 event={roomEvent}
+                result={userId ? solve.solve.results[userId] : undefined}
               >
                 <TableRow>
                   {roomFormat !== "CASUAL" && (

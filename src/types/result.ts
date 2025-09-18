@@ -111,29 +111,70 @@ export class Result {
   /** Converts a time (in centiseconds) to a formatted time string (...mm:ss.xx). timeInCentiseconds should NOT have the penalty applied yet.
    *
    */
-  static timeToString(timeInCentiseconds: number, penalty?: Penalty): string {
-    const totalTime = Result.applyPenalty(timeInCentiseconds, penalty);
-    if (totalTime === Infinity) {
-      return "DNF";
+  static timeToString(
+    timeInCentiseconds: number,
+    penalty: Penalty = "OK",
+    verbose: boolean = false
+  ): string {
+    if (verbose) {
+      // the total time, post penalty
+      const totalTime = Result.applyPenalty(timeInCentiseconds, penalty);
+      const totalSeconds = Math.floor(totalTime / 100);
+      const penaltiedMinutes = Math.floor(totalSeconds / 60);
+      const penaltiedCentiseconds = Math.floor(totalTime) % 100;
+      const penaltiedSeconds = totalSeconds % 60;
+      const totalResultString = `${penaltiedMinutes ? penaltiedMinutes + ":" : ""}${
+        penaltiedMinutes
+          ? penaltiedSeconds.toString().padStart(2, "0")
+          : penaltiedSeconds.toString().padStart(1, "0")
+      }.${penaltiedCentiseconds.toString().padStart(2, "0")}`;
+
+      // the original time, pre-penalty
+      const originalTotalSeconds = Math.floor(timeInCentiseconds / 100);
+      const originalMinutes = Math.floor(originalTotalSeconds / 60);
+      const originalCentiseconds = Math.floor(timeInCentiseconds) % 100;
+      const originalSeconds = originalTotalSeconds % 60;
+      const originalResultString = `${originalMinutes ? originalMinutes + ":" : ""}${
+        originalMinutes
+          ? originalSeconds.toString().padStart(2, "0")
+          : originalSeconds.toString().padStart(1, "0")
+      }.${originalCentiseconds.toString().padStart(2, "0")}`;
+
+      //DNF
+      if (penalty === "DNF") {
+        return `DNF (${originalResultString})`;
+      } else if (penalty === "+2") {
+        return `${originalResultString} +2 = ${totalResultString}`
+      } else {
+        return `${totalResultString}`;
+      }
+
+    } else {
+      const totalTime = Result.applyPenalty(timeInCentiseconds, penalty);
+      if (totalTime === Infinity) {
+        return "DNF";
+      }
+
+      const totalSeconds = Math.floor(totalTime / 100);
+      const minutes = Math.floor(totalSeconds / 60);
+      const centiseconds = Math.floor(totalTime) % 100;
+      const seconds = totalSeconds % 60;
+      let resultString = `${minutes ? minutes + ":" : ""}${
+        minutes
+          ? seconds.toString().padStart(2, "0")
+          : seconds.toString().padStart(1, "0")
+      }.${centiseconds.toString().padStart(2, "0")}`;
+
+      if (penalty && penalty == "+2") {
+        resultString += "+";
+      }
+
+      return resultString;
     }
-
-    const totalSeconds = Math.floor(totalTime / 100);
-    const minutes = Math.floor(totalSeconds / 60);
-    const centiseconds = Math.floor(totalTime) % 100;
-    const seconds = totalSeconds % 60;
-    let resultString = `${minutes ? minutes + ":" : ""}${seconds
-      .toString()
-      .padStart(1, "0")}.${centiseconds.toString().padStart(2, "0")}`;
-
-    if (penalty && penalty == "+2") {
-      resultString += "+";
-    }
-
-    return resultString;
   }
 
-  toString(): string {
-    return Result.timeToString(this.time, this.penalty);
+  toString(verbose: boolean = false): string {
+    return Result.timeToString(this.time, this.penalty, verbose);
   }
 
   static fromIResult(obj: IResult): Result {
