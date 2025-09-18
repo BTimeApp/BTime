@@ -42,3 +42,15 @@ export async function generateScramble(event: RoomEvent) {
   const scrambleAlg = await randomScrambleForEvent(EventMapping.get(event)!);
   return scrambleAlg.toString();
 }
+
+// https://gist.github.com/renaudtertrais/25fc5a2e64fe5d0e86894094c6989e10?permalink_comment_id=3783403
+export function zip<T extends any[]>( //eslint-disable-line @typescript-eslint/no-explicit-any 
+  ...arrays: { [K in keyof T]: T[K] extends any ? T[K][] : never } //eslint-disable-line @typescript-eslint/no-explicit-any 
+): Array<T> {
+  const minLen = Math.min(...arrays.map((arr) => arr.length));
+  const [firstArr, ...restArrs] = arrays;
+
+  return firstArr.slice(0, minLen).map((val, i) => {
+    return [val, ...restArrs.map((arr) => arr[i])] as T;
+  });
+}

@@ -5,46 +5,30 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { IResult, Result } from "@/types/result";
-import { ROOM_EVENT_JS_NAME_MAP, RoomEvent } from "@/types/room";
 import React from "react";
 
-type SolveDialogProps = {
-  setIndex?: number;
-  solveIndex: number;
-  scramble: string;
-  event: RoomEvent;
-  result?: IResult;
+// we expect scrmables and results to be of the same length. it should be one to one.
+type SetDialogProps = {
+  setIndex: number;
+  scrambles: string[];
+  results: IResult[];
   children: React.ReactNode;
 };
 
-export default function SolveDialog({
+export default function SetDialog({
   setIndex,
-  solveIndex,
-  scramble,
-  event,
-  result,
+  scrambles,
+  results,
   children,
-}: SolveDialogProps) {
+}: SetDialogProps) {
   return (
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent>
         <DialogTitle>
-          {setIndex && `Set ${setIndex}`} {`Solve ${solveIndex}`}
+          {setIndex && `Set ${setIndex}`}
         </DialogTitle>
-        <div>
-          {/* <scramble-display scramble={scramble} event={ROOM_EVENT_JS_NAME_MAP.get(event)}></scramble-display> */}
-          <twisty-player
-            experimental-setup-alg={scramble}
-            puzzle={ROOM_EVENT_JS_NAME_MAP.get(event) ?? "3x3x3"}
-            visualization="2D"
-            control-panel="none"
-            background="none"
-          />
-        </div>
-        <div>{
-          result && 
-          Result.fromIResult(result).toString(true)+"\t"}{scramble}</div>
+        {scrambles.map((scramble, idx) => <div key={idx}>{idx + 1}.{"\t"}{Result.fromIResult(results[idx]).toString()}{"\t"}{scramble}</div>)}
       </DialogContent>
     </Dialog>
   );

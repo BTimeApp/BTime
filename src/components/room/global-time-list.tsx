@@ -13,6 +13,7 @@ import { IRoomSolve } from "@/types/room-solve";
 import { RoomEvent, RoomFormat, SetFormat } from "@/types/room";
 import { Result } from "@/types/result";
 import { cn } from "@/lib/utils";
+import SetDialog from "./set-dialog";
 
 type GlobalTimeListProps = {
   users: IRoomUser[];
@@ -97,13 +98,13 @@ export default function GlobalTimeList({
           let userPoints = Infinity;
           switch (setFormat) {
             case "BEST_OF":
-              userPoints = setSolves.filter(
-                (solve) => solve.solveWinners?.includes(roomUser.user.id)
+              userPoints = setSolves.filter((solve) =>
+                solve.solveWinners?.includes(roomUser.user.id)
               ).length;
               break;
             case "FIRST_TO":
-              userPoints = setSolves.filter(
-                (solve) => solve.solveWinners?.includes(roomUser.user.id)
+              userPoints = setSolves.filter((solve) =>
+                solve.solveWinners?.includes(roomUser.user.id)
               ).length;
               break;
             case "AVERAGE_OF":
@@ -164,42 +165,68 @@ export default function GlobalTimeList({
             const matchWinners: string[] | undefined = solve.matchWinners;
 
             if (solve.solveIndex === -1) {
+              //extract solves from this set
+              const setSolves = solves.filter(
+                (s) => s.setIndex === solve.setIndex
+              );
               // row is a summary row
               return (
-                <TableRow key={index}>
-                  <TableCell className="w-10">{solve.setIndex}</TableCell>
-                  {(setFormat === "BEST_OF" || setFormat === "FIRST_TO") && (
-                    <TableCell className="w-10">Pts</TableCell>
+                <SetDialog
+                  key={index}
+                  setIndex={solve.setIndex}
+                  scrambles={setSolves.map((solve) => solve.solve.scramble)}
+                  results={setSolves.map((solve) =>
+                    userId
+                      ? solve.solve.results[userId]
+                      : { time: 0, penalty: "DNF" }
                   )}
-                  {setFormat === "AVERAGE_OF" && (
-                    <TableCell className="w-10">Avg</TableCell>
-                  )}
-                  {setFormat === "MEAN_OF" && (
-                    <TableCell className="w-10">Mean</TableCell>
-                  )}
-                  {setFormat === "FASTEST_OF" && (
-                    <TableCell className="w-10">Best</TableCell>
-                  )}
+                >
+                  <TableRow>
+                    <TableCell className="w-10">{solve.setIndex}</TableCell>
+                    {(setFormat === "BEST_OF" || setFormat === "FIRST_TO") && (
+                      <TableCell className="w-10">Pts</TableCell>
+                    )}
+                    {setFormat === "AVERAGE_OF" && (
+                      <TableCell className="w-10">Avg</TableCell>
+                    )}
+                    {setFormat === "MEAN_OF" && (
+                      <TableCell className="w-10">Mean</TableCell>
+                    )}
+                    {setFormat === "FASTEST_OF" && (
+                      <TableCell className="w-10">Best</TableCell>
+                    )}
 
-                  {users.map((user) => {
-                    return (
-                      <TableCell key={user.user.id}>
-                        <div className="flex flex-row text-center items-center justify-center">
-                          {(setWinners?.includes(user.user.id) ||
-                            matchWinners?.includes(user.user.id)) && <Crown />}
-                          <div>
-                            {(setFormat === "AVERAGE_OF" || setFormat === "MEAN_OF" || setFormat === "FASTEST_OF") && ( solve.solve.results[user.user.id]
-                              ? Result.fromIResult(
-                                  solve.solve.results[user.user.id]
-                                ).toString() : "DNF")}
-                            {(setFormat === "BEST_OF" || setFormat === "FIRST_TO") && (solve.solve.results[user.user.id]
-                              ? Result.fromIResult(solve.solve.results[user.user.id]).getTime() : 0)}
+                    {users.map((user) => {
+                      return (
+                        <TableCell key={user.user.id}>
+                          <div className="flex flex-row text-center items-center justify-center">
+                            {(setWinners?.includes(user.user.id) ||
+                              matchWinners?.includes(user.user.id)) && (
+                              <Crown />
+                            )}
+                            <div>
+                              {(setFormat === "AVERAGE_OF" ||
+                                setFormat === "MEAN_OF" ||
+                                setFormat === "FASTEST_OF") &&
+                                (solve.solve.results[user.user.id]
+                                  ? Result.fromIResult(
+                                      solve.solve.results[user.user.id]
+                                    ).toString()
+                                  : "DNF")}
+                              {(setFormat === "BEST_OF" ||
+                                setFormat === "FIRST_TO") &&
+                                (solve.solve.results[user.user.id]
+                                  ? Result.fromIResult(
+                                      solve.solve.results[user.user.id]
+                                    ).getTime()
+                                  : 0)}
+                            </div>
                           </div>
-                        </div>
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                </SetDialog>
               );
             }
 
