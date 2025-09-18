@@ -24,7 +24,7 @@ function InspectionCountdown({
 
   useEffect(() => {
     const update = () => {
-      const newTime = Math.floor(
+      const newTime = Math.ceil(
         (15000 - (performance.now() - startRef.current)) / 1000
       );
       if (newTime != remainingTime) {
@@ -45,9 +45,9 @@ function InspectionCountdown({
   useEffect(() => {
     let newPenalty: Penalty = "OK";
 
-    if (remainingTime < -2) {
+    if (remainingTime <= -2) {
       newPenalty = "DNF";
-    } else if (remainingTime < 0) {
+    } else if (remainingTime <= 0) {
       newPenalty = "+2";
     }
 
@@ -86,8 +86,9 @@ function InspectionCountdown({
       <div
         className={cn(
           className,
-          spacebarDown && "text-green-500",
-          penalty === "DNF" && "text-error"
+          remainingTime <= 8 && "text-timer-warning",
+          remainingTime <= 3 && "text-timer-notready",
+          spacebarDown && "text-timer-ready",
         )}
       >
         {penalty === "DNF"

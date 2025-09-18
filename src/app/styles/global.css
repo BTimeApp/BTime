@@ -60,6 +60,7 @@
   --color-sidebar-ring: var(--sidebar-ring);
 
   --color-timer-ready: var(--timer-ready);
+  --color-timer-warning: var(--timer-warning);
   --color-timer-notready: var(--timer-notready);
 }
 
@@ -117,8 +118,9 @@
   --sidebar-ring: oklch(0.708 0 0);
 
   /* Cubing-related style */
-  --timer-ready: oklch(0.723 0.219 149.58); /* Analogous to green light on stackmat. Shows that timer is ready to start. */
-  --timer-notready: oklch(0.637 0.237 25.33); /* Analogous to red light on stackmat. Shows that timer is not ready to start. */
+  --timer-ready: oklch(0.5752 0.1446 144.18);/* Green 700. Analogous to green light on stackmat. Shows that timer is ready to start. */
+  --timer-warning: oklch(0.8391 0.1615 84.38); /* Yellow 700. */
+  --timer-notready: oklch(0.568 0.2002 26.41); /* Red 700. Analogous to red light on stackmat. Shows that timer is not ready to start. */
 }
 
 .dark {
@@ -175,8 +177,9 @@
   --sidebar-ring: oklch(0.556 0 0);
 
   /* Cubing-related style */
-  --timer-ready: oklch(0.723 0.219 149.58); /* Analogous to green light on stackmat. Shows that timer is ready to start. */
-  --timer-notready: oklch(0.637 0.237 25.33); /* Analogous to red light on stackmat. Shows that timer is not ready to start. */
+  --timer-ready: oklch(0.5752 0.1446 144.18);/* Green 700. Analogous to green light on stackmat. Shows that timer is ready to start. */
+  --timer-warning: oklch(0.8391 0.1615 84.38); /* Yellow 700. */
+  --timer-notready: oklch(0.568 0.2002 26.41); /* Red 700. Analogous to red light on stackmat. Shows that timer is not ready to start. */
 }
 
 @layer base {
