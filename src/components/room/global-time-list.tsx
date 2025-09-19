@@ -190,12 +190,12 @@ export default function GlobalTimeList({
                   setIndex={solve.setIndex}
                   scrambles={setSolves.map((solve) => solve.solve.scramble)}
                   results={setSolves.map((solve) =>
-                    userId
+                    userId && solve.solve.results[userId] != null
                       ? solve.solve.results[userId]
                       : { time: 0, penalty: "DNF" }
                   )}
                 >
-                  <TableRow>
+                  <TableRow className="font-bold">
                     <TableCell className="w-10">{solve.setIndex}</TableCell>
                     {(setFormat === "BEST_OF" || setFormat === "FIRST_TO") && (
                       <TableCell className="w-10">Pts</TableCell>
