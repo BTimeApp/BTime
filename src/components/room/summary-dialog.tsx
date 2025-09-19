@@ -9,8 +9,7 @@ import {
 import { IResult, Result } from "@/types/result";
 import React, { useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import { copyTextToClipboard, createResultTextLines } from "@/lib/utils";
+import { copyTextToClipboard, createResultTextLines, downloadTextFile } from "@/lib/utils";
 
 // we expect scrmables and results to be of the same length. it should be one to one.
 type SummaryDialogProps = {
@@ -34,6 +33,13 @@ export default function SummaryDialog({
       createResultTextLines(scrambles, results)
     );
   }, [roomName, scrambles, results]);
+
+  const resultTextDownload: string = useMemo(() => {
+    return (
+      "Solve\tResult\tScramble\n" +
+      createResultTextLines(scrambles, results)
+    );
+  }, [scrambles, results]);
 
   return (
     <Dialog>
@@ -60,10 +66,10 @@ export default function SummaryDialog({
           <Button
             variant="primary"
             onClick={() => {
-              toast("lol");
+              downloadTextFile(`BTime_${roomName}.txt`, resultTextDownload);
             }}
           >
-            Download CSV
+            Download Solves
           </Button>
         </DialogFooter>
       </DialogContent>
