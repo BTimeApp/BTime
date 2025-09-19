@@ -2,13 +2,14 @@ import {
   Dialog,
   DialogContent,
   DialogFooter,
+  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { IResult, Result } from "@/types/result";
 import { ROOM_EVENT_JS_NAME_MAP, RoomEvent } from "@/types/room";
 import React, { useEffect, useState } from "react";
-import { Button } from "../ui/button";
+import { Button } from "@/components/ui/button";
 import { copyTextToClipboard, createResultTextLine } from "@/lib/utils";
 
 type SolveDialogProps = {
@@ -44,10 +45,12 @@ export default function SolveDialog({
   return (
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent>
-        <DialogTitle>
-          {setIndex && `Set ${setIndex}`} {`Solve ${solveIndex}`}
-        </DialogTitle>
+      <DialogContent className="py-3">
+        <DialogHeader>
+          <DialogTitle>
+            {setIndex && `Set ${setIndex}`} {`Solve ${solveIndex}`}
+          </DialogTitle>
+        </DialogHeader>
         <div>
           {/* <scramble-display scramble={scramble} event={ROOM_EVENT_JS_NAME_MAP.get(event)}></scramble-display> */}
           <twisty-player
