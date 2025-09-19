@@ -62,7 +62,7 @@ export function createResultTextLine(
   result?: IResult,
   idx?: number
 ) {
-  return `${idx != null ? idx + 1 + '\t': ""}${result ? Result.fromIResult(result).toString(true) +"\t" : ""}${scramble}`;
+  return `${idx != null ? idx + 1 + '\t': ""}${result != null ? Result.fromIResult(result).toString(true) +"\t" : ""}${scramble}`;
 }
 export function createResultTextLines(scrambles: string[], results: IResult[]) {
   return scrambles
