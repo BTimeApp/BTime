@@ -13,9 +13,11 @@ import { IRoomSolve } from "@/types/room-solve";
 import { RoomEvent, RoomFormat, SetFormat } from "@/types/room";
 import { Result } from "@/types/result";
 import { cn } from "@/lib/utils";
-import SetDialog from "./set-dialog";
+import SetDialog from "@/components/room/set-dialog";
+import SummaryDialog from "@/components/room/summary-dialog";
 
 type GlobalTimeListProps = {
+  roomName: string;
   users: IRoomUser[];
   solves: IRoomSolve[];
   roomFormat: RoomFormat;
@@ -28,6 +30,7 @@ type GlobalTimeListProps = {
 };
 
 export default function GlobalTimeList({
+  roomName,
   users,
   solves,
   roomFormat,
@@ -142,17 +145,27 @@ export default function GlobalTimeList({
       <div className="flex-1 text-foreground text-2xl">Time List</div>
       <Table className="w-full border-collapse bg-inherit">
         <TableHeader className="sticky top-0 z-10 shadow-sm bg-inherit">
-          <TableRow className="bg-inherit">
-            {roomFormat !== "CASUAL" && (
-              <TableHead className="text-center w-10">Set</TableHead>
+          <SummaryDialog
+            roomName={roomName}
+            scrambles={solves.map((solve) => solve.solve.scramble)}
+            results={solves.map((solve) =>
+              userId && solve.solve.results[userId]
+                ? solve.solve.results[userId]
+                : { time: 0, penalty: "DNF" }
             )}
-            <TableHead className="text-center w-10">Solve</TableHead>
-            {users.map((user) => (
-              <TableHead key={user.user.id} className="text-center">
-                {user.user.userName}
-              </TableHead>
-            ))}
-          </TableRow>
+          >
+            <TableRow className="bg-inherit">
+              {roomFormat !== "CASUAL" && (
+                <TableHead className="text-center w-10">Set</TableHead>
+              )}
+              <TableHead className="text-center w-10">Solve</TableHead>
+              {users.map((user) => (
+                <TableHead key={user.user.id} className="text-center">
+                  {user.user.userName}
+                </TableHead>
+              ))}
+            </TableRow>
+          </SummaryDialog>
         </TableHeader>
         <TableBody className="flex-1 overflow-auto">
           {rows.map((_, i, arr) => {
@@ -172,6 +185,7 @@ export default function GlobalTimeList({
               // row is a summary row
               return (
                 <SetDialog
+                  roomName={roomName}
                   key={index}
                   setIndex={solve.setIndex}
                   scrambles={setSolves.map((solve) => solve.solve.scramble)}
@@ -233,6 +247,7 @@ export default function GlobalTimeList({
             // row is a solve row
             return (
               <SolveDialog
+                roomName={roomName}
                 key={index}
                 setIndex={roomFormat === "CASUAL" ? undefined : solve.setIndex}
                 solveIndex={solve.solveIndex}

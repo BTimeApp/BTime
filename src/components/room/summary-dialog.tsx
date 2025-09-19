@@ -1,3 +1,4 @@
+"use client";
 import {
   Dialog,
   DialogContent,
@@ -8,38 +9,37 @@ import {
 import { IResult, Result } from "@/types/result";
 import React, { useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { copyTextToClipboard, createResultTextLines } from "@/lib/utils";
 
 // we expect scrmables and results to be of the same length. it should be one to one.
-type SetDialogProps = {
+type SummaryDialogProps = {
   roomName: string;
-  setIndex: number;
   scrambles: string[];
   results: IResult[];
   children: React.ReactNode;
 };
 
-export default function SetDialog({
+export default function SummaryDialog({
   roomName,
-  setIndex,
   scrambles,
   results,
   children,
-}: SetDialogProps) {
+}: SummaryDialogProps) {
   const resultTextCopy: string = useMemo(() => {
-    return [
-      "BTime Room Set Summary",
-      `Room Name: ${roomName}`,
-      `Set ${setIndex}`,
-      createResultTextLines(scrambles, results),
-    ].join("\n");
-  }, [roomName, scrambles, results, setIndex]);
+    return (
+      "BTime Room Summary\nRoom Name: " +
+      roomName +
+      "\n" +
+      createResultTextLines(scrambles, results)
+    );
+  }, [roomName, scrambles, results]);
 
   return (
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent>
-        <DialogTitle>{setIndex && `Set ${setIndex}`}</DialogTitle>
+        <DialogTitle>Room Summary: {roomName}</DialogTitle>
         {scrambles.map((scramble, idx) => (
           <div key={idx}>
             {idx + 1}.{"\t"}
@@ -56,6 +56,14 @@ export default function SetDialog({
             }}
           >
             Copy to Clipboard
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => {
+              toast("lol");
+            }}
+          >
+            Download CSV
           </Button>
         </DialogFooter>
       </DialogContent>

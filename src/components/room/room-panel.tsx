@@ -214,11 +214,12 @@ function UserRoomPanel({
 }
 
 function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
-  const {user: localUser} = useSession();
+  const { user: localUser } = useSession();
 
   const [
     users,
     solves,
+    roomName,
     roomEvent,
     roomFormat,
     roomState,
@@ -231,6 +232,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
   ] = useRoomStore((s) => [
     s.users,
     s.solves,
+    s.roomName,
     s.roomEvent,
     s.roomFormat,
     s.roomState,
@@ -265,7 +267,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
             return -(u2.points - u1.points);
           case "FASTEST_OF":
             //sort by the LOWER single
-            return (-u2.points - u1.points);
+            return -u2.points - u1.points;
         }
       }
     },
@@ -283,9 +285,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
         userLiveTimerStartTimes[user.user.id]
       ) {
         return (
-          <UserLiveTimer
-            startTime={userLiveTimerStartTimes[user.user.id]!}
-          />
+          <UserLiveTimer startTime={userLiveTimerStartTimes[user.user.id]!} />
         );
       } else if (
         user.userStatus === "SUBMITTING" &&
@@ -293,9 +293,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
       ) {
         return (
           <p className="italic">
-            {Result.timeToString(
-              Math.floor(userLiveTimes[user.user.id]! / 10)
-            )}
+            {Result.timeToString(Math.floor(userLiveTimes[user.user.id]! / 10))}
           </p>
         );
       } else {
@@ -331,8 +329,13 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
         <div className="flex flex-col overflow-y-auto">
           {sortedActiveUsers.map((user, index) => (
             <div key={index} className="grid grid-cols-12">
-              <RoomUserDialog user={user} hostView={isUserHost(localUser?.userInfo.id)}>
-                <div className="col-span-5 hover:scale-105 hover:font-bold hover:underline">{user.user.userName}</div>
+              <RoomUserDialog
+                user={user}
+                hostView={isUserHost(localUser?.userInfo.id)}
+              >
+                <div className="col-span-5 hover:scale-105 hover:font-bold hover:underline">
+                  {user.user.userName}
+                </div>
               </RoomUserDialog>
               {roomState === "STARTED" && (
                 <div className="col-span-3">{userStatusText(user)}</div>
@@ -345,7 +348,9 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
                   {Result.timeToString(user.points)}
                 </div>
               )}
-              {(setFormat === "BEST_OF" || setFormat === "FIRST_TO" || setFormat === "FASTEST_OF") && (
+              {(setFormat === "BEST_OF" ||
+                setFormat === "FIRST_TO" ||
+                setFormat === "FASTEST_OF") && (
                 <div className="col-span-2">{user.points}</div>
               )}
             </div>
@@ -353,6 +358,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
         </div>
       </div>
       <GlobalTimeList
+        roomName={roomName}
         users={Object.values(users)} //.filter((roomUser) => roomUser.active)}
         solves={solves}
         roomEvent={roomEvent}
