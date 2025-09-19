@@ -46,6 +46,7 @@
   --color-destructive: var(--destructive);
   --color-border: var(--border);
   --color-input: var(--input);
+  --color-input-border: var(--input-border);
   --color-ring: var(--ring);
 
   --color-scrollbar: var(--scrollbar);
@@ -104,7 +105,8 @@
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(1.0 0 0 / 0%);
-  --input: oklch(0.922 0 0);
+  --input: oklch(0.95 0 0);
+  --input-border: oklch(0.7 0 0);
   --ring: oklch(0.708 0 0);
 
   --scrollbar: oklch(0.73 0 0);
@@ -164,6 +166,7 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
+  --input-border: oklch(1 0 0 / 70%);
   --ring: oklch(0.556 0 0);
 
   --scrollbar: oklch(0.37 0 0);
