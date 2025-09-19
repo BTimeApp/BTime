@@ -127,7 +127,7 @@ export default function RoomSettingsForm({
       if (!user) {
         setFormErrorText("User is not logged in.");
       } else if (!socket || !socketConnected) {
-        console.log(socket, socketConnected);
+        // console.log(socket, socketConnected);
         setFormErrorText(
           "Websocket is not connected. Try refreshing the page."
         );
@@ -141,7 +141,7 @@ export default function RoomSettingsForm({
   const onSubmit = useCallback(
     (values: z.infer<typeof formSchema>) => {
       if (!socket || !user) {
-        console.log(socket, user);
+        // console.log(socket, user);
         return;
       }
 

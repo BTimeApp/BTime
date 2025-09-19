@@ -348,13 +348,10 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         const updated = [...state.solves];
         updated[updated.length - 1] = solve;
 
-        //update points in users
-        const solveWinners = solve.solveWinners;
+        //update points for ALL users - nec. for Ao, Mo modes
         const updatedUsers = { ...get().users };
-        if (solveWinners) {
-          for (const uid of solveWinners) {
-            updatedUsers[uid].points = users[uid].points;
-          }
+        for (const roomUser of Object.values(users)) {
+          updatedUsers[roomUser.user.id].points = roomUser.points;
         }
 
         return { solves: updated };
