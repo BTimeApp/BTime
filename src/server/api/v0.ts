@@ -63,13 +63,11 @@ export function v0(): Router {
         //update the user in server object - this refreshes the user info for things like room creation
         users.set(iUser.userInfo.id, iUser.userInfo);
 
-        res
-          .status(200)
-          .json({
-            success: true,
-            message: "Successful profile update!",
-            updatedUser: iUser,
-          });
+        res.status(200).json({
+          success: true,
+          message: "Successful profile update!",
+          updatedUser: iUser,
+        });
         return;
       })
       .catch((err) => {
@@ -77,18 +75,18 @@ export function v0(): Router {
           res.status(400).json({ success: false, message: err.message });
           return;
         }
-      
+
         if (err.code === 11000 && err.keyPattern?.userName) {
-          res.status(400).json({ success: false, message: "Username is already taken." });
+          res
+            .status(400)
+            .json({ success: false, message: "Username is already taken." });
           return;
         }
 
-        res
-          .status(500)
-          .json({
-            success: false,
-            message: "User update failed due to server error.",
-          });
+        res.status(500).json({
+          success: false,
+          message: "User update failed due to server error.",
+        });
         return;
       });
   });
@@ -98,11 +96,37 @@ export function v0(): Router {
    * TODO: implement filtering (i.e. looking up by specific rooms), pagination, etc.
    */
   router.get("/rooms", (req, res) => {
+    // by default, we will return the first 20 rooms
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.limit as string) || 20;
+    if (pageSize < 1 || page <= 0) {
+      res.status(400);
+      return;
+    }
+
+    const total = rooms.size;
+
+    // if the user has requested a nonexistent page
+    if ((page - 1) * pageSize >= rooms.size && rooms.size > 0) {
+      res.json({
+        rooms: undefined,
+        totalPages: Math.ceil(total / pageSize),
+        total,
+      });
+      return;
+    }
+
     //preserve the [[id, value]] structure while converting full room info to room summaries.
-    const roomSummaryList: [string, IRoomSummary][] = Array.from(rooms).map(
-      (x) => [x[0], roomToSummary(x[1])]
-    );
-    res.send(roomSummaryList);
+    const roomSummaryList: [string, IRoomSummary][] = Array.from(rooms)
+      .slice((page - 1) * pageSize, page * pageSize)
+      .map((x) => [x[0], roomToSummary(x[1])]);
+    const roomsToSend = roomSummaryList.slice();
+
+    res.json({
+      rooms: roomsToSend,
+      totalPages: Math.ceil(total / pageSize),
+      total,
+    });
   });
 
   return router;
