@@ -20,5 +20,5 @@ async function addTestRooms() {
 }
 
 export default async function addDevExtras() {
-    addTestRooms();
+    // addTestRooms();
 }

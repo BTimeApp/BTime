@@ -107,10 +107,10 @@ export function v0(): Router {
     const total = rooms.size;
 
     // if the user has requested a nonexistent page
-    if ((page - 1) * pageSize >= rooms.size && rooms.size > 0) {
+    if ((page - 1) * pageSize >= rooms.size && (rooms.size > 0 || page > 1)) {
       res.json({
         rooms: undefined,
-        totalPages: Math.ceil(total / pageSize),
+        totalPages: Math.max(Math.ceil(total / pageSize), 1),
         total,
       });
       return;
@@ -124,7 +124,7 @@ export function v0(): Router {
 
     res.json({
       rooms: roomsToSend,
-      totalPages: Math.ceil(total / pageSize),
+      totalPages: Math.max(Math.ceil(total / pageSize), 1),
       total,
     });
   });
