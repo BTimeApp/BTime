@@ -11,7 +11,6 @@ import {
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 /**
  * This component serves as a card-like summary of a user profile.
