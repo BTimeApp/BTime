@@ -5,7 +5,7 @@ import { Slot } from "@radix-ui/react-slot";
 import { VariantProps, cva } from "class-variance-authority";
 import { AlignJustifyIcon } from "lucide-react";
 
-import { useIsMobile } from "@/hooks/useMobile";
+import { useIsTouchscreen } from "@/hooks/useMobile";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -37,7 +37,7 @@ type SidebarContextProps = {
   setOpen: (open: boolean) => void;
   openMobile: boolean;
   setOpenMobile: (open: boolean) => void;
-  isMobile: boolean;
+  isTouchscreen: boolean;
   toggleSidebar: () => void;
 };
 
@@ -65,7 +65,7 @@ function SidebarProvider({
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
-  const isMobile = useIsMobile();
+  const isTouchscreen = useIsTouchscreen();
   const [openMobile, setOpenMobile] = React.useState(false);
 
   // This is the internal state of the sidebar.
@@ -89,8 +89,8 @@ function SidebarProvider({
 
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {
-    return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open);
-  }, [isMobile, setOpen, setOpenMobile]);
+    return isTouchscreen ? setOpenMobile((open) => !open) : setOpen((open) => !open);
+  }, [isTouchscreen, setOpen, setOpenMobile]);
 
   // Adds a keyboard shortcut to toggle the sidebar.
   React.useEffect(() => {
@@ -117,12 +117,12 @@ function SidebarProvider({
       state,
       open,
       setOpen,
-      isMobile,
+      isTouchscreen,
       openMobile,
       setOpenMobile,
       toggleSidebar,
     }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+    [state, open, setOpen, isTouchscreen, openMobile, setOpenMobile, toggleSidebar]
   );
 
   return (
@@ -162,7 +162,7 @@ function Sidebar({
   variant?: "sidebar" | "floating" | "inset";
   collapsible?: "offcanvas" | "icon" | "none";
 }) {
-  const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+  const { isTouchscreen, state, openMobile, setOpenMobile } = useSidebar();
 
   if (collapsible === "none") {
     return (
@@ -179,7 +179,7 @@ function Sidebar({
     );
   }
 
-  if (isMobile) {
+  if (isTouchscreen) {
     return (
       <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
         <SheetContent
@@ -501,7 +501,7 @@ function SidebarMenuButton({
   tooltip?: string | React.ComponentProps<typeof TooltipContent>;
 } & VariantProps<typeof sidebarMenuButtonVariants>) {
   const Comp = asChild ? Slot : "button";
-  const { isMobile, state } = useSidebar();
+  const { isTouchscreen, state } = useSidebar();
 
   const button = (
     <Comp
@@ -530,7 +530,7 @@ function SidebarMenuButton({
       <TooltipContent
         side="right"
         align="center"
-        hidden={state !== "collapsed" || isMobile}
+        hidden={state !== "collapsed" || isTouchscreen}
         {...tooltip}
       />
     </Tooltip>
