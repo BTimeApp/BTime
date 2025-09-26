@@ -11,6 +11,7 @@ import session from "express-session";
 import { users } from "@/server/server-objects";
 import { rateLimit } from "express-rate-limit";
 import addDevExtras from "@/server/dev-extras";
+import { connectToRedis } from "@/server/redis/init-redis";
 
 export async function startServer(): Promise<void> {
   // handle config with dotenv
@@ -20,6 +21,9 @@ export async function startServer(): Promise<void> {
 
   // connect to the DB
   await connectToDB();
+
+  // connect to Redis
+  const {pubClient, subClient} = await connectToRedis();
 
   // start next.js app (used to serve frontend)
   const nextApp = next({ dev: !isProd });
@@ -114,7 +118,7 @@ export async function startServer(): Promise<void> {
   app.use("/api", api());
 
   // set up socket.io server listener
-  initSocket(httpServer, sessionMiddleware as SocketMiddleware);
+  initSocket(httpServer, sessionMiddleware as SocketMiddleware, pubClient, subClient);
 
   // Let Next.js handle all other requests
   app.use((req: Request, res: Response) => {

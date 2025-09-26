@@ -32,6 +32,8 @@ import { ObjectId } from "bson";
 import passport from "passport";
 import bcrypt from "bcrypt";
 import { SOCKET_CLIENT, SOCKET_SERVER } from "@/types/socket_protocol";
+import Redis from "ioredis";
+import { createAdapter } from "@socket.io/redis-adapter";
 
 //defines useful state variables we want to maintain over the lifestyle of a socket connection (only visible server-side)
 interface CustomSocket extends Socket {
@@ -47,9 +49,12 @@ export type SocketMiddleware = (
 
 export const initSocket = (
   httpServer: HttpServer,
-  sessionMiddleware: SocketMiddleware
+  sessionMiddleware: SocketMiddleware,
+  pubClient: Redis,
+  subClient: Redis,
 ) => {
   const io = new Server(httpServer, {
+    adapter: createAdapter(pubClient, subClient),
     cors: {
       credentials: true,
     },
