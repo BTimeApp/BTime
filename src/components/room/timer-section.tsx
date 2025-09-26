@@ -48,16 +48,18 @@ function TimerSection() {
     (timerValue: number) => {
       setLocalResult(new Result(timerValue, localPenalty));
       updateLocalSolveStatus();
+      setSpacebarDown(false);
     },
-    [updateLocalSolveStatus, setLocalResult, localPenalty]
+    [updateLocalSolveStatus, setLocalResult, setSpacebarDown, localPenalty]
   );
 
   const endInspectionCallback = useCallback(
     (penalty: Penalty) => {
       setLocalPenalty(penalty);
       updateLocalSolveStatus();
+      setSpacebarDown(false);
     },
-    [updateLocalSolveStatus, setLocalPenalty]
+    [updateLocalSolveStatus, setLocalPenalty, setSpacebarDown]
   );
 
   switch (timerType) {
@@ -100,16 +102,18 @@ function TimerSection() {
               <KeyListener
                 keyName="Space"
                 onKeyUp={() => {
-                  updateLocalSolveStatus(); //updateLocalSolveStatus
+                  console.log("keyup");
                   setSpacebarDown(false);
+                  updateLocalSolveStatus(); //updateLocalSolveStatus
                 }}
                 onKeyDown={() => {
+                  console.log("keydown");
                   setSpacebarDown(true);
                 }}
               >
                 <div
                   className={cn(
-                    `text-4xl ${spacebarDown ? "text-green-500" : ""}`
+                    `text-4xl ${spacebarDown ? "text-timer-ready" : ""}`
                   )}
                 >
                   -.--
