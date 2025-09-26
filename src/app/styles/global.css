@@ -120,9 +120,9 @@
   --sidebar-ring: oklch(0.708 0 0);
 
   /* Cubing-related style */
-  --timer-ready: oklch(0.5752 0.1446 144.18);/* Green 700. Analogous to green light on stackmat. Shows that timer is ready to start. */
-  --timer-warning: oklch(0.8391 0.1615 84.38); /* Yellow 700. */
-  --timer-notready: oklch(0.568 0.2002 26.41); /* Red 700. Analogous to red light on stackmat. Shows that timer is not ready to start. */
+  --timer-ready: oklch(0.6731 0.1624 144.21);/* Green 500. Analogous to green light on stackmat. Shows that timer is ready to start. */
+  --timer-warning: oklch(0.6799 0.1847 48.15); /* Orange 800. Designed to contrast with gold secondary. */
+  --timer-notready: oklch(0.6427 0.2153 28.81); /* Red 500. Analogous to red light on stackmat. Shows that timer is not ready to start. */
 }
 
 .dark {
