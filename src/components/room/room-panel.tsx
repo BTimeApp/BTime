@@ -353,14 +353,14 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
                 {roomFormat === "RACING" && (
                   <div className="col-span-2">{user.setWins}</div>
                 )}
-                {(setFormat === "AVERAGE_OF" || setFormat === "MEAN_OF") && (
+                {(setFormat === "AVERAGE_OF" || setFormat === "MEAN_OF" || setFormat === "FASTEST_OF") && (
                   <div className="col-span-2">
                     {Result.timeToString(user.points)}
                   </div>
                 )}
                 {(setFormat === "BEST_OF" ||
-                  setFormat === "FIRST_TO" ||
-                  setFormat === "FASTEST_OF") && (
+                  setFormat === "FIRST_TO"
+                  ) && (
                   <div className="col-span-2">{user.points}</div>
                 )}
               </div>
