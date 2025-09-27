@@ -344,7 +344,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
                   hostView={isUserHost(localUser?.userInfo.id)}
                 >
                   <div className="col-span-5 hover:scale-105 hover:font-bold hover:underline">
-                    {user.user.userName}
+                    {user.user.userName.length > 0 ? user.user.userName : "BTime User"}
                   </div>
                 </RoomUserDialog>
                 {roomState === "STARTED" && (

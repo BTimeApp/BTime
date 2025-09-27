@@ -34,7 +34,7 @@ export default function ProfileView() {
           href="/profile"
           className="flex font-semibold text-xl hover:font-bold hover:underline"
         >
-          {username}
+          {username.length > 0 ? username : "BTime User"}
         </Link>
       </CardHeader>
       <CardContent className="px-0">
