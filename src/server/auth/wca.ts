@@ -1,10 +1,10 @@
 import { Router } from "express";
 import { PassportStatic } from "passport";
-import { users } from "@/server/server-objects";
 import { Strategy as CustomStrategy } from "passport-custom";
 import { UserModel, UserDocument, toIUser } from "@/server/models/user";
+import { RedisStores } from "@/server/redis/stores";
 
-export function createWCAAuth(passport: PassportStatic): Router {
+export function createWCAAuth(passport: PassportStatic, stores: RedisStores): Router {
   // add WCA auth strategy to passport
   passport.use(
     "wca",
@@ -115,7 +115,7 @@ export function createWCAAuth(passport: PassportStatic): Router {
           console.error("No user returned. Info:", info);
           return res.redirect("/profile");
         }
-        req.logIn(user, (err) => {
+        req.logIn(user, async (err) => {
           if (err) {
             console.error("Login error:", err);
             return res.redirect("/profile");
@@ -142,11 +142,8 @@ export function createWCAAuth(passport: PassportStatic): Router {
           if (!user) {
             //this one should never happen...
             console.log("No User in auth wca callback...");
-          } else if (users.get(user.userInfo.id)) {
-            //already exists in users...
-            console.log(`User ${user.userInfo.id} double login.`);
           } else {
-            users.set(user.userInfo.id, user.userInfo);
+            await stores.users.setUser(user.userInfo);
           }
 
           res.redirect(redirectTo);

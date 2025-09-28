@@ -7,10 +7,12 @@ export const connectToRedis = async () => {
     port: parseInt(process.env.REDIS_PORT!),
   });
   const subClient = pubClient.duplicate();
+  const dataClient = pubClient.duplicate();
 
   //in ioredis, we don't need a connect() call. Redis handles for us
 
   console.log("Connected to Redis.");
 
-  return { pubClient, subClient };
+  // pubClient, subClient for pub/sub use with socket.io. Use storeClient to read and write to the redis store.
+  return { pubClient, subClient, dataClient };
 };

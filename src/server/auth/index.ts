@@ -3,9 +3,11 @@ import { PassportStatic } from "passport";
 import { UserModel, toIUser } from "@/server/models/user";
 import { NextFunction, Request, Response, Router } from "express";
 import { createWCAAuth } from "@/server/auth/wca";  
+import { RedisStores } from "@/server/redis/stores";
 
 export function createAuthRouter(
-  passport: PassportStatic
+  passport: PassportStatic,
+  stores: RedisStores
 ) {
 
   passport.serializeUser((user: Express.User, done) => {
@@ -29,7 +31,7 @@ export function createAuthRouter(
   });
 
   const router = Router();
-  router.use("/wca", createWCAAuth(passport));
+  router.use("/wca", createWCAAuth(passport, stores));
   //TOOD - add more login routes as needed
 
   return router;

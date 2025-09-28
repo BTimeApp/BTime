@@ -2,9 +2,9 @@ import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
 import {
   rooms,
-  users,
+  // users,
   roomTimeouts,
-  userSessions,
+  // userSessions,
 } from "@/server/server-objects";
 import { IRoom, RoomState, IRoomSettings } from "@/types/room";
 import {
@@ -34,6 +34,7 @@ import bcrypt from "bcrypt";
 import { SOCKET_CLIENT, SOCKET_SERVER } from "@/types/socket_protocol";
 import Redis from "ioredis";
 import { createAdapter } from "@socket.io/redis-adapter";
+import { createStores } from "@/server/redis/stores";
 
 //defines useful state variables we want to maintain over the lifestyle of a socket connection (only visible server-side)
 interface CustomSocket extends Socket {
@@ -52,6 +53,7 @@ export const initSocket = (
   sessionMiddleware: SocketMiddleware,
   pubClient: Redis,
   subClient: Redis,
+  dataClient: Redis
 ) => {
   const io = new Server(httpServer, {
     adapter: createAdapter(pubClient, subClient),
@@ -92,11 +94,13 @@ export const initSocket = (
   );
 
   // TODO: move socket events to their own namespaces
-  listenSocketEvents(io);
+  listenSocketEvents(io, dataClient);
 };
 
-const listenSocketEvents = (io: Server) => {
-  function onConnect(socket: CustomSocket) {
+const listenSocketEvents = (io: Server, dataClient: Redis) => {
+  const stores = createStores(dataClient);
+
+  async function onConnect(socket: CustomSocket) {
     //check for user. DC if no user
     socket.user = socket.request.user;
     if (!socket.user) {
@@ -113,10 +117,8 @@ const listenSocketEvents = (io: Server) => {
     // user joins "their" room by default
     socket.join(userId);
 
-    //add user to user store if not already
-    if (!users.has(userId)) users.set(userId, socket.user.userInfo);
-    if (!userSessions.has(userId)) userSessions.set(userId, new Set<string>());
-    userSessions.get(userId)!.add(socket.id);
+    await stores.users.setUser(socket.user.userInfo);
+    await stores.userSessions.addUserSession(userId, socket.id);
   }
 
   async function handleSolveFinished(room: IRoom) {
@@ -217,20 +219,20 @@ const listenSocketEvents = (io: Server) => {
     return [...smaller].filter((socketId) => larger.has(socketId));
   }
 
-  io.on("connection", (socket: CustomSocket) => {
+  io.on("connection", async (socket: CustomSocket) => {
     //since we require a user to log in, access and set first.
-    onConnect(socket);
+    await onConnect(socket);
     if (!socket.connected) {
       return;
     }
     const userId = socket.user!.userInfo.id;
 
-    function handleUserDisconnect(userId: string) {
-      userSessions.get(userId)?.delete(socket.id);
+    async function handleUserDisconnect(userId: string) {
+      await stores.userSessions.deleteUserSession(userId, socket.id);
 
-      if (!userSessions.has(userId) || userSessions.get(userId)?.size === 0) {
-        users.delete(userId);
-      }
+      stores.userSessions.numUserSessions(userId).then(async (numSessions) => {
+        if (numSessions === 0) await stores.users.deleteUser(userId);
+      })
     }
 
     async function handleRoomDisconnect(userId: string, roomId: string) {
@@ -387,7 +389,7 @@ const listenSocketEvents = (io: Server) => {
         ) => void
       ) => {
         //validate real user
-        const user: IUserInfo | undefined = users.get(userId);
+        const user: IUserInfo | null = await stores.users.getUser(userId);
         if (!user) {
           console.log(
             `Nonexistent user with id ${userId} attempting to join room ${roomId}.`
@@ -821,7 +823,7 @@ const listenSocketEvents = (io: Server) => {
       }
 
       //handle user DC
-      handleUserDisconnect(userId);
+      await handleUserDisconnect(userId);
     });
   });
 };

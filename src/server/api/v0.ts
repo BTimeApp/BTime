@@ -1,14 +1,15 @@
 import { Router } from "express";
 import { authMiddleware } from "@/server/auth";
-import { rooms, users } from "@/server/server-objects";
+import { rooms } from "@/server/server-objects";
 import { IRoomSummary, roomToSummary } from "@/types/room-listing-info";
 import { toIUser, UserDocument, UserModel } from "@/server/models/user";
 import { IUser } from "@/types/user";
+import { type RedisStores } from "@/server/redis/stores";
 
 /** Adds sub-API routes (v0) to an application. Meant to be used from within the /api route. ([btime]/api/v0/...)
  *
  */
-export function v0(): Router {
+export function v0(stores: RedisStores): Router {
   const router = Router();
 
   /**
@@ -61,7 +62,7 @@ export function v0(): Router {
         const iUser: IUser = toIUser(updatedUser);
 
         //update the user in server object - this refreshes the user info for things like room creation
-        users.set(iUser.userInfo.id, iUser.userInfo);
+        stores.users.setUser(iUser.userInfo);
 
         res.status(200).json({
           success: true,

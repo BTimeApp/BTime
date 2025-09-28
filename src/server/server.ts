@@ -8,10 +8,10 @@ import { createAuthRouter } from "@/server/auth";
 import { api } from "@/server/api";
 import passport from "passport";
 import session from "express-session";
-import { users } from "@/server/server-objects";
 import { rateLimit } from "express-rate-limit";
 import addDevExtras from "@/server/dev-extras";
 import { connectToRedis } from "@/server/redis/init-redis";
+import { createStores } from "@/server/redis/stores";
 
 export async function startServer(): Promise<void> {
   // handle config with dotenv
@@ -23,7 +23,10 @@ export async function startServer(): Promise<void> {
   await connectToDB();
 
   // connect to Redis
-  const {pubClient, subClient} = await connectToRedis();
+  const {pubClient, subClient, dataClient} = await connectToRedis();
+
+  const dataStores = createStores(dataClient);
+
 
   // start next.js app (used to serve frontend)
   const nextApp = next({ dev: !isProd });
@@ -62,7 +65,7 @@ export async function startServer(): Promise<void> {
   app.use(passport.session());
 
   // Set up auth and logout routes
-  app.use("/auth", createAuthRouter(passport));
+  app.use("/auth", createAuthRouter(passport, dataStores));
   app.get("/logout", (req, res, nextfn) => {
     const redirect = (req.query.redirect as string) || "/";
 
@@ -92,7 +95,7 @@ export async function startServer(): Promise<void> {
 
         //remove the user from global user pool
         if (userId) {
-          users.delete(userId);
+          dataStores.users.deleteUser(userId);
         }
 
         res.redirect(redirect);
@@ -115,10 +118,10 @@ export async function startServer(): Promise<void> {
   app.use(limiter);
 
   // Set up api routes
-  app.use("/api", api());
+  app.use("/api", api(dataStores));
 
   // set up socket.io server listener
-  initSocket(httpServer, sessionMiddleware as SocketMiddleware, pubClient, subClient);
+  initSocket(httpServer, sessionMiddleware as SocketMiddleware, pubClient, subClient, dataClient);
 
   // Let Next.js handle all other requests
   app.use((req: Request, res: Response) => {
