@@ -1,6 +1,6 @@
 import Redis from "ioredis";
 import { createUserStore } from "@/server/redis/stores/userStore";
-import { createUserSessionStore } from "@/server/redis/stores/userSessions";
+import { createUserSessionStore } from "@/server/redis/stores/userSessionStore";
 
 export function createStores(redis: Redis) {
   const client = redis;
@@ -8,7 +8,7 @@ export function createStores(redis: Redis) {
   return {
     users: createUserStore(client),
     userSessions: createUserSessionStore(client),
-    // add in more user stores as we need to store more data
+    // add in more data stores here
   };
 }
 
