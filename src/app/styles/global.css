@@ -46,6 +46,7 @@
   --color-destructive: var(--destructive);
   --color-border: var(--border);
   --color-input: var(--input);
+  --color-input-border: var(--input-border);
   --color-ring: var(--ring);
 
   --color-scrollbar: var(--scrollbar);
@@ -103,8 +104,9 @@
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(1.0 0 0 / 0%);
-  --input: oklch(0.922 0 0);
+  --border: oklch(0.7 0 0);
+  --input: oklch(0.95 0 0);
+  --input-border: oklch(0.7 0 0);
   --ring: oklch(0.708 0 0);
 
   --scrollbar: oklch(0.73 0 0);
@@ -118,9 +120,9 @@
   --sidebar-ring: oklch(0.708 0 0);
 
   /* Cubing-related style */
-  --timer-ready: oklch(0.5752 0.1446 144.18);/* Green 700. Analogous to green light on stackmat. Shows that timer is ready to start. */
-  --timer-warning: oklch(0.8391 0.1615 84.38); /* Yellow 700. */
-  --timer-notready: oklch(0.568 0.2002 26.41); /* Red 700. Analogous to red light on stackmat. Shows that timer is not ready to start. */
+  --timer-ready: oklch(0.6731 0.1624 144.21);/* Green 500. Analogous to green light on stackmat. Shows that timer is ready to start. */
+  --timer-warning: oklch(0.6799 0.1847 48.15); /* Orange 800. Designed to contrast with gold secondary. */
+  --timer-notready: oklch(0.6427 0.2153 28.81); /* Red 500. Analogous to red light on stackmat. Shows that timer is not ready to start. */
 }
 
 .dark {
@@ -164,6 +166,7 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
+  --input-border: oklch(1 0 0 / 70%);
   --ring: oklch(0.556 0 0);
 
   --scrollbar: oklch(0.37 0 0);

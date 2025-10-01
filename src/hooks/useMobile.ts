@@ -1,19 +1,22 @@
-import * as React from "react"
+import { useEffect, useState } from "react";
 
-const MOBILE_BREAKPOINT = 768
+/**
+ * This hook is more accurately useIsTouchscreen, but this is close enough.
+ */
+export function useIsTouchscreen() {
+  const [isTouchScreen, setIsTouchscreen] = useState(false);
 
-export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Check for maxTouchPoints (modern approach)
+      const hasMaxTouchPoints = navigator.maxTouchPoints > 0;
 
-  React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
-    const onChange = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+      // Check for ontouchstart (older, but still useful for broad compatibility)
+      const hasOntouchstart = 'ontouchstart' in window;
+
+      setIsTouchscreen(hasMaxTouchPoints || hasOntouchstart);
     }
-    mql.addEventListener("change", onChange)
-    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    return () => mql.removeEventListener("change", onChange)
-  }, [])
+  }, []);
 
-  return !!isMobile
+  return isTouchScreen;
 }

@@ -1,14 +1,13 @@
 import { Router } from "express";
 import { authMiddleware } from "@/server/auth";
-import { rooms, users } from "@/server/server-objects";
-import { IRoomSummary, roomToSummary } from "@/types/room-listing-info";
 import { toIUser, UserDocument, UserModel } from "@/server/models/user";
 import { IUser } from "@/types/user";
+import { type RedisStores } from "@/server/redis/stores";
 
 /** Adds sub-API routes (v0) to an application. Meant to be used from within the /api route. ([btime]/api/v0/...)
  *
  */
-export function v0(): Router {
+export function v0(stores: RedisStores): Router {
   const router = Router();
 
   /**
@@ -61,15 +60,13 @@ export function v0(): Router {
         const iUser: IUser = toIUser(updatedUser);
 
         //update the user in server object - this refreshes the user info for things like room creation
-        users.set(iUser.userInfo.id, iUser.userInfo);
+        stores.users.setUser(iUser.userInfo);
 
-        res
-          .status(200)
-          .json({
-            success: true,
-            message: "Successful profile update!",
-            updatedUser: iUser,
-          });
+        res.status(200).json({
+          success: true,
+          message: "Successful profile update!",
+          updatedUser: iUser,
+        });
         return;
       })
       .catch((err) => {
@@ -77,32 +74,52 @@ export function v0(): Router {
           res.status(400).json({ success: false, message: err.message });
           return;
         }
-      
+
         if (err.code === 11000 && err.keyPattern?.userName) {
-          res.status(400).json({ success: false, message: "Username is already taken." });
+          res
+            .status(400)
+            .json({ success: false, message: "Username is already taken." });
           return;
         }
 
-        res
-          .status(500)
-          .json({
-            success: false,
-            message: "User update failed due to server error.",
-          });
+        res.status(500).json({
+          success: false,
+          message: "User update failed due to server error.",
+        });
         return;
       });
   });
 
   /**
-   * Returns room information.
-   * TODO: implement filtering (i.e. looking up by specific rooms), pagination, etc.
+   * Returns room information in paginated format.
+   * TODO: implement filtering (i.e. looking up by specific rooms), sorting on certain keys, etc.
+   *
+   * Inputs
+   *  - page        the page "index" to query
+   *  - pageSize    the number of rooms to get per page
+   *
+   * Output (JSON):
+   *  - rooms       a list rooms available for this page in room summary format. IRoomSummary[] | null
+   *  - totalPages  the total number of pages that exist with the given page size
+   *  - total       the total number of rooms that exist
    */
-  router.get("/rooms", (req, res) => {
-    //preserve the [[id, value]] structure while converting full room info to room summaries.
-    const roomSummaryList: [string, IRoomSummary][] = Array.from(rooms).map(
-      (x) => [x[0], roomToSummary(x[1])]
-    );
-    res.send(roomSummaryList);
+  router.get("/rooms", async (req, res) => {
+    // by default, we will return the first 20 rooms
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.limit as string) || 20;
+    if (pageSize < 1 || page <= 0) {
+      res.status(400);
+      return;
+    }
+
+    const { roomSummaries, totalPages, totalRooms } =
+      await stores.rooms.getRoomsPage(page, pageSize);
+
+    res.json({
+      rooms: roomSummaries,
+      totalPages,
+      total: totalRooms,
+    });
   });
 
   return router;

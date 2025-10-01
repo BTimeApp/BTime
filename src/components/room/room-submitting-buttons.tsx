@@ -4,6 +4,7 @@ import { useRoomStore } from "@/context/room-context";
 import { useCallback, useEffect, useRef } from "react";
 import { useSocket } from "@/context/socket-context";
 import { SOCKET_CLIENT } from "@/types/socket_protocol";
+import { KeybindButton } from "../common/keybind-button";
 
 function RoomSubmittingButtons() {
   const [
@@ -37,7 +38,8 @@ function RoomSubmittingButtons() {
       <Button variant="destructive" size="xs" onClick={resetLocalSolveStatus}>
         <h1 className={cn("font-bold text-center text-md")}>REDO</h1>
       </Button>
-      <Button
+      <KeybindButton
+        keys={["ctrl", "1"]}
         variant="destructive"
         size="xs"
         onClick={() => {
@@ -45,8 +47,9 @@ function RoomSubmittingButtons() {
         }}
       >
         <h1 className={cn("font-bold text-center text-md")}>OK</h1>
-      </Button>
-      <Button
+      </KeybindButton>
+      <KeybindButton
+        keys={["ctrl", "2"]}
         variant="destructive"
         size="xs"
         onClick={() => {
@@ -54,8 +57,9 @@ function RoomSubmittingButtons() {
         }}
       >
         <h1 className={cn("font-bold text-center text-md")}>+2</h1>
-      </Button>
-      <Button
+      </KeybindButton>
+      <KeybindButton
+        keys={["ctrl", "3"]}
         variant="destructive"
         size="xs"
         onClick={() => {
@@ -63,7 +67,7 @@ function RoomSubmittingButtons() {
         }}
       >
         <h1 className={cn("font-bold text-center text-md")}>DNF</h1>
-      </Button>
+      </KeybindButton>
       {/* <KeyListener
         keyName="Enter"
         onKeyDown={submitLocalResult}

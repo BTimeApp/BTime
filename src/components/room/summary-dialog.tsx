@@ -1,3 +1,4 @@
+"use client";
 import {
   Dialog,
   DialogContent,
@@ -9,39 +10,48 @@ import {
 import { IResult, Result } from "@/types/result";
 import React, { useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { copyTextToClipboard, createResultTextLines } from "@/lib/utils";
+import {
+  copyTextToClipboard,
+  createResultTextLines,
+  downloadTextFile,
+} from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
 // we expect scrmables and results to be of the same length. it should be one to one.
-type SetDialogProps = {
+type SummaryDialogProps = {
   roomName: string;
-  setIndex: number;
   scrambles: string[];
   results: IResult[];
   children: React.ReactNode;
 };
 
-export default function SetDialog({
+export default function SummaryDialog({
   roomName,
-  setIndex,
   scrambles,
   results,
   children,
-}: SetDialogProps) {
+}: SummaryDialogProps) {
   const resultTextCopy: string = useMemo(() => {
-    return [
-      "BTime Room Set Summary",
-      `Room Name: ${roomName}`,
-      `Set ${setIndex}`,
-      createResultTextLines(scrambles, results),
-    ].join("\n");
-  }, [roomName, scrambles, results, setIndex]);
+    return (
+      "BTime Room Summary\nRoom Name: " +
+      roomName +
+      "\n" +
+      createResultTextLines(scrambles, results)
+    );
+  }, [roomName, scrambles, results]);
+
+  const resultTextDownload: string = useMemo(() => {
+    return (
+      "Solve\tResult\tScramble\n" + createResultTextLines(scrambles, results)
+    );
+  }, [scrambles, results]);
 
   return (
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="py-3">
         <DialogHeader>
-        <DialogTitle>{setIndex && `Set ${setIndex}`}</DialogTitle>  
+          <DialogTitle>Room Summary: {roomName}</DialogTitle>
         </DialogHeader>
         <ScrollArea className="max-h-[50vh]">
           {scrambles.map((scramble, idx) => (
@@ -61,6 +71,14 @@ export default function SetDialog({
             }}
           >
             Copy to Clipboard
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => {
+              downloadTextFile(`BTime_${roomName}.txt`, resultTextDownload);
+            }}
+          >
+            Download Solves
           </Button>
         </DialogFooter>
       </DialogContent>

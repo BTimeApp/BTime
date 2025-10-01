@@ -17,6 +17,11 @@ import UserRoomSettingsDialog from "@/components/room/user-room-settings-dialog"
 import UserLiveTimer from "@/components/room/user-live-timer";
 import RoomUserDialog from "@/components/room/room-user-dialog";
 import { useSession } from "@/context/session-context";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "../ui/resizable";
 
 type RoomPanelProps = {
   className?: string;
@@ -214,11 +219,12 @@ function UserRoomPanel({
 }
 
 function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
-  const {user: localUser} = useSession();
+  const { user: localUser } = useSession();
 
   const [
     users,
     solves,
+    roomName,
     roomEvent,
     roomFormat,
     roomState,
@@ -231,6 +237,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
   ] = useRoomStore((s) => [
     s.users,
     s.solves,
+    s.roomName,
     s.roomEvent,
     s.roomFormat,
     s.roomState,
@@ -265,7 +272,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
             return -(u2.points - u1.points);
           case "FASTEST_OF":
             //sort by the LOWER single
-            return (-u2.points - u1.points);
+            return -u2.points - u1.points;
         }
       }
     },
@@ -283,9 +290,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
         userLiveTimerStartTimes[user.user.id]
       ) {
         return (
-          <UserLiveTimer
-            startTime={userLiveTimerStartTimes[user.user.id]!}
-          />
+          <UserLiveTimer startTime={userLiveTimerStartTimes[user.user.id]!} />
         );
       } else if (
         user.userStatus === "SUBMITTING" &&
@@ -293,9 +298,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
       ) {
         return (
           <p className="italic">
-            {Result.timeToString(
-              Math.floor(userLiveTimes[user.user.id]! / 10)
-            )}
+            {Result.timeToString(Math.floor(userLiveTimes[user.user.id]! / 10))}
           </p>
         );
       } else {
@@ -316,53 +319,70 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
     <div
       className={cn(["flex flex-col text-center h-full w-full p-2", className])}
     >
-      <div className="flex flex-col basis-[50%] max-h-[50%]">
-        <div className="grid grid-cols-12">
-          <div className="col-span-5">User</div>
-          {roomState === "STARTED" && <div className="col-span-3">Time</div>}
-          {roomFormat === "RACING" && <div className="col-span-2">Sets</div>}
-          {(setFormat === "BEST_OF" || setFormat === "FIRST_TO") && (
-            <div className="col-span-2">Solves</div>
-          )}
-          {setFormat === "AVERAGE_OF" && <div className="col-span-2">Avg</div>}
-          {setFormat === "MEAN_OF" && <div className="col-span-2">Mean</div>}
-          {setFormat === "FASTEST_OF" && <div className="col-span-2">Best</div>}
-        </div>
-        <div className="flex flex-col overflow-y-auto">
-          {sortedActiveUsers.map((user, index) => (
-            <div key={index} className="grid grid-cols-12">
-              <RoomUserDialog user={user} hostView={isUserHost(localUser?.userInfo.id)}>
-                <div className="col-span-5 hover:scale-105 hover:font-bold hover:underline">{user.user.userName}</div>
-              </RoomUserDialog>
-              {roomState === "STARTED" && (
-                <div className="col-span-3">{userStatusText(user)}</div>
-              )}
-              {roomFormat === "RACING" && (
-                <div className="col-span-2">{user.setWins}</div>
-              )}
-              {(setFormat === "AVERAGE_OF" || setFormat === "MEAN_OF") && (
-                <div className="col-span-2">
-                  {Result.timeToString(user.points)}
-                </div>
-              )}
-              {(setFormat === "BEST_OF" || setFormat === "FIRST_TO" || setFormat === "FASTEST_OF") && (
-                <div className="col-span-2">{user.points}</div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-      <GlobalTimeList
-        users={Object.values(users)} //.filter((roomUser) => roomUser.active)}
-        solves={solves}
-        roomEvent={roomEvent}
-        roomFormat={roomFormat}
-        setFormat={setFormat}
-        nSets={nSets}
-        nSolves={nSolves}
-        userId={localUser?.userInfo.id}
-        className="max-h-[50vh] w-full"
-      />
+      <ResizablePanelGroup direction="vertical">
+        <ResizablePanel defaultSize={50}>
+          <div className="grid grid-cols-12">
+            <div className="col-span-5">User</div>
+            {roomState === "STARTED" && <div className="col-span-3">Time</div>}
+            {roomFormat === "RACING" && <div className="col-span-2">Sets</div>}
+            {(setFormat === "BEST_OF" || setFormat === "FIRST_TO") && (
+              <div className="col-span-2">Solves</div>
+            )}
+            {setFormat === "AVERAGE_OF" && (
+              <div className="col-span-2">Avg</div>
+            )}
+            {setFormat === "MEAN_OF" && <div className="col-span-2">Mean</div>}
+            {setFormat === "FASTEST_OF" && (
+              <div className="col-span-2">Best</div>
+            )}
+          </div>
+          <div className="flex flex-col overflow-y-auto">
+            {sortedActiveUsers.map((user, index) => (
+              <div key={index} className="grid grid-cols-12">
+                <RoomUserDialog
+                  user={user}
+                  hostView={isUserHost(localUser?.userInfo.id)}
+                >
+                  <div className="col-span-5 hover:scale-105 hover:font-bold hover:underline">
+                    {user.user.userName.length > 0 ? user.user.userName : "BTime User"}
+                  </div>
+                </RoomUserDialog>
+                {roomState === "STARTED" && (
+                  <div className="col-span-3">{userStatusText(user)}</div>
+                )}
+                {roomFormat === "RACING" && (
+                  <div className="col-span-2">{user.setWins}</div>
+                )}
+                {(setFormat === "AVERAGE_OF" || setFormat === "MEAN_OF" || setFormat === "FASTEST_OF") && (
+                  <div className="col-span-2">
+                    {Result.timeToString(user.points)}
+                  </div>
+                )}
+                {(setFormat === "BEST_OF" ||
+                  setFormat === "FIRST_TO"
+                  ) && (
+                  <div className="col-span-2">{user.points}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </ResizablePanel>
+        <ResizableHandle withHandle />
+        <ResizablePanel defaultSize={50}>
+          <GlobalTimeList
+            roomName={roomName}
+            users={Object.values(users)} //.filter((roomUser) => roomUser.active)}
+            solves={solves}
+            roomEvent={roomEvent}
+            roomFormat={roomFormat}
+            setFormat={setFormat}
+            nSets={nSets}
+            nSolves={nSolves}
+            userId={localUser?.userInfo.id}
+            className="max-h-[50vh] w-full"
+          />
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   );
 }
