@@ -25,7 +25,7 @@ export async function startServer(): Promise<void> {
   // connect to Redis
   const {pubClient, subClient, dataClient} = await connectToRedis();
 
-  const dataStores = createStores(dataClient);
+  const dataStores = await createStores(dataClient);
 
 
   // start next.js app (used to serve frontend)
@@ -121,7 +121,7 @@ export async function startServer(): Promise<void> {
   app.use("/api", api(dataStores));
 
   // set up socket.io server listener
-  initSocket(httpServer, sessionMiddleware as SocketMiddleware, pubClient, subClient, dataClient);
+  initSocket(httpServer, sessionMiddleware as SocketMiddleware, pubClient, subClient, dataStores);
 
   // Let Next.js handle all other requests
   app.use((req: Request, res: Response) => {
@@ -136,6 +136,6 @@ export async function startServer(): Promise<void> {
 
   // Create test rooms
   if (!isProd) {
-    await addDevExtras();
+    await addDevExtras(dataStores);
   }
 }

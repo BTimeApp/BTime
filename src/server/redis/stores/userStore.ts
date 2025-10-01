@@ -1,5 +1,6 @@
 import { Redis } from "ioredis";
 import { IUserInfo } from "@/types/user";
+import { REDIS_KEY_REGISTRY } from "@/server/redis/key-registry";
 
 /**
  * Defines the Redis store for:
@@ -9,8 +10,10 @@ import { IUserInfo } from "@/types/user";
  *  - user:[userId] -> IUserInfo hash
  */
 
+const USER_KEY_PREFIX = 'user:'
+
 function userKey(userId: string) {
-  return `user:${userId}`;
+  return USER_KEY_PREFIX + userId;
 }
 
 export function createUserStore(redis: Redis) {
@@ -41,3 +44,4 @@ export function createUserStore(redis: Redis) {
 }
 
 export type UserStore = ReturnType<typeof createUserStore>;
+REDIS_KEY_REGISTRY.registerKey(USER_KEY_PREFIX)

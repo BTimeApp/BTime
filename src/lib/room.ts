@@ -481,38 +481,6 @@ export function finishRoomSolve(room: IRoom) {
 
   // Mark solve as finished
   currentSolve.finished = true;
-
-  // //if casual, no such thing as set or match win. return early.
-  // if (room.settings.roomFormat === "CASUAL") return;
-
-  // //check set finished.
-  // const setFinished = checkSetFinished(room);
-  // if (setFinished) {
-  //   // find set winners.
-  //   const setWinners: string[] = findSetWinners(room);
-  //   currentSolve.setWinners = setWinners;
-
-  //   // update set wins for set winners
-  //   setWinners.map((uid) => (room.users[uid].setWins += 1));
-
-  //   // check match finished. right now a match can only be finished if the set is finished.
-  //   const matchFinished = checkMatchFinished(room);
-  //   if (matchFinished) {
-  //     const matchWinners: string[] = findMatchWinners(room);
-  //     //handle match finished
-  //     room.winners = matchWinners;
-  //     room.state = "FINISHED";
-  //     currentSolve.matchWinners = matchWinners;
-  //   }
-
-  //   // reset all users' points
-  //   Object.values(room.users).map((roomUser) => {
-  //     roomUser.points = 0;
-  //   });
-  //   // reset solve counter, update set counter
-  //   room.currentSolve = 0;
-  //   room.currentSet += 1;
-  // }
 }
 
 /** Generates a new solve for a room and its users. Does not update wins or points

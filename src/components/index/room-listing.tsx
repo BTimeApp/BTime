@@ -22,7 +22,15 @@ import {
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
-import { Pagination, PaginationButton, PaginationContent, PaginationEllipsis, PaginationItem, PaginationNextButton, PaginationPreviousButton } from "@/components/ui/pagination";
+import {
+  Pagination,
+  PaginationButton,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationNextButton,
+  PaginationPreviousButton,
+} from "@/components/ui/pagination";
 import { toast } from "sonner";
 
 // # of rooms to fetch at once with pagination
@@ -37,13 +45,16 @@ export default function RoomListing() {
   );
 
   const fetchRooms = useCallback(async (page: number) => {
-    const res = await fetch(`/api/v0/rooms?page=${page}&limit=${ROOM_WINDOW_SIZE}`, {
-      method: "GET"
-    });
+    const res = await fetch(
+      `/api/v0/rooms?page=${page}&limit=${ROOM_WINDOW_SIZE}`,
+      {
+        method: "GET",
+      }
+    );
     if (!res.ok) {
       toast.error("Couldn't load rooms.");
       return undefined;
-    }  
+    }
     return res.json();
   }, []);
 
@@ -58,20 +69,20 @@ export default function RoomListing() {
       // update total pages number
       setTotalPages(res.totalPages);
 
-      if (res.rooms == null) {
-        // Invalid page. Do not set rooms
-
-        // Reset to the number of pages that the response says exist. This will re-trigger the useEffect that wraps this callback.
-        if (pageNumber > res.totalPages) {
-          setPageNumber(res.totalPages);
-        }
-      } else {
-        setRooms(new Map<string, IRoomSummary>(res.rooms));
+      if (res.rooms != null) {
+        setRooms(
+          new Map<string, IRoomSummary>(
+            (res.rooms as IRoomSummary[]).map((room) => [room.id, room])
+          )
+        );
       }
-    }    
-  }, [pageNumber, fetchRooms]);
-  
 
+      // Reset to the number of pages that the response says exist. This will re-trigger the useEffect that wraps this callback.
+      if (pageNumber > res.totalPages) {
+        setPageNumber(res.totalPages);
+      }
+    }
+  }, [pageNumber, fetchRooms]);
 
   const goToPreviousPage = useCallback(() => {
     setPageNumber(Math.max(pageNumber - 1, 1));
@@ -185,7 +196,7 @@ export default function RoomListing() {
         <Pagination>
           <PaginationContent>
             <PaginationItem>
-              <PaginationPreviousButton onClick={goToPreviousPage}/>
+              <PaginationPreviousButton onClick={goToPreviousPage} />
             </PaginationItem>
             <PaginationItem>
               <PaginationButton>{pageNumber}</PaginationButton>

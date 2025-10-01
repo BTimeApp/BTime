@@ -1,7 +1,5 @@
 import { Router } from "express";
 import { authMiddleware } from "@/server/auth";
-import { rooms } from "@/server/server-objects";
-import { IRoomSummary, roomToSummary } from "@/types/room-listing-info";
 import { toIUser, UserDocument, UserModel } from "@/server/models/user";
 import { IUser } from "@/types/user";
 import { type RedisStores } from "@/server/redis/stores";
@@ -93,10 +91,19 @@ export function v0(stores: RedisStores): Router {
   });
 
   /**
-   * Returns room information.
-   * TODO: implement filtering (i.e. looking up by specific rooms), pagination, etc.
+   * Returns room information in paginated format.
+   * TODO: implement filtering (i.e. looking up by specific rooms), sorting on certain keys, etc.
+   *
+   * Inputs
+   *  - page        the page "index" to query
+   *  - pageSize    the number of rooms to get per page
+   *
+   * Output (JSON):
+   *  - rooms       a list rooms available for this page in room summary format. IRoomSummary[] | null
+   *  - totalPages  the total number of pages that exist with the given page size
+   *  - total       the total number of rooms that exist
    */
-  router.get("/rooms", (req, res) => {
+  router.get("/rooms", async (req, res) => {
     // by default, we will return the first 20 rooms
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.limit as string) || 20;
@@ -105,28 +112,13 @@ export function v0(stores: RedisStores): Router {
       return;
     }
 
-    const total = rooms.size;
-
-    // if the user has requested a nonexistent page
-    if ((page - 1) * pageSize >= rooms.size && (rooms.size > 0 || page > 1)) {
-      res.json({
-        rooms: undefined,
-        totalPages: Math.max(Math.ceil(total / pageSize), 1),
-        total,
-      });
-      return;
-    }
-
-    //preserve the [[id, value]] structure while converting full room info to room summaries.
-    const roomSummaryList: [string, IRoomSummary][] = Array.from(rooms)
-      .slice((page - 1) * pageSize, page * pageSize)
-      .map((x) => [x[0], roomToSummary(x[1])]);
-    const roomsToSend = roomSummaryList.slice();
+    const { roomSummaries, totalPages, totalRooms } =
+      await stores.rooms.getRoomsPage(page, pageSize);
 
     res.json({
-      rooms: roomsToSend,
-      totalPages: Math.max(Math.ceil(total / pageSize), 1),
-      total,
+      rooms: roomSummaries,
+      totalPages,
+      total: totalRooms,
     });
   });
 

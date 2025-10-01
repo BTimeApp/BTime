@@ -1,9 +1,10 @@
 import { Redis } from "ioredis";
+import { REDIS_KEY_REGISTRY } from "@/server/redis/key-registry";
 
 /**
  * Defines the Redis store for:
  *  - online user sessions
- * 
+ *
  * Each user session is defined by a pair (userId, socketId). This allows one user to be logged in on multiple sockets
  *
  * Keys used:
@@ -11,8 +12,10 @@ import { Redis } from "ioredis";
  */
 
 function userSessionKey(userId: string) {
-  return `userSession:${userId}`;
+  return USER_SESSION_KEY_PREFIX + userId;
 }
+
+const USER_SESSION_KEY_PREFIX = "userSession:";
 
 export function createUserSessionStore(redis: Redis) {
   return {
@@ -23,11 +26,9 @@ export function createUserSessionStore(redis: Redis) {
     },
 
     async numUserSessions(userId: string): Promise<number> {
-        const hasSession: number = await redis.scard(
-          userSessionKey(userId)
-        );
-        return hasSession;
-      },
+      const hasSession: number = await redis.scard(userSessionKey(userId));
+      return hasSession;
+    },
 
     async hasUserSession(userId: string, socketId: string): Promise<boolean> {
       const hasSession: number = await redis.sismember(
@@ -53,3 +54,5 @@ export function createUserSessionStore(redis: Redis) {
 }
 
 export type UserSessionStore = ReturnType<typeof createUserSessionStore>;
+
+REDIS_KEY_REGISTRY.registerKey(USER_SESSION_KEY_PREFIX);

@@ -1,11 +1,5 @@
 import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
-import {
-  rooms,
-  // users,
-  roomTimeouts,
-  // userSessions,
-} from "@/server/server-objects";
 import { IRoom, RoomState, IRoomSettings } from "@/types/room";
 import {
   newRoomSolve,
@@ -34,7 +28,7 @@ import bcrypt from "bcrypt";
 import { SOCKET_CLIENT, SOCKET_SERVER } from "@/types/socket_protocol";
 import Redis from "ioredis";
 import { createAdapter } from "@socket.io/redis-adapter";
-import { createStores } from "@/server/redis/stores";
+import { RedisStores } from "@/server/redis/stores";
 
 //defines useful state variables we want to maintain over the lifestyle of a socket connection (only visible server-side)
 interface CustomSocket extends Socket {
@@ -53,7 +47,7 @@ export const initSocket = (
   sessionMiddleware: SocketMiddleware,
   pubClient: Redis,
   subClient: Redis,
-  dataClient: Redis
+  dataStores: RedisStores
 ) => {
   const io = new Server(httpServer, {
     adapter: createAdapter(pubClient, subClient),
@@ -94,11 +88,10 @@ export const initSocket = (
   );
 
   // TODO: move socket events to their own namespaces
-  listenSocketEvents(io, dataClient);
+  listenSocketEvents(io, dataStores);
 };
 
-const listenSocketEvents = (io: Server, dataClient: Redis) => {
-  const stores = createStores(dataClient);
+const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
   async function onConnect(socket: CustomSocket) {
     //check for user. DC if no user
@@ -232,13 +225,13 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
 
       stores.userSessions.numUserSessions(userId).then(async (numSessions) => {
         if (numSessions === 0) await stores.users.deleteUser(userId);
-      })
+      });
     }
 
     async function handleRoomDisconnect(userId: string, roomId: string) {
       if (!userId || !roomId) return;
       console.log(`User ${userId} disconnected from room ${roomId}`);
-      const room = rooms.get(roomId);
+      const room = await stores.rooms.getRoom(roomId);
       if (!room) return;
 
       // mark user as inactive
@@ -258,13 +251,7 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
           .length == 0
       ) {
         console.log(`Room ${roomId} is empty. Scheduling room for deletion.`);
-        roomTimeouts.set(
-          roomId,
-          setTimeout(() => {
-            rooms.delete(roomId);
-            roomTimeouts.delete(roomId);
-          }, 5000)
-        );
+        stores.rooms.scheduleRoomForDeletion(roomId);
         return;
       }
 
@@ -296,19 +283,22 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
       if (checkRoomSolveFinished(room)) {
         await handleSolveFinished(room);
       }
+      
+      // write room to room store
+      stores.rooms.setRoom(room);
 
       // remove the room from this socket.
       socket.leave(roomId);
       socket.roomId = undefined;
     }
 
-    function getSocketRoom(): IRoom | undefined {
-      if (!socket.roomId) return undefined;
-      return rooms.get(socket.roomId);
+    async function getSocketRoom(): Promise<IRoom | null> {
+      if (!socket.roomId) return null;
+      return stores.rooms.getRoom(socket.roomId);
     }
 
-    function userIsHost(): boolean {
-      const room = getSocketRoom();
+    async function userIsHost(): Promise<boolean> {
+      const room = await getSocketRoom();
       if (!room || !socket.user) return false;
 
       return room.host != null && room.host.id === socket.user?.userInfo.id;
@@ -321,7 +311,7 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
         callback: (roomId: string) => void
       ) => {
         let roomId: string = new ObjectId().toString();
-        while (rooms.get(roomId)) {
+        while ((await stores.rooms.getRoom(roomId)) != null) {
           roomId = new ObjectId().toString();
         }
         const room: IRoom = await createRoom(
@@ -330,7 +320,7 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
           socket.user?.userInfo
         );
 
-        rooms.set(room.id, room);
+        await stores.rooms.setRoom(room);
         callback(roomId);
       }
     );
@@ -343,7 +333,7 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
         userId: string,
         onSuccessCallback?: () => void
       ) => {
-        const room: IRoom | undefined = rooms.get(roomId);
+        const room = await stores.rooms.getRoom(roomId);
         if (!room || userId !== room.host?.id) {
           return;
         }
@@ -359,8 +349,8 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
           resetRoom(room);
         }
 
-        // don't need to update room store b/c modified room object in-place
-        // TODO change this if no longer using in-memory room store
+        // update room store
+        stores.rooms.setRoom(room);
 
         // broadcast room update
         io.to(roomId).emit(SOCKET_SERVER.ROOM_UPDATE, room);
@@ -398,7 +388,7 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
         }
 
         //validate real room
-        const room: IRoom | undefined = rooms.get(roomId);
+        const room = await stores.rooms.getRoom(roomId);
         if (!room) {
           console.log(
             `User ${userId} trying to join nonexistent room ${roomId}`
@@ -426,6 +416,9 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
           room.users[userId].active
         ) {
           console.log(`User ${userId} double join in room ${roomId}.`);
+
+          // precautionary persist - there is currently a race condition 
+          await stores.rooms.persistRoom(room.id);
 
           joinRoomCallback(true, room, {
             DUPLICATE_JOIN: "",
@@ -460,10 +453,7 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
          */
 
         // if this room is scheduled for deletion, don't delete it
-        if (roomTimeouts.has(roomId)) {
-          clearTimeout(roomTimeouts.get(roomId));
-          roomTimeouts.delete(roomId);
-        }
+        await stores.rooms.persistRoom(roomId);
 
         //add user to room
         console.log(`User ${user.userName} joining room ${roomId}.`);
@@ -496,6 +486,9 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
           room.host = user;
         }
 
+        //write room to room store
+        stores.rooms.setRoom(room);
+
         // formally add this socket connection to the room and call the join callback.
         // this callback (for now) should have all of the room data the user needs, so they are excluded from the following broadcast event.
         socket.join(roomId);
@@ -516,11 +509,12 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
       console.log(
         `User ${socket.user?.userInfo.id} new scramble in room ${socket.roomId}.`
       );
-      const room = getSocketRoom();
+      const room = await getSocketRoom();
       if (!room) return;
 
       if (room.state == "STARTED") {
         await newScramble(room);
+        stores.rooms.setRoom(room);
         io.to(room.id).emit(SOCKET_SERVER.SOLVE_RESET, room.solves.at(-1));
       } else {
         console.log(`Cannot skip scramble when room state is ${room.state}`);
@@ -531,19 +525,20 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
       console.log(
         `User ${socket.user?.userInfo.id} is trying to skip the current solve in room ${socket.roomId}.`
       );
-      const room = getSocketRoom();
+      const room = await getSocketRoom();
       if (!room) return;
 
       if (room.state == "STARTED") {
         await handleSolveFinished(room);
+        stores.rooms.setRoom(room);
       } else {
         console.log(`Cannot skip scramble when room state is ${room.state}`);
       }
     });
 
-    socket.on(SOCKET_CLIENT.BAN_USER, (userId: string) => {
-      const room = getSocketRoom();
-      if (!room || !userIsHost()) return;
+    socket.on(SOCKET_CLIENT.BAN_USER, async (userId: string) => {
+      const room = await getSocketRoom();
+      if (!room || !await userIsHost()) return;
 
       const banUser = room?.users[userId];
       if (!banUser) return;
@@ -553,13 +548,14 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
         `User ${socket.user?.userInfo.userName} banned user ${banUser.user.userName} from room ${socket.roomId}.`
       );
 
+      stores.rooms.setRoom(room);
       //broadcast user update to the rest of the room
       io.to(room.id).emit(SOCKET_SERVER.USER_BANNED, userId);
     });
 
-    socket.on(SOCKET_CLIENT.UNBAN_USER, (userId: string) => {
-      const room = getSocketRoom();
-      if (!room || !userIsHost()) return;
+    socket.on(SOCKET_CLIENT.UNBAN_USER, async (userId: string) => {
+      const room = await getSocketRoom();
+      if (!room || !await userIsHost()) return;
 
       const unbanUser = room?.users[userId];
       if (!unbanUser) return;
@@ -569,13 +565,14 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
         `User ${socket.user?.userInfo.userName} unbanned user ${unbanUser.user.userName} from room ${socket.roomId}.`
       );
 
+      stores.rooms.setRoom(room);
       //broadcast user update to the rest of the room
       io.to(room.id).emit(SOCKET_SERVER.USER_UNBANNED, userId);
     });
 
     socket.on(SOCKET_CLIENT.KICK_USER, async (userId: string) => {
-      const room = getSocketRoom();
-      if (!room || !userIsHost()) return;
+      const room = await getSocketRoom();
+      if (!room || !await userIsHost()) return;
 
       const kickUser = room?.users[userId];
       if (!kickUser) return;
@@ -601,12 +598,14 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
       console.log(
         `User ${socket.user?.userInfo.id} is trying to start room ${socket.roomId}.`
       );
-      const room = getSocketRoom();
+      const room = await getSocketRoom();
       if (!room) return;
 
       if (room.state == "WAITING" || room.state == "FINISHED") {
         room.state = "STARTED";
         const newSolve = await newRoomSolve(room);
+
+        stores.rooms.setRoom(room);
         io.to(room.id).emit(SOCKET_SERVER.ROOM_STARTED, newSolve);
         // io.to(room.id.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
       } else {
@@ -617,15 +616,17 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
     /**
      * Upon host pressing reset button
      */
-    socket.on(SOCKET_CLIENT.RESET_ROOM, () => {
+    socket.on(SOCKET_CLIENT.RESET_ROOM, async () => {
       console.log(
         `User ${socket.user?.userInfo.id} is trying to reset room ${socket.roomId}.`
       );
-      const room = getSocketRoom();
+      const room = await getSocketRoom();
       if (!room) return;
 
       if (room.state == "STARTED" || room.state == "FINISHED") {
         resetRoom(room);
+
+        stores.rooms.setRoom(room);
         io.to(room.id).emit(SOCKET_SERVER.ROOM_RESET);
       } else {
         console.log(`Cannot reset room when room state is ${room.state}`);
@@ -635,15 +636,17 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
     /**
      * Upon host pressing rematch button
      */
-    socket.on(SOCKET_CLIENT.REMATCH_ROOM, () => {
+    socket.on(SOCKET_CLIENT.REMATCH_ROOM, async () => {
       console.log(
         `User ${socket.user?.userInfo.id} is trying to rematch room ${socket.roomId}.`
       );
-      const room = getSocketRoom();
+      const room = await getSocketRoom();
       if (!room) return;
 
       if (room.state == "FINISHED") {
         resetRoom(room);
+
+        stores.rooms.setRoom(room);
         io.to(room.id).emit(SOCKET_SERVER.ROOM_RESET);
       } else {
         console.log(`Cannot rematch room when room state is ${room.state}`);
@@ -657,7 +660,7 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
       SOCKET_CLIENT.UPDATE_SOLVE_STATUS,
       async (newUserStatus: SolveStatus) => {
         if (socket.roomId && socket.user) {
-          const room = rooms.get(socket.roomId);
+          const room = await stores.rooms.getRoom(socket.roomId);
           if (!room) return;
 
           const currentUserStatus: SolveStatus =
@@ -678,6 +681,8 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
                 await handleSolveFinished(room);
               }
             }
+
+            stores.rooms.setRoom(room);
             io.to(socket.roomId).emit(
               SOCKET_SERVER.USER_STATUS_UPDATE,
               userId,
@@ -691,9 +696,9 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
     /**
      * Upon user starting any live timer option (only keyboard as of now)
      */
-    socket.on(SOCKET_CLIENT.START_LIVE_TIMER, () => {
+    socket.on(SOCKET_CLIENT.START_LIVE_TIMER, async () => {
       if (socket.roomId && socket.user) {
-        const room = rooms.get(socket.roomId);
+        const room = await stores.rooms.getRoom(socket.roomId);
         if (!room) return;
 
         io.to(socket.roomId)
@@ -705,9 +710,9 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
     /**
      * Upon user stopping any live timer option (only keyboard as of now)
      */
-    socket.on(SOCKET_CLIENT.STOP_LIVE_TIMER, () => {
+    socket.on(SOCKET_CLIENT.STOP_LIVE_TIMER, async () => {
       if (socket.roomId && socket.user) {
-        const room = rooms.get(socket.roomId);
+        const room = await stores.rooms.getRoom(socket.roomId);
         if (!room) return;
 
         io.to(socket.roomId)
@@ -725,7 +730,7 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
         // we store results as an easily-serializable type and reconstruct on client when needed.
         // Socket.io does not preserve complex object types over the network, so it makes it hard to pass Result types around anyways.
         if (socket.roomId && socket.user) {
-          const room = rooms.get(socket.roomId);
+          const room = await stores.rooms.getRoom(socket.roomId);
           if (!room) return;
 
           if (room.state !== "STARTED") {
@@ -750,6 +755,7 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
 
           room.users[socket.user?.userInfo.id].currentResult = result;
 
+          stores.rooms.setRoom(room);
           //broadcast user submit event to other users
           io.to(socket.roomId).emit(
             SOCKET_SERVER.USER_SUBMITTED_RESULT,
@@ -764,9 +770,9 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
     /**
      * Upon user pressing compete/spectate button
      */
-    socket.on(SOCKET_CLIENT.TOGGLE_COMPETING, (competing: boolean) => {
+    socket.on(SOCKET_CLIENT.TOGGLE_COMPETING, async (competing: boolean) => {
       if (socket.roomId && socket.user) {
-        const room = rooms.get(socket.roomId);
+        const room = await stores.rooms.getRoom(socket.roomId);
         if (
           !room ||
           room.users[socket.user?.userInfo.id].competing == competing
@@ -780,12 +786,6 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
         );
         room.users[socket.user?.userInfo.id].competing = competing;
 
-        io.to(socket.roomId).emit(
-          SOCKET_SERVER.USER_TOGGLE_COMPETING,
-          userId,
-          competing
-        );
-
         // when user spectates, need to check if all competing users are done, then advance room
         if (room.state === "STARTED") {
           const solveFinished: boolean = checkRoomSolveFinished(room);
@@ -793,6 +793,12 @@ const listenSocketEvents = (io: Server, dataClient: Redis) => {
             handleSolveFinished(room);
           }
         }
+        stores.rooms.setRoom(room);
+        io.to(socket.roomId).emit(
+          SOCKET_SERVER.USER_TOGGLE_COMPETING,
+          userId,
+          competing
+        );
       } else {
         console.log(
           `Either roomId or userId not set on socket: ${socket.roomId}, ${socket.user?.userInfo.id}`
