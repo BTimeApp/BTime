@@ -68,7 +68,10 @@ export default function GlobalTimeList({
         (solve.matchWinners && solve.matchWinners?.length > 0) ||
         (solve.finished &&
           solve.setIndex === nSets &&
-          solve.solveIndex === nSolves)
+          solve.solveIndex >= nSolves! &&
+          (setFormat === "FASTEST_OF" ||
+            setFormat === "MEAN_OF" ||
+            setFormat === "AVERAGE_OF"))
       ) {
         const roomSummaryRow: IRoomSolve = {
           solve: {

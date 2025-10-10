@@ -306,6 +306,7 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
 
         return {
           solves: [...get().solves, newSolve],
+          currentSolve: get().currentSolve + 1,
           users: updatedUsers,
         };
       }),
@@ -445,10 +446,10 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         }
       }),
 
-    startRoom: (solve: IRoomSolve) =>
+    startRoom: () =>
       set(() => ({
         roomState: "STARTED",
-        solves: [solve],
+        solves: [],
       })),
 
     resetRoom: () =>
