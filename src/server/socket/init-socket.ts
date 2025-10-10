@@ -606,8 +606,8 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         const newSolve = await newRoomSolve(room);
 
         stores.rooms.setRoom(room);
-        io.to(room.id).emit(SOCKET_SERVER.ROOM_STARTED, newSolve);
-        // io.to(room.id.toString()).emit(SOCKET_SERVER.ROOM_UPDATE, room);
+        io.to(room.id).emit(SOCKET_SERVER.ROOM_STARTED);
+        io.to(room.id).emit(SOCKET_SERVER.NEW_SOLVE, newSolve);
       } else {
         console.log(`Cannot start room when room state is ${room.state}`);
       }
