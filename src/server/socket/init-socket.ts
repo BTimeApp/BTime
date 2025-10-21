@@ -135,9 +135,6 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           roomUser.points = 0;
         });
 
-        //publish set finished event with winners
-        io.to(room.id).emit(SOCKET_SERVER.SET_FINISHED_EVENT, setWinners);
-
         // check match finished. right now a match can only be finished if the set is finished.
         const matchFinished = checkMatchFinished(room);
         if (matchFinished) {
@@ -154,6 +151,9 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
             room.users
           );
 
+          //publish set finished event with winners
+          io.to(room.id).emit(SOCKET_SERVER.SET_FINISHED_EVENT, setWinners);
+
           //publish match finished event with winners
           io.to(room.id).emit(SOCKET_SERVER.MATCH_FINISHED_EVENT, matchWinners);
         } else {
@@ -163,6 +163,9 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
             currentSolve,
             room.users
           );
+
+          //publish set finished event with winners
+          io.to(room.id).emit(SOCKET_SERVER.SET_FINISHED_EVENT, setWinners);
 
           // reset solve counter, update set counter - this is done AFTER match finish check so we dont create a non-existent set
           room.currentSolve = 0;
