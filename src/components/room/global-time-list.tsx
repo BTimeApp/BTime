@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/table";
 import { Crown } from "lucide-react";
 import SolveDialog from "@/components/room/solve-dialog";
-import { IRoomUser } from "@/types/room-user";
+import { IRoomUser } from "@/types/room-participant";
 import { IRoomSolve } from "@/types/room-solve";
 import { RoomEvent, RoomFormat, SetFormat } from "@/types/room";
 import { Result } from "@/types/result";

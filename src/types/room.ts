@@ -1,62 +1,13 @@
 import { IUserInfo } from "@/types/user";
-import { IRoomUser } from "@/types/room-user";
+import { IRoomTeam, IRoomUser } from "@/types/room-participant";
 import { IRoomSolve } from "@/types/room-solve";
+import { displayText, literalKeys } from "@/lib/utils";
 
-//defines all legal events
-export const ROOM_EVENTS = [
-  "333",
-  "222",
-  "444",
-  "555",
-  "666",
-  "777",
-  "megaminx",
-  "pyraminx",
-  "skewb",
-  "clock",
-  "sq1",
-  "3oh",
-  "3bld",
-  "4bld",
-  "5bld",
-] as const;
-
-export const ROOM_EVENT_DISPLAY_NAME_MAP = new Map<RoomEvent, string>([
-  ["333", "3x3"],
-  ["222", "2x2"],
-  ["444", "4x4"],
-  ["555", "5x5"],
-  ["666", "6x6"],
-  ["777", "7x7"],
-  ["megaminx", "Megaminx"],
-  ["pyraminx", "Pyraminx"],
-  ["skewb", "Skewb"],
-  ["clock", "Clock"],
-  ["sq1", "Sq-1"],
-  ["3oh", "3x3 OH"],
-  ["3bld", "3BLD"],
-  ["4bld", "4BLD"],
-  ["5bld", "5BLD"],
-]);
-
-// Source - https://icons.cubing.net/#svg
-export const ROOM_EVENT_ICON_SRC_MAP = new Map<RoomEvent, string>([
-  ["333", "event-333"],
-  ["222", "event-222"],
-  ["444", "event-444"],
-  ["555", "event-555"],
-  ["666", "event-666"],
-  ["777", "event-777"],
-  ["megaminx", "event-minx"],
-  ["pyraminx", "event-pyram"],
-  ["skewb", "event-skewb"],
-  ["clock", "event-clock"],
-  ["sq1", "event-sq1"],
-  ["3oh", "event-333oh"],
-  ["3bld", "event-333bf"],
-  ["4bld", "event-444bf"],
-  ["5bld", "event-555bf"],
-]);
+export interface RoomEventAttributes {
+  displayName: string;
+  jsName: string;
+  iconSrc: string;
+}
 
 // These are currently updated to be used with cubing.js/twisty.
 // export const ROOM_EVENT_JS_NAME_MAP = new Map<RoomEvent, string>([
@@ -77,47 +28,121 @@ export const ROOM_EVENT_ICON_SRC_MAP = new Map<RoomEvent, string>([
 //   ["5bld", "555bf"],
 // ]);
 
-// These are currently updated to be used with cubing.js/twisty. 
-export const ROOM_EVENT_JS_NAME_MAP = new Map<RoomEvent, string>([
-  ["333", "3x3x3"],
-  ["222", "2x2x2"],
-  ["444", "4x4x4"],
-  ["555", "5x5x5"],
-  ["666", "6x6x6"],
-  ["777", "7x7x7"],
-  ["megaminx", "megaminx"],
-  ["pyraminx", "pyraminx"],
-  ["skewb", "skewb"],
-  ["clock", "clock"],
-  ["sq1", "square1"],
-  ["3oh", "3x3x3"],
-  ["3bld", "3x3x3"],
-  ["4bld", "4x4x4"],
-  ["5bld", "5x5x5"],
-]);
+// Source - https://icons.cubing.net/#svg
+export const ROOM_EVENTS_INFO = {
+  "333": {
+    displayName: "3x3",
+    jsName: "3x3x3",
+    iconSrc: "event-333",
+  },
+  "222": {
+    displayName: "2x2",
+    jsName: "2x2x2",
+    iconSrc: "event-222",
+  },
+  "444": {
+    displayName: "4x4",
+    jsName: "4x4x4",
+    iconSrc: "event-444",
+  },
+  "555": {
+    displayName: "5x5",
+    jsName: "5x5x5",
+    iconSrc: "event-555",
+  },
+  "666": {
+    displayName: "6x6",
+    jsName: "6x6x6",
+    iconSrc: "event-666",
+  },
+  "777": {
+    displayName: "7x7",
+    jsName: "7x7x7",
+    iconSrc: "event-777",
+  },
+  megaminx: {
+    displayName: "Megaminx",
+    jsName: "megaminx",
+    iconSrc: "event-minx",
+  },
+  pyraminx: {
+    displayName: "Pyraminx",
+    jsName: "pyraminx",
+    iconSrc: "event-pyra",
+  },
+  skewb: {
+    displayName: "Skewb",
+    jsName: "skewb",
+    iconSrc: "event-skewb",
+  },
+  clock: {
+    displayName: "Clock",
+    jsName: "clock",
+    iconSrc: "event-clock",
+  },
+  sq1: {
+    displayName: "Sq-1",
+    jsName: "square1",
+    iconSrc: "event-sq1",
+  },
+  "3oh": {
+    displayName: "3x3 OH",
+    jsName: "3x3x3",
+    iconSrc: "event-333oh",
+  },
+  "3bld": {
+    displayName: "3BLD",
+    jsName: "3x3x3",
+    iconSrc: "event-3bf",
+  },
+  "4bld": {
+    displayName: "4BLD",
+    jsName: "4x4x4",
+    iconSrc: "event-4bf",
+  },
+  "5bld": {
+    displayName: "5BLD",
+    jsName: "5x5x5",
+    iconSrc: "event-5bf",
+  },
+} satisfies Record<string, RoomEventAttributes>;
+export const ROOM_EVENTS = literalKeys(ROOM_EVENTS_INFO);
 
-//defines all legal formats (more to come hopefully)
-export const ROOM_FORMATS = [
-  "CASUAL", //no points or score, just cubing
-  "RACING", //racing with sets and points
-  //TODO: add a competitive mode with ranking, etc
-] as const;
+export interface RoomFormatAttributes {
+  teams: boolean; //whether teams is enabled in this format
+  competitive: boolean; //whether this format is considered "competitive"
+  requiredSettings?: string[]; //required room settings
+  disabledSetFormats?: SetFormat[]; //any set formats that don't work with this format
+  // overrides: Record<string, any>
+}
 
-export const ROOM_FORMAT_MAP = new Map<RoomFormat, string>([
-  ["CASUAL", "Casual"],
-  ["RACING", "Racing"]
-])
+// export const ROOM_FORMAT_INFO = {
+//   CASUAL: {
+//     teams: false,
+//     competitive: false,
+//   },
+//   FREE_FOR_ALL: {
+//     teams: false,
+//     competitive: true,
+//   },
+//   TEAMS: {
+//     teams: true,
+//     competitive: true,
+//     requiredSettings: ["teamSize"]
+//   },
+//   CREW_BATTLE: {
+//     teams: true,
+//     competitive: true,
+//     requiredSettings: ["teamSize"]
+//   },
+// } as const satisfies Record<string, RoomFormatAttributes>;
+export const ROOM_FORMATS = ["CASUAL", "RACING"] as const;
 
 //match formats - how to win a race based on number of sets won
 export const MATCH_FORMATS = [
   "BEST_OF", //best of n sets wins
   "FIRST_TO", //first to n sets wins
 ] as const;
-
-export const MATCH_FORMAT_MAP = new Map<MatchFormat, string>([
-  ["BEST_OF", "Best of"],
-  ["FIRST_TO", "First to"],
-]);
 
 //set formats - how to win a set based on the solves
 export const SET_FORMATS = [
@@ -129,27 +154,6 @@ export const SET_FORMATS = [
   //TOdO - support other formats like total time differential
 ] as const;
 
-export const SET_FORMAT_MAP = new Map<SetFormat, string>([
-  ["BEST_OF", "Best of"],
-  ["FIRST_TO", "First to"],
-  ["AVERAGE_OF", "Average of"],
-  ["MEAN_OF", "Mean of"],
-  ["FASTEST_OF", "Fastest of"]
-]);
-
-export const MATCH_FORMAT_ABBREVIATION_MAP = new Map<MatchFormat, string>([
-  ["BEST_OF", "bo"],
-  ["FIRST_TO", "ft"],
-]);
-
-export const SET_FORMAT_ABBREVIATION_MAP = new Map<SetFormat, string>([
-  ["BEST_OF", "bo"],
-  ["FIRST_TO", "ft"],
-  ["AVERAGE_OF", "ao"],
-  ["MEAN_OF", "mo"],
-  ["FASTEST_OF", "fo"]
-]);
-
 export function getFormatText(
   roomFormat: RoomFormat,
   matchFormat: MatchFormat,
@@ -158,11 +162,11 @@ export function getFormatText(
   nSolves: number
 ): string {
   if (roomFormat === "CASUAL") {
-    return "casual"
+    return "casual";
   } else {
     let raceFormatText =
       "Format: " +
-      SET_FORMAT_MAP.get(setFormat) +
+      displayText(setFormat) +
       " " +
       nSolves +
       " solve" +
@@ -170,7 +174,7 @@ export function getFormatText(
     if (nSets > 1) {
       raceFormatText +=
         ", " +
-        MATCH_FORMAT_MAP.get(matchFormat) +
+        displayText(matchFormat) +
         " " +
         nSets +
         " set" +
@@ -284,24 +288,57 @@ export const ROOM_STATES = [
   "FINISHED", //either when host ends the room, or when all attempts are done
 ] as const;
 
+export const TEAM_SOLVE_FORMATS = [
+  "ALL", //per solve, everyone in the team competes
+  "ONE", //per solve, only one person in the team competes
+];
+
+export const TEAM_SCRAMBLE_FORMATS = [
+  "SAME", //(assuming multiple ppl per team compete per same solve) everyone gets same scramble
+  "DIFFERENT", //... everyone gets diff scramble
+];
+
+//how the reduction from multiple results per solve in a team goes to one result for evaluation
+export const TEAM_REDUCE_FUNCTIONS = [
+  "SUM", //sum of all teammates' times
+  "MEAN", //mean of all teammates' times
+  "FASTEST", //fastest (min) of all teammates' times
+];
+
 export type RoomEvent = (typeof ROOM_EVENTS)[number];
 export type RoomFormat = (typeof ROOM_FORMATS)[number];
 export type MatchFormat = (typeof MATCH_FORMATS)[number];
 export type SetFormat = (typeof SET_FORMATS)[number];
 export type RoomState = (typeof ROOM_STATES)[number];
+export type TeamSolveFormat = (typeof TEAM_SOLVE_FORMATS)[number];
+export type TeamScrambleFormat = (typeof TEAM_SCRAMBLE_FORMATS)[number];
+export type TeamReduceFunction = (typeof TEAM_REDUCE_FUNCTIONS)[number];
 
 export interface IRoom {
   id: string;
   host?: IUserInfo;
   users: Record<string, IRoomUser>; //objectId (user) : IRoomUser. The key has to be a string b/c of mongoDB storage.
+  teams: Record<string, IRoomTeam>; //objectId (team) : IRoomTeam
   solves: IRoomSolve[];
   currentSet: number; //the current set number (1-indexed)
   currentSolve: number; //the solve number WITHIN the current set (1-indexed)
   state: RoomState;
-  winners?: string[]; //the objectIds (users) who have won the whole room
+  winners?: string[]; //the objectId(s) who have won the whole room
 
   settings: IRoomSettings;
 }
+
+export type TeamFormatSettings =
+  | { teamSolveFormat: Extract<TeamSolveFormat, "ONE"> }
+  | {
+      teamSolveFormat: Extract<TeamSolveFormat, "ALL">;
+      teamScrambleFormat: TeamScrambleFormat;
+      teamReduceFunction: TeamReduceFunction;
+    };
+
+export type TeamSettings = {
+  teamsEnabled: false;
+} | {teamsEnabled: true, teamFormatSettings: TeamFormatSettings, maxTeamCapacity?: number, maxTeams?: number};
 
 // settings used when creating a room
 export interface IRoomSettings {
@@ -314,4 +351,5 @@ export interface IRoomSettings {
   password?: string;
   nSets?: number;
   nSolves?: number;
+  teamSettings: TeamSettings;
 }

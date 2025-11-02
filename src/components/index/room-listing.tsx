@@ -1,12 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { IRoomSummary } from "@/types/room-listing-info";
-import {
-  MATCH_FORMAT_ABBREVIATION_MAP,
-  SET_FORMAT_ABBREVIATION_MAP,
-  ROOM_EVENT_DISPLAY_NAME_MAP,
-  ROOM_EVENT_ICON_SRC_MAP,
-} from "@/types/room";
+import { ROOM_EVENTS_INFO } from "@/types/room";
 import JoinRoomButton from "@/components/index/join-room-button";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, User, Globe, GlobeLock } from "lucide-react";
@@ -32,6 +27,7 @@ import {
   PaginationPreviousButton,
 } from "@/components/ui/pagination";
 import { toast } from "sonner";
+import { abbreviate } from "@/lib/utils";
 
 // # of rooms to fetch at once with pagination
 const ROOM_WINDOW_SIZE = 20;
@@ -144,25 +140,18 @@ export default function RoomListing() {
                   </div>
                   <div className="flex flex-row">
                     <span
-                      className={`cubing-icon ${ROOM_EVENT_ICON_SRC_MAP.get(
-                        room.roomEvent
-                      )}`}
+                      className={`cubing-icon ${
+                        ROOM_EVENTS_INFO[room.roomEvent].iconSrc
+                      }`}
                     />
-                    <div>{ROOM_EVENT_DISPLAY_NAME_MAP.get(room.roomEvent)}</div>
+                    <div>{ROOM_EVENTS_INFO[room.roomEvent].displayName}</div>
                   </div>
                   <div>{room.roomFormat}</div>
                   <div className="grid grid-rows-2">
                     {room.roomFormat === "RACING" ? (
                       <>
-                        <div>
-                          {MATCH_FORMAT_ABBREVIATION_MAP.get(
-                            room.matchFormat!
-                          )! + room.nSets!}
-                        </div>
-                        <div>
-                          {SET_FORMAT_ABBREVIATION_MAP.get(room.setFormat!)! +
-                            room.nSolves!}
-                        </div>
+                        <div>{abbreviate(room.matchFormat!) + room.nSets!}</div>
+                        <div>{abbreviate(room.setFormat!) + room.nSolves!}</div>
                       </>
                     ) : (
                       <></>

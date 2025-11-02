@@ -16,7 +16,7 @@ import {
   newScramble,
 } from "@/lib/room";
 import { IUser, IUserInfo } from "@/types/user";
-import { IRoomUser } from "@/types/room-user";
+import { IRoomUser } from "@/types/room-participant";
 import { IResult } from "@/types/result";
 import { SolveStatus } from "@/types/status";
 import { IRoomSolve } from "@/types/room-solve";
@@ -242,8 +242,8 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
       //TODO - this might not be safe in the future if a timer is supposed to default to something other than IDLE and we persist timertype
       //unless the user already submitted a time, reset their solve status too
-      if (room.users[userId].userStatus !== "FINISHED") {
-        room.users[userId].userStatus = "IDLE";
+      if (room.users[userId].solveStatus !== "FINISHED") {
+        room.users[userId].solveStatus = "IDLE";
       }
 
       io.to(roomId).emit(SOCKET_SERVER.USER_UPDATE, room.users[userId]);
@@ -477,7 +477,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
             active: true,
             competing: true,
             banned: false,
-            userStatus: "IDLE",
+            solveStatus: "IDLE",
             currentResult: undefined,
           };
 
@@ -667,7 +667,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           if (!room) return;
 
           const currentUserStatus: SolveStatus =
-            room.users[socket.user?.userInfo.id].userStatus;
+            room.users[socket.user?.userInfo.id].solveStatus;
           if (newUserStatus == currentUserStatus) {
             console.log(
               `User ${socket.user?.userInfo.id} submitted new user status to room ${socket.roomId} which is the same as old user status.`
@@ -676,7 +676,13 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
             console.log(
               `User ${socket.user?.userInfo.userName} submitted new user status ${newUserStatus} to room ${socket.roomId}`
             );
-            room.users[socket.user?.userInfo.id].userStatus = newUserStatus;
+            room.users[socket.user?.userInfo.id].solveStatus = newUserStatus;
+
+            io.to(socket.roomId).emit(
+              SOCKET_SERVER.USER_STATUS_UPDATE,
+              userId,
+              newUserStatus
+            );
 
             if (newUserStatus === "FINISHED") {
               const solveFinished: boolean = checkRoomSolveFinished(room);
@@ -686,11 +692,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
             }
 
             stores.rooms.setRoom(room);
-            io.to(socket.roomId).emit(
-              SOCKET_SERVER.USER_STATUS_UPDATE,
-              userId,
-              newUserStatus
-            );
+            
           }
         }
       }

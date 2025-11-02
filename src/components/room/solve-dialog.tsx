@@ -7,7 +7,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { IResult, Result } from "@/types/result";
-import { ROOM_EVENT_JS_NAME_MAP, RoomEvent } from "@/types/room";
+import { ROOM_EVENTS, ROOM_EVENTS_INFO, RoomEvent } from "@/types/room";
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { copyTextToClipboard, createResultTextLine } from "@/lib/utils";
@@ -55,7 +55,7 @@ export default function SolveDialog({
           {/* <scramble-display scramble={scramble} event={ROOM_EVENT_JS_NAME_MAP.get(event)}></scramble-display> */}
           <twisty-player
             experimental-setup-alg={scramble}
-            puzzle={ROOM_EVENT_JS_NAME_MAP.get(event) ?? "3x3x3"}
+            puzzle={ROOM_EVENTS_INFO[event].jsName ?? "3x3x3"}
             visualization="2D"
             control-panel="none"
             background="none"

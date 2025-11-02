@@ -6,6 +6,7 @@ import { generateScramble } from "@/lib/utils";
 import { ObjectId } from "bson";
 import bcrypt from "bcrypt";
 import { IUserInfo } from "@/types/user";
+import { IRoomUser } from "@/types/room-participant";
 
 export async function createRoom(
   roomSettings: IRoomSettings,
@@ -15,6 +16,7 @@ export async function createRoom(
   const room: IRoom = {
     id: roomId ? roomId : new ObjectId().toString(),
     users: {},
+    teams: {},
     solves: [],
     currentSet: 1,
     currentSolve: 0,
@@ -82,7 +84,7 @@ export function checkSetFinished(room: IRoom): boolean {
    * Bo - either finish all solves, or someone has to take majority (> N / 2) of points available
    * Ft - someone has to get at least N points
    */
-  if (room.solves.length === 0 || room.settings.roomFormat === "CASUAL")
+  if (room.solves.length === 0 || room.settings.roomFormat !== "CASUAL")
     return false;
   const currentSolve = room.solves.at(-1)!;
 
@@ -382,28 +384,32 @@ export function findMatchWinners(room: IRoom): string[] {
  */
 export function checkRoomSolveFinished(room: IRoom): boolean {
   if (room.solves.length == 0) return false;
-  const currentSolve = room.solves.at(-1);
+  const currentSolve = room.solves.at(-1)!;
   const competingUsers = Object.values(room.users).filter(
     (user) => user.competing && user.active
   );
 
-  //if no competing users, don't consider this solve finished.
-  if (competingUsers.length == 0) return false;
-
-  let allUsersFinished: boolean = true;
-  for (const roomUser of competingUsers) {
-    if (
-      roomUser.userStatus !== "FINISHED" ||
-      !Object.hasOwn(currentSolve!.solve.results, roomUser.user.id)
-    ) {
-      allUsersFinished = false;
-      break;
+  if (room.settings.teamSettings.teamsEnabled) {
+    //TODO - implement team modes
+    return false;
+  } else {
+    if (competingUsers.length == 0) return false;
+  
+    let allUsersFinished: boolean = true;
+    for (const roomUser of competingUsers) {
+      if (
+        roomUser.solveStatus !== "FINISHED" ||
+        !Object.hasOwn(currentSolve!.solve.results, roomUser.user.id)
+      ) {
+        allUsersFinished = false;
+        break;
+      }
     }
+  
+    //we do not set user status in here b/c the transition depends on client factors (e.g. timer type).
+    //user status update is handled in client, and we should send the "solve_finished" update to the whole room to help
+    return allUsersFinished;
   }
-
-  //we do not set user status in here b/c the transition depends on client factors (e.g. timer type).
-  //user status update is handled in client, and we should send the "solve_finished" update to the whole room to help
-  return allUsersFinished;
 }
 
 /**
@@ -435,7 +441,10 @@ export function finishRoomSolve(room: IRoom) {
           solveWinners = [];
           solveWinners.push(uid);
           currFastestResult = result;
-        } else if (result.equals(currFastestResult) && iResult.penalty !== "DNF") {
+        } else if (
+          result.equals(currFastestResult) &&
+          iResult.penalty !== "DNF"
+        ) {
           solveWinners.push(uid);
         }
       }
@@ -526,7 +535,7 @@ export async function newScramble(room: IRoom) {
 
   for (const roomUser of Object.values(room.users)) {
     roomUser.currentResult = undefined;
-    roomUser.userStatus = "IDLE";
+    roomUser.solveStatus = "IDLE";
   }
 }
 
@@ -538,12 +547,12 @@ export function resetRoom(room: IRoom) {
   room.solves = [];
   room.currentSet = 1;
   room.currentSolve = 0;
-  room.winners = room.settings.roomFormat == "RACING" ? [] : undefined;
+  room.winners = room.settings.roomFormat != "CASUAL" ? [] : undefined;
 
   for (const roomUser of Object.values(room.users)) {
     roomUser.points = 0;
     roomUser.setWins = 0;
-    roomUser.userStatus = "IDLE";
+    roomUser.solveStatus = "IDLE";
     roomUser.currentResult = undefined;
   }
 }

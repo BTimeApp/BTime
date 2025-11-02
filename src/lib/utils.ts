@@ -62,13 +62,13 @@ export function createResultTextLine(
   result?: IResult,
   idx?: number
 ) {
-  return `${idx != null ? idx + 1 + '\t': ""}${result != null ? Result.fromIResult(result).toString(true) +"\t" : ""}${scramble}`;
+  return `${idx != null ? idx + 1 + "\t" : ""}${
+    result != null ? Result.fromIResult(result).toString(true) + "\t" : ""
+  }${scramble}`;
 }
 export function createResultTextLines(scrambles: string[], results: IResult[]) {
   return scrambles
-    .map((scramble, idx) =>
-      createResultTextLine(scramble, results[idx], idx)
-    )
+    .map((scramble, idx) => createResultTextLine(scramble, results[idx], idx))
     .join("\n");
 }
 
@@ -90,4 +90,35 @@ export function downloadTextFile(filename: string, text: string) {
   link.click();
 
   URL.revokeObjectURL(link.href);
+}
+
+/**
+ * Transforms constant names into abbreviations
+ *
+ * ex. MY_CONSTANT -> mc
+ *
+ */
+export function abbreviate(name: string) {
+  return name
+    .split("_")
+    .map((_) => _[0])
+    .join("")
+    .toLowerCase();
+}
+
+/**
+ * Transforms constant names into display text names
+ *
+ * ex. MY_CONSTANT -> My constant
+ *
+ */
+export function displayText(name: string) {
+  let result = name.split("_").map((_) => _.toLowerCase());
+  if (result.length > 0)
+    result[0] = result[0].charAt(0)?.toUpperCase() + result[0].slice(1);
+  return result.join(" ");
+}
+
+export function literalKeys<T extends Record<string, any>>(obj: T) {
+  return Object.keys(obj) as Array<keyof T & string>;
 }

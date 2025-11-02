@@ -11,6 +11,7 @@ async function addTestRooms(stores: RedisStores) {
         roomFormat: "CASUAL",
         isPrivate: i % 2 == 0,
         password: i % 2 == 0 ? "test" : undefined,
+        teamSettings: {teamsEnabled: false}
       },
       i.toString()
     );

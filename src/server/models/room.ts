@@ -1,5 +1,5 @@
 import { Schema, model, Error } from "mongoose";
-import { IRoomUser } from "@/types/room-user";
+import { IRoomUser } from "@/types/room-participant";
 import {
   IRoom,
   IRoomSettings,

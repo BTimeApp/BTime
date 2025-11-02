@@ -11,7 +11,7 @@ import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { useSocketEvent } from "@/hooks/use-socket-event";
 import { IRoomSolve } from "@/types/room-solve";
-import { IRoomUser } from "@/types/room-user";
+import { IRoomUser } from "@/types/room-participant";
 import { useSession } from "@/context/session-context";
 import { useIsTouchscreen } from "@/hooks/useMobile";
 
@@ -47,7 +47,7 @@ export default function RoomEventHandler() {
     finishSolve,
     finishSet,
     finishMatch,
-    updateUserStatus,
+    updateSolveStatus,
     userToggleCompeting,
     userJoin,
     userUpdate,
@@ -79,7 +79,7 @@ export default function RoomEventHandler() {
     s.finishSolve,
     s.finishSet,
     s.finishMatch,
-    s.updateUserStatus,
+    s.updateSolveStatus,
     s.userToggleCompeting,
     s.userJoin,
     s.userUpdate,
@@ -131,7 +131,7 @@ export default function RoomEventHandler() {
    */
   useEffect(() => {
     resetLocalSolveStatus();
-    // ignore lint warning - we do not want userStatus change to trigger this hook
+    // ignore lint warning - we do not want solveStatus change to trigger this hook
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomState, timerType]);
 
@@ -179,11 +179,11 @@ export default function RoomEventHandler() {
     [addUserLiveStopTime]
   );
 
-  const handleUserStatusUpdate = useCallback(
+  const handlesolveStatusUpdate = useCallback(
     (userId: string, newSolveStatus: SolveStatus) => {
-      updateUserStatus(userId, newSolveStatus);
+      updateSolveStatus(userId, newSolveStatus);
     },
-    [updateUserStatus]
+    [updateSolveStatus]
   );
 
   const handleUserToggleCompeting = useCallback(
@@ -299,7 +299,7 @@ export default function RoomEventHandler() {
   useSocketEvent(
     socket,
     SOCKET_SERVER.USER_STATUS_UPDATE,
-    handleUserStatusUpdate
+    handlesolveStatusUpdate
   );
   useSocketEvent(
     socket,

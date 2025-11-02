@@ -1,8 +1,6 @@
-import { cn } from "@/lib/utils";
+import { abbreviate, cn } from "@/lib/utils";
 import {
-  MATCH_FORMAT_ABBREVIATION_MAP,
-  ROOM_EVENT_DISPLAY_NAME_MAP,
-  SET_FORMAT_ABBREVIATION_MAP,
+  ROOM_EVENTS_INFO,
 } from "@/types/room";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/common/header";
@@ -106,7 +104,7 @@ export function RoomHeader() {
               <div className="flex-5 md:flex-10 text-center flex flex-col overflow-wrap">
                 <h2 className="text-3xl font-bold">{roomName}</h2>
                 <h4 className="text-lg">
-                  {ROOM_EVENT_DISPLAY_NAME_MAP.get(roomEvent)}
+                  {ROOM_EVENTS_INFO[roomEvent].displayName}
                 </h4>
               </div>
               <div className="flex-1 flex flex-col gap-3">
@@ -159,17 +157,15 @@ export function RoomHeader() {
               <div className="flex-5 md:flex-10 text-center flex flex-col overflow-wrap justify-center">
                 <h2 className="text-3xl font-bold">{roomName}</h2>
                 <h4 className="text-lg">
-                  {ROOM_EVENT_DISPLAY_NAME_MAP.get(roomEvent)}
-                  {MATCH_FORMAT_ABBREVIATION_MAP.has(matchFormat) &&
-                  roomFormat !== "CASUAL"
+                  {ROOM_EVENTS_INFO[roomEvent].displayName}
+                  {roomFormat !== "CASUAL"
                     ? " | " +
-                      MATCH_FORMAT_ABBREVIATION_MAP.get(matchFormat) +
+                      abbreviate(matchFormat) +
                       numSets.toString() +
                       " sets | "
                     : ""}
-                  {SET_FORMAT_ABBREVIATION_MAP.has(setFormat) &&
-                  roomFormat !== "CASUAL"
-                    ? SET_FORMAT_ABBREVIATION_MAP.get(setFormat) +
+                  {roomFormat !== "CASUAL"
+                    ? abbreviate(setFormat) +
                       numSolves.toString() +
                       " solves"
                     : ""}
@@ -236,7 +232,7 @@ export function RoomHeader() {
               <div className="flex-5 md:flex-10 text-center flex flex-col overflow-wrap">
                 <h2 className="text-3xl font-bold">{roomName}</h2>
                 <h4 className="text-lg">
-                  {ROOM_EVENT_DISPLAY_NAME_MAP.get(roomEvent)}
+                  {ROOM_EVENTS_INFO[roomEvent].displayName}
                 </h4>
               </div>
               <div className="flex-1 flex flex-col gap-3">

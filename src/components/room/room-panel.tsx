@@ -4,10 +4,10 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   getFormatText,
   getVerboseFormatText,
-  ROOM_EVENT_JS_NAME_MAP,
+  ROOM_EVENTS_INFO
 } from "@/types/room";
 import GlobalTimeList from "@/components/room/global-time-list";
-import { IRoomUser } from "@/types/room-user";
+import { IRoomUser } from "@/types/room-participant";
 import { Result } from "@/types/result";
 import { Button } from "@/components/ui/button";
 import { Settings } from "lucide-react";
@@ -102,7 +102,7 @@ function UserStatusSection({
   const [users] = useRoomStore((s) => [s.users]);
   return (
     <div className={className}>
-      <p>{users[userId].userStatus}</p>
+      <p>{users[userId].solveStatus}</p>
     </div>
   );
 }
@@ -157,7 +157,7 @@ function UserCenterSection({
             // />
             <twisty-player
               experimental-setup-alg={currScramble}
-              puzzle={ROOM_EVENT_JS_NAME_MAP.get(roomEvent) ?? "3x3x3"}
+              puzzle={ROOM_EVENTS_INFO[roomEvent].jsName ?? "3x3x3"}
               visualization="2D"
               control-panel="none"
               className="w-full h-45"
@@ -283,17 +283,17 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
     if (!user.competing) {
       return "SPECTATING";
     } else {
-      if (user.userStatus == "FINISHED" && user.currentResult) {
+      if (user.solveStatus == "FINISHED" && user.currentResult) {
         return Result.fromIResult(user.currentResult).toString();
       } else if (
-        user.userStatus === "SOLVING" &&
+        user.solveStatus === "SOLVING" &&
         userLiveTimerStartTimes[user.user.id]
       ) {
         return (
           <UserLiveTimer startTime={userLiveTimerStartTimes[user.user.id]!} />
         );
       } else if (
-        user.userStatus === "SUBMITTING" &&
+        user.solveStatus === "SUBMITTING" &&
         userLiveTimes[user.user.id]
       ) {
         return (
@@ -302,7 +302,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
           </p>
         );
       } else {
-        return user.userStatus;
+        return user.solveStatus;
       }
     }
   }

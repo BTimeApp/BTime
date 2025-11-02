@@ -22,16 +22,13 @@ import {
 } from "@/components/ui/select";
 import {
   IRoomSettings,
-  MATCH_FORMAT_MAP,
   MATCH_FORMATS,
   MatchFormat,
-  ROOM_EVENT_DISPLAY_NAME_MAP,
   ROOM_EVENTS,
-  ROOM_FORMAT_MAP,
+  ROOM_EVENTS_INFO,
   ROOM_FORMATS,
   RoomEvent,
   RoomFormat,
-  SET_FORMAT_MAP,
   SET_FORMATS,
   SetFormat,
 } from "@/types/room";
@@ -39,6 +36,7 @@ import { Switch } from "@/components/ui/switch";
 import { useSession } from "@/context/session-context";
 import { toast } from "sonner";
 import { SOCKET_CLIENT } from "@/types/socket_protocol";
+import { displayText } from "@/lib/utils";
 
 const formSchema = z.object({
   roomName: z
@@ -48,7 +46,7 @@ const formSchema = z.object({
     })
     .max(100, { message: "Room name must not be over 100 characters." }),
   roomFormat: z.enum(ROOM_FORMATS),
-  roomEvent: z.enum(ROOM_EVENTS),
+  roomEvent: z.enum(ROOM_EVENTS as [RoomEvent, ...RoomEvent[]]),
   isPrivate: z.boolean(),
   password: z.string(),
   matchFormat: z.enum(MATCH_FORMATS),
@@ -73,9 +71,7 @@ type RoomSettingsFormProps = {
   onUpdateCallback?: () => void;
 };
 
-/**
- * TODO: if the intent is to use this component for both settings and normal create page, need to move the roomstore hook out of this component and accept it all in props...
- */
+
 export default function RoomSettingsForm({
   roomName,
   roomFormat,
@@ -220,7 +216,7 @@ export default function RoomSettingsForm({
                         <SelectContent>
                           {ROOM_FORMATS.map((val, idx) => (
                             <SelectItem key={idx} value={val}>
-                              {ROOM_FORMAT_MAP.get(val)}
+                              {displayText(val)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -244,16 +240,14 @@ export default function RoomSettingsForm({
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue
-                              placeholder={ROOM_EVENT_DISPLAY_NAME_MAP.get(
-                                roomEvent
-                              )}
+                              placeholder={ROOM_EVENTS_INFO[roomEvent].displayName}
                             />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           {ROOM_EVENTS.map((val, idx) => (
                             <SelectItem key={idx} value={val}>
-                              {ROOM_EVENT_DISPLAY_NAME_MAP.get(val)}
+                              {ROOM_EVENTS_INFO[val].displayName}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -321,7 +315,7 @@ export default function RoomSettingsForm({
                             <SelectContent>
                               {MATCH_FORMATS.map((val, idx) => (
                                 <SelectItem key={idx} value={val}>
-                                  {MATCH_FORMAT_MAP.get(val)}
+                                  {displayText(val)}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -375,7 +369,7 @@ export default function RoomSettingsForm({
                             <SelectContent>
                               {SET_FORMATS.map((val, idx) => (
                                 <SelectItem key={idx} value={val}>
-                                  {SET_FORMAT_MAP.get(val)}
+                                  {displayText(val)}
                                 </SelectItem>
                               ))}
                             </SelectContent>

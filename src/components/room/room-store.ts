@@ -6,7 +6,7 @@ import {
   SetFormat,
 } from "@/types/room";
 import { IRoomSolve } from "@/types/room-solve";
-import { IRoomUser } from "@/types/room-user";
+import { IRoomUser } from "@/types/room-participant";
 import { RoomState } from "@/types/room";
 import { StoreApi, createStore } from "zustand";
 import { timerAllowsInspection, TimerType } from "@/types/timer-type";
@@ -95,7 +95,7 @@ export type RoomStore = {
 
   finishMatch: (matchWinners: string[]) => void;
 
-  updateUserStatus: (userId: string, newStatus: SolveStatus) => void;
+  updateSolveStatus: (userId: string, newStatus: SolveStatus) => void;
 
   userToggleCompeting: (userId: string, newCompeting: boolean) => void;
 
@@ -129,6 +129,7 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
     setFormat: "BEST_OF",
     nSets: 1,
     nSolves: 1,
+    teamsEnabled: false,
     roomState: "WAITING",
     roomWinners: [],
     isPrivate: false,
@@ -293,7 +294,7 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         localResult: roomUser.currentResult
           ? Result.fromIResult(roomUser.currentResult)
           : new Result(""),
-        localSolveStatus: roomUser.userStatus,
+        localSolveStatus: roomUser.solveStatus,
       })),
 
     addNewSolve: (newSolve: IRoomSolve) =>
@@ -327,7 +328,7 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         const updatedUsers = { ...state.users };
         for (const roomUser of Object.values(updatedUsers)) {
           roomUser.currentResult = undefined;
-          roomUser.userStatus = "IDLE";
+          roomUser.solveStatus = "IDLE";
         }
 
         // clear live times
@@ -382,11 +383,11 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         return { roomWinners: matchWinners, roomState: "FINISHED" };
       }),
 
-    updateUserStatus: (userId: string, newStatus: SolveStatus) =>
+    updateSolveStatus: (userId: string, newStatus: SolveStatus) =>
       set((state) => {
         const updatedUsers: Record<string, IRoomUser> = { ...state.users };
         if (!updatedUsers[userId]) return {};
-        updatedUsers[userId].userStatus = newStatus;
+        updatedUsers[userId].solveStatus = newStatus;
         return { users: updatedUsers };
       }),
 
@@ -458,7 +459,7 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         for (const roomUser of Object.values(updatedUsers)) {
           roomUser.points = 0;
           roomUser.setWins = 0;
-          roomUser.userStatus = "IDLE";
+          roomUser.solveStatus = "IDLE";
           roomUser.currentResult = undefined;
         }
 
