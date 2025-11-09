@@ -146,12 +146,12 @@ export default function RoomListing() {
                     />
                     <div>{ROOM_EVENTS_INFO[room.roomEvent].displayName}</div>
                   </div>
-                  <div>{room.roomFormat}</div>
+                  <div>{room.raceSettings.roomFormat}</div>
                   <div className="grid grid-rows-2">
-                    {room.roomFormat === "RACING" ? (
+                    {room.raceSettings.roomFormat === "RACING" ? (
                       <>
-                        <div>{abbreviate(room.matchFormat!) + room.nSets!}</div>
-                        <div>{abbreviate(room.setFormat!) + room.nSolves!}</div>
+                        <div>{abbreviate(room.raceSettings.matchFormat) + room.raceSettings.nSets}</div>
+                        <div>{abbreviate(room.raceSettings.setFormat) + room.raceSettings.nSolves}</div>
                       </>
                     ) : (
                       <></>
@@ -159,7 +159,7 @@ export default function RoomListing() {
                   </div>
 
                   <div className="col-start-8 flex flex-row">
-                    {room.isPrivate ? (
+                    {room.visibility === "PRIVATE" ? (
                       <>
                         <GlobeLock />
                         <div>Private</div>

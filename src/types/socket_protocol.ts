@@ -43,6 +43,26 @@ export enum SOCKET_CLIENT {
   SUBMIT_RESULT = "SUBMIT_RESULT",
 
   /**
+   * Host creates a new team
+   */
+  CREATE_TEAM = "CREATE_TEAM",
+
+  /**
+   * Host deletes a team
+   */
+  DELETE_TEAM = "DELETE_TEAM",
+
+  /**
+   * User joins a team
+   */
+  JOIN_TEAM = "JOIN_TEAM",
+
+  /**
+   * User leaves a team (explicit action)
+   */
+  LEAVE_TEAM = "LEAVE_TEAM",
+
+  /**
    * Host starts the room (bring from WAITING to STARTED)
    */
   START_ROOM = "START_ROOM",
@@ -121,11 +141,36 @@ export enum SOCKET_SERVER {
    * User is toggling whether they compete/spectate
    */
   USER_TOGGLE_COMPETING = "USER_TOGGLE_COMPETING",
-  
+
   /**
    * Used for all state updates to the room object (state tied to the Zustand room store)
    */
   ROOM_UPDATE = "ROOM_UPDATE",
+
+  /**
+   * Host creates a new team
+   */
+  TEAM_CREATED = "TEAM_CREATED",
+
+  /**
+   * Host deletes a team
+   */
+  TEAM_DELETED = "TEAM_DELETED",
+
+  /**
+   * To broadcast any update to a specific team
+   */
+  TEAM_UPDATE = "TEAM_UPDATE",
+
+  /**
+   * To broadcast that user has joined team
+   */
+  USER_JOIN_TEAM = "USER_JOIN_TEAM",
+
+  /**
+   * User leaves a team (explicit action)
+   */
+  USER_LEAVE_TEAM = "USER_LEAVE_TEAM",
 
   /**
    * Broadcast that the room has started
@@ -183,7 +228,7 @@ export enum SOCKET_SERVER {
   USER_UNBANNED = "USER_UNBANNED",
 
   /**
-   * Generic way to update a room user. 
+   * Generic way to update a room user.
    */
   USER_UPDATE = "USER_UPDATE",
 
@@ -200,5 +245,20 @@ export enum SOCKET_SERVER {
   /**
    * Disconnect the socket
    */
-  DISCONNECT = "DISCONNECT"
+  DISCONNECT = "DISCONNECT",
 }
+
+/**
+ * A response type and related callback type for websocket when we need to transport some data.
+ * Includes a reason for failure, which can be passed to user or processed in client side.
+ *
+ * Only need to use this construct when we need feedback in case of failure. If we only need to know the time of success, just use a () => void callback
+ */
+export type SocketResponse<T> =
+  | { success: true; data: T }
+  | {
+      success: false;
+      data?: T;
+      reason: string;
+    };
+export type SocketCallback<T> = (response: SocketResponse<T>) => void;

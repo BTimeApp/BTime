@@ -22,22 +22,16 @@ export default function RoomSettingsDialog({
   const [
     roomName,
     roomEvent,
-    roomFormat,
-    matchFormat,
-    setFormat,
-    isPrivate,
-    nSets,
-    nSolves,
+    access,
+    raceSettings,
+    teamSettings,
     isUserHost
   ] = useRoomStore((s) => [
     s.roomName,
     s.roomEvent,
-    s.roomFormat,
-    s.matchFormat,
-    s.setFormat,
-    s.isPrivate,
-    s.nSets,
-    s.nSolves,
+    s.access,
+    s.raceSettings,
+    s.teamSettings,
     s.isUserHost
   ]);
 
@@ -74,12 +68,9 @@ export default function RoomSettingsDialog({
             <RoomSettingsForm
               roomName={roomName}
               roomEvent={roomEvent}
-              roomFormat={roomFormat}
-              matchFormat={matchFormat}
-              setFormat={setFormat}
-              isPrivate={isPrivate}
-              nSets={nSets}
-              nSolves={nSolves}
+              access={access}
+              raceSettings={raceSettings}
+              teamSettings={teamSettings}
               roomId={roomId}
               createNewRoom={false}
               onUpdateCallback={closeDialogCallback}

@@ -116,27 +116,9 @@ export interface RoomFormatAttributes {
   // overrides: Record<string, any>
 }
 
-// export const ROOM_FORMAT_INFO = {
-//   CASUAL: {
-//     teams: false,
-//     competitive: false,
-//   },
-//   FREE_FOR_ALL: {
-//     teams: false,
-//     competitive: true,
-//   },
-//   TEAMS: {
-//     teams: true,
-//     competitive: true,
-//     requiredSettings: ["teamSize"]
-//   },
-//   CREW_BATTLE: {
-//     teams: true,
-//     competitive: true,
-//     requiredSettings: ["teamSize"]
-//   },
-// } as const satisfies Record<string, RoomFormatAttributes>;
 export const ROOM_FORMATS = ["CASUAL", "RACING"] as const;
+
+export const VISIBILITIES = ["PUBLIC", "PRIVATE"] as const;
 
 //match formats - how to win a race based on number of sets won
 export const MATCH_FORMATS = [
@@ -155,30 +137,26 @@ export const SET_FORMATS = [
 ] as const;
 
 export function getFormatText(
-  roomFormat: RoomFormat,
-  matchFormat: MatchFormat,
-  setFormat: SetFormat,
-  nSets: number,
-  nSolves: number
+  raceSettings: RaceSettings
 ): string {
-  if (roomFormat === "CASUAL") {
+  if (raceSettings.roomFormat === "CASUAL") {
     return "casual";
   } else {
     let raceFormatText =
       "Format: " +
-      displayText(setFormat) +
+      displayText(raceSettings.setFormat) +
       " " +
-      nSolves +
+      raceSettings.nSolves +
       " solve" +
-      (nSolves > 1 ? "s" : "");
-    if (nSets > 1) {
+      (raceSettings.nSolves > 1 ? "s" : "");
+    if (raceSettings.nSets > 1) {
       raceFormatText +=
         ", " +
-        displayText(matchFormat) +
+        displayText(raceSettings.matchFormat) +
         " " +
-        nSets +
+        raceSettings.nSets +
         " set" +
-        (nSets > 1 ? "s" : "");
+        (raceSettings.nSets > 1 ? "s" : "");
     }
 
     return raceFormatText;
@@ -186,93 +164,89 @@ export function getFormatText(
 }
 
 export function getVerboseFormatText(
-  roomFormat: RoomFormat,
-  matchFormat: MatchFormat,
-  setFormat: SetFormat,
-  nSets: number,
-  nSolves: number
+  raceSettings: RaceSettings
 ): string {
-  if (roomFormat == "CASUAL") {
+  if (raceSettings.roomFormat == "CASUAL") {
     return "Enjoy endless solves in this casual room.";
   } else {
     let formatText = "";
-    if (nSets && nSets > 1) {
-      switch (matchFormat) {
+    if (raceSettings.nSets && raceSettings.nSets > 1) {
+      switch (raceSettings.matchFormat) {
         case "BEST_OF":
           formatText +=
-            "Win the match by winning the most of " + nSets + " sets.";
+            "Win the match by winning the most of " + raceSettings.nSets + " sets.";
           break;
         case "FIRST_TO":
           formatText +=
-            "Win the match by being the first to win " + nSets + " sets.";
+            "Win the match by being the first to win " + raceSettings.nSets + " sets.";
           break;
         default:
           break;
       }
       formatText += "\n";
-      switch (setFormat) {
+      switch (raceSettings.setFormat) {
         case "BEST_OF":
           formatText +=
             "Win a set by winning the most of " +
-            nSolves +
-            ` solve${nSolves > 1 ? "s" : ""}.`;
+            raceSettings.nSolves +
+            ` solve${raceSettings.nSolves > 1 ? "s" : ""}.`;
           break;
         case "FIRST_TO":
           formatText +=
             "Win a set by being the first to win " +
-            nSolves +
-            ` solve${nSolves > 1 ? "s" : ""}.`;
+            raceSettings.nSolves +
+            ` solve${raceSettings.nSolves > 1 ? "s" : ""}.`;
           break;
         case "AVERAGE_OF":
           formatText +=
             "Win a set by having the best average of " +
-            nSolves +
+            raceSettings.nSolves +
             " solves (best and worst times dropped).";
           break;
         case "MEAN_OF":
           formatText +=
             "Win a set by having the best mean of " +
-            nSolves +
-            ` solve${nSolves > 1 ? "s" : ""}.`;
+            raceSettings.nSolves +
+            ` solve${raceSettings.nSolves > 1 ? "s" : ""}.`;
           break;
         case "FASTEST_OF":
           formatText +=
             "Win a set by having the best single of " +
-            nSolves +
-            ` solve${nSolves > 1 ? "s" : ""}.`;
+            raceSettings.nSolves +
+            ` solve${raceSettings.nSolves > 1 ? "s" : ""}.`;
           break;
       }
     } else {
-      switch (setFormat) {
+      switch (raceSettings.setFormat) {
         case "BEST_OF":
           formatText +=
             "Win the match by winning the most of " +
-            nSolves +
-            ` solve${nSolves > 1 ? "s" : ""}.`;
+            raceSettings.nSolves +
+            ` solve${raceSettings.nSolves > 1 ? "s" : ""}.`;
           break;
         case "FIRST_TO":
           formatText +=
             "Win the match by being the first to win " +
-            nSolves +
-            ` solve${nSolves > 1 ? "s" : ""}.`;
+            raceSettings.nSolves +
+            ` solve${raceSettings.nSolves > 1 ? "s" : ""}.`;
           break;
         case "AVERAGE_OF":
           formatText +=
             "Win the match by having the best average of " +
-            nSolves +
+            raceSettings.nSolves +
             " solves (best and worst times dropped).";
           break;
         case "MEAN_OF":
           formatText +=
             "Win the match by having the best mean of " +
-            nSolves +
-            ` solve${nSolves > 1 ? "s" : ""}.`;
+            raceSettings.nSolves +
+            ` solve${raceSettings.nSolves > 1 ? "s" : ""}.`;
           break;
         case "FASTEST_OF":
           formatText +=
             "Win the match by having the best single of " +
-            nSolves +
-            ` solve${nSolves > 1 ? "s" : ""}.`;
+            raceSettings.nSolves +
+            ` solve${raceSettings.nSolves > 1 ? "s" : ""}.`;
           break;
       }
     }
@@ -291,22 +265,23 @@ export const ROOM_STATES = [
 export const TEAM_SOLVE_FORMATS = [
   "ALL", //per solve, everyone in the team competes
   "ONE", //per solve, only one person in the team competes
-];
+] as const;
 
 export const TEAM_SCRAMBLE_FORMATS = [
   "SAME", //(assuming multiple ppl per team compete per same solve) everyone gets same scramble
   "DIFFERENT", //... everyone gets diff scramble
-];
+] as const;
 
 //how the reduction from multiple results per solve in a team goes to one result for evaluation
 export const TEAM_REDUCE_FUNCTIONS = [
   "SUM", //sum of all teammates' times
   "MEAN", //mean of all teammates' times
   "FASTEST", //fastest (min) of all teammates' times
-];
+] as const;
 
 export type RoomEvent = (typeof ROOM_EVENTS)[number];
 export type RoomFormat = (typeof ROOM_FORMATS)[number];
+export type Visibility = (typeof VISIBILITIES)[number];
 export type MatchFormat = (typeof MATCH_FORMATS)[number];
 export type SetFormat = (typeof SET_FORMATS)[number];
 export type RoomState = (typeof ROOM_STATES)[number];
@@ -328,6 +303,26 @@ export interface IRoom {
   settings: IRoomSettings;
 }
 
+export type Access =
+  | {
+      visibility: Extract<Visibility, "PUBLIC">;
+    }
+  | {
+      visibility: Extract<Visibility, "PRIVATE">;
+      password: string;
+    };
+
+export type RaceSettings = 
+| {
+  roomFormat: Extract<RoomFormat, "CASUAL">;
+} | {
+  roomFormat: Extract<RoomFormat, "RACING">;
+  matchFormat: MatchFormat;
+  setFormat: SetFormat;
+  nSets: number;
+  nSolves: number;
+}
+
 export type TeamFormatSettings =
   | { teamSolveFormat: Extract<TeamSolveFormat, "ONE"> }
   | {
@@ -336,20 +331,22 @@ export type TeamFormatSettings =
       teamReduceFunction: TeamReduceFunction;
     };
 
-export type TeamSettings = {
-  teamsEnabled: false;
-} | {teamsEnabled: true, teamFormatSettings: TeamFormatSettings, maxTeamCapacity?: number, maxTeams?: number};
+export type TeamSettings =
+  | {
+      teamsEnabled: false;
+    }
+  | {
+      teamsEnabled: true;
+      teamFormatSettings: TeamFormatSettings;
+      maxTeamCapacity?: number;
+      maxTeams?: number;
+    };
 
 // settings used when creating a room
 export interface IRoomSettings {
   roomName: string;
   roomEvent: RoomEvent;
-  roomFormat: RoomFormat;
-  matchFormat?: MatchFormat;
-  setFormat?: SetFormat;
-  isPrivate: boolean;
-  password?: string;
-  nSets?: number;
-  nSolves?: number;
+  access: Access;
+  raceSettings: RaceSettings;
   teamSettings: TeamSettings;
 }

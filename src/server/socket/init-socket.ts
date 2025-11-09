@@ -14,9 +14,12 @@ import {
   checkMatchFinished,
   findMatchWinners,
   newScramble,
+  createTeam,
+  userJoinTeam,
+  userLeaveTeam,
 } from "@/lib/room";
 import { IUser, IUserInfo } from "@/types/user";
-import { IRoomUser } from "@/types/room-participant";
+import { IRoomTeam, IRoomUser } from "@/types/room-participant";
 import { IResult } from "@/types/result";
 import { SolveStatus } from "@/types/status";
 import { IRoomSolve } from "@/types/room-solve";
@@ -25,10 +28,16 @@ import { NextFunction } from "express";
 import { ObjectId } from "bson";
 import passport from "passport";
 import bcrypt from "bcrypt";
-import { SOCKET_CLIENT, SOCKET_SERVER } from "@/types/socket_protocol";
+import {
+  SOCKET_CLIENT,
+  SOCKET_SERVER,
+  SocketCallback,
+  SocketResponse,
+} from "@/types/socket_protocol";
 import Redis from "ioredis";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { RedisStores } from "@/server/redis/stores";
+import { Romanesco } from "next/font/google";
 
 //defines useful state variables we want to maintain over the lifestyle of a socket connection (only visible server-side)
 interface CustomSocket extends Socket {
@@ -92,7 +101,6 @@ export const initSocket = (
 };
 
 const listenSocketEvents = (io: Server, stores: RedisStores) => {
-
   async function onConnect(socket: CustomSocket) {
     //check for user. DC if no user
     socket.user = socket.request.user;
@@ -114,12 +122,13 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
     await stores.userSessions.addUserSession(userId, socket.id);
   }
 
+  //TODO: abstract this function away to room lib
   async function handleSolveFinished(room: IRoom) {
     finishRoomSolve(room);
     const currentSolve = room.solves.at(-1)!;
 
     // only check set and match wins if not a casual room
-    if (room.settings.roomFormat !== "CASUAL") {
+    if (room.settings.raceSettings.roomFormat !== "CASUAL") {
       //check set finished.
       const setFinished = checkSetFinished(room);
       if (setFinished) {
@@ -246,6 +255,13 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         room.users[userId].solveStatus = "IDLE";
       }
 
+      // if teams is enabled and this user is on a team, force leave team
+      const teamId = room.users[userId].currentTeam;
+      if (room.settings.teamSettings.teamsEnabled && teamId !== undefined) {
+        userLeaveTeam(room, userId, teamId);
+        io.to(roomId).emit(SOCKET_SERVER.USER_LEAVE_TEAM, userId, teamId);
+      }
+
       io.to(roomId).emit(SOCKET_SERVER.USER_UPDATE, room.users[userId]);
 
       //check if no more users, if so, schedule room deletion.
@@ -286,7 +302,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       if (checkRoomSolveFinished(room)) {
         await handleSolveFinished(room);
       }
-      
+
       // write room to room store
       stores.rooms.setRoom(room);
 
@@ -420,7 +436,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         ) {
           console.log(`User ${userId} double join in room ${roomId}.`);
 
-          // precautionary persist - there is currently a race condition 
+          // precautionary persist - there is currently a race condition
           await stores.rooms.persistRoom(room.id);
 
           joinRoomCallback(true, room, {
@@ -431,7 +447,10 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         }
 
         //validate password if room is private AND user isn't host
-        if (room.settings.isPrivate && userId !== room.host?.id) {
+        if (
+          room.settings.access.visibility === "PRIVATE" &&
+          userId !== room.host?.id
+        ) {
           if (!password) {
             //this should only occur upon the first join_room ping - safe to return early
             joinRoomCallback(true, undefined, {});
@@ -441,7 +460,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           //room password should never be undefined, but just in case, cast to empty string
           const correctPassword = await bcrypt.compare(
             password,
-            room.settings.password ?? ""
+            room.settings.access.password
           );
           if (!correctPassword) {
             console.log(
@@ -541,7 +560,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
     socket.on(SOCKET_CLIENT.BAN_USER, async (userId: string) => {
       const room = await getSocketRoom();
-      if (!room || !await userIsHost()) return;
+      if (!room || !(await userIsHost())) return;
 
       const banUser = room?.users[userId];
       if (!banUser) return;
@@ -558,7 +577,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
     socket.on(SOCKET_CLIENT.UNBAN_USER, async (userId: string) => {
       const room = await getSocketRoom();
-      if (!room || !await userIsHost()) return;
+      if (!room || !(await userIsHost())) return;
 
       const unbanUser = room?.users[userId];
       if (!unbanUser) return;
@@ -575,7 +594,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
     socket.on(SOCKET_CLIENT.KICK_USER, async (userId: string) => {
       const room = await getSocketRoom();
-      if (!room || !await userIsHost()) return;
+      if (!room || !(await userIsHost())) return;
 
       const kickUser = room?.users[userId];
       if (!kickUser) return;
@@ -692,7 +711,6 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
             }
 
             stores.rooms.setRoom(room);
-            
           }
         }
       }
@@ -772,6 +790,114 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       }
     );
 
+    /**
+     * Upon host requesting a new team created
+     */
+    socket.on(
+      SOCKET_CLIENT.CREATE_TEAM,
+      async (
+        teamName: string,
+        createTeamCallback: SocketCallback<undefined>
+      ) => {
+        const room = await getSocketRoom();
+        if (!room) {
+          createTeamCallback({ success: false, reason: "Room does not exist" });
+          return;
+        } else if (!(await userIsHost())) {
+          createTeamCallback({
+            success: false,
+            reason: "User is not host user",
+          });
+          return;
+        } else if (!room.settings.teamSettings.teamsEnabled) {
+          createTeamCallback({
+            success: false,
+            reason: "Teams mode is not enabled in this room",
+          });
+          return;
+        } else if (
+          room.settings.teamSettings.maxTeams &&
+          Object.keys(room.teams).length >= room.settings.teamSettings.maxTeams
+        ) {
+          createTeamCallback({
+            success: false,
+            reason: "Maximum amount of teams already created",
+          });
+          return;
+        }
+
+        const newTeam = createTeam(room, teamName);
+        room.teams[newTeam.team.id] = newTeam;
+
+        //persist to redis
+        stores.rooms.setRoom(room);
+
+        //broadcast new team event
+        io.to(room.id).emit(SOCKET_SERVER.TEAM_CREATED, newTeam);
+
+        createTeamCallback({ success: true, data: undefined });
+      }
+    );
+
+    /**
+     * Upon host requesting a team deleted
+     */
+    socket.on(SOCKET_CLIENT.DELETE_TEAM, async (teamId: string) => {
+      const room = await getSocketRoom();
+      if (
+        !room ||
+        !(await userIsHost()) ||
+        !room.settings.teamSettings.teamsEnabled
+      )
+        return;
+
+      delete room.teams[teamId];
+      stores.rooms.setRoom(room);
+
+      io.to(room.id).emit(SOCKET_SERVER.TEAM_DELETED, teamId);
+    });
+
+    /**
+     * Upon user trying to join team
+     */
+    socket.on(
+      SOCKET_CLIENT.JOIN_TEAM,
+      async (teamId: string, joinTeamCallback: SocketCallback<undefined>) => {
+        const user = socket.user;
+        const room = await getSocketRoom();
+        if (!room || !user || !room.settings.teamSettings.teamsEnabled) return;
+
+        const response: SocketResponse<undefined> = userJoinTeam(
+          room,
+          user.userInfo.id,
+          teamId
+        );
+        stores.rooms.setRoom(room);
+        io.to(room.id).emit(SOCKET_SERVER.USER_JOIN_TEAM, userId, teamId);
+
+        joinTeamCallback(response);
+      }
+    );
+
+    /**
+     * Upon user trying to leave team
+     */
+    socket.on(SOCKET_CLIENT.LEAVE_TEAM, async (teamId: string) => {
+      const user = socket.user;
+      const room = await getSocketRoom();
+      if (
+        !room ||
+        !user ||
+        !room.settings.teamSettings.teamsEnabled ||
+        !room.teams[teamId]
+      )
+        return;
+
+      const success = userLeaveTeam(room, user.userInfo.id, teamId);
+      if (success) {
+        io.to(room.id).emit(SOCKET_SERVER.USER_LEAVE_TEAM, userId, teamId);
+      }
+    });
     /**
      * Upon user pressing compete/spectate button
      */

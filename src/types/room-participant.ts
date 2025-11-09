@@ -16,8 +16,10 @@ export interface IRoomUser extends IRoomParticipant {
   banned: boolean; //true = banned
   active: boolean; //true = in room, false = not in room
   competing: boolean; //false = spectating
+  currentTeam?: string; //the team ID that this user currently belongs to, if teams is enabled
 }
 
 export interface IRoomTeam extends IRoomParticipant {
   team: ITeam;
+  currentMember?: string; //the user ID who is currently reprsenting the team, in teamSolveFormat ONE
 }

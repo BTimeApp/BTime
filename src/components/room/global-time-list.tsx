@@ -10,7 +10,7 @@ import { Crown } from "lucide-react";
 import SolveDialog from "@/components/room/solve-dialog";
 import { IRoomUser } from "@/types/room-participant";
 import { IRoomSolve } from "@/types/room-solve";
-import { RoomEvent, RoomFormat, SetFormat } from "@/types/room";
+import { RaceSettings, RoomEvent} from "@/types/room";
 import { Result } from "@/types/result";
 import { cn } from "@/lib/utils";
 import SetDialog from "@/components/room/set-dialog";
@@ -20,12 +20,9 @@ type GlobalTimeListProps = {
   roomName: string;
   users: IRoomUser[];
   solves: IRoomSolve[];
-  roomFormat: RoomFormat;
-  setFormat: SetFormat;
   roomEvent: RoomEvent;
+  raceSettings: RaceSettings;
   userId?: string;
-  nSets?: number;
-  nSolves?: number;
   className?: string;
 };
 
@@ -33,12 +30,9 @@ export default function GlobalTimeList({
   roomName,
   users,
   solves,
-  roomFormat,
-  setFormat,
   roomEvent,
+  raceSettings,
   userId,
-  nSets,
-  nSolves,
   className,
 }: GlobalTimeListProps) {
   /**
@@ -60,18 +54,18 @@ export default function GlobalTimeList({
     rows.push(solve);
 
     // 2. check if we should generate a set summary row after this solve. if so, push onto rows
-    if (roomFormat !== "CASUAL") {
+    if (raceSettings.roomFormat !== "CASUAL") {
       if (
         (i < solves.length - 1 &&
           solves[i].setIndex !== solves[i + 1].setIndex) ||
         (solve.setWinners && solve.setWinners?.length > 0) ||
         (solve.matchWinners && solve.matchWinners?.length > 0) ||
         (solve.finished &&
-          solve.setIndex === nSets &&
-          solve.solveIndex >= nSolves! &&
-          (setFormat === "FASTEST_OF" ||
-            setFormat === "MEAN_OF" ||
-            setFormat === "AVERAGE_OF"))
+          solve.setIndex === raceSettings.nSets &&
+          solve.solveIndex >= raceSettings.nSolves! &&
+          (raceSettings.setFormat === "FASTEST_OF" ||
+            raceSettings.setFormat === "MEAN_OF" ||
+            raceSettings.setFormat === "AVERAGE_OF"))
       ) {
         const roomSummaryRow: IRoomSolve = {
           solve: {
@@ -102,7 +96,7 @@ export default function GlobalTimeList({
 
           //calculate summary metric
           let userPoints = Infinity;
-          switch (setFormat) {
+          switch (raceSettings.setFormat) {
             case "BEST_OF":
               userPoints = setSolves.filter((solve) =>
                 solve.solveWinners?.includes(roomUser.user.id)
@@ -158,7 +152,7 @@ export default function GlobalTimeList({
             )}
           >
             <TableRow className="bg-inherit">
-              {roomFormat !== "CASUAL" && (
+              {raceSettings.roomFormat !== "CASUAL" && (
                 <TableHead className="text-center w-10">Set</TableHead>
               )}
               <TableHead className="text-center w-10">Solve</TableHead>
@@ -200,18 +194,23 @@ export default function GlobalTimeList({
                 >
                   <TableRow className="font-bold">
                     <TableCell className="w-10">{solve.setIndex}</TableCell>
-                    {(setFormat === "BEST_OF" || setFormat === "FIRST_TO") && (
-                      <TableCell className="w-10">Pts</TableCell>
-                    )}
-                    {setFormat === "AVERAGE_OF" && (
-                      <TableCell className="w-10">Avg</TableCell>
-                    )}
-                    {setFormat === "MEAN_OF" && (
-                      <TableCell className="w-10">Mean</TableCell>
-                    )}
-                    {setFormat === "FASTEST_OF" && (
-                      <TableCell className="w-10">Best</TableCell>
-                    )}
+                    {raceSettings.roomFormat !== "CASUAL" &&
+                      (raceSettings.setFormat === "BEST_OF" ||
+                        raceSettings.setFormat === "FIRST_TO") && (
+                        <TableCell className="w-10">Pts</TableCell>
+                      )}
+                    {raceSettings.roomFormat !== "CASUAL" &&
+                      raceSettings.setFormat === "AVERAGE_OF" && (
+                        <TableCell className="w-10">Avg</TableCell>
+                      )}
+                    {raceSettings.roomFormat !== "CASUAL" &&
+                      raceSettings.setFormat === "MEAN_OF" && (
+                        <TableCell className="w-10">Mean</TableCell>
+                      )}
+                    {raceSettings.roomFormat !== "CASUAL" &&
+                      raceSettings.setFormat === "FASTEST_OF" && (
+                        <TableCell className="w-10">Best</TableCell>
+                      )}
 
                     {users.map((user) => {
                       return (
@@ -222,16 +221,18 @@ export default function GlobalTimeList({
                               <Crown />
                             )}
                             <div>
-                              {(setFormat === "AVERAGE_OF" ||
-                                setFormat === "MEAN_OF" ||
-                                setFormat === "FASTEST_OF") &&
+                              {raceSettings.roomFormat !== "CASUAL" &&
+                                (raceSettings.setFormat === "AVERAGE_OF" ||
+                                  raceSettings.setFormat === "MEAN_OF" ||
+                                  raceSettings.setFormat === "FASTEST_OF") &&
                                 (solve.solve.results[user.user.id]
                                   ? Result.fromIResult(
                                       solve.solve.results[user.user.id]
                                     ).toString()
                                   : "DNF")}
-                              {(setFormat === "BEST_OF" ||
-                                setFormat === "FIRST_TO") &&
+                              {raceSettings.roomFormat !== "CASUAL" &&
+                                (raceSettings.setFormat === "BEST_OF" ||
+                                  raceSettings.setFormat === "FIRST_TO") &&
                                 (solve.solve.results[user.user.id]
                                   ? Result.fromIResult(
                                       solve.solve.results[user.user.id]
@@ -252,14 +253,18 @@ export default function GlobalTimeList({
               <SolveDialog
                 roomName={roomName}
                 key={index}
-                setIndex={roomFormat === "CASUAL" ? undefined : solve.setIndex}
+                setIndex={
+                  raceSettings.roomFormat === "CASUAL"
+                    ? undefined
+                    : solve.setIndex
+                }
                 solveIndex={solve.solveIndex}
                 scramble={solve.solve.scramble}
                 event={roomEvent}
                 result={userId ? solve.solve.results[userId] : undefined}
               >
                 <TableRow>
-                  {roomFormat !== "CASUAL" && (
+                  {raceSettings.roomFormat !== "CASUAL" && (
                     <TableCell className="w-10">{solve.setIndex}</TableCell>
                   )}
                   <TableCell className="w-10">{solve.solveIndex}</TableCell>

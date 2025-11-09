@@ -18,28 +18,20 @@ export function RoomHeader() {
     isPasswordAuthenticated,
     roomState,
     roomEvent,
-    roomFormat,
     currentSet,
     currentSolve,
     users,
-    matchFormat,
-    setFormat,
-    numSets,
-    numSolves,
+    raceSettings,
     isUserHost,
   ] = useRoomStore((s) => [
     s.roomName,
     s.isPasswordAuthenticated,
     s.roomState,
     s.roomEvent,
-    s.roomFormat,
     s.currentSet,
     s.currentSolve,
     s.users,
-    s.matchFormat,
-    s.setFormat,
-    s.nSets,
-    s.nSolves,
+    s.raceSettings,
     s.isUserHost,
   ]);
 
@@ -158,19 +150,19 @@ export function RoomHeader() {
                 <h2 className="text-3xl font-bold">{roomName}</h2>
                 <h4 className="text-lg">
                   {ROOM_EVENTS_INFO[roomEvent].displayName}
-                  {roomFormat !== "CASUAL"
+                  {raceSettings.roomFormat !== "CASUAL"
                     ? " | " +
-                      abbreviate(matchFormat) +
-                      numSets.toString() +
+                      abbreviate(raceSettings.matchFormat) +
+                      raceSettings.nSets.toString() +
                       " sets | "
                     : ""}
-                  {roomFormat !== "CASUAL"
-                    ? abbreviate(setFormat) +
-                      numSolves.toString() +
+                  {raceSettings.roomFormat !== "CASUAL"
+                    ? abbreviate(raceSettings.setFormat) +
+                    raceSettings.nSolves.toString() +
                       " solves"
                     : ""}
                 </h4>
-                {roomFormat === "RACING" && (
+                {raceSettings.roomFormat === "RACING" && (
                   <p className="text-lg">
                     Set {currentSet} Solve {currentSolve}
                   </p>

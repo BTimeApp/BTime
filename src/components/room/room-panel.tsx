@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   getFormatText,
   getVerboseFormatText,
-  ROOM_EVENTS_INFO
+  ROOM_EVENTS_INFO,
 } from "@/types/room";
 import GlobalTimeList from "@/components/room/global-time-list";
 import { IRoomUser } from "@/types/room-participant";
@@ -226,26 +226,20 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
     solves,
     roomName,
     roomEvent,
-    roomFormat,
     roomState,
-    setFormat,
-    nSets,
-    nSolves,
     userLiveTimerStartTimes,
     userLiveTimes,
+    raceSettings,
     isUserHost,
   ] = useRoomStore((s) => [
     s.users,
     s.solves,
     s.roomName,
     s.roomEvent,
-    s.roomFormat,
     s.roomState,
-    s.setFormat,
-    s.nSets,
-    s.nSolves,
     s.userLiveTimerStartTimes,
     s.userLiveTimes,
+    s.raceSettings,
     s.isUserHost,
   ]);
   const [sortedActiveUsers, setSortedActiveUsers] = useState<IRoomUser[]>(
@@ -254,12 +248,15 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
 
   const userSortKeyCallback = useCallback(
     (u1: IRoomUser, u2: IRoomUser) => {
+      if (raceSettings.roomFormat === "CASUAL") {
+        return u2.points - u1.points;
+      }
       //TODO - if we ever expand to match formats that don't use this logic, will need to update here.
       const matchPtDiff = u2.setWins - u1.setWins;
       if (matchPtDiff != 0) {
         return matchPtDiff;
       } else {
-        switch (setFormat) {
+        switch (raceSettings.setFormat) {
           case "BEST_OF":
             return u2.points - u1.points;
           case "FIRST_TO":
@@ -276,7 +273,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
         }
       }
     },
-    [setFormat]
+    [raceSettings]
   );
 
   function userStatusText(user: IRoomUser) {
@@ -324,17 +321,26 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
           <div className="grid grid-cols-12">
             <div className="col-span-5">User</div>
             {roomState === "STARTED" && <div className="col-span-3">Time</div>}
-            {roomFormat === "RACING" && <div className="col-span-2">Sets</div>}
-            {(setFormat === "BEST_OF" || setFormat === "FIRST_TO") && (
-              <div className="col-span-2">Solves</div>
+            {raceSettings.roomFormat === "RACING" && (
+              <div className="col-span-2">Sets</div>
             )}
-            {setFormat === "AVERAGE_OF" && (
-              <div className="col-span-2">Avg</div>
-            )}
-            {setFormat === "MEAN_OF" && <div className="col-span-2">Mean</div>}
-            {setFormat === "FASTEST_OF" && (
-              <div className="col-span-2">Best</div>
-            )}
+            {raceSettings.roomFormat === "RACING" &&
+              (raceSettings.setFormat === "BEST_OF" ||
+                raceSettings.setFormat === "FIRST_TO") && (
+                <div className="col-span-2">Solves</div>
+              )}
+            {raceSettings.roomFormat === "RACING" &&
+              raceSettings.setFormat === "AVERAGE_OF" && (
+                <div className="col-span-2">Avg</div>
+              )}
+            {raceSettings.roomFormat === "RACING" &&
+              raceSettings.setFormat === "MEAN_OF" && (
+                <div className="col-span-2">Mean</div>
+              )}
+            {raceSettings.roomFormat === "RACING" &&
+              raceSettings.setFormat === "FASTEST_OF" && (
+                <div className="col-span-2">Best</div>
+              )}
           </div>
           <div className="flex flex-col overflow-y-auto">
             {sortedActiveUsers.map((user, index) => (
@@ -344,25 +350,30 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
                   hostView={isUserHost(localUser?.userInfo.id)}
                 >
                   <div className="col-span-5 hover:scale-105 hover:font-bold hover:underline">
-                    {user.user.userName.length > 0 ? user.user.userName : "BTime User"}
+                    {user.user.userName.length > 0
+                      ? user.user.userName
+                      : "BTime User"}
                   </div>
                 </RoomUserDialog>
                 {roomState === "STARTED" && (
                   <div className="col-span-3">{userStatusText(user)}</div>
                 )}
-                {roomFormat === "RACING" && (
+                {raceSettings.roomFormat === "RACING" && (
                   <div className="col-span-2">{user.setWins}</div>
                 )}
-                {(setFormat === "AVERAGE_OF" || setFormat === "MEAN_OF" || setFormat === "FASTEST_OF") && (
-                  <div className="col-span-2">
-                    {Result.timeToString(user.points)}
-                  </div>
-                )}
-                {(setFormat === "BEST_OF" ||
-                  setFormat === "FIRST_TO"
-                  ) && (
-                  <div className="col-span-2">{user.points}</div>
-                )}
+                {raceSettings.roomFormat === "RACING" &&
+                  (raceSettings.setFormat === "AVERAGE_OF" ||
+                    raceSettings.setFormat === "MEAN_OF" ||
+                    raceSettings.setFormat === "FASTEST_OF") && (
+                    <div className="col-span-2">
+                      {Result.timeToString(user.points)}
+                    </div>
+                  )}
+                {raceSettings.roomFormat === "RACING" &&
+                  (raceSettings.setFormat === "BEST_OF" ||
+                    raceSettings.setFormat === "FIRST_TO") && (
+                    <div className="col-span-2">{user.points}</div>
+                  )}
               </div>
             ))}
           </div>
@@ -374,10 +385,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
             users={Object.values(users)} //.filter((roomUser) => roomUser.active)}
             solves={solves}
             roomEvent={roomEvent}
-            roomFormat={roomFormat}
-            setFormat={setFormat}
-            nSets={nSets}
-            nSolves={nSolves}
+            raceSettings={raceSettings}
             userId={localUser?.userInfo.id}
             className="max-h-[50vh] w-full"
           />
@@ -391,19 +399,11 @@ function InfoRoomPanel({ className }: InfoRoomPanelProps) {
   const [
     roomName,
     roomEvent,
-    roomFormat,
-    matchFormat,
-    setFormat,
-    nSets,
-    nSolves,
+    raceSettings,
   ] = useRoomStore((s) => [
     s.roomName,
     s.roomEvent,
-    s.roomFormat,
-    s.matchFormat,
-    s.setFormat,
-    s.nSets,
-    s.nSolves,
+    s.raceSettings,
   ]);
   return (
     <div
@@ -417,16 +417,12 @@ function InfoRoomPanel({ className }: InfoRoomPanelProps) {
       </div>
       <div className={cn("text-left")}>
         <h2 className="text-2xl">
-          {getFormatText(roomFormat, matchFormat, setFormat, nSets, nSolves)}
+          {getFormatText(raceSettings)}
         </h2>
       </div>
       <div className={cn("text-left mx-2")}>
         {getVerboseFormatText(
-          roomFormat,
-          matchFormat,
-          setFormat,
-          nSets,
-          nSolves
+          raceSettings
         )}
       </div>
     </div>

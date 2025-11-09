@@ -1,6 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { z } from "zod";
-import { FieldErrors, FieldValues, useForm } from "react-hook-form";
+import {
+  FieldErrors,
+  FieldValues,
+  useForm,
+  UseFormReturn,
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Form,
@@ -21,22 +26,69 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Access,
   IRoomSettings,
   MATCH_FORMATS,
-  MatchFormat,
+  RaceSettings,
   ROOM_EVENTS,
   ROOM_EVENTS_INFO,
   ROOM_FORMATS,
   RoomEvent,
-  RoomFormat,
   SET_FORMATS,
-  SetFormat,
+  TEAM_REDUCE_FUNCTIONS,
+  TEAM_SCRAMBLE_FORMATS,
+  TEAM_SOLVE_FORMATS,
+  TeamSettings,
 } from "@/types/room";
 import { Switch } from "@/components/ui/switch";
 import { useSession } from "@/context/session-context";
 import { toast } from "sonner";
 import { SOCKET_CLIENT } from "@/types/socket_protocol";
 import { displayText } from "@/lib/utils";
+
+const AccessSchema = z.discriminatedUnion("visibility", [
+  z.object({
+    visibility: z.literal("PRIVATE"),
+    password: z.string().min(1, "Password is required"),
+  }),
+  z.object({
+    visibility: z.literal("PUBLIC"),
+  }),
+]);
+
+const RaceSettingsSchema = z.discriminatedUnion("roomFormat", [
+  z.object({
+    roomFormat: z.literal("CASUAL"),
+  }),
+  z.object({
+    roomFormat: z.literal("RACING"),
+    matchFormat: z.enum(MATCH_FORMATS),
+    setFormat: z.enum(SET_FORMATS),
+    nSets: z.number().int(),
+    nSolves: z.number().int(),
+  }),
+]);
+
+const TeamFormatSettingsSchema = z.discriminatedUnion("teamSolveFormat", [
+  z.object({
+    teamSolveFormat: z.literal("ONE"),
+  }),
+  z.object({
+    teamSolveFormat: z.literal("ALL"),
+    teamScrambleFormat: z.enum(TEAM_SCRAMBLE_FORMATS),
+    teamReduceFunction: z.enum(TEAM_REDUCE_FUNCTIONS),
+  }),
+]);
+
+const TeamSettingsSchema = z.discriminatedUnion("teamsEnabled", [
+  z.object({ teamsEnabled: z.literal(false) }),
+  z.object({
+    teamsEnabled: z.literal(true),
+    teamFormatSettings: TeamFormatSettingsSchema,
+    maxTeamCapacity: z.number().int().optional(),
+    maxTeams: z.number().int().optional(),
+  }),
+]);
 
 const formSchema = z.object({
   roomName: z
@@ -45,25 +97,18 @@ const formSchema = z.object({
       message: "Room name cannot be empty.",
     })
     .max(100, { message: "Room name must not be over 100 characters." }),
-  roomFormat: z.enum(ROOM_FORMATS),
   roomEvent: z.enum(ROOM_EVENTS as [RoomEvent, ...RoomEvent[]]),
-  isPrivate: z.boolean(),
-  password: z.string(),
-  matchFormat: z.enum(MATCH_FORMATS),
-  setFormat: z.enum(SET_FORMATS),
-  nSets: z.number().int(),
-  nSolves: z.number().int(),
+  access: AccessSchema,
+  raceSettings: RaceSettingsSchema,
+  teamSettings: TeamSettingsSchema,
 });
 
 type RoomSettingsFormProps = {
   roomName: string;
-  roomFormat: RoomFormat;
   roomEvent: RoomEvent;
-  isPrivate: boolean;
-  matchFormat?: MatchFormat;
-  setFormat?: SetFormat;
-  nSets?: number;
-  nSolves?: number;
+  access: Access;
+  raceSettings: RaceSettings;
+  teamSettings: TeamSettings;
   roomId?: string;
   createNewRoom: boolean;
   submitButtonRef?: React.RefObject<HTMLButtonElement>;
@@ -71,16 +116,12 @@ type RoomSettingsFormProps = {
   onUpdateCallback?: () => void;
 };
 
-
 export default function RoomSettingsForm({
   roomName,
-  roomFormat,
   roomEvent,
-  isPrivate,
-  matchFormat,
-  setFormat,
-  nSets,
-  nSolves,
+  access,
+  raceSettings,
+  teamSettings,
   roomId,
   createNewRoom,
   submitButtonRef,
@@ -95,21 +136,12 @@ export default function RoomSettingsForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       roomName: roomName,
-      roomFormat: roomFormat,
       roomEvent: roomEvent,
-      isPrivate: isPrivate,
-      password: "",
-      matchFormat: matchFormat,
-      setFormat: setFormat,
-      nSets: nSets,
-      nSolves: nSolves,
+      access: access,
+      raceSettings: raceSettings,
+      teamSettings: teamSettings,
     },
   });
-
-  // declare these state variables to conditionally render other fields
-  const [isPrivateState, setIsPrivateState] = useState<boolean>(isPrivate);
-  const [roomFormatState, setRoomFormatState] =
-    useState<RoomFormat>(roomFormat);
 
   const [formError, setFormError] = useState<boolean>(false);
   const [formErrorText, setFormErrorText] = useState<string>("");
@@ -196,7 +228,7 @@ export default function RoomSettingsForm({
               />
               <FormField
                 control={form.control}
-                name="roomFormat"
+                name="raceSettings.roomFormat"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Room Type</FormLabel>
@@ -204,13 +236,12 @@ export default function RoomSettingsForm({
                       <Select
                         onValueChange={(value: string) => {
                           field.onChange(value);
-                          setRoomFormatState(value as RoomFormat);
                         }}
                         defaultValue={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder={roomFormat} />
+                            <SelectValue placeholder={field.value} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -240,7 +271,9 @@ export default function RoomSettingsForm({
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue
-                              placeholder={ROOM_EVENTS_INFO[roomEvent].displayName}
+                              placeholder={
+                                ROOM_EVENTS_INFO[roomEvent].displayName
+                              }
                             />
                           </SelectTrigger>
                         </FormControl>
@@ -259,16 +292,15 @@ export default function RoomSettingsForm({
               />
               <FormField
                 control={form.control}
-                name="isPrivate"
+                name="access.visibility"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Private?</FormLabel>
+                    <FormLabel>Private Room?</FormLabel>
                     <FormControl>
                       <Switch
-                        checked={field.value}
+                        checked={field.value === "PRIVATE"}
                         onCheckedChange={(checked: boolean) => {
-                          field.onChange(checked);
-                          setIsPrivateState(checked);
+                          field.onChange(checked ? "PRIVATE" : "PUBLIC");
                         }}
                       />
                     </FormControl>
@@ -276,40 +308,61 @@ export default function RoomSettingsForm({
                   </FormItem>
                 )}
               />
-              {isPrivateState && (
+              {form.watch("access.visibility") === "PRIVATE" && (
                 <FormField
                   control={form.control}
-                  name="password"
+                  name="access.password"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Password</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input
+                          type="password"
+                          placeholder="Password:"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               )}
+              <FormField
+                control={form.control}
+                name="teamSettings.teamsEnabled"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Teams Enabled?</FormLabel>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
             <div className="space-y-3">
               <p className="text-xl font-bold">FORMAT</p>
-              {roomFormatState === "RACING" && (
+              {form.watch("raceSettings.roomFormat") !== "CASUAL" && (
                 <>
                   <FormField
                     control={form.control}
-                    name="matchFormat"
+                    name="raceSettings.matchFormat"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Match Format</FormLabel>
                         <FormControl>
                           <Select
                             onValueChange={field.onChange}
-                            defaultValue={field.value}
+                            defaultValue={field.value ?? "BEST_OF"}
                           >
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder={matchFormat} />
+                                <SelectValue placeholder={field.value} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -327,13 +380,13 @@ export default function RoomSettingsForm({
                   />
                   <FormField
                     control={form.control}
-                    name="nSets"
+                    name="raceSettings.nSets"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel># Sets</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder={nSets?.toString()}
+                            placeholder={field.value.toString()}
                             type="number"
                             step="1"
                             {...field}
@@ -352,7 +405,7 @@ export default function RoomSettingsForm({
                   />
                   <FormField
                     control={form.control}
-                    name="setFormat"
+                    name="raceSettings.setFormat"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Set Format</FormLabel>
@@ -363,7 +416,7 @@ export default function RoomSettingsForm({
                           >
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder={setFormat} />
+                                <SelectValue placeholder={field.value} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -381,13 +434,13 @@ export default function RoomSettingsForm({
                   />
                   <FormField
                     control={form.control}
-                    name="nSolves"
+                    name="raceSettings.nSolves"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel># Solves</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder={nSolves?.toString()}
+                            placeholder={field.value.toString()}
                             type="number"
                             step="1"
                             {...field}
@@ -404,6 +457,163 @@ export default function RoomSettingsForm({
                       </FormItem>
                     )}
                   />
+                </>
+              )}
+              {form.watch("teamSettings.teamsEnabled") && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="teamSettings.maxTeams"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Max # Teams</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={
+                              field.value ? field.value.toString() : ""
+                            }
+                            type="number"
+                            step="1"
+                            {...field}
+                            onChange={(e) =>
+                              field.onChange(
+                                isNaN(parseInt(e.target.value))
+                                  ? ""
+                                  : parseInt(e.target.value)
+                              )
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="teamSettings.maxTeamCapacity"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Max Team Capacity</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={
+                              field.value ? field.value.toString() : ""
+                            }
+                            type="number"
+                            step="1"
+                            {...field}
+                            onChange={(e) =>
+                              field.onChange(
+                                isNaN(parseInt(e.target.value))
+                                  ? ""
+                                  : parseInt(e.target.value)
+                              )
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="teamSettings.teamFormatSettings.teamSolveFormat"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Team Solve Format</FormLabel>
+                        <FormControl>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                            }}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder={field.value} />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {TEAM_SOLVE_FORMATS.map((val, idx) => (
+                                <SelectItem key={idx} value={val}>
+                                  {displayText(val)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  {form.watch(
+                    "teamSettings.teamFormatSettings.teamSolveFormat"
+                  ) === "ALL" && (
+                    <>
+                      <FormField
+                        control={form.control}
+                        name="teamSettings.teamFormatSettings.teamReduceFunction"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Team Solve Reduce Function</FormLabel>
+                            <FormControl>
+                              <Select
+                                onValueChange={(value) => {
+                                  field.onChange(value);
+                                }}
+                                defaultValue={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder={field.value} />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {TEAM_REDUCE_FUNCTIONS.map((val, idx) => (
+                                    <SelectItem key={idx} value={val}>
+                                      {displayText(val)}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="teamSettings.teamFormatSettings.teamScrambleFormat"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Team Scramble Format</FormLabel>
+                            <FormControl>
+                              <Select
+                                onValueChange={(value) => {
+                                  field.onChange(value);
+                                }}
+                                defaultValue={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder={field.value} />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {TEAM_SCRAMBLE_FORMATS.map((val, idx) => (
+                                    <SelectItem key={idx} value={val}>
+                                      {displayText(val)}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </>
+                  )}
                 </>
               )}
             </div>

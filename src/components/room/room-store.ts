@@ -1,12 +1,12 @@
 import {
+  Access,
   IRoom,
-  MatchFormat,
+  RaceSettings,
   RoomEvent,
-  RoomFormat,
-  SetFormat,
+  TeamSettings,
 } from "@/types/room";
 import { IRoomSolve } from "@/types/room-solve";
-import { IRoomUser } from "@/types/room-participant";
+import { IRoomTeam, IRoomUser } from "@/types/room-participant";
 import { RoomState } from "@/types/room";
 import { StoreApi, createStore } from "zustand";
 import { timerAllowsInspection, TimerType } from "@/types/timer-type";
@@ -18,18 +18,16 @@ export type RoomStore = {
   roomName: string;
   hostId: string;
   users: Record<string, IRoomUser>;
+  teams: Record<string, IRoomTeam>;
   solves: IRoomSolve[];
   currentSet: number;
   currentSolve: number;
   roomEvent: RoomEvent;
-  roomFormat: RoomFormat;
-  matchFormat: MatchFormat;
-  setFormat: SetFormat;
-  nSets: number;
-  nSolves: number;
   roomState: RoomState;
   roomWinners: string[]; //user ids of all room winners
-  isPrivate: boolean;
+  access: Access;
+  raceSettings: RaceSettings;
+  teamSettings: TeamSettings;
 
   //local (client) states
   localPenalty: Penalty; //penalty associated with current solve
@@ -107,6 +105,14 @@ export type RoomStore = {
 
   userUnbanned: (userId: string) => void;
 
+  createTeam: (team: IRoomTeam) => void;
+
+  deleteTeam: (teamId: string) => void;
+
+  userJoinTeam: (userId: string, teamId: string) => void;
+
+  userLeaveTeam: (userId: string, teamId: string) => void;
+
   startRoom: (solve: IRoomSolve) => void;
 
   resetRoom: () => void;
@@ -120,19 +126,17 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
     roomName: "",
     hostId: "",
     users: {},
+    teams: {},
     solves: [],
     currentSet: 1,
     currentSolve: 0,
     roomEvent: "333",
-    roomFormat: "CASUAL",
-    matchFormat: "BEST_OF",
-    setFormat: "BEST_OF",
-    nSets: 1,
-    nSolves: 1,
     teamsEnabled: false,
     roomState: "WAITING",
     roomWinners: [],
-    isPrivate: false,
+    access: { visibility: "PUBLIC" },
+    raceSettings: { roomFormat: "CASUAL" },
+    teamSettings: { teamsEnabled: false },
 
     // local (client) state/options
     localPenalty: "OK",
@@ -273,19 +277,17 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
       set(() => ({
         roomName: room.settings.roomName,
         users: room.users,
+        teams: room.teams,
         hostId: room.host ? room.host.id : "",
         solves: room.solves,
         currentSet: room.currentSet,
         currentSolve: room.currentSolve,
         roomEvent: room.settings.roomEvent,
-        roomFormat: room.settings.roomFormat,
-        matchFormat: room.settings.matchFormat ?? "BEST_OF",
-        setFormat: room.settings.setFormat ?? "BEST_OF",
-        nSolves: room.settings.nSolves ?? 1,
-        nSets: room.settings.nSets ?? 1,
+        raceSettings: room.settings.raceSettings,
+        teamSettings: room.settings.teamSettings,
         roomState: room.state,
         roomWinners: room.winners || [],
-        isPrivate: room.settings.isPrivate,
+        access: room.settings.access,
       })),
 
     handleRoomUserUpdate: (roomUser: IRoomUser) =>
@@ -447,6 +449,83 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         }
       }),
 
+    createTeam: (team: IRoomTeam) =>
+      set((state) => {
+        if (!state.teamSettings.teamsEnabled) {
+          return {};
+        }
+        const updatedTeams: Record<string, IRoomTeam> = { ...state.teams };
+        updatedTeams[team.team.id] = team;
+        return { teams: updatedTeams };
+      }),
+
+    deleteTeam: (teamId: string) =>
+      set((state) => {
+        if (!state.teamSettings.teamsEnabled) {
+          return {};
+        }
+        const updatedTeams: Record<string, IRoomTeam> = { ...state.teams };
+        delete updatedTeams[teamId];
+        return { teams: updatedTeams };
+      }),
+
+    userJoinTeam: (userId: string, teamId: string) =>
+      set((state) => {
+        if (!state.teamSettings.teamsEnabled) {
+          return {};
+        }
+        const updatedTeams: Record<string, IRoomTeam> = { ...state.teams };
+        const updatedUsers: Record<string, IRoomUser> = { ...state.users };
+
+        if (!updatedTeams[teamId] || !updatedUsers[userId]) return {};
+
+        // check team has space
+        if (
+          state.teamSettings.maxTeamCapacity &&
+          updatedTeams[teamId].team.members.length >=
+            state.teamSettings.maxTeamCapacity
+        ) {
+          return {};
+        }
+
+        // check for user in other team
+        if (updatedUsers[userId].currentTeam !== undefined) {
+          state.userLeaveTeam(userId, updatedUsers[userId].currentTeam);
+        }
+
+        // join team
+        updatedTeams[teamId].team.members.push(userId);
+        updatedUsers[userId].currentTeam = teamId;
+
+        return { users: updatedUsers, teams: updatedTeams };
+      }),
+
+    userLeaveTeam: (userId: string, teamId: string) =>
+      set((state) => {
+        if (!state.teamSettings.teamsEnabled) {
+          return {};
+        }
+        const updatedTeams: Record<string, IRoomTeam> = { ...state.teams };
+        const updatedUsers: Record<string, IRoomUser> = { ...state.users };
+
+        if (!updatedTeams[teamId] || !updatedUsers[userId]) return {};
+
+        updatedUsers[userId].currentTeam = undefined;
+
+        if (updatedTeams[teamId].currentMember === userId) {
+          updatedTeams[userId].currentMember = undefined;
+          updatedTeams[userId].currentResult = undefined;
+          updatedTeams[userId].solveStatus = "IDLE";
+        }
+
+        const idx = updatedTeams[teamId].team.members.indexOf(userId);
+        if (idx != -1) {
+          updatedTeams[teamId].team.members.splice(idx, 1);
+        }
+
+        return { users: updatedUsers, teams: updatedTeams };
+      }),
+
     startRoom: () =>
       set(() => ({
         roomState: "STARTED",
@@ -468,7 +547,7 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
           solves: [],
           currentSet: 1,
           currentSolve: 0,
-          winners: state.roomFormat == "RACING" ? [] : undefined,
+          winners: state.raceSettings.roomFormat == "RACING" ? [] : undefined,
           users: updatedUsers,
         };
       }),

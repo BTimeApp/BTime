@@ -1,6 +1,5 @@
-import { IUserInfo } from "@/types/user";
-
 export interface ITeam {
+  id: string;
   name: string;
-  members: Record<string, IUserInfo>; 
+  members: string[]; 
 }
