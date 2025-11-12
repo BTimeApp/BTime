@@ -60,7 +60,6 @@ export type RoomStore = {
   setDrawScramble: (drawScramble: boolean) => void;
 
   isUserHost: (userId: string | undefined) => boolean;
-  getMostRecentScramble: () => string;
 
   updateLocalSolveStatus: (event?: string) => void;
   resetLocalSolveStatus: () => void;
@@ -174,13 +173,6 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
       set(() => ({ timerType: timerType })),
     setDrawScramble: (drawScramble: boolean) =>
       set(() => ({ drawScramble: drawScramble })),
-    getMostRecentScramble: () => {
-      const solves = get().solves;
-      if (!solves || solves.length === 0) {
-        return "";
-      }
-      return solves.at(-1)!.solve.scramble;
-    },
 
     /**
      * Handles all state transitions for local SolveStatus.

@@ -123,7 +123,9 @@ export class Result {
       const penaltiedMinutes = Math.floor(totalSeconds / 60);
       const penaltiedCentiseconds = Math.floor(totalTime) % 100;
       const penaltiedSeconds = totalSeconds % 60;
-      const totalResultString = `${penaltiedMinutes ? penaltiedMinutes + ":" : ""}${
+      const totalResultString = `${
+        penaltiedMinutes ? penaltiedMinutes + ":" : ""
+      }${
         penaltiedMinutes
           ? penaltiedSeconds.toString().padStart(2, "0")
           : penaltiedSeconds.toString().padStart(1, "0")
@@ -134,7 +136,9 @@ export class Result {
       const originalMinutes = Math.floor(originalTotalSeconds / 60);
       const originalCentiseconds = Math.floor(timeInCentiseconds) % 100;
       const originalSeconds = originalTotalSeconds % 60;
-      const originalResultString = `${originalMinutes ? originalMinutes + ":" : ""}${
+      const originalResultString = `${
+        originalMinutes ? originalMinutes + ":" : ""
+      }${
         originalMinutes
           ? originalSeconds.toString().padStart(2, "0")
           : originalSeconds.toString().padStart(1, "0")
@@ -144,11 +148,10 @@ export class Result {
       if (penalty === "DNF") {
         return `DNF (${originalResultString})`;
       } else if (penalty === "+2") {
-        return `${originalResultString} +2 = ${totalResultString}`
+        return `${originalResultString} +2 = ${totalResultString}`;
       } else {
         return `${totalResultString}`;
       }
-
     } else {
       const totalTime = Result.applyPenalty(timeInCentiseconds, penalty);
       if (totalTime === Infinity) {
@@ -186,6 +189,18 @@ export class Result {
       time: this.time,
       penalty: this.penalty,
     };
+  }
+
+  /**
+   * Returns the sum of a list of results.
+   * Any DNF included will DNF the sum.
+   */
+  static sumOf(results: Result[]): number {
+    return results.reduce((sum, res) => sum + res.toTime(), 0);
+  }
+
+  static iSumOf(results: IResult[]): number {
+    return Result.sumOf(results.map((iResult) => Result.fromIResult(iResult)));
   }
 
   /**

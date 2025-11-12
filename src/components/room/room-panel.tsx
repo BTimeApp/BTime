@@ -1,6 +1,6 @@
 import { useRoomStore } from "@/context/room-context";
 import { cn } from "@/lib/utils";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   getFormatText,
   getVerboseFormatText,
@@ -120,8 +120,8 @@ function UserCenterSection({
   if (!users[userId]) {
     return null;
   }
-
-  const currScramble = solves.length > 0 ? solves.at(-1)?.solve.scramble : "";
+  
+  const currScramble = solves.at(-1)?.solve.attempts[userId]?.scramble ?? "";
   return (
     <div className={cn("flex flex-row w-full h-full", className)}>
       {/* TODO: figure out why the time lists cause the screen to get longer */}
@@ -242,9 +242,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
     s.raceSettings,
     s.isUserHost,
   ]);
-  const [sortedActiveUsers, setSortedActiveUsers] = useState<IRoomUser[]>(
-    Object.values(users).filter((roomUser) => roomUser.active)
-  );
+  
 
   const userSortKeyCallback = useCallback(
     (u1: IRoomUser, u2: IRoomUser) => {
@@ -276,6 +274,10 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
     [raceSettings]
   );
 
+  const sortedActiveUsers = useMemo(() => {
+    return Object.values(users).filter((roomUser) => roomUser.active).sort(userSortKeyCallback);
+  },[users, userSortKeyCallback]);
+
   function userStatusText(user: IRoomUser) {
     if (!user.competing) {
       return "SPECTATING";
@@ -303,14 +305,6 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
       }
     }
   }
-
-  useEffect(() => {
-    setSortedActiveUsers(
-      Object.values(users)
-        .filter((roomUser) => roomUser.active)
-        .sort(userSortKeyCallback)
-    );
-  }, [users, userSortKeyCallback]);
 
   return (
     <div

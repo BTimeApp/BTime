@@ -102,12 +102,10 @@ function TimerSection() {
               <KeyListener
                 keyName="Space"
                 onKeyUp={() => {
-                  console.log("keyup");
                   setSpacebarDown(false);
                   updateLocalSolveStatus(); //updateLocalSolveStatus
                 }}
                 onKeyDown={() => {
-                  console.log("keydown");
                   setSpacebarDown(true);
                 }}
               >

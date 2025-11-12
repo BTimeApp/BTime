@@ -1,12 +1,22 @@
-import { Access, RaceSettings, IRoom, IRoomSettings } from "@/types/room";
-import { ISolve } from "@/types/solve";
+import {
+  Access,
+  RaceSettings,
+  IRoom,
+  IRoomSettings,
+  TeamReduceFunction,
+} from "@/types/room";
+import { IAttempt, ISolve } from "@/types/solve";
 import { IRoomSolve } from "@/types/room-solve";
-import { Result } from "@/types/result";
-import { generateScramble } from "@/lib/utils";
+import { IResult, Result } from "@/types/result";
+import { generateScramble, generateScrambles } from "@/lib/utils";
 import { ObjectId } from "bson";
 import bcrypt from "bcrypt";
 import { IUserInfo } from "@/types/user";
-import { IRoomTeam } from "@/types/room-participant";
+import {
+  IRoomParticipant,
+  IRoomTeam,
+  IRoomUser,
+} from "@/types/room-participant";
 import { SocketResponse } from "@/types/socket_protocol";
 
 export async function createRoom(
@@ -78,6 +88,11 @@ export function checkSetFinished(room: IRoom): boolean {
    * Bo - either finish all solves, or someone has to take majority (> N / 2) of points available
    * Ft - someone has to get at least N points
    */
+
+  const roomParticipants = room.settings.teamSettings.teamsEnabled
+    ? Object.values(room.teams)
+    : Object.values(room.users);
+
   if (
     room.solves.length === 0 ||
     room.settings.raceSettings.roomFormat === "CASUAL"
@@ -101,8 +116,8 @@ export function checkSetFinished(room: IRoom): boolean {
       );
     case "BEST_OF":
       return (
-        Object.values(room.users).filter(
-          (roomUser) => roomUser.points > nSolves / 2
+        roomParticipants.filter(
+          (participant) => participant.points > nSolves / 2
         ).length > 0 ||
         (currentSolve.finished &&
           currentSolve.solveIndex === nSolves &&
@@ -110,9 +125,8 @@ export function checkSetFinished(room: IRoom): boolean {
       );
     case "FIRST_TO":
       return (
-        Object.values(room.users).filter(
-          (roomUser) => roomUser.points >= nSolves
-        ).length > 0
+        roomParticipants.filter((participant) => participant.points >= nSolves)
+          .length > 0
       );
     case "FASTEST_OF":
       return (
@@ -134,8 +148,9 @@ export function findSetWinners(room: IRoom): string[] {
   //no set wins when room is a casual room
   if (room.settings.raceSettings.roomFormat === "CASUAL") return [];
 
-  const roomUserIds = Object.keys(room.users);
-  const roomUsers = Object.values(room.users);
+  const roomParticipants = room.settings.teamSettings.teamsEnabled
+    ? room.teams
+    : room.users;
   const nSolves = room.settings.raceSettings.nSolves;
 
   switch (room.settings.raceSettings.setFormat) {
@@ -143,32 +158,31 @@ export function findSetWinners(room: IRoom): string[] {
       //if N solves are done, user with the most wins has won. Ties count.
 
       // prevent 0 points from being considered a max.
-      const maxPoints = Math.max(...roomUsers.map((s) => s.points), 1);
+      const maxPoints = Math.max(
+        ...Object.values(roomParticipants).map((p) => p.points),
+        1
+      );
 
       //this code assumes that the latest solve is the one we check for set winner on.
       if (room.currentSolve >= nSolves) {
-        return roomUsers
-          .filter((roomUser) => roomUser.points == maxPoints)
-          .map((roomUser) => {
-            return roomUser.user.id;
-          });
+        return Object.keys(roomParticipants).filter(
+          (participantId) =>
+            roomParticipants[participantId].points === maxPoints
+        );
       }
 
       //if <N solves are done, user has won for sure if they have the majority of solves. will return empty list if no winners yet.
       if (maxPoints > nSolves / 2) {
-        return roomUsers
-          .filter((roomUser) => roomUser.points > nSolves / 2)
-          .map((roomUser) => {
-            return roomUser.user.id;
-          });
+        return Object.keys(roomParticipants).filter(
+          (participantId) =>
+            roomParticipants[participantId].points > nSolves / 2
+        );
       }
     case "FIRST_TO":
       //user has won only when they win n solves.
-      return roomUsers
-        .filter((roomUser) => roomUser.points >= nSolves)
-        .map((roomUser) => {
-          return roomUser.user.id;
-        });
+      return Object.keys(roomParticipants).filter(
+        (participantId) => roomParticipants[participantId].points >= nSolves
+      );
     case "AVERAGE_OF": {
       const setSolves = room.solves.filter(
         (roomSolve) => roomSolve.setIndex == room.currentSet
@@ -176,27 +190,26 @@ export function findSetWinners(room: IRoom): string[] {
 
       if (setSolves.length < nSolves) return [];
 
-      const userAverages: Record<string, number> = roomUserIds.reduce(
-        (acc, id) => {
-          acc[id] = Result.averageOf(
-            setSolves.map((roomSolve) =>
-              Object.keys(roomSolve.solve.results).includes(id)
-                ? Result.fromIResult(roomSolve.solve.results[id])
-                : new Result(0, "DNF")
-            )
-          );
-          return acc;
-        },
-        {} as Record<string, number>
-      );
+      const userAverages: Record<string, number> = Object.keys(
+        roomParticipants
+      ).reduce((acc, id) => {
+        acc[id] = Result.averageOf(
+          setSolves.map((roomSolve) =>
+            Object.keys(roomSolve.solve.results).includes(id)
+              ? Result.fromIResult(roomSolve.solve.results[id])
+              : new Result(0, "DNF")
+          )
+        );
+        return acc;
+      }, {} as Record<string, number>);
 
       // return all fastest users
       const fastestAvg = Math.min(...Object.values(userAverages));
       // prevent DNF from being considered a min
       if (fastestAvg === Infinity) return []; //DNF was best
 
-      return roomUserIds.filter(
-        (roomUser) => userAverages[roomUser] == fastestAvg
+      return Object.keys(roomParticipants).filter(
+        (participant) => userAverages[participant] == fastestAvg
       );
     }
     case "MEAN_OF": {
@@ -207,27 +220,26 @@ export function findSetWinners(room: IRoom): string[] {
 
       if (setSolves.length < (nSolves || Number.POSITIVE_INFINITY)) return [];
 
-      const userMeans: Record<string, number> = roomUserIds.reduce(
-        (acc, id) => {
-          acc[id] = Result.meanOf(
-            setSolves.map((roomSolve) =>
-              Object.keys(roomSolve.solve.results).includes(id)
-                ? Result.fromIResult(roomSolve.solve.results[id])
-                : new Result(0, "DNF")
-            )
-          );
-          return acc;
-        },
-        {} as Record<string, number>
-      );
+      const userMeans: Record<string, number> = Object.keys(
+        roomParticipants
+      ).reduce((acc, id) => {
+        acc[id] = Result.meanOf(
+          setSolves.map((roomSolve) =>
+            Object.keys(roomSolve.solve.results).includes(id)
+              ? Result.fromIResult(roomSolve.solve.results[id])
+              : new Result(0, "DNF")
+          )
+        );
+        return acc;
+      }, {} as Record<string, number>);
 
       // return all fastest users
       const fastestMean = Math.min(...Object.values(userMeans));
       // prevent DNF from being considered a min
       if (fastestMean === Infinity) return []; //DNF was best
 
-      return roomUserIds.filter(
-        (roomUser) => userMeans[roomUser] == fastestMean
+      return Object.keys(roomParticipants).filter(
+        (participant) => userMeans[participant] == fastestMean
       );
     }
     case "FASTEST_OF": {
@@ -237,27 +249,26 @@ export function findSetWinners(room: IRoom): string[] {
 
       if (setSolves.length < (nSolves || Number.POSITIVE_INFINITY)) return [];
 
-      const userMinTimes: Record<string, number> = roomUserIds.reduce(
-        (acc, id) => {
-          acc[id] = Result.minOf(
-            setSolves.map((roomSolve) =>
-              Object.keys(roomSolve.solve.results).includes(id)
-                ? Result.fromIResult(roomSolve.solve.results[id])
-                : new Result(0, "DNF")
-            )
-          );
-          return acc;
-        },
-        {} as Record<string, number>
-      );
+      const userMinTimes: Record<string, number> = Object.keys(
+        roomParticipants
+      ).reduce((acc, id) => {
+        acc[id] = Result.minOf(
+          setSolves.map((roomSolve) =>
+            Object.keys(roomSolve.solve.results).includes(id)
+              ? Result.fromIResult(roomSolve.solve.results[id])
+              : new Result(0, "DNF")
+          )
+        );
+        return acc;
+      }, {} as Record<string, number>);
 
       // return all fastest users
       const fastestTime = Math.min(...Object.values(userMinTimes));
       // prevent DNF from being considered a min
       if (fastestTime === Infinity) return []; //DNF was best
 
-      return roomUserIds.filter(
-        (roomUser) => userMinTimes[roomUser] == fastestTime
+      return Object.keys(roomParticipants).filter(
+        (participant) => userMinTimes[participant] == fastestTime
       );
     }
     default:
@@ -283,21 +294,24 @@ export function checkMatchFinished(room: IRoom): boolean {
   )
     return false;
 
+  const roomParticipants = room.settings.teamSettings.teamsEnabled
+    ? Object.values(room.teams)
+    : Object.values(room.users);
+
   const nSets = room.settings.raceSettings.nSets;
   switch (room.settings.raceSettings.matchFormat) {
     case "BEST_OF":
       const currentSolve = room.solves.at(-1)!;
       return (
-        Object.values(room.users).filter(
-          (roomUser) => roomUser.setWins > nSets / 2
+        roomParticipants.filter(
+          (participant) => participant.setWins > nSets / 2
         ).length > 0 ||
         (currentSolve.setIndex === nSets && checkSetFinished(room))
       );
     case "FIRST_TO":
       return (
-        Object.values(room.users).filter(
-          (roomUser) => roomUser.setWins >= nSets
-        ).length > 0
+        roomParticipants.filter((participant) => participant.setWins >= nSets)
+          .length > 0
       );
     default:
       return false;
@@ -315,17 +329,17 @@ export function findMatchWinners(room: IRoom): string[] {
     room.settings.raceSettings.roomFormat == "CASUAL"
   )
     return [];
-  const roomUsers = Object.values(room.users);
+  const roomParticipants = room.settings.teamSettings.teamsEnabled
+    ? room.teams
+    : room.users;
   const nSets = room.settings.raceSettings.nSets;
 
   switch (room.settings.raceSettings.matchFormat) {
     case "BEST_OF":
       //user has won for sure if they have the majority of sets
-      const candidateMatchWinners = roomUsers
-        .filter((roomUser) => roomUser.setWins > nSets / 2)
-        .map((roomUser) => {
-          return roomUser.user.id;
-        });
+      const candidateMatchWinners = Object.keys(roomParticipants).filter(
+        (participantId) => roomParticipants[participantId].setWins > nSets / 2
+      );
       if (candidateMatchWinners.length > 0) {
         return candidateMatchWinners;
       }
@@ -349,12 +363,14 @@ export function findMatchWinners(room: IRoom): string[] {
           let candidateWinners: string[] = [];
           let maxSetWins = 1; //this prevents users with 0 set wins from counting as winners
 
-          for (const roomUser of Object.values(room.users)) {
-            if (roomUser.setWins === maxSetWins) {
-              candidateWinners.push(roomUser.user.id);
-            } else if (roomUser.setWins > maxSetWins) {
-              maxSetWins = roomUser.setWins;
-              candidateWinners = [roomUser.user.id];
+          for (const [participantId, participant] of Object.entries(
+            roomParticipants
+          )) {
+            if (participant.setWins === maxSetWins) {
+              candidateWinners.push(participantId);
+            } else if (participant.setWins > maxSetWins) {
+              maxSetWins = participant.setWins;
+              candidateWinners = [participantId];
             }
           }
 
@@ -364,18 +380,117 @@ export function findMatchWinners(room: IRoom): string[] {
       return [];
     case "FIRST_TO":
       //user has won only when they win n sets.
-      return roomUsers
-        .filter((roomUser) => roomUser.setWins >= nSets)
-        .map((roomUser) => {
-          return roomUser.user.id;
-        });
+      return Object.keys(roomParticipants).filter(
+        (participantId) => roomParticipants[participantId].setWins >= nSets
+      );
     default:
       return [];
   }
 }
 
-/** Checks if the current solve is done.
- *
+//TODO - move this to the file with type definition and/or merge it
+const teamReduceFunctionToFunction = new Map<
+  TeamReduceFunction,
+  (results: IResult[]) => number
+>([
+  ["FASTEST", Result.iMinOf],
+  ["MEAN", Result.iMeanOf],
+  ["SUM", Result.iSumOf],
+]);
+/**
+ * Processes a new result from a user. Updates users, teams, current solve.
+ */
+export function processNewResult(room: IRoom, userId: string, result: IResult) {
+  if (room.solves.length === 0) return;
+
+  const currentSolve = room.solves.at(-1)!;
+
+  // update user attempt, currentResult
+  currentSolve.solve.attempts[userId] = {
+    ...currentSolve.solve.attempts[userId],
+    finished: true,
+    result: result,
+  };
+  room.users[userId].currentResult = result;
+
+  // update solve results if applicable
+  if (room.settings.teamSettings.teamsEnabled) {
+    const teamId = room.users[userId].currentTeam;
+    if (!teamId) {
+      console.log(
+        `User ${userId} tried to submit a result for their team when they do not have a team assigned.`
+      );
+      return;
+    }
+
+    const teamMembers = room.teams[teamId].team.members;
+
+    switch (room.settings.teamSettings.teamFormatSettings.teamSolveFormat) {
+      case "ALL":
+        // note - this invariant also catches the case where team's members list is empty
+        if (!teamMembers.includes(userId)) {
+          console.log(
+            `User ${userId} tried to submit a result for their team ${teamId} but no such member exists on the team.`
+          );
+        }
+
+        // only update team result if all users on team have submitted (we assume that only active and competing users are allowed to be on the team)
+        const allMembersFinished = teamMembers.every(
+          (userId) =>
+            userId in currentSolve.solve.attempts &&
+            currentSolve.solve.attempts[userId].finished
+        );
+
+        if (allMembersFinished) {
+          const teamMemberResults = teamMembers.map(
+            (userId) =>
+              (
+                currentSolve.solve.attempts[userId] as Extract<
+                  IAttempt,
+                  { finished: true }
+                >
+              ).result
+          );
+
+          // let this error out if the reduction function isn't defined - should get caught in dev
+          const reduceFunc = teamReduceFunctionToFunction.get(
+            room.settings.teamSettings.teamFormatSettings.teamReduceFunction
+          )!;
+
+          const teamResult = {
+            time: reduceFunc(teamMemberResults),
+            penalty: "OK",
+          } as IResult;
+
+          currentSolve.solve.results[teamId] = teamResult;
+          room.teams[teamId].currentResult = teamResult;
+        }
+      case "ONE":
+        // only update team result if user is the team's current member
+        if (room.teams[teamId].currentMember === userId) {
+          currentSolve.solve.results[teamId] = result;
+          room.teams[teamId].currentResult = result;
+        } else {
+          console.log(
+            `User ${userId} tried to submit a result for their team ${teamId} when not the active member.`
+          );
+        }
+        break;
+      default:
+        break;
+    }
+  } else {
+    // teams disabled - just insert result into results
+    currentSolve.solve.results[userId] = result;
+  }
+}
+
+/**
+ * Checks if the current solve is done.
+ * To keep consistent with the other parts of the backend, we check if
+ * all relevant users have solve status FINISHED. 
+ * 
+ * TODO: reimplement/redesign the backend so that solves are really finished once all relevant results are in (check the results array of the solve instead)
  */
 export function checkRoomSolveFinished(room: IRoom): boolean {
   if (room.solves.length == 0) return false;
@@ -422,7 +537,8 @@ export function checkRoomSolveFinished(room: IRoom): boolean {
   for (const roomUser of competingUsers) {
     if (
       roomUser.solveStatus !== "FINISHED" ||
-      !Object.hasOwn(currentSolve!.solve.results, roomUser.user.id)
+      !currentSolve.solve.attempts[roomUser.user.id] ||
+      !currentSolve.solve.attempts[roomUser.user.id].finished
     ) {
       allUsersFinished = false;
       break;
@@ -435,18 +551,18 @@ export function checkRoomSolveFinished(room: IRoom): boolean {
 }
 
 /**
- *  Find the winner of the current solve. Award a point and process necessary consequences (set win, race win)
+ *  Find the winner of the current solve. Awards points. Does not calculate set, match
+ *  wins - should be done outside of this function
  */
 export function finishRoomSolve(room: IRoom) {
   if (room.solves.length == 0) return;
-
   const currentSolve = room.solves.at(-1);
-  if (!currentSolve) {
-    throw Error(
-      `finishRoomSolve: room ${room.id} has no currentSolve to finish`
-    );
+  if (currentSolve === undefined) {
+    return;
   }
-  const currentResults = currentSolve.solve.results;
+  currentSolve.finished = true;
+
+  const results = currentSolve.solve.results;
 
   if (
     room.settings.raceSettings.roomFormat === "CASUAL" ||
@@ -456,18 +572,18 @@ export function finishRoomSolve(room: IRoom) {
     let currFastestResult: Result = new Result(0, "DNF");
     let solveWinners: string[] = [];
 
-    for (const [uid, iResult] of Object.entries(currentResults)) {
+    for (const [participantId, iResult] of Object.entries(results)) {
       const result = Result.fromIResult(iResult);
       if (iResult.penalty !== "DNF") {
         if (result.isLessThan(currFastestResult)) {
           solveWinners = [];
-          solveWinners.push(uid);
+          solveWinners.push(participantId);
           currFastestResult = result;
         } else if (
           result.equals(currFastestResult) &&
           iResult.penalty !== "DNF"
         ) {
-          solveWinners.push(uid);
+          solveWinners.push(participantId);
         }
       }
     }
@@ -543,7 +659,11 @@ export function createTeam(room: IRoom, teamName: string) {
 /**
  * Makes user join a team. Do all validation outside of this function
  */
-export function userJoinTeam(room: IRoom, userId: string, teamId: string): SocketResponse<undefined> {
+export function userJoinTeam(
+  room: IRoom,
+  userId: string,
+  teamId: string
+): SocketResponse<undefined> {
   if (!room.settings.teamSettings.teamsEnabled) {
     return { success: false, reason: "Teams not enabled" };
   }
@@ -573,7 +693,11 @@ export function userJoinTeam(room: IRoom, userId: string, teamId: string): Socke
   return { success: true, data: undefined };
 }
 
-export function userLeaveTeam(room: IRoom, userId: string, teamId: string): boolean {
+export function userLeaveTeam(
+  room: IRoom,
+  userId: string,
+  teamId: string
+): boolean {
   if (!room.settings.teamSettings.teamsEnabled) {
     return false;
   }
@@ -601,6 +725,21 @@ export function userLeaveTeam(room: IRoom, userId: string, teamId: string): bool
 }
 
 /**
+ * figures out the correct number of scrambles to generate at this moment.
+ */
+function getNumScramblesToGenerate(room: IRoom) {
+  let numScrambles = 1;
+  if (room.settings.teamSettings.teamsEnabled) {
+    numScrambles =
+      room.settings.teamSettings.maxTeamCapacity ??
+      Math.max(
+        ...Object.values(room.teams).map((team) => team.team.members.length)
+      );
+  }
+  return numScrambles;
+}
+
+/**
  * Generates a new solve for a room and its users. Does not update wins or points
  *
  */
@@ -608,42 +747,91 @@ export async function newRoomSolve(room: IRoom) {
   //get current solve Id. Consider storing a currentSolveId field in the room to not need to do this
   const currSolveId = getCurrentSolveId(room);
 
-  const newScramble: string = await generateScramble(room.settings.roomEvent);
-  const solveObj: ISolve = {
+  const newScrambles: string[] = await generateScrambles(
+    room.settings.roomEvent
+  );
+  const newSolve: ISolve = {
     id: currSolveId + 1,
-    scramble: newScramble,
+    scrambles: newScrambles,
+    attempts: {},
     results: {},
   };
-  const newSolve: IRoomSolve = {
-    solve: solveObj,
+
+  const newRoomSolve: IRoomSolve = {
+    solve: newSolve,
     setIndex: room.currentSet,
     solveIndex: room.currentSolve + 1,
     finished: false,
+    solveWinners: [],
+    setWinners: [],
+    matchWinners: [],
   };
   room.currentSolve += 1;
-  room.solves.push(newSolve);
+  room.solves.push(newRoomSolve);
+
+  // generates scrambles + properly sets attempts, results
+  await resetSolve(room);
 
   Object.values(room.users).map((roomUser) => {
     roomUser.currentResult = undefined;
   });
 
-  return newSolve;
+  return newRoomSolve;
 }
 
 /**
- * Resets the current solve to generate a new scramble
+ * Resets the current solve and generate new scrambles
  */
-export async function newScramble(room: IRoom) {
+export async function resetSolve(room: IRoom) {
   if (room.solves.length == 0) return;
 
-  room.solves.at(-1)!.solve.scramble = await generateScramble(
-    room.settings.roomEvent
+  const currentSolve = room.solves.at(-1)!;
+  const numScrambles = getNumScramblesToGenerate(room);
+  const solveScrambles = await generateScrambles(
+    room.settings.roomEvent,
+    numScrambles
   );
-  room.solves.at(-1)!.solve.results = {};
+  const teamSettings = room.settings.teamSettings;
+
+  currentSolve.solve.scrambles = solveScrambles;
+
+  //reset attempts
+  let eligibleUsers = teamSettings.teamsEnabled
+    ? Object.values(room.teams).flatMap((team) =>
+        team.team.members
+          .map((userId) => room.users[userId])
+          .filter((user) => user !== undefined)
+      )
+    : Object.values(room.users).filter(
+        (roomUser) => roomUser.active && roomUser.competing
+      );
+
+  for (const roomUser of eligibleUsers) {
+    currentSolve.solve.attempts[roomUser.user.id] = {
+      scramble:
+        teamSettings.teamsEnabled &&
+        teamSettings.teamFormatSettings.teamSolveFormat === "ALL" &&
+        teamSettings.teamFormatSettings.teamScrambleFormat === "DIFFERENT"
+          ? currentSolve.solve.scrambles[
+              room.teams[roomUser.currentTeam!].team.members.indexOf(
+                roomUser.user.id
+              ) != -1
+                ? room.teams[roomUser.currentTeam!].team.members.indexOf(
+                    roomUser.user.id
+                  )
+                : 0
+            ]
+          : currentSolve.solve.scrambles[0]!,
+      finished: false,
+    };
+  }
+
+  //reset results
+  currentSolve.solve.results = {};
 
   for (const roomUser of Object.values(room.users)) {
     roomUser.currentResult = undefined;
-    roomUser.solveStatus = "IDLE";
+    // we don't set the user's solve status here - client will reset it upon receiving solve_finished
   }
 }
 

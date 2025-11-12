@@ -13,13 +13,14 @@ import {
   findSetWinners,
   checkMatchFinished,
   findMatchWinners,
-  newScramble,
+  resetSolve,
   createTeam,
   userJoinTeam,
   userLeaveTeam,
+  processNewResult,
 } from "@/lib/room";
 import { IUser, IUserInfo } from "@/types/user";
-import { IRoomTeam, IRoomUser } from "@/types/room-participant";
+import { IRoomUser } from "@/types/room-participant";
 import { IResult } from "@/types/result";
 import { SolveStatus } from "@/types/status";
 import { IRoomSolve } from "@/types/room-solve";
@@ -246,23 +247,26 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       const room = await stores.rooms.getRoom(roomId);
       if (!room) return;
 
-      // mark user as inactive
-      room.users[userId].active = false;
+      if (room.users[userId]) {
+        // mark user as inactive
+        room.users[userId].active = false;
 
-      //TODO - this might not be safe in the future if a timer is supposed to default to something other than IDLE and we persist timertype
-      //unless the user already submitted a time, reset their solve status too
-      if (room.users[userId].solveStatus !== "FINISHED") {
-        room.users[userId].solveStatus = "IDLE";
+        //TODO - this might not be safe in the future if a timer is supposed to default to something other than IDLE and we persist timertype
+        //unless the user already submitted a time, reset their solve status too
+        if (room.users[userId].solveStatus !== "FINISHED") {
+          room.users[userId].solveStatus = "IDLE";
+        }
+        // if teams is enabled and this user is on a team, force leave team
+        const teamId = room.users[userId].currentTeam;
+        if (room.settings.teamSettings.teamsEnabled && teamId !== undefined) {
+          userLeaveTeam(room, userId, teamId);
+          io.to(roomId).emit(SOCKET_SERVER.USER_LEAVE_TEAM, userId, teamId);
+        }
+
+        io.to(roomId).emit(SOCKET_SERVER.USER_UPDATE, room.users[userId]);
+      } else {
+        console.log(`Warning: user ${userId} does not exist in room ${roomId}'s users but is trying to leave room.`)
       }
-
-      // if teams is enabled and this user is on a team, force leave team
-      const teamId = room.users[userId].currentTeam;
-      if (room.settings.teamSettings.teamsEnabled && teamId !== undefined) {
-        userLeaveTeam(room, userId, teamId);
-        io.to(roomId).emit(SOCKET_SERVER.USER_LEAVE_TEAM, userId, teamId);
-      }
-
-      io.to(roomId).emit(SOCKET_SERVER.USER_UPDATE, room.users[userId]);
 
       //check if no more users, if so, schedule room deletion.
       if (
@@ -535,7 +539,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       if (!room) return;
 
       if (room.state == "STARTED") {
-        await newScramble(room);
+        await resetSolve(room);
         stores.rooms.setRoom(room);
         io.to(room.id).emit(SOCKET_SERVER.SOLVE_RESET, room.solves.at(-1));
       } else {
@@ -689,7 +693,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
             room.users[socket.user?.userInfo.id].solveStatus;
           if (newUserStatus == currentUserStatus) {
             console.log(
-              `User ${socket.user?.userInfo.id} submitted new user status to room ${socket.roomId} which is the same as old user status.`
+              `User ${socket.user?.userInfo.id} submitted new user status ${newUserStatus} to room ${socket.roomId} which is the same as old user status.`
             );
           } else {
             console.log(
@@ -773,10 +777,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
             `User ${socket.user?.userInfo.userName} submitted new result ${result} to room ${socket.roomId}`
           );
 
-          const solveObject: IRoomSolve = room.solves.at(-1)!;
-          solveObject.solve.results[socket.user?.userInfo.id] = result;
-
-          room.users[socket.user?.userInfo.id].currentResult = result;
+          processNewResult(room, socket.user.userInfo.id, result);
 
           stores.rooms.setRoom(room);
           //broadcast user submit event to other users

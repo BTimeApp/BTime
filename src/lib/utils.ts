@@ -22,27 +22,38 @@ export function toLowerExceptFirst(str: string): string {
   return str.charAt(0) + str.slice(1).toLowerCase();
 }
 
-export async function generateScramble(event: RoomEvent) {
-  const EventMapping = new Map<RoomEvent, string>([
-    ["222", "222"],
-    ["333", "333"],
-    ["444", "444"],
-    ["555", "555"],
-    ["666", "666"],
-    ["777", "777"],
-    ["megaminx", "minx"],
-    ["pyraminx", "pyram"],
-    ["skewb", "skewb"],
-    ["clock", "clock"],
-    ["sq1", "sq1"],
-    ["3oh", "333oh"],
-    ["3bld", "333bf"],
-    ["4bld", "444bf"],
-    ["5bld", "555bf"],
-  ]);
+const EventMapping = new Map<RoomEvent, string>([
+  ["222", "222"],
+  ["333", "333"],
+  ["444", "444"],
+  ["555", "555"],
+  ["666", "666"],
+  ["777", "777"],
+  ["megaminx", "minx"],
+  ["pyraminx", "pyram"],
+  ["skewb", "skewb"],
+  ["clock", "clock"],
+  ["sq1", "sq1"],
+  ["3oh", "333oh"],
+  ["3bld", "333bf"],
+  ["4bld", "444bf"],
+  ["5bld", "555bf"],
+]);
 
+export async function generateScramble(event: RoomEvent): Promise<string> {
   const scrambleAlg = await randomScrambleForEvent(EventMapping.get(event)!);
   return scrambleAlg.toString();
+}
+
+export async function generateScrambles(
+  event: RoomEvent,
+  numScrambles: number = 1
+): Promise<string[]> {
+  return Promise.all(
+    Array.from({ length: numScrambles }, async () =>
+      (await randomScrambleForEvent(EventMapping.get(event)!)).toString()
+    )
+  );
 }
 
 // https://gist.github.com/renaudtertrais/25fc5a2e64fe5d0e86894094c6989e10?permalink_comment_id=3783403

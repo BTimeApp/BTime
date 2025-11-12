@@ -59,7 +59,7 @@ export default function RoomEventHandler() {
     userUnbanned,
     setHostId,
     addResult,
-    setTimerType
+    setTimerType,
   ] = useRoomStore((s) => [
     s.localPenalty,
     s.localResult,
@@ -107,7 +107,6 @@ export default function RoomEventHandler() {
     }
   }, [isTouchscreen, setTimerType]);
 
-
   //live update for start time
   const liveTimerStartTime = useStartTimeOnTransition<SolveStatus>(
     localSolveStatus,
@@ -121,7 +120,7 @@ export default function RoomEventHandler() {
   }, [setLiveTimerStartTime]);
 
   /**
-   * Update user status on backend whenever frontend updates.
+   * Update user status on backend whenever client updates.
    */
   useEffect(() => {
     socket.emit(SOCKET_CLIENT.UPDATE_SOLVE_STATUS, localSolveStatus);

@@ -10,7 +10,7 @@ import { Crown } from "lucide-react";
 import SolveDialog from "@/components/room/solve-dialog";
 import { IRoomUser } from "@/types/room-participant";
 import { IRoomSolve } from "@/types/room-solve";
-import { RaceSettings, RoomEvent} from "@/types/room";
+import { RaceSettings, RoomEvent } from "@/types/room";
 import { Result } from "@/types/result";
 import { cn } from "@/lib/utils";
 import SetDialog from "@/components/room/set-dialog";
@@ -70,12 +70,16 @@ export default function GlobalTimeList({
         const roomSummaryRow: IRoomSolve = {
           solve: {
             id: -1,
-            scramble: "",
+            scrambles: [],
+            attempts: {},
             results: {},
           },
           setIndex: solve.setIndex,
           solveIndex: -1,
           finished: true,
+          solveWinners: [],
+          setWinners: solve.setWinners,
+          matchWinners: solve.matchWinners,
         };
 
         /**
@@ -144,7 +148,9 @@ export default function GlobalTimeList({
         <TableHeader className="sticky top-0 z-10 shadow-sm bg-inherit">
           <SummaryDialog
             roomName={roomName}
-            scrambles={solves.map((solve) => solve.solve.scramble)}
+            scrambles={solves.map((solve) =>
+              userId ? solve.solve.attempts[userId]?.scramble ?? "" : ""
+            )}
             results={solves.map((solve) =>
               userId && solve.solve.results[userId]
                 ? solve.solve.results[userId]
@@ -185,7 +191,9 @@ export default function GlobalTimeList({
                   roomName={roomName}
                   key={index}
                   setIndex={solve.setIndex}
-                  scrambles={setSolves.map((solve) => solve.solve.scramble)}
+                  scrambles={setSolves.map((solve) =>
+                    userId ? solve.solve.attempts[userId].scramble : ""
+                  )}
                   results={setSolves.map((solve) =>
                     userId && solve.solve.results[userId] != null
                       ? solve.solve.results[userId]
@@ -259,7 +267,8 @@ export default function GlobalTimeList({
                     : solve.setIndex
                 }
                 solveIndex={solve.solveIndex}
-                scramble={solve.solve.scramble}
+                // as of now, we only give the scramble for this user - eventually generalize this whole code to all users
+                scramble={userId ? (solve.solve.attempts[userId]?.scramble ?? "") : ""}
                 event={roomEvent}
                 result={userId ? solve.solve.results[userId] : undefined}
               >
