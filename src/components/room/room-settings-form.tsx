@@ -295,7 +295,7 @@ export default function RoomSettingsForm({
                 name="access.visibility"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Private Room?</FormLabel>
+                    <FormLabel>Private Room</FormLabel>
                     <FormControl>
                       <Switch
                         checked={field.value === "PRIVATE"}
@@ -333,11 +333,28 @@ export default function RoomSettingsForm({
                 name="teamSettings.teamsEnabled"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Teams Enabled?</FormLabel>
+                    <FormLabel>Teams Mode</FormLabel>
                     <FormControl>
                       <Switch
                         checked={field.value}
-                        onCheckedChange={field.onChange}
+                        onCheckedChange={(value) => {
+                          field.onChange(value);
+
+                          if (value) {
+                            form.setValue(
+                              "teamSettings.teamFormatSettings.teamSolveFormat",
+                              "ALL"
+                            );
+                            form.setValue(
+                              "teamSettings.teamFormatSettings.teamScrambleFormat",
+                              "SAME"
+                            );
+                            form.setValue(
+                              "teamSettings.teamFormatSettings.teamReduceFunction",
+                              "SUM"
+                            );
+                          }
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -463,60 +480,6 @@ export default function RoomSettingsForm({
                 <>
                   <FormField
                     control={form.control}
-                    name="teamSettings.maxTeams"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Max # Teams</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder={
-                              field.value ? field.value.toString() : ""
-                            }
-                            type="number"
-                            step="1"
-                            {...field}
-                            onChange={(e) =>
-                              field.onChange(
-                                isNaN(parseInt(e.target.value))
-                                  ? ""
-                                  : parseInt(e.target.value)
-                              )
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="teamSettings.maxTeamCapacity"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Max Team Capacity</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder={
-                              field.value ? field.value.toString() : ""
-                            }
-                            type="number"
-                            step="1"
-                            {...field}
-                            onChange={(e) =>
-                              field.onChange(
-                                isNaN(parseInt(e.target.value))
-                                  ? ""
-                                  : parseInt(e.target.value)
-                              )
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
                     name="teamSettings.teamFormatSettings.teamSolveFormat"
                     render={({ field }) => (
                       <FormItem>
@@ -525,6 +488,17 @@ export default function RoomSettingsForm({
                           <Select
                             onValueChange={(value) => {
                               field.onChange(value);
+
+                              if (value) {
+                                form.setValue(
+                                  "teamSettings.teamFormatSettings.teamScrambleFormat",
+                                  "SAME"
+                                );
+                                form.setValue(
+                                  "teamSettings.teamFormatSettings.teamReduceFunction",
+                                  "SUM"
+                                );
+                              }
                             }}
                             defaultValue={field.value}
                           >
@@ -619,6 +593,64 @@ export default function RoomSettingsForm({
             </div>
             <div className="space-y-3">
               <p className="text-xl font-bold">EXTRA</p>
+              {form.watch("teamSettings.teamsEnabled") && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="teamSettings.maxTeams"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Max # Teams</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={
+                              field.value ? field.value.toString() : ""
+                            }
+                            type="number"
+                            step="1"
+                            {...field}
+                            onChange={(e) =>
+                              field.onChange(
+                                isNaN(parseInt(e.target.value))
+                                  ? ""
+                                  : parseInt(e.target.value)
+                              )
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="teamSettings.maxTeamCapacity"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Max Team Capacity</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={
+                              field.value ? field.value.toString() : ""
+                            }
+                            type="number"
+                            step="1"
+                            {...field}
+                            onChange={(e) =>
+                              field.onChange(
+                                isNaN(parseInt(e.target.value))
+                                  ? ""
+                                  : parseInt(e.target.value)
+                              )
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
             </div>
           </div>
           <div className="space-y-1">
