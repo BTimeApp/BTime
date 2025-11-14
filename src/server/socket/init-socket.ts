@@ -876,6 +876,8 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         return;
 
       const success = userLeaveTeam(room, user.userInfo.id, teamId);
+      stores.rooms.setRoom(room);
+
       if (success) {
         io.to(room.id).emit(SOCKET_SERVER.USER_LEAVE_TEAM, userId, teamId);
       }

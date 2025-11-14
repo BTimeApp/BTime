@@ -678,7 +678,7 @@ export function userJoinTeam(
     room.settings.teamSettings.maxTeamCapacity &&
     team.team.members.length >= room.settings.teamSettings.maxTeamCapacity
   ) {
-    return { success: false, reason: "Team full" };
+    return { success: false, reason: `Team full (${team.team.members.length}/${room.settings.teamSettings.maxTeamCapacity})` };
   }
 
   // 2. check if user is on another team. If so, make them leave that team
@@ -689,7 +689,7 @@ export function userJoinTeam(
   // 3. put user on team
   team.team.members.push(userId);
   room.users[userId].currentTeam = teamId;
-
+  room.users[userId].competing = true; //in teams mode, competing = on team or not
   return { success: true, data: undefined };
 }
 
@@ -720,7 +720,7 @@ export function userLeaveTeam(
   }
   team.team.members.splice(userIdx, 1);
   room.users[userId].currentTeam = undefined;
-
+  room.users[userId].competing = false; //in teams mode, competing = on team or not
   return true;
 }
 
