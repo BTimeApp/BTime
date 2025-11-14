@@ -139,7 +139,7 @@ export function CreateTeamForm({ onSubmit }: CreateTeamFormProps) {
             ))}
           </div>
           <div className="flex flex-row justify-between gap-2">
-            {teamSettings.maxNumTeams &&
+            {!teamSettings.maxNumTeams ||
             form.watch("teamNames").length + currTeamsLength <
               teamSettings.maxNumTeams ? (
               <Button
