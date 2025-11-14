@@ -1,7 +1,5 @@
 import { abbreviate, cn } from "@/lib/utils";
-import {
-  ROOM_EVENTS_INFO,
-} from "@/types/room";
+import { ROOM_EVENTS_INFO } from "@/types/room";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/common/header";
 import { useCallback } from "react";
@@ -22,6 +20,7 @@ export function RoomHeader() {
     currentSolve,
     users,
     raceSettings,
+    teamSettings,
     isUserHost,
   ] = useRoomStore((s) => [
     s.roomName,
@@ -32,6 +31,7 @@ export function RoomHeader() {
     s.currentSolve,
     s.users,
     s.raceSettings,
+    s.teamSettings,
     s.isUserHost,
   ]);
 
@@ -60,7 +60,10 @@ export function RoomHeader() {
   const toggleCompeting = useCallback(() => {
     if (user) {
       //submit the NEW competing boolean - true if currently spectating
-      socket.emit(SOCKET_CLIENT.TOGGLE_COMPETING, !users[user.userInfo.id].competing);
+      socket.emit(
+        SOCKET_CLIENT.TOGGLE_COMPETING,
+        !users[user.userInfo.id].competing
+      );
     }
   }, [user, users, socket]);
 
@@ -110,15 +113,21 @@ export function RoomHeader() {
                   </div>
                 )}
                 <div className="flex-1 flex flex-col justify-end">
-                  <Button
-                    className="mt-auto"
-                    variant="outline"
-                    onClick={toggleCompeting}
-                  >
-                    <p className="font-bold text-center text-md">
-                      {users[user.userInfo.id]?.competing ? "SPECTATE" : "COMPETE"}
-                    </p>
-                  </Button>
+                  {teamSettings.teamsEnabled ? (
+                    <></>
+                  ) : (
+                    <Button
+                      className="mt-auto"
+                      variant="outline"
+                      onClick={toggleCompeting}
+                    >
+                      <p className="font-bold text-center text-md">
+                        {users[user.userInfo.id]?.competing
+                          ? "SPECTATE"
+                          : "COMPETE"}
+                      </p>
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -158,7 +167,7 @@ export function RoomHeader() {
                     : ""}
                   {raceSettings.roomFormat !== "CASUAL"
                     ? abbreviate(raceSettings.setFormat) +
-                    raceSettings.nSolves.toString() +
+                      raceSettings.nSolves.toString() +
                       " solves"
                     : ""}
                 </h4>
@@ -184,17 +193,23 @@ export function RoomHeader() {
                     </RoomSettingsDialog>
                   </div>
                 )}
+
                 <div className="flex-1 flex flex-col justify-end">
-                  <Button
-                    className="mt-auto"
-                    variant="outline"
-                    onClick={toggleCompeting}
-                    onKeyDown={(e) => e.preventDefault()}
-                  >
-                    <p className="font-bold text-center text-md">
-                      {users[user.userInfo.id]?.competing ? "SPECTATE" : "COMPETE"}
-                    </p>
-                  </Button>
+                  {teamSettings.teamsEnabled ? (
+                    <></>
+                  ) : (
+                    <Button
+                      className="mt-auto"
+                      variant="outline"
+                      onClick={toggleCompeting}
+                    >
+                      <p className="font-bold text-center text-md">
+                        {users[user.userInfo.id]?.competing
+                          ? "SPECTATE"
+                          : "COMPETE"}
+                      </p>
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -238,15 +253,21 @@ export function RoomHeader() {
                   </div>
                 )}
                 <div className="flex-1 flex flex-col justify-end">
-                  <Button
-                    className="mt-auto"
-                    variant="outline"
-                    onClick={toggleCompeting}
-                  >
-                    <p className="font-bold text-center text-md">
-                      {users[user.userInfo.id]?.competing ? "SPECTATE" : "COMPETE"}
-                    </p>
-                  </Button>
+                  {teamSettings.teamsEnabled ? (
+                    <></>
+                  ) : (
+                    <Button
+                      className="mt-auto"
+                      variant="outline"
+                      onClick={toggleCompeting}
+                    >
+                      <p className="font-bold text-center text-md">
+                        {users[user.userInfo.id]?.competing
+                          ? "SPECTATE"
+                          : "COMPETE"}
+                      </p>
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>

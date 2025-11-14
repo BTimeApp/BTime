@@ -22,6 +22,9 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "../ui/resizable";
+import { useSocket } from "@/context/socket-context";
+import { SOCKET_CLIENT } from "@/types/socket_protocol";
+import CreateTeamDialog from "./create-team-dialog";
 
 type RoomPanelProps = {
   className?: string;
@@ -30,9 +33,9 @@ type RoomPanelProps = {
    *   user - displays info about a user or the user's active panel for the room
    *   summary - displays summary info about the room. use for when the room is STARTED
    *   info - displays high-level info about the room. use for when the room is WAITING or FINISHED
-   *   userlist - displays info about users in the room (competitors, spectators)
+   *   participantlist - displays info about participants in the room (competitors, spectators)
    */
-  type?: "user" | "summary" | "info" | "userlist";
+  type?: "user" | "summary" | "info" | "participantlist";
   /**
    * whether this panel belongs on the left or right (in a web display). On small screens, might be top and bottom.
    */
@@ -59,38 +62,7 @@ type SummaryRoomPanelProps = SubRoomPanelBaseProps & {};
 
 type InfoRoomPanelProps = SubRoomPanelBaseProps & {};
 
-type UserListRoomPanelProps = SubRoomPanelBaseProps & {};
-
-// TODO: buggy - exceeds height limits and causes room to scroll
-// function UserTimeList({
-//   userId,
-//   className = "",
-// }: {
-//   userId: string;
-//   className?: string;
-// }) {
-//   const [solves, currentSet] = useRoomStore((s) => [s.solves, s.currentSet]);
-
-//   return (
-//     <div className={cn("flex flex-col", className)}>
-//       <p>Times</p>
-//       <div className="flex-1 min-h-0">
-//         {solves //all solves
-//           .filter((userResult) => userResult.setIndex == currentSet) //from current set
-//           .map((solve) => solve.solve.results[userId]) //get result belonging to local user
-//           .slice(0, -1) //exclude current solve
-//           .reverse()
-//           .map((userResult, index) =>
-//             userResult === undefined ? (
-//               <p key={index}>---</p>
-//             ) : (
-//               <p key={index}>{Result.fromIResult(userResult).toString()}</p>
-//             )
-//           )}
-//       </div>
-//     </div>
-//   );
-// }
+type ParticipantListRoomPanelProps = SubRoomPanelBaseProps & {};
 
 function UserStatusSection({
   className,
@@ -109,7 +81,6 @@ function UserStatusSection({
 
 function UserCenterSection({
   className = "",
-  // side,
   userId,
   isLocalUser = false,
 }: UserRoomPanelProps) {
@@ -120,14 +91,10 @@ function UserCenterSection({
   if (!users[userId]) {
     return null;
   }
-  
+
   const currScramble = solves.at(-1)?.solve.attempts[userId]?.scramble ?? "";
   return (
     <div className={cn("flex flex-row w-full h-full", className)}>
-      {/* TODO: figure out why the time lists cause the screen to get longer */}
-      {/* {side === "right" && (
-          <UserTimeList userId={userId} className="max-h-[50%]" />
-        )} */}
       <div className="flex flex-col grow w-full">
         <div className="flex-0 flex flex-col">
           {solveStatus !== "FINISHED" && (
@@ -166,9 +133,6 @@ function UserCenterSection({
           )}
         </div>
       </div>
-      {/* {side === "left" && (
-          <UserTimeList userId={userId} className="max-h-[50%]" />
-        )} */}
     </div>
   );
 }
@@ -242,7 +206,6 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
     s.raceSettings,
     s.isUserHost,
   ]);
-  
 
   const userSortKeyCallback = useCallback(
     (u1: IRoomUser, u2: IRoomUser) => {
@@ -275,8 +238,10 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
   );
 
   const sortedActiveUsers = useMemo(() => {
-    return Object.values(users).filter((roomUser) => roomUser.active).sort(userSortKeyCallback);
-  },[users, userSortKeyCallback]);
+    return Object.values(users)
+      .filter((roomUser) => roomUser.active)
+      .sort(userSortKeyCallback);
+  }, [users, userSortKeyCallback]);
 
   function userStatusText(user: IRoomUser) {
     if (!user.competing) {
@@ -390,11 +355,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
 }
 
 function InfoRoomPanel({ className }: InfoRoomPanelProps) {
-  const [
-    roomName,
-    roomEvent,
-    raceSettings,
-  ] = useRoomStore((s) => [
+  const [roomName, roomEvent, raceSettings] = useRoomStore((s) => [
     s.roomName,
     s.roomEvent,
     s.raceSettings,
@@ -410,25 +371,32 @@ function InfoRoomPanel({ className }: InfoRoomPanelProps) {
         <h2 className="text-2xl">Event: {roomEvent}</h2>
       </div>
       <div className={cn("text-left")}>
-        <h2 className="text-2xl">
-          {getFormatText(raceSettings)}
-        </h2>
+        <h2 className="text-2xl">{getFormatText(raceSettings)}</h2>
       </div>
       <div className={cn("text-left mx-2")}>
-        {getVerboseFormatText(
-          raceSettings
-        )}
+        {getVerboseFormatText(raceSettings)}
       </div>
     </div>
   );
 }
 
-function UserListRoomPanel({ className }: UserListRoomPanelProps) {
-  const [users, roomState, roomWinners] = useRoomStore((s) => [
-    s.users,
-    s.roomState,
-    s.roomWinners,
-  ]);
+function ParticipantListRoomPanel({ className }: ParticipantListRoomPanelProps) {
+  const { user: localUser } = useSession();
+  const [users, teams, roomState, roomWinners, teamSettings, isUserHost] =
+    useRoomStore((s) => [
+      s.users,
+      s.teams,
+      s.roomState,
+      s.roomWinners,
+      s.teamSettings,
+      s.isUserHost,
+    ]);
+  const winnerNames = useMemo(() => {
+    return teamSettings.teamsEnabled
+      ? roomWinners.map((id) => teams[id]!.team.name)
+      : roomWinners.map((id) => users[id]!.user.userName);
+  }, [teamSettings, roomWinners]);
+
   return (
     <div
       className={cn(["flex flex-col text-center h-full w-full p-2", className])}
@@ -436,35 +404,84 @@ function UserListRoomPanel({ className }: UserListRoomPanelProps) {
       {roomState === "FINISHED" && (
         <div className="flex-1 text-center">
           <h2 className="text-xl font-bold">
-            Winner{roomWinners.length > 1 ? "s" : ""}:{" "}
-            {roomWinners.map((uid) => users[uid]!.user.userName).join(", ")}
+            Winner{roomWinners.length > 1 ? "s" : ""}: {winnerNames.join(", ")}
           </h2>
         </div>
       )}
-      <div className="flex flex-col flex-1 align-center">
-        <h2 className="text-xl font-bold">Competitors</h2>
-        {Object.values(users)
-          .filter((roomUser) => roomUser.competing)
-          .map((roomUser, idx) => {
-            return (
-              <p className="text-md" key={idx}>
-                {roomUser.user.userName}
-              </p>
-            );
-          })}
-      </div>
-      <div className="flex flex-col flex-1 align-center">
-        <h2 className="text-xl font-bold">Spectators</h2>
-        {Object.values(users)
-          .filter((roomUser) => !roomUser.competing)
-          .map((roomUser, idx) => {
-            return (
-              <p className="text-md" key={idx}>
-                {roomUser.user.userName}
-              </p>
-            );
-          })}
-      </div>
+      {teamSettings.teamsEnabled ? (
+        <>
+          {/* Teams Enabled - users are either on a team or not on a team (allow backend to process this info) */}
+          <div className="flex flex-col flex-1 align-center">
+            <div className="flex flex-row justify-center items-center gap-2">
+              <h2 className="text-xl font-bold">Teams {teamSettings.maxNumTeams ? `(${Object.values(teams).length}/${teamSettings.maxNumTeams})` : ""}</h2>
+              {isUserHost(localUser?.userInfo.id) && (!teamSettings.maxNumTeams || Object.values(teams).length < teamSettings.maxNumTeams) && (
+                <CreateTeamDialog>
+                  <Button variant="primary" className="text-lg h-6">
+                    +
+                  </Button>
+                </CreateTeamDialog>
+              )}
+            </div>
+
+            {Object.values(teams).map((team, idx) => {
+              return (
+                <React.Fragment key={idx}>
+                  <div className="text-lg font-bold">
+                    {team.team.name}
+                  </div>
+                  {team.team.members.map((userId, uIdx) => {
+                    return (
+                      <p className="text-md" key={uIdx}>
+                        {users[userId]?.user.userName}
+                      </p>
+                    );
+                  })}
+                </React.Fragment>
+              );
+            })}
+          </div>
+          <div className="flex flex-col flex-1 align-center">
+            <h2 className="text-xl font-bold">Spectators</h2>
+            {Object.values(users)
+              .filter((roomUser) => !roomUser.competing)
+              .map((roomUser, idx) => {
+                return (
+                  <p className="text-md" key={idx}>
+                    {roomUser.user.userName}
+                  </p>
+                );
+              })}
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Teams Disabled - users are either competing or spectating */}
+          <div className="flex flex-col flex-1 align-center">
+            <h2 className="text-xl font-bold">Competitors</h2>
+            {Object.values(users)
+              .filter((roomUser) => roomUser.competing)
+              .map((roomUser, idx) => {
+                return (
+                  <p className="text-md" key={idx}>
+                    {roomUser.user.userName}
+                  </p>
+                );
+              })}
+          </div>
+          <div className="flex flex-col flex-1 align-center">
+            <h2 className="text-xl font-bold">Spectators</h2>
+            {Object.values(users)
+              .filter((roomUser) => !roomUser.competing)
+              .map((roomUser, idx) => {
+                return (
+                  <p className="text-md" key={idx}>
+                    {roomUser.user.userName}
+                  </p>
+                );
+              })}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -492,8 +509,8 @@ export default function RoomPanel({
       return <SummaryRoomPanel className={className} />;
     case "info":
       return <InfoRoomPanel className={className} />;
-    case "userlist":
-      return <UserListRoomPanel className={className} />;
+    case "participantlist":
+      return <ParticipantListRoomPanel className={className} />;
     default:
       return null;
   }

@@ -488,8 +488,8 @@ export function processNewResult(room: IRoom, userId: string, result: IResult) {
 /**
  * Checks if the current solve is done.
  * To keep consistent with the other parts of the backend, we check if
- * all relevant users have solve status FINISHED. 
- * 
+ * all relevant users have solve status FINISHED.
+ *
  * TODO: reimplement/redesign the backend so that solves are really finished once all relevant results are in (check the results array of the solve instead)
  */
 export function checkRoomSolveFinished(room: IRoom): boolean {
@@ -852,6 +852,59 @@ export function resetRoom(room: IRoom) {
     roomUser.solveStatus = "IDLE";
     roomUser.currentResult = undefined;
   }
+}
+
+/**
+ * Handles the step of user joining a room.
+ * Assumes all validation is done before this is called.
+ *
+ * Returns a boolean valued as if the user is new to the room.
+ */
+export function userJoinRoom(room: IRoom, user: IUserInfo) {
+  let newUser = true;
+
+  if (Object.hasOwn(room.users, user.id)) {
+    room.users[user.id].active = true;
+    room.users[user.id].joinedAt = new Date();
+
+    newUser = false;
+  } else {
+    const roomUser: IRoomUser = {
+      user: user,
+      points: 0,
+      setWins: 0,
+      joinedAt: new Date(),
+      active: true,
+      competing: true,
+      banned: false,
+      solveStatus: "IDLE",
+      currentResult: undefined,
+    };
+
+    room.users[user.id] = roomUser;
+  }
+
+  // if in teams mode, user is going to default to spectating.
+  if (room.settings.teamSettings.teamsEnabled) {
+    room.users[user.id].competing = false;
+  } else {
+    // we need to explicitly set a user's scramble when they join.
+    //  for now, joining with teams enabled disables competing, so we just cover no teams case - which is easy
+    if (room.solves.length > 0) {
+      const currentSolve = room.solves.at(-1)!;
+      currentSolve.solve.attempts[user.id] = {
+        finished: false,
+        scramble: currentSolve.solve.scrambles[0]!,
+      };
+    }
+  }
+
+  // if there is no host for some reason, promote this user to be host
+  if (!room.host) {
+    room.host = room.users[user.id].user;
+  }
+
+  return newUser;
 }
 
 function getCurrentSolveId(room: IRoom) {

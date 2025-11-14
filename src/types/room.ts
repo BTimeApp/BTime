@@ -339,7 +339,7 @@ export type TeamSettings =
       teamsEnabled: true;
       teamFormatSettings: TeamFormatSettings;
       maxTeamCapacity?: number;
-      maxTeams?: number;
+      maxNumTeams?: number;
     };
 
 // settings used when creating a room

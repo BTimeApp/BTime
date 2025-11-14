@@ -18,7 +18,7 @@ export default function RoomContent() {
             side={screenSize >= ScreenSize.MD ? "left" : undefined}
           />
           <RoomPanel
-            type="userlist"
+            type="participantlist"
             side={screenSize >= ScreenSize.MD ? "right" : undefined}
           />
         </div>
@@ -87,7 +87,7 @@ export default function RoomContent() {
             className="bg-container-1"
           />
           <RoomPanel
-            type="userlist"
+            type="participantlist"
             side={screenSize >= ScreenSize.MD ? "right" : undefined}
           />
         </div>

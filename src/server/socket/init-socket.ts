@@ -18,6 +18,7 @@ import {
   userJoinTeam,
   userLeaveTeam,
   processNewResult,
+  userJoinRoom,
 } from "@/lib/room";
 import { IUser, IUserInfo } from "@/types/user";
 import { IRoomUser } from "@/types/room-participant";
@@ -38,7 +39,6 @@ import {
 import Redis from "ioredis";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { RedisStores } from "@/server/redis/stores";
-import { Romanesco } from "next/font/google";
 
 //defines useful state variables we want to maintain over the lifestyle of a socket connection (only visible server-side)
 interface CustomSocket extends Socket {
@@ -265,7 +265,9 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
         io.to(roomId).emit(SOCKET_SERVER.USER_UPDATE, room.users[userId]);
       } else {
-        console.log(`Warning: user ${userId} does not exist in room ${roomId}'s users but is trying to leave room.`)
+        console.log(
+          `Warning: user ${userId} does not exist in room ${roomId}'s users but is trying to leave room.`
+        );
       }
 
       //check if no more users, if so, schedule room deletion.
@@ -486,30 +488,9 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
         const extraData: Record<string, string> = {};
 
-        if (Object.hasOwn(room.users, userId)) {
-          room.users[userId].active = true;
-          room.users[userId].joinedAt = new Date();
-
+        const newUser: boolean = userJoinRoom(room, user);
+        if (!newUser) {
           extraData["EXISTING_USER_INFO"] = userId;
-        } else {
-          const roomUser: IRoomUser = {
-            user: user,
-            points: 0,
-            setWins: 0,
-            joinedAt: new Date(),
-            active: true,
-            competing: true,
-            banned: false,
-            solveStatus: "IDLE",
-            currentResult: undefined,
-          };
-
-          room.users[userId] = roomUser;
-        }
-
-        // if there is no host for some reason, promote this user to be host
-        if (!room.host) {
-          room.host = user;
         }
 
         //write room to room store
@@ -817,8 +798,8 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           });
           return;
         } else if (
-          room.settings.teamSettings.maxTeams &&
-          Object.keys(room.teams).length >= room.settings.teamSettings.maxTeams
+          room.settings.teamSettings.maxNumTeams &&
+          Object.keys(room.teams).length >= room.settings.teamSettings.maxNumTeams
         ) {
           createTeamCallback({
             success: false,
@@ -908,8 +889,24 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         if (
           !room ||
           room.users[socket.user?.userInfo.id].competing == competing
-        )
+        ) {
+          console.log(
+            `User ${
+              socket.user?.userInfo.id
+            } tried to toggle competing status to the same as it currently is: ${
+              competing ? "competing" : "spectating"
+            } in room ${socket.roomId}`
+          );
           return;
+        }
+
+        if (room.settings.teamSettings.teamsEnabled) {
+          // users should never try to toggle their competing mode when in teams mode
+          console.log(
+            `User ${socket.user?.userInfo.id} tried to toggle competing status while teams is enabled in room ${socket.roomId}`
+          );
+          return;
+        }
 
         console.log(
           `User ${socket.user?.userInfo.id} is now ${

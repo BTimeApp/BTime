@@ -1,11 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { z } from "zod";
-import {
-  FieldErrors,
-  FieldValues,
-  useForm,
-  UseFormReturn,
-} from "react-hook-form";
+import { FieldErrors, FieldValues, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Form,
@@ -85,8 +80,18 @@ const TeamSettingsSchema = z.discriminatedUnion("teamsEnabled", [
   z.object({
     teamsEnabled: z.literal(true),
     teamFormatSettings: TeamFormatSettingsSchema,
-    maxTeamCapacity: z.number().int().optional(),
-    maxTeams: z.number().int().optional(),
+    maxTeamCapacity: z
+      .number()
+      .int()
+      .positive()
+      .min(1, "Must allow at least 1 member per team")
+      .optional(),
+    maxNumTeams: z
+      .number()
+      .int()
+      .positive()
+      .min(1, "Must allow at least 1 team")
+      .optional(),
   }),
 ]);
 
@@ -597,7 +602,7 @@ export default function RoomSettingsForm({
                 <>
                   <FormField
                     control={form.control}
-                    name="teamSettings.maxTeams"
+                    name="teamSettings.maxNumTeams"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Max # Teams</FormLabel>
@@ -609,13 +614,13 @@ export default function RoomSettingsForm({
                             type="number"
                             step="1"
                             {...field}
-                            onChange={(e) =>
+                            value={field.value ?? ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
                               field.onChange(
-                                isNaN(parseInt(e.target.value))
-                                  ? ""
-                                  : parseInt(e.target.value)
-                              )
-                            }
+                                val === "" ? undefined : parseInt(val)
+                              );
+                            }}
                           />
                         </FormControl>
                         <FormMessage />
@@ -630,19 +635,17 @@ export default function RoomSettingsForm({
                         <FormLabel>Max Team Capacity</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder={
-                              field.value ? field.value.toString() : ""
-                            }
+                            placeholder={field.value?.toString() ?? ""}
                             type="number"
                             step="1"
                             {...field}
-                            onChange={(e) =>
+                            value={field.value ?? ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
                               field.onChange(
-                                isNaN(parseInt(e.target.value))
-                                  ? ""
-                                  : parseInt(e.target.value)
-                              )
-                            }
+                                val === "" ? undefined : parseInt(val)
+                              );
+                            }}
                           />
                         </FormControl>
                         <FormMessage />
