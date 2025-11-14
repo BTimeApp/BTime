@@ -1,20 +1,21 @@
 import { Button } from "@/components/ui/button";
-import { useRoomStore } from "@/context/room-context";
-import { useSession } from "@/context/session-context";
 import { useSocket } from "@/context/socket-context";
+import { cn } from "@/lib/utils";
 import { SOCKET_CLIENT, SocketResponse } from "@/types/socket_protocol";
 import { useCallback } from "react";
 import { toast } from "sonner";
 
-interface JoinTeamButtonProps {
+
+interface TeamButtonProps {
   teamId: string;
+  className?: string;
 }
 
-interface LeaveTeamButtonProps {
-  teamId: string;
-}
+interface JoinTeamButtonProps extends TeamButtonProps {};
+interface LeaveTeamButtonProps extends TeamButtonProps {};
+interface DeleteTeamButtonProps extends TeamButtonProps {};
 
-export function JoinTeamButton({ teamId }: JoinTeamButtonProps) {
+export function JoinTeamButton({ teamId, className }: JoinTeamButtonProps) {
   const { socket } = useSocket();
   const joinTeamCallback = useCallback((response: SocketResponse<void>) => {
     if (!response.success) {
@@ -24,7 +25,7 @@ export function JoinTeamButton({ teamId }: JoinTeamButtonProps) {
   return (
     <Button
       variant="primary"
-      className="h-6"
+      className={cn('h-6 font-bold', className)}
       onClick={() => {
         socket.emit(SOCKET_CLIENT.JOIN_TEAM, teamId, joinTeamCallback);
       }}
@@ -34,7 +35,7 @@ export function JoinTeamButton({ teamId }: JoinTeamButtonProps) {
   );
 }
 
-export function LeaveTeamButton({ teamId }: LeaveTeamButtonProps) {
+export function LeaveTeamButton({ teamId, className }: LeaveTeamButtonProps) {
     const { socket } = useSocket();
     const leaveTeamCallback = useCallback((response: SocketResponse<void>) => {
       if (!response.success) {
@@ -44,12 +45,27 @@ export function LeaveTeamButton({ teamId }: LeaveTeamButtonProps) {
     return (
       <Button
         variant="primary"
-        className="h-6"
+        className={cn('h-6 font-bold', className)}
         onClick={() => {
           socket.emit(SOCKET_CLIENT.LEAVE_TEAM, teamId, leaveTeamCallback);
         }}
       >
         Leave
+      </Button>
+    );
+}
+
+export function DeleteTeamButton({teamId, className}: DeleteTeamButtonProps) {
+  const { socket } = useSocket();
+    return (
+      <Button
+        variant="destructive"
+        className={cn('h-6 font-bold', className)}
+        onClick={() => {
+          socket.emit(SOCKET_CLIENT.DELETE_TEAM, teamId);
+        }}
+      >
+        Delete
       </Button>
     );
 }

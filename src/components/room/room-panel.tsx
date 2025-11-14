@@ -23,7 +23,12 @@ import {
   ResizablePanelGroup,
 } from "../ui/resizable";
 import CreateTeamDialog from "./create-team-dialog";
-import { JoinTeamButton, LeaveTeamButton } from "./team-buttons";
+import {
+  DeleteTeamButton,
+  JoinTeamButton,
+  LeaveTeamButton,
+} from "./team-action-buttons";
+import RoomTeamDialog from "./room-team-dialog";
 
 type RoomPanelProps = {
   className?: string;
@@ -437,7 +442,19 @@ function ParticipantListRoomPanel({
               return (
                 <React.Fragment key={idx}>
                   <div className="flex flex-row gap-2 justify-center items-center">
-                    <div className="text-lg font-bold">{team.team.name} {teamSettings.maxTeamCapacity ? `(${Object.values(team.team.members).length}/${teamSettings.maxTeamCapacity})`: ""}</div>
+                    <RoomTeamDialog
+                      team={team}
+                    >
+                      <div className="text-lg hover:scale-105 hover:font-bold hover:underline">
+                        {team.team.name}{" "}
+                        {teamSettings.maxTeamCapacity
+                          ? `(${Object.values(team.team.members).length}/${
+                              teamSettings.maxTeamCapacity
+                            })`
+                          : ""}
+                      </div>
+                    </RoomTeamDialog>
+
                     {
                       // allow user to join if not on another team AND team capacity is satisfied
                       localUser &&
