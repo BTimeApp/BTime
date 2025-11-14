@@ -23,7 +23,12 @@ export default function RoomTeamDialog({
   children,
 }: RoomTeamDialogProps) {
   const { user: localUser } = useSession();
-  const [users, isUserHost] = useRoomStore((s) => [s.users, s.isUserHost]);
+  const [users, teams, teamSettings, isUserHost] = useRoomStore((s) => [
+    s.users,
+    s.teams,
+    s.teamSettings,
+    s.isUserHost,
+  ]);
 
   const isHost = useMemo(() => {
     return isUserHost(localUser?.userInfo.id);
@@ -45,18 +50,26 @@ export default function RoomTeamDialog({
             </div>
 
             <div className="flex flex-row">
-              {/* Regardless of whether user is in a team, ALWAYS show the join button, except if we're on the team. */}
               {localUser ? (
                 users[localUser.userInfo.id].currentTeam === team.team.id ? (
                   <LeaveTeamButton className="h-8" teamId={team.team.id} />
-                ) : (
+                ) : teamSettings.teamsEnabled &&
+                  teamSettings.maxTeamCapacity &&
+                  Object.values(teams[team.team.id].team.members).length <
+                    teamSettings.maxTeamCapacity ? (
+                  // we're ok with showing the join team button when user is on another team
                   <JoinTeamButton className="h-8" teamId={team.team.id} />
+                ) : (
+                  <></>
                 )
               ) : (
                 <></>
               )}
               {isHost && (
-                <DeleteTeamButton className="ml-auto h-8" teamId={team.team.id} />
+                <DeleteTeamButton
+                  className="ml-auto h-8"
+                  teamId={team.team.id}
+                />
               )}
             </div>
           </div>
