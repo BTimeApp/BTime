@@ -22,9 +22,8 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "../ui/resizable";
-import { useSocket } from "@/context/socket-context";
-import { SOCKET_CLIENT } from "@/types/socket_protocol";
 import CreateTeamDialog from "./create-team-dialog";
+import { JoinTeamButton, LeaveTeamButton } from "./team-buttons";
 
 type RoomPanelProps = {
   className?: string;
@@ -380,7 +379,9 @@ function InfoRoomPanel({ className }: InfoRoomPanelProps) {
   );
 }
 
-function ParticipantListRoomPanel({ className }: ParticipantListRoomPanelProps) {
+function ParticipantListRoomPanel({
+  className,
+}: ParticipantListRoomPanelProps) {
   const { user: localUser } = useSession();
   const [users, teams, roomState, roomWinners, teamSettings, isUserHost] =
     useRoomStore((s) => [
@@ -413,21 +414,48 @@ function ParticipantListRoomPanel({ className }: ParticipantListRoomPanelProps) 
           {/* Teams Enabled - users are either on a team or not on a team (allow backend to process this info) */}
           <div className="flex flex-col flex-1 align-center">
             <div className="flex flex-row justify-center items-center gap-2">
-              <h2 className="text-xl font-bold">Teams {teamSettings.maxNumTeams ? `(${Object.values(teams).length}/${teamSettings.maxNumTeams})` : ""}</h2>
-              {isUserHost(localUser?.userInfo.id) && (!teamSettings.maxNumTeams || Object.values(teams).length < teamSettings.maxNumTeams) && (
-                <CreateTeamDialog>
-                  <Button variant="primary" className="text-lg h-6">
-                    +
-                  </Button>
-                </CreateTeamDialog>
-              )}
+              <h2 className="text-xl font-bold">
+                Teams{" "}
+                {teamSettings.maxNumTeams
+                  ? `(${Object.values(teams).length}/${
+                      teamSettings.maxNumTeams
+                    })`
+                  : ""}
+              </h2>
+              {isUserHost(localUser?.userInfo.id) &&
+                (!teamSettings.maxNumTeams ||
+                  Object.values(teams).length < teamSettings.maxNumTeams) && (
+                  <CreateTeamDialog>
+                    <Button variant="primary" className="text-lg h-6">
+                      +
+                    </Button>
+                  </CreateTeamDialog>
+                )}
             </div>
 
             {Object.values(teams).map((team, idx) => {
               return (
                 <React.Fragment key={idx}>
-                  <div className="text-lg font-bold">
-                    {team.team.name}
+                  <div className="flex flex-row gap-2 justify-center items-center">
+                    <div className="text-lg font-bold">{team.team.name} {teamSettings.maxTeamCapacity ? `(${Object.values(team.team.members).length}/${teamSettings.maxTeamCapacity})`: ""}</div>
+                    {
+                      // allow user to join if not on another team AND team capacity is satisfied
+                      localUser &&
+                        !users[localUser.userInfo.id].currentTeam &&
+                        (!teamSettings.maxTeamCapacity ||
+                          Object.values(team.team.members).length <
+                            teamSettings.maxTeamCapacity) && (
+                          <JoinTeamButton teamId={team.team.id} />
+                        )
+                    }
+                    {
+                      // allow user to join if not on another team AND team capacity is satisfied
+                      localUser &&
+                        users[localUser.userInfo.id].currentTeam ===
+                          team.team.id && (
+                          <LeaveTeamButton teamId={team.team.id} />
+                        )
+                    }
                   </div>
                   {team.team.members.map((userId, uIdx) => {
                     return (
