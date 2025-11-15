@@ -2,10 +2,11 @@ import { Result } from "@/types/result";
 import { useEffect, useRef, useState } from "react";
 
 type UserLiveTimerProps = {
+  className?: string;
   startTime: number;
 };
 
-export default function UserLiveTimer({ startTime }: UserLiveTimerProps) {
+export default function UserLiveTimer({ className, startTime }: UserLiveTimerProps) {
   const [elapsed, setElapsed] = useState<number>(0);
   const startRef = useRef<number>(startTime ? startTime : performance.now());
   const animationRef = useRef<number>(0);
@@ -26,5 +27,5 @@ export default function UserLiveTimer({ startTime }: UserLiveTimerProps) {
     };
   }, []);
 
-  return <div>{Result.timeToString(Math.floor(elapsed / 10))}</div>;
+  return <div className={className}>{Result.timeToString(Math.floor(elapsed / 10))}</div>;
 }

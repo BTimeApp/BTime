@@ -74,12 +74,51 @@ function UserStatusSection({
   className?: string;
   userId: string;
 }) {
-  const [users] = useRoomStore((s) => [s.users]);
-  return (
-    <div className={className}>
-      <p>{users[userId].solveStatus}</p>
-    </div>
-  );
+  const [users, userLiveTimes, userLiveTimerStartTimes] = useRoomStore((s) => [
+    s.users,
+    s.userLiveTimes,
+    s.userLiveTimerStartTimes,
+  ]);
+  const user = useMemo(() => {
+    return users[userId];
+  }, [users, userId]);
+
+  if (!user) {
+    return <></>;
+  }
+
+  if (!user.competing) {
+    return <div className={className}>"SPECTATING"</div>;
+  } else {
+    if (user.solveStatus == "FINISHED" && user.currentResult) {
+      return (
+        <div className={className}>
+          {Result.fromIResult(user.currentResult).toString()}
+        </div>
+      );
+    } else if (
+      user.solveStatus === "SOLVING" &&
+      userLiveTimerStartTimes[user.user.id]
+    ) {
+      return (
+        <UserLiveTimer
+          className={className}
+          startTime={userLiveTimerStartTimes[user.user.id]!}
+        />
+      );
+    } else if (
+      user.solveStatus === "SUBMITTING" &&
+      userLiveTimes[user.user.id]
+    ) {
+      return (
+        <div className={cn("italic", className)}>
+          {Result.timeToString(Math.floor(userLiveTimes[user.user.id]! / 10))}
+        </div>
+      );
+    } else {
+      return <div className={className}>{user.solveStatus}</div>;
+    }
+  }
 }
 
 function UserCenterSection({
@@ -87,7 +126,7 @@ function UserCenterSection({
   userId,
   isLocalUser = false,
 }: {
-  className?: string,
+  className?: string;
   userId: string;
   isLocalUser: boolean;
 }) {
@@ -144,16 +183,12 @@ function UserCenterSection({
   );
 }
 
-function UserRoomPanel({
-  className,
-  side,
-  userId,
-}: UserRoomPanelProps) {
-  const {user: localUser} = useSession();
+function UserRoomPanel({ className, side, userId }: UserRoomPanelProps) {
+  const { user: localUser } = useSession();
   const [users] = useRoomStore((s) => [s.users]);
 
   const isLocalUser = useMemo(() => {
-    return localUser?.userInfo.id === userId
+    return localUser?.userInfo.id === userId;
   }, [userId, localUser]);
 
   return (
@@ -253,34 +288,6 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
       .sort(userSortKeyCallback);
   }, [users, userSortKeyCallback]);
 
-  function userStatusText(user: IRoomUser) {
-    if (!user.competing) {
-      return "SPECTATING";
-    } else {
-      if (user.solveStatus == "FINISHED" && user.currentResult) {
-        return Result.fromIResult(user.currentResult).toString();
-      } else if (
-        user.solveStatus === "SOLVING" &&
-        userLiveTimerStartTimes[user.user.id]
-      ) {
-        return (
-          <UserLiveTimer startTime={userLiveTimerStartTimes[user.user.id]!} />
-        );
-      } else if (
-        user.solveStatus === "SUBMITTING" &&
-        userLiveTimes[user.user.id]
-      ) {
-        return (
-          <p className="italic">
-            {Result.timeToString(Math.floor(userLiveTimes[user.user.id]! / 10))}
-          </p>
-        );
-      } else {
-        return user.solveStatus;
-      }
-    }
-  }
-
   return (
     <div
       className={cn(["flex flex-col text-center h-full w-full p-2", className])}
@@ -325,7 +332,10 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
                   </div>
                 </RoomUserDialog>
                 {roomState === "STARTED" && (
-                  <div className="col-span-3">{userStatusText(user)}</div>
+                  <UserStatusSection
+                    className="col-span-3"
+                    userId={user.user.id}
+                  />
                 )}
                 {raceSettings.roomFormat === "RACING" && (
                   <div className="col-span-2">{user.setWins}</div>
@@ -448,9 +458,7 @@ function ParticipantListRoomPanel({
               return (
                 <React.Fragment key={idx}>
                   <div className="flex flex-row gap-2 justify-center items-center">
-                    <RoomTeamDialog
-                      team={team}
-                    >
+                    <RoomTeamDialog team={team}>
                       <div className="text-lg hover:scale-105 hover:font-bold hover:underline">
                         {team.team.name}{" "}
                         {teamSettings.maxTeamCapacity
@@ -548,11 +556,7 @@ export default function RoomPanel({
       if (!userId) return null;
 
       return (
-        <UserRoomPanel
-          className={className}
-          userId={userId!}
-          side={side}
-        />
+        <UserRoomPanel className={className} userId={userId!} side={side} />
       );
     case "summary":
       return <SummaryRoomPanel className={className} />;
