@@ -35,17 +35,17 @@ type RoomPanelProps = {
   /**
    * Type of Room Panel we want to render.
    *   user - displays info about a user or the user's active panel for the room
+   *   team - displays info about a team or the team's active panel for the room
    *   summary - displays summary info about the room. use for when the room is STARTED
    *   info - displays high-level info about the room. use for when the room is WAITING or FINISHED
    *   participantlist - displays info about participants in the room (competitors, spectators)
    */
-  type?: "user" | "summary" | "info" | "participantlist";
+  type?: "user" | "team" | "summary" | "info" | "participantlist";
   /**
    * whether this panel belongs on the left or right (in a web display). On small screens, might be top and bottom.
    */
   side?: "left" | "right";
   userId?: string; //if this is a user panel, the userId corresponding to the user
-  isLocalUser?: boolean;
   inCarousel?: boolean; //if we are in a carousel
 };
 
@@ -59,7 +59,6 @@ type SubRoomPanelBaseProps = {
 
 type UserRoomPanelProps = SubRoomPanelBaseProps & {
   userId: string; //user associated with this panel
-  isLocalUser?: boolean;
 };
 
 type SummaryRoomPanelProps = SubRoomPanelBaseProps & {};
@@ -87,7 +86,11 @@ function UserCenterSection({
   className = "",
   userId,
   isLocalUser = false,
-}: UserRoomPanelProps) {
+}: {
+  className?: string,
+  userId: string;
+  isLocalUser: boolean;
+}) {
   const [users, solveStatus, solves, roomEvent, drawScramble] = useRoomStore(
     (s) => [s.users, s.localSolveStatus, s.solves, s.roomEvent, s.drawScramble]
   );
@@ -145,9 +148,13 @@ function UserRoomPanel({
   className,
   side,
   userId,
-  isLocalUser,
 }: UserRoomPanelProps) {
+  const {user: localUser} = useSession();
   const [users] = useRoomStore((s) => [s.users]);
+
+  const isLocalUser = useMemo(() => {
+    return localUser?.userInfo.id === userId
+  }, [userId, localUser]);
 
   return (
     <div
@@ -176,7 +183,6 @@ function UserRoomPanel({
       <div className="flex flex-col flex-1 min-h-0 justify-center">
         <UserCenterSection
           className={className}
-          side={side}
           userId={userId}
           isLocalUser={isLocalUser}
         />
@@ -536,7 +542,6 @@ export default function RoomPanel({
   type = "user",
   side,
   userId,
-  isLocalUser = false,
 }: RoomPanelProps) {
   switch (type) {
     case "user":
@@ -547,7 +552,6 @@ export default function RoomPanel({
           className={className}
           userId={userId!}
           side={side}
-          isLocalUser={isLocalUser}
         />
       );
     case "summary":

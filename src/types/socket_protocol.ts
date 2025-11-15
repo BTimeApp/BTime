@@ -198,6 +198,11 @@ export enum SOCKET_SERVER {
   SOLVE_RESET = "SOLVE_RESET",
 
   /**
+   * Broadcast a general update to the current solve
+   */
+  SOLVE_UPDATE = "SOLVE_UPDATE",
+
+  /**
    * Broadcast that a new solve is starting
    */
   NEW_SOLVE = "NEW_SOLVE",

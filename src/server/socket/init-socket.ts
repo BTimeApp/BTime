@@ -502,10 +502,20 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         socket.roomId = roomId;
         joinRoomCallback(true, room, extraData);
 
-        //broadcast update to all other users
+        // broadcast update to all other users
         io.to(roomId)
           .except(userId)
           .emit(SOCKET_SERVER.USER_JOINED, room.users[userId]);
+        // if room is started, need to update solves object
+        if (
+          room.state === "STARTED" &&
+          !room.settings.teamSettings.teamsEnabled &&
+          room.solves.length > 0
+        ) {
+          io.to(roomId)
+            .except(userId)
+            .emit(SOCKET_SERVER.SOLVE_UPDATE, room.solves.at(-1)!);
+        }
       }
     );
 
@@ -799,7 +809,8 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           return;
         } else if (
           room.settings.teamSettings.maxNumTeams &&
-          Object.keys(room.teams).length >= room.settings.teamSettings.maxNumTeams
+          Object.keys(room.teams).length >=
+            room.settings.teamSettings.maxNumTeams
         ) {
           createTeamCallback({
             success: false,
