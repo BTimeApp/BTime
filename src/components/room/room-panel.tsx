@@ -23,11 +23,7 @@ import {
   ResizablePanelGroup,
 } from "../ui/resizable";
 import CreateTeamDialog from "./create-team-dialog";
-import {
-  DeleteTeamButton,
-  JoinTeamButton,
-  LeaveTeamButton,
-} from "./team-action-buttons";
+import { JoinTeamButton, LeaveTeamButton } from "./team-action-buttons";
 import RoomTeamDialog from "./room-team-dialog";
 
 type RoomPanelProps = {
@@ -45,7 +41,8 @@ type RoomPanelProps = {
    * whether this panel belongs on the left or right (in a web display). On small screens, might be top and bottom.
    */
   side?: "left" | "right";
-  userId?: string; //if this is a user panel, the userId corresponding to the user
+  userId?: string; //if this is a user panel, userId map to the user
+  teamId?: string; //if this is a team panel, teamId map to the team
   inCarousel?: boolean; //if we are in a carousel
 };
 
@@ -59,6 +56,10 @@ type SubRoomPanelBaseProps = {
 
 type UserRoomPanelProps = SubRoomPanelBaseProps & {
   userId: string; //user associated with this panel
+};
+
+type TeamRoomPanelProps = SubRoomPanelBaseProps & {
+  teamId?: string; //team associated with this panel. This is optional because it's possible for local user to not have a team
 };
 
 type SummaryRoomPanelProps = SubRoomPanelBaseProps & {};
@@ -183,7 +184,7 @@ function UserCenterSection({
   );
 }
 
-function UserRoomPanel({ className, side, userId }: UserRoomPanelProps) {
+function UserRoomPanel({ className, userId }: UserRoomPanelProps) {
   const { user: localUser } = useSession();
   const [users] = useRoomStore((s) => [s.users]);
 
@@ -221,6 +222,56 @@ function UserRoomPanel({ className, side, userId }: UserRoomPanelProps) {
           userId={userId}
           isLocalUser={isLocalUser}
         />
+      </div>
+      <div className="flex flex-row justify-end"></div>
+    </div>
+  );
+}
+
+function TeamRoomPanel({ className, teamId }: TeamRoomPanelProps) {
+  const { user: localUser } = useSession();
+  const [users, teams, teamSettings] = useRoomStore((s) => [s.users, s.teams, s.teamSettings]);
+
+  // analogous to isLocalUser - is this team the one that belongs to the local user?
+  const isLocalTeam = useMemo(() => {
+    return localUser && users[localUser.userInfo.id]?.currentTeam === teamId;
+  }, [teamId, localUser]);
+
+  if (!teamSettings.teamsEnabled) {
+    return null;
+  }
+
+  return (
+    <div
+      className={cn(["flex flex-col text-center h-full w-full p-2", className])}
+    >
+      <div className="flex flex-row w-full shrink-0 relative">
+        <div className="grow">
+          <p className="text-2xl font-bold">{teamId ? teams[teamId].team.name : "Spectating"}</p>
+        </div>
+        {isLocalTeam && (
+          <div className="absolute top-0 right-0">
+            <UserRoomSettingsDialog>
+              <Button
+                size="icon"
+                className="self-end"
+                variant="icon"
+                onKeyDown={(e) => e.preventDefault()}
+              >
+                <Settings className="size-8" />
+              </Button>
+            </UserRoomSettingsDialog>
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-col flex-1 min-h-0 justify-center">
+        {/* <UserCenterSection
+          className={className}
+          userId={userId}
+          isLocalUser={isLocalUser}
+        /> */}
+        TODO - Team Center Section
       </div>
       <div className="flex flex-row justify-end"></div>
     </div>
@@ -550,6 +601,7 @@ export default function RoomPanel({
   type = "user",
   side,
   userId,
+  teamId,
 }: RoomPanelProps) {
   switch (type) {
     case "user":
@@ -557,6 +609,10 @@ export default function RoomPanel({
 
       return (
         <UserRoomPanel className={className} userId={userId!} side={side} />
+      );
+    case "team":
+      return (
+        <TeamRoomPanel className={className} teamId={teamId} side={side} />
       );
     case "summary":
       return <SummaryRoomPanel className={className} />;
