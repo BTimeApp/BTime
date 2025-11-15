@@ -488,6 +488,7 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         // join team
         updatedTeams[teamId].team.members.push(userId);
         updatedUsers[userId].currentTeam = teamId;
+        updatedUsers[userId].competing = true;
 
         return { users: updatedUsers, teams: updatedTeams };
       }),
@@ -503,6 +504,7 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         if (!updatedTeams[teamId] || !updatedUsers[userId]) return {};
 
         updatedUsers[userId].currentTeam = undefined;
+        updatedUsers[userId].competing = false;
 
         if (updatedTeams[teamId].currentMember === userId) {
           updatedTeams[userId].currentMember = undefined;
