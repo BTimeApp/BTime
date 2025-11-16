@@ -5,6 +5,7 @@ import {
   getFormatText,
   getVerboseFormatText,
   ROOM_EVENTS_INFO,
+  TeamFormatSettings,
 } from "@/types/room";
 import GlobalTimeList from "@/components/room/global-time-list";
 import {
@@ -196,21 +197,25 @@ function UserCenterSection({
           )}
         </div>
         <div className="flex-0 flex flex-col">
-          {drawScramble && solveStatus !== "FINISHED" && (currScramble ? (
-            // <scramble-display
-            //   className="w-full h-45"
-            //   scramble={currScramble}
-            //   event={ROOM_EVENT_JS_NAME_MAP.get(roomEvent) ?? null}
-            // />
-            <twisty-player
-              experimental-setup-alg={currScramble}
-              puzzle={ROOM_EVENTS_INFO[roomEvent].jsName ?? "3x3x3"}
-              visualization="2D"
-              control-panel="none"
-              className="w-full h-45"
-              background="none"
-            />
-          ): <div>missing scramble...</div>)}
+          {drawScramble &&
+            solveStatus !== "FINISHED" &&
+            (currScramble ? (
+              // <scramble-display
+              //   className="w-full h-45"
+              //   scramble={currScramble}
+              //   event={ROOM_EVENT_JS_NAME_MAP.get(roomEvent) ?? null}
+              // />
+              <twisty-player
+                experimental-setup-alg={currScramble}
+                puzzle={ROOM_EVENTS_INFO[roomEvent].jsName ?? "3x3x3"}
+                visualization="2D"
+                control-panel="none"
+                className="w-full h-45"
+                background="none"
+              />
+            ) : (
+              <div>missing scramble...</div>
+            ))}
         </div>
       </div>
     </div>
@@ -227,24 +232,24 @@ function TeamCenterSection({
   isLocalTeam: boolean;
 }) {
   const { user: localUser } = useSession();
-  const [users, teams, solveStatus, solves, roomEvent, drawScramble] =
-    useRoomStore((s) => [
-      s.users,
-      s.teams,
-      s.localSolveStatus,
-      s.solves,
-      s.roomEvent,
-      s.drawScramble,
-    ]);
+  const [users, teams, solves, teamSettings] = useRoomStore((s) => [
+    s.users,
+    s.teams,
+    s.solves,
+    s.teamSettings,
+  ]);
 
-  const teamUserIds = teamId
-    ? Object.values(teams[teamId].team.members).filter(
-        (roomUserId) => roomUserId != localUser?.userInfo.id
-      )
+  const allTeamUserIds = teamId
+    ? Object.values(teams[teamId].team.members)
     : [];
+  const teamUserIds = allTeamUserIds.filter(
+    (roomUserId) => roomUserId != localUser?.userInfo.id
+  );
   const currentSolve = solves.at(-1);
 
-  if (!teamId) {
+  if (!teamSettings.teamsEnabled) {
+    return <></>;
+  } else if (!teamId) {
     if (isLocalTeam) {
       //user is not on a team. show spectating message
       return (
@@ -263,41 +268,83 @@ function TeamCenterSection({
     return <></>;
   }
 
-  return (
-    <div className={cn("flex flex-row w-full h-full", className)}>
-      <div className="flex flex-col grow w-full">
-        {isLocalTeam && localUser && (
-          <>
-            <div className="text-lg font-bold">
-              {localUser.userInfo.userName}
-            </div>
-            <UserCenterSection
-              userId={localUser.userInfo.id}
-              isLocalUser={true}
-              className="h-fit"
-            />
-          </>
-        )}
-        <div className="text-lg font-bold">
-          {isLocalTeam ? "Your Teammates" : "Team Members"}
+  switch (teamSettings.teamFormatSettings.teamSolveFormat) {
+    case "ONE":
+      const currentTurnUser = teams[teamId].currentMember;
+
+      return (
+        <div className={cn("flex flex-row w-full h-full", className)}>
+          <div className="flex flex-col grow w-full">
+            {currentTurnUser && (
+              <>
+                <div className="text-lg font-bold">
+                  {users[currentTurnUser].user.userName ?? "BTime User"}
+                </div>
+                <UserCenterSection
+                  userId={currentTurnUser}
+                  isLocalUser={currentTurnUser === localUser?.userInfo.id}
+                  className="h-fit"
+                />
+              </>
+            )}
+            <div className="text-lg font-bold">Team Members</div>
+            {allTeamUserIds.map((teamUserId, idx) => {
+              return (
+                <div key={idx} className="grid grid-cols-4">
+                  <div className={cn("col-span-3", currentTurnUser === teamUserId && "font-bold")}>
+                    {users[teamUserId].user.userName}
+                  </div>
+                  <div>
+                    {currentSolve !== undefined && (
+                      <UserStatusSection userId={teamUserId} />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
-        {teamUserIds.map((teamUserId, idx) => {
-          return (
-            <div key={idx} className="grid grid-cols-4">
-              <div className="col-span-3">
-                {users[teamUserId].user.userName}
-              </div>
-              <div>
-                {currentSolve !== undefined && (
-                  <UserStatusSection userId={teamUserId} />
-                )}
-              </div>
+      );
+
+    case "ALL":
+      return (
+        <div className={cn("flex flex-row w-full h-full", className)}>
+          <div className="flex flex-col grow w-full">
+            {isLocalTeam && localUser && (
+              <>
+                <div className="text-lg font-bold">
+                  {localUser.userInfo.userName}
+                </div>
+                <UserCenterSection
+                  userId={localUser.userInfo.id}
+                  isLocalUser={true}
+                  className="h-fit"
+                />
+              </>
+            )}
+            <div className="text-lg font-bold">
+              {isLocalTeam ? "Your Teammates" : "Team Members"}
             </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+            {teamUserIds.map((teamUserId, idx) => {
+              return (
+                <div key={idx} className="grid grid-cols-4">
+                  <div className="col-span-3">
+                    {users[teamUserId].user.userName}
+                  </div>
+                  <div>
+                    {currentSolve !== undefined && (
+                      <UserStatusSection userId={teamUserId} />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    default:
+      return <></>;
+  }
 }
 
 function UserRoomPanel({ className, userId }: UserRoomPanelProps) {
@@ -489,7 +536,9 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
       <ResizablePanelGroup direction="vertical">
         <ResizablePanel defaultSize={50}>
           <div className="grid grid-cols-12">
-            <div className="col-span-5">{teamSettings.teamsEnabled ? "Team" : "User"}</div>
+            <div className="col-span-5">
+              {teamSettings.teamsEnabled ? "Team" : "User"}
+            </div>
             {roomState === "STARTED" && <div className="col-span-3">Time</div>}
             {raceSettings.roomFormat === "RACING" && (
               <div className="col-span-2">Sets</div>
@@ -513,55 +562,58 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
               )}
           </div>
           <div className="flex flex-col overflow-y-auto">
-            {sortedActiveParticipants.map((participant: IRoomParticipant, index) => (
-              <div key={index} className="grid grid-cols-12">
-                {teamSettings.teamsEnabled ? (
-                  <RoomTeamDialog team={(participant as IRoomTeam)}>
-                    <div className="col-span-5 hover:scale-105 hover:font-bold hover:underline">
-                      {(participant as IRoomTeam).team.name || "BTime Team"}
-                    </div>
-                  </RoomTeamDialog>
-                ) : (
-                  <RoomUserDialog
-                    user={(participant as IRoomUser)}
-                    hostView={isUserHost(localUser?.userInfo.id)}
-                  >
-                    <div className="col-span-5 hover:scale-105 hover:font-bold hover:underline">
-                      {(participant as IRoomUser).user.userName || "BTime User"}
-                    </div>
-                  </RoomUserDialog>
-                )}
-
-                {roomState === "STARTED" &&
-                  (teamSettings.teamsEnabled ? (
-                    <TeamStatusSection
-                      className="col-span-3"
-                      teamId={(participant as IRoomTeam).team.id}
-                    />
+            {sortedActiveParticipants.map(
+              (participant: IRoomParticipant, index) => (
+                <div key={index} className="grid grid-cols-12">
+                  {teamSettings.teamsEnabled ? (
+                    <RoomTeamDialog team={participant as IRoomTeam}>
+                      <div className="col-span-5 hover:scale-105 hover:font-bold hover:underline">
+                        {(participant as IRoomTeam).team.name || "BTime Team"}
+                      </div>
+                    </RoomTeamDialog>
                   ) : (
-                    <UserStatusSection
-                      className="col-span-3"
-                      userId={(participant as IRoomUser).user.id}
-                    />
-                  ))}
-                {raceSettings.roomFormat === "RACING" && (
-                  <div className="col-span-2">{participant.setWins}</div>
-                )}
-                {raceSettings.roomFormat === "RACING" &&
-                  (raceSettings.setFormat === "AVERAGE_OF" ||
-                    raceSettings.setFormat === "MEAN_OF" ||
-                    raceSettings.setFormat === "FASTEST_OF") && (
-                    <div className="col-span-2">
-                      {Result.timeToString(participant.points)}
-                    </div>
+                    <RoomUserDialog
+                      user={participant as IRoomUser}
+                      hostView={isUserHost(localUser?.userInfo.id)}
+                    >
+                      <div className="col-span-5 hover:scale-105 hover:font-bold hover:underline">
+                        {(participant as IRoomUser).user.userName ||
+                          "BTime User"}
+                      </div>
+                    </RoomUserDialog>
                   )}
-                {raceSettings.roomFormat === "RACING" &&
-                  (raceSettings.setFormat === "BEST_OF" ||
-                    raceSettings.setFormat === "FIRST_TO") && (
-                    <div className="col-span-2">{participant.points}</div>
+
+                  {roomState === "STARTED" &&
+                    (teamSettings.teamsEnabled ? (
+                      <TeamStatusSection
+                        className="col-span-3"
+                        teamId={(participant as IRoomTeam).team.id}
+                      />
+                    ) : (
+                      <UserStatusSection
+                        className="col-span-3"
+                        userId={(participant as IRoomUser).user.id}
+                      />
+                    ))}
+                  {raceSettings.roomFormat === "RACING" && (
+                    <div className="col-span-2">{participant.setWins}</div>
                   )}
-              </div>
-            ))}
+                  {raceSettings.roomFormat === "RACING" &&
+                    (raceSettings.setFormat === "AVERAGE_OF" ||
+                      raceSettings.setFormat === "MEAN_OF" ||
+                      raceSettings.setFormat === "FASTEST_OF") && (
+                      <div className="col-span-2">
+                        {Result.timeToString(participant.points)}
+                      </div>
+                    )}
+                  {raceSettings.roomFormat === "RACING" &&
+                    (raceSettings.setFormat === "BEST_OF" ||
+                      raceSettings.setFormat === "FIRST_TO") && (
+                      <div className="col-span-2">{participant.points}</div>
+                    )}
+                </div>
+              )
+            )}
           </div>
         </ResizablePanel>
         <ResizableHandle withHandle />
