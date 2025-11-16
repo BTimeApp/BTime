@@ -563,6 +563,7 @@ export function finishRoomSolve(room: IRoom) {
   currentSolve.finished = true;
 
   const results = currentSolve.solve.results;
+  const participants = room.settings.teamSettings.teamsEnabled ? room.teams : room.users;
 
   if (
     room.settings.raceSettings.roomFormat === "CASUAL" ||
@@ -589,8 +590,12 @@ export function finishRoomSolve(room: IRoom) {
     }
 
     currentSolve.solveWinners = solveWinners;
-    for (const uid of solveWinners) {
-      room.users[uid].points += 1;
+    for (const pid of solveWinners) {
+      if (room.settings.teamSettings.teamsEnabled)  {
+        participants[pid].points += 1;
+      } else {
+        participants[pid].points += 1;
+      }
     }
   } else if (
     room.settings.raceSettings.setFormat === "AVERAGE_OF" ||
@@ -608,21 +613,21 @@ export function finishRoomSolve(room: IRoom) {
       .filter((solve) => solve.setIndex === room.currentSet)
       .map((solve) => solve.solve.results);
 
-    for (const roomUser of Object.values(room.users)) {
+    for (const [pid, participant] of Object.entries(participants)) {
       //recalculate mean over recent set solves
       const userResults = setResults.map((resultMap) =>
-        Object.hasOwn(resultMap, roomUser.user.id)
-          ? resultMap[roomUser.user.id]
+        Object.hasOwn(resultMap, pid)
+          ? resultMap[pid]
           : new Result(0, "DNF").toIResult()
       );
 
       if (room.settings.raceSettings.setFormat === "AVERAGE_OF") {
-        room.users[roomUser.user.id].points = Result.iAverageOf(userResults);
+        participant.points = Result.iAverageOf(userResults);
       } else if (room.settings.raceSettings.setFormat === "MEAN_OF") {
-        room.users[roomUser.user.id].points = Result.iMeanOf(userResults);
+        participant.points = Result.iMeanOf(userResults);
       } else if (room.settings.raceSettings.setFormat === "FASTEST_OF") {
         // fastest of
-        room.users[roomUser.user.id].points = Result.iMinOf(userResults);
+        participant.points = Result.iMinOf(userResults);
       }
     }
   }
