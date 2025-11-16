@@ -665,7 +665,7 @@ export function createTeam(room: IRoom, teamName: string) {
 
 /**
  * Makes user join a team. Do all validation outside of this function
- * 
+ *
  * Possibly returns a string in SocketResponse if a new scramble was genned for this user
  */
 export async function userJoinTeam(
@@ -705,7 +705,13 @@ export async function userJoinTeam(
 
   let extraData = undefined;
   // 3.5. generate a scramble for the user (create an attempt) if they're joining in the middle of a solve AND (we are in ALL mode || we are in ONE mode and it's this user's turn)
-  if (room.state === "STARTED" && room.solves.length > 0) {
+  if (
+    room.state === "STARTED" &&
+    room.solves.length > 0 &&
+    room.settings.teamSettings.teamFormatSettings.teamSolveFormat === "ALL" &&
+    room.settings.teamSettings.teamFormatSettings.teamScrambleFormat ===
+      "DIFFERENT"
+  ) {
     const currentSolve = room.solves.at(-1)!;
     const newScramble = await generateScramble(room.settings.roomEvent);
     currentSolve.solve.scrambles.push(newScramble);
@@ -717,7 +723,7 @@ export async function userJoinTeam(
     extraData = newScramble;
   }
 
-  return { success: true, data: extraData};
+  return { success: true, data: extraData };
 }
 
 export function userLeaveTeam(
@@ -756,7 +762,12 @@ export function userLeaveTeam(
  */
 function getNumScramblesToGenerate(room: IRoom) {
   let numScrambles = 1;
-  if (room.settings.teamSettings.teamsEnabled) {
+  if (
+    room.settings.teamSettings.teamsEnabled &&
+    room.settings.teamSettings.teamFormatSettings.teamSolveFormat === "ALL" &&
+    room.settings.teamSettings.teamFormatSettings.teamScrambleFormat ===
+      "DIFFERENT"
+  ) {
     numScrambles =
       room.settings.teamSettings.maxTeamCapacity ??
       Math.max(
@@ -837,13 +848,12 @@ export async function resetSolve(room: IRoom) {
         teamSettings.teamFormatSettings.teamSolveFormat === "ALL" &&
         teamSettings.teamFormatSettings.teamScrambleFormat === "DIFFERENT"
           ? currentSolve.solve.scrambles[
-              room.teams[roomUser.currentTeam!].team.members.indexOf(
-                roomUser.user.id
-              ) != -1
-                ? room.teams[roomUser.currentTeam!].team.members.indexOf(
-                    roomUser.user.id
-                  )
-                : 0
+              Math.max(
+                room.teams[roomUser.currentTeam!].team.members.indexOf(
+                  roomUser.user.id
+                ),
+                0
+              )
             ]
           : currentSolve.solve.scrambles[0]!,
       finished: false,
