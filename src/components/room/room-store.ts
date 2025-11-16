@@ -115,7 +115,7 @@ export type RoomStore = {
 
   deleteTeam: (teamId: string) => void;
 
-  userJoinTeam: (userId: string, teamId: string) => void;
+  userJoinTeam: (userId: string, teamId: string, newScramble?: string) => void;
 
   userLeaveTeam: (userId: string, teamId: string) => void;
 
@@ -485,7 +485,7 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         return { teams: updatedTeams };
       }),
 
-    userJoinTeam: (userId: string, teamId: string) =>
+    userJoinTeam: (userId: string, teamId: string, newScramble?: string) =>
       set((state) => {
         if (!state.teamSettings.teamsEnabled) {
           return {};
@@ -514,7 +514,22 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         updatedUsers[userId].currentTeam = teamId;
         updatedUsers[userId].competing = true;
 
-        return { users: updatedUsers, teams: updatedTeams };
+        // if new scramble exists, add it
+        const updatedSolves = [...state.solves];
+        if (updatedSolves.length > 0 && newScramble) {
+          const latestSolve = updatedSolves.at(-1)!;
+          latestSolve.solve.scrambles.push(newScramble);
+          latestSolve.solve.attempts[userId] = {
+            scramble: newScramble,
+            finished: false,
+          };
+        }
+
+        return {
+          users: updatedUsers,
+          teams: updatedTeams,
+          ...(newScramble ? { solves: updatedSolves } : {}),
+        };
       }),
 
     userLeaveTeam: (userId: string, teamId: string) =>

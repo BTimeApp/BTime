@@ -563,7 +563,9 @@ export function finishRoomSolve(room: IRoom) {
   currentSolve.finished = true;
 
   const results = currentSolve.solve.results;
-  const participants = room.settings.teamSettings.teamsEnabled ? room.teams : room.users;
+  const participants = room.settings.teamSettings.teamsEnabled
+    ? room.teams
+    : room.users;
 
   if (
     room.settings.raceSettings.roomFormat === "CASUAL" ||
@@ -591,7 +593,7 @@ export function finishRoomSolve(room: IRoom) {
 
     currentSolve.solveWinners = solveWinners;
     for (const pid of solveWinners) {
-      if (room.settings.teamSettings.teamsEnabled)  {
+      if (room.settings.teamSettings.teamsEnabled) {
         participants[pid].points += 1;
       } else {
         participants[pid].points += 1;
@@ -663,12 +665,14 @@ export function createTeam(room: IRoom, teamName: string) {
 
 /**
  * Makes user join a team. Do all validation outside of this function
+ * 
+ * Possibly returns a string in SocketResponse if a new scramble was genned for this user
  */
-export function userJoinTeam(
+export async function userJoinTeam(
   room: IRoom,
   userId: string,
   teamId: string
-): SocketResponse<undefined> {
+): Promise<SocketResponse<undefined | string>> {
   if (!room.settings.teamSettings.teamsEnabled) {
     return { success: false, reason: "Teams not enabled" };
   }
@@ -683,7 +687,10 @@ export function userJoinTeam(
     room.settings.teamSettings.maxTeamCapacity &&
     team.team.members.length >= room.settings.teamSettings.maxTeamCapacity
   ) {
-    return { success: false, reason: `Team full (${team.team.members.length}/${room.settings.teamSettings.maxTeamCapacity})` };
+    return {
+      success: false,
+      reason: `Team full (${team.team.members.length}/${room.settings.teamSettings.maxTeamCapacity})`,
+    };
   }
 
   // 2. check if user is on another team. If so, make them leave that team
@@ -695,7 +702,22 @@ export function userJoinTeam(
   team.team.members.push(userId);
   room.users[userId].currentTeam = teamId;
   room.users[userId].competing = true; //in teams mode, competing = on team or not
-  return { success: true, data: undefined };
+
+  let extraData = undefined;
+  // 3.5. generate a scramble for the user (create an attempt) if they're joining in the middle of a solve AND (we are in ALL mode || we are in ONE mode and it's this user's turn)
+  if (room.state === "STARTED" && room.solves.length > 0) {
+    const currentSolve = room.solves.at(-1)!;
+    const newScramble = await generateScramble(room.settings.roomEvent);
+    currentSolve.solve.scrambles.push(newScramble);
+    currentSolve.solve.attempts[userId] = {
+      scramble: newScramble,
+      finished: false,
+    } as IAttempt;
+
+    extraData = newScramble;
+  }
+
+  return { success: true, data: extraData};
 }
 
 export function userLeaveTeam(
@@ -752,12 +774,9 @@ export async function newRoomSolve(room: IRoom) {
   //get current solve Id. Consider storing a currentSolveId field in the room to not need to do this
   const currSolveId = getCurrentSolveId(room);
 
-  const newScrambles: string[] = await generateScrambles(
-    room.settings.roomEvent
-  );
   const newSolve: ISolve = {
     id: currSolveId + 1,
-    scrambles: newScrambles,
+    scrambles: [],
     attempts: {},
     results: {},
   };

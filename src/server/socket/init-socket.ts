@@ -127,7 +127,9 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
   async function handleSolveFinished(room: IRoom) {
     finishRoomSolve(room);
     const currentSolve = room.solves.at(-1)!;
-    const participants = room.settings.teamSettings.teamsEnabled ? room.teams : room.users;
+    const participants = room.settings.teamSettings.teamsEnabled
+      ? room.teams
+      : room.users;
 
     // only check set and match wins if not a casual room
     if (room.settings.raceSettings.roomFormat !== "CASUAL") {
@@ -172,7 +174,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           io.to(room.id).emit(
             SOCKET_SERVER.SOLVE_FINISHED_EVENT,
             currentSolve,
-            participants,
+            participants
           );
 
           //publish set finished event with winners
@@ -860,15 +862,15 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         const room = await getSocketRoom();
         if (!room || !user || !room.settings.teamSettings.teamsEnabled) return;
 
-        const response: SocketResponse<undefined> = userJoinTeam(
+        const response: SocketResponse<undefined | string> = await userJoinTeam(
           room,
           user.userInfo.id,
           teamId
         );
         stores.rooms.setRoom(room);
-        io.to(room.id).emit(SOCKET_SERVER.USER_JOIN_TEAM, userId, teamId);
+        io.to(room.id).emit(SOCKET_SERVER.USER_JOIN_TEAM, userId, teamId, response.data);
 
-        joinTeamCallback(response);
+        joinTeamCallback({ ...response, data: undefined });
       }
     );
 

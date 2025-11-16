@@ -480,9 +480,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
 
   const sortedActiveParticipants = useMemo(() => {
     return Object.values(activeParticipants).sort(participantSortKeyCallback);
-  }, [users, participantSortKeyCallback]);
-
-  console.log(sortedActiveParticipants);
+  }, [activeParticipants, participantSortKeyCallback]);
 
   return (
     <div
