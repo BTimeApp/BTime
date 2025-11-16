@@ -11,7 +11,7 @@ import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { useSocketEvent } from "@/hooks/use-socket-event";
 import { IRoomSolve } from "@/types/room-solve";
-import { IRoomUser } from "@/types/room-participant";
+import { IRoomParticipant, IRoomTeam, IRoomUser } from "@/types/room-participant";
 import { useSession } from "@/context/session-context";
 import { useIsTouchscreen } from "@/hooks/useMobile";
 
@@ -203,7 +203,7 @@ export default function RoomEventHandler() {
   );
 
   const handleSolveFinished = useCallback(
-    (finalSolve: IRoomSolve, users: Record<string, IRoomUser>) => {
+    (finalSolve: IRoomSolve, participants: Record<string, IRoomParticipant>) => {
       //reset local states
       resetLocalSolveStatus();
       setLocalPenalty("OK");
@@ -211,7 +211,7 @@ export default function RoomEventHandler() {
       clearUserLiveTimes();
 
       //final update on the current solve
-      finishSolve(finalSolve, users);
+      finishSolve(finalSolve, participants);
     },
     [
       resetLocalSolveStatus,

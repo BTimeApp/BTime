@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsc && (NODE_ENV=development concurrently \"tsc --watch -p tsconfig.json\" \"tsc-alias -w\" \"nodemon dist/src/server/run-server.js\")",
-    "dev-static": "rm -r ./dist/* && tsc -p tsconfig.json && tsc-alias && NODE_ENV=development node dist/src/server/run-server.js",
+    "dev-static": "rm -r dist && tsc -p tsconfig.json && tsc-alias && NODE_ENV=development node dist/src/server/run-server.js",
     "lint": "next lint",
     "lint:fix": "eslint . --fix",
     "build": "next build && tsc && tsc-alias",

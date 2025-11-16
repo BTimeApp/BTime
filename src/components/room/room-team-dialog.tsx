@@ -44,8 +44,8 @@ export default function RoomTeamDialog({
           <div className="flex-2 flex flex-col gap-4">
             <div>
               <div className="font-bold">Members:</div>
-              {Object.values(team.team.members).map((member) => (
-                <div>{users[member]?.user.userName ?? ""}</div>
+              {Object.values(team.team.members).map((member, idx) => (
+                <div key={idx}>{users[member]?.user.userName ?? ""}</div>
               ))}
             </div>
 

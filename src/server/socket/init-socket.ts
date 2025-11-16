@@ -127,6 +127,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
   async function handleSolveFinished(room: IRoom) {
     finishRoomSolve(room);
     const currentSolve = room.solves.at(-1)!;
+    const participants = room.settings.teamSettings.teamsEnabled ? room.teams : room.users;
 
     // only check set and match wins if not a casual room
     if (room.settings.raceSettings.roomFormat !== "CASUAL") {
@@ -138,11 +139,11 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         currentSolve.setWinners = setWinners;
 
         // update set wins for set winners
-        setWinners.map((uid) => (room.users[uid].setWins += 1));
+        setWinners.map((pid) => (participants[pid].setWins += 1));
 
         // reset all users' points
-        Object.values(room.users).map((roomUser) => {
-          roomUser.points = 0;
+        Object.values(participants).map((participant) => {
+          participant.points = 0;
         });
 
         // check match finished. right now a match can only be finished if the set is finished.
@@ -158,7 +159,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           io.to(room.id).emit(
             SOCKET_SERVER.SOLVE_FINISHED_EVENT,
             currentSolve,
-            room.users
+            participants
           );
 
           //publish set finished event with winners
@@ -171,7 +172,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           io.to(room.id).emit(
             SOCKET_SERVER.SOLVE_FINISHED_EVENT,
             currentSolve,
-            room.users
+            participants,
           );
 
           //publish set finished event with winners
@@ -181,14 +182,13 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           room.currentSolve = 0;
           room.currentSet += 1;
 
-          //TODO emit new set event
           io.to(room.id).emit(SOCKET_SERVER.NEW_SET);
         }
       } else {
         io.to(room.id).emit(
           SOCKET_SERVER.SOLVE_FINISHED_EVENT,
           currentSolve,
-          room.users
+          participants
         );
       }
     } else {
@@ -196,7 +196,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       io.to(room.id).emit(
         SOCKET_SERVER.SOLVE_FINISHED_EVENT,
         currentSolve,
-        room.users
+        participants
       );
     }
 

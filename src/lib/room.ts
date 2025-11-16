@@ -857,6 +857,14 @@ export function resetRoom(room: IRoom) {
     roomUser.solveStatus = "IDLE";
     roomUser.currentResult = undefined;
   }
+
+  for (const roomTeam of Object.values(room.teams)) {
+    roomTeam.points = 0;
+    roomTeam.setWins = 0;
+    roomTeam.solveStatus = "IDLE";
+    roomTeam.currentResult = undefined;
+    roomTeam.currentMember = undefined;
+  }
 }
 
 /**

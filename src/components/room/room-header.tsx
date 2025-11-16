@@ -1,4 +1,4 @@
-import { abbreviate, cn } from "@/lib/utils";
+import { abbreviate, cn, displayText } from "@/lib/utils";
 import { ROOM_EVENTS_INFO } from "@/types/room";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/common/header";
@@ -9,6 +9,7 @@ import { useSession } from "@/context/session-context";
 import { Settings } from "lucide-react";
 import RoomSettingsDialog from "@/components/room/room-settings-dialog";
 import { SOCKET_CLIENT } from "@/types/socket_protocol";
+import CreateTeamDialog from "./create-team-dialog";
 
 export function RoomHeader() {
   const [
@@ -19,6 +20,7 @@ export function RoomHeader() {
     currentSet,
     currentSolve,
     users,
+    teams,
     raceSettings,
     teamSettings,
     isUserHost,
@@ -30,6 +32,7 @@ export function RoomHeader() {
     s.currentSet,
     s.currentSolve,
     s.users,
+    s.teams,
     s.raceSettings,
     s.teamSettings,
     s.isUserHost,
@@ -163,12 +166,16 @@ export function RoomHeader() {
                     ? " | " +
                       abbreviate(raceSettings.matchFormat) +
                       raceSettings.nSets.toString() +
-                      " sets | "
+                      " sets"
                     : ""}
                   {raceSettings.roomFormat !== "CASUAL"
-                    ? abbreviate(raceSettings.setFormat) +
+                    ? " | " + abbreviate(raceSettings.setFormat) +
                       raceSettings.nSolves.toString() +
                       " solves"
+                    : ""}
+                  {teamSettings.teamsEnabled && teamSettings.teamFormatSettings.teamSolveFormat === "ALL"
+                    ? " | " + teamSettings.teamFormatSettings.teamReduceFunction.toLowerCase() +
+                      " of team"
                     : ""}
                 </h4>
                 {raceSettings.roomFormat === "RACING" && (
@@ -196,7 +203,16 @@ export function RoomHeader() {
 
                 <div className="flex-1 flex flex-col justify-end">
                   {teamSettings.teamsEnabled ? (
-                    <></>
+                    isUserHost(user.userInfo.id) &&
+                    (!teamSettings.maxNumTeams ||
+                      Object.values(teams).length <
+                        teamSettings.maxNumTeams) && (
+                      <CreateTeamDialog>
+                        <Button variant="outline" className="text-md">
+                          Add Team(s)
+                        </Button>
+                      </CreateTeamDialog>
+                    )
                   ) : (
                     <Button
                       className="mt-auto"

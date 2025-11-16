@@ -64,7 +64,7 @@ export function DeleteTeamButton({ teamId, className }: DeleteTeamButtonProps) {
         socket.emit(SOCKET_CLIENT.DELETE_TEAM, teamId);
       }}
     >
-      Delete
+      Delete Team
     </Button>
   );
 }

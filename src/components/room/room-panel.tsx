@@ -7,7 +7,11 @@ import {
   ROOM_EVENTS_INFO,
 } from "@/types/room";
 import GlobalTimeList from "@/components/room/global-time-list";
-import { IRoomUser } from "@/types/room-participant";
+import {
+  IRoomParticipant,
+  IRoomTeam,
+  IRoomUser,
+} from "@/types/room-participant";
 import { Result } from "@/types/result";
 import { Button } from "@/components/ui/button";
 import { Settings } from "lucide-react";
@@ -122,6 +126,34 @@ function UserStatusSection({
   }
 }
 
+function TeamStatusSection({
+  className,
+  teamId,
+}: {
+  className?: string;
+  teamId: string;
+}) {
+  const [teams] = useRoomStore((s) => [s.teams]);
+  const team = useMemo(() => {
+    return teams[teamId];
+  }, [teams, teamId]);
+
+  if (!team) {
+    return <></>;
+  }
+  //TODO - augment this by showing the "so far" result for the team
+
+  if (team.solveStatus == "FINISHED" && team.currentResult) {
+    return (
+      <div className={className}>
+        {Result.fromIResult(team.currentResult).toString()}
+      </div>
+    );
+  } else {
+    return <div className={className}>{team.solveStatus}</div>;
+  }
+}
+
 function UserCenterSection({
   className = "",
   userId,
@@ -164,7 +196,7 @@ function UserCenterSection({
           )}
         </div>
         <div className="flex-0 flex flex-col">
-          {drawScramble && solveStatus !== "FINISHED" && (
+          {drawScramble && solveStatus !== "FINISHED" && (currScramble ? (
             // <scramble-display
             //   className="w-full h-45"
             //   scramble={currScramble}
@@ -178,7 +210,7 @@ function UserCenterSection({
               className="w-full h-45"
               background="none"
             />
-          )}
+          ): <div>missing scramble...</div>)}
         </div>
       </div>
     </div>
@@ -205,7 +237,6 @@ function TeamCenterSection({
       s.drawScramble,
     ]);
 
-  const localRoomUser = localUser ? users[localUser.userInfo.id] : undefined;
   const teamUserIds = teamId
     ? Object.values(teams[teamId].team.members).filter(
         (roomUserId) => roomUserId != localUser?.userInfo.id
@@ -391,28 +422,28 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
 
   const [
     users,
+    teams,
     solves,
     roomName,
     roomEvent,
     roomState,
-    userLiveTimerStartTimes,
-    userLiveTimes,
     raceSettings,
+    teamSettings,
     isUserHost,
   ] = useRoomStore((s) => [
     s.users,
+    s.teams,
     s.solves,
     s.roomName,
     s.roomEvent,
     s.roomState,
-    s.userLiveTimerStartTimes,
-    s.userLiveTimes,
     s.raceSettings,
+    s.teamSettings,
     s.isUserHost,
   ]);
 
-  const userSortKeyCallback = useCallback(
-    (u1: IRoomUser, u2: IRoomUser) => {
+  const participantSortKeyCallback = useCallback(
+    (u1: IRoomParticipant, u2: IRoomParticipant) => {
       if (raceSettings.roomFormat === "CASUAL") {
         return u2.points - u1.points;
       }
@@ -441,11 +472,17 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
     [raceSettings]
   );
 
-  const sortedActiveUsers = useMemo(() => {
-    return Object.values(users)
-      .filter((roomUser) => roomUser.active)
-      .sort(userSortKeyCallback);
-  }, [users, userSortKeyCallback]);
+  const activeParticipants = teamSettings.teamsEnabled
+    ? teams
+    : (Object.fromEntries(
+        Object.entries(users).filter(([_uid, user]) => user.active)
+      ) as Record<string, IRoomUser>);
+
+  const sortedActiveParticipants = useMemo(() => {
+    return Object.values(activeParticipants).sort(participantSortKeyCallback);
+  }, [users, participantSortKeyCallback]);
+
+  console.log(sortedActiveParticipants);
 
   return (
     <div
@@ -454,7 +491,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
       <ResizablePanelGroup direction="vertical">
         <ResizablePanel defaultSize={50}>
           <div className="grid grid-cols-12">
-            <div className="col-span-5">User</div>
+            <div className="col-span-5">{teamSettings.teamsEnabled ? "Team" : "User"}</div>
             {roomState === "STARTED" && <div className="col-span-3">Time</div>}
             {raceSettings.roomFormat === "RACING" && (
               <div className="col-span-2">Sets</div>
@@ -478,39 +515,52 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
               )}
           </div>
           <div className="flex flex-col overflow-y-auto">
-            {sortedActiveUsers.map((user, index) => (
+            {sortedActiveParticipants.map((participant: IRoomParticipant, index) => (
               <div key={index} className="grid grid-cols-12">
-                <RoomUserDialog
-                  user={user}
-                  hostView={isUserHost(localUser?.userInfo.id)}
-                >
-                  <div className="col-span-5 hover:scale-105 hover:font-bold hover:underline">
-                    {user.user.userName.length > 0
-                      ? user.user.userName
-                      : "BTime User"}
-                  </div>
-                </RoomUserDialog>
-                {roomState === "STARTED" && (
-                  <UserStatusSection
-                    className="col-span-3"
-                    userId={user.user.id}
-                  />
+                {teamSettings.teamsEnabled ? (
+                  <RoomTeamDialog team={(participant as IRoomTeam)}>
+                    <div className="col-span-5 hover:scale-105 hover:font-bold hover:underline">
+                      {(participant as IRoomTeam).team.name || "BTime Team"}
+                    </div>
+                  </RoomTeamDialog>
+                ) : (
+                  <RoomUserDialog
+                    user={(participant as IRoomUser)}
+                    hostView={isUserHost(localUser?.userInfo.id)}
+                  >
+                    <div className="col-span-5 hover:scale-105 hover:font-bold hover:underline">
+                      {(participant as IRoomUser).user.userName || "BTime User"}
+                    </div>
+                  </RoomUserDialog>
                 )}
+
+                {roomState === "STARTED" &&
+                  (teamSettings.teamsEnabled ? (
+                    <TeamStatusSection
+                      className="col-span-3"
+                      teamId={(participant as IRoomTeam).team.id}
+                    />
+                  ) : (
+                    <UserStatusSection
+                      className="col-span-3"
+                      userId={(participant as IRoomUser).user.id}
+                    />
+                  ))}
                 {raceSettings.roomFormat === "RACING" && (
-                  <div className="col-span-2">{user.setWins}</div>
+                  <div className="col-span-2">{participant.setWins}</div>
                 )}
                 {raceSettings.roomFormat === "RACING" &&
                   (raceSettings.setFormat === "AVERAGE_OF" ||
                     raceSettings.setFormat === "MEAN_OF" ||
                     raceSettings.setFormat === "FASTEST_OF") && (
                     <div className="col-span-2">
-                      {Result.timeToString(user.points)}
+                      {Result.timeToString(participant.points)}
                     </div>
                   )}
                 {raceSettings.roomFormat === "RACING" &&
                   (raceSettings.setFormat === "BEST_OF" ||
                     raceSettings.setFormat === "FIRST_TO") && (
-                    <div className="col-span-2">{user.points}</div>
+                    <div className="col-span-2">{participant.points}</div>
                   )}
               </div>
             ))}

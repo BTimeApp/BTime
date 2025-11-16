@@ -6,7 +6,11 @@ import {
   TeamSettings,
 } from "@/types/room";
 import { IRoomSolve } from "@/types/room-solve";
-import { IRoomTeam, IRoomUser } from "@/types/room-participant";
+import {
+  IRoomParticipant,
+  IRoomTeam,
+  IRoomUser,
+} from "@/types/room-participant";
 import { RoomState } from "@/types/room";
 import { StoreApi, createStore } from "zustand";
 import { timerAllowsInspection, TimerType } from "@/types/timer-type";
@@ -86,7 +90,10 @@ export type RoomStore = {
 
   addNewSet: () => void;
 
-  finishSolve: (solve: IRoomSolve, users: Record<string, IRoomUser>) => void;
+  finishSolve: (
+    solve: IRoomSolve,
+    participants: Record<string, IRoomParticipant>
+  ) => void;
 
   finishSet: (setWinners: string[]) => void;
 
@@ -339,37 +346,54 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         currentSolve: 0,
       })),
 
-    finishSolve: (solve: IRoomSolve, users: Record<string, IRoomUser>) =>
+    finishSolve: (
+      solve: IRoomSolve,
+      participants: Record<string, IRoomParticipant>
+    ) =>
       set((state) => {
         const updated = [...state.solves];
         updated[updated.length - 1] = solve;
 
         //update points for ALL users - nec. for Ao, Mo modes
-        const updatedUsers = { ...get().users };
-        for (const roomUser of Object.values(users)) {
-          updatedUsers[roomUser.user.id].points = roomUser.points;
+        const updatedParticipants = state.teamSettings.teamsEnabled
+          ? { ...get().teams }
+          : { ...get().users };
+        for (const [pid, participant] of Object.entries(participants)) {
+          updatedParticipants[pid].points = participant.points;
         }
 
-        return { solves: updated };
+        return {
+          solves: updated,
+          ...(state.teamSettings.teamsEnabled
+            ? { teams: updatedParticipants as Record<string, IRoomTeam> }
+            : { users: updatedParticipants as Record<string, IRoomUser> }),
+        };
       }),
 
     finishSet: (setWinners: string[]) =>
       set((state) => {
         //update set wins for set winners by 1
-        const updatedUsers: Record<string, IRoomUser> = { ...state.users };
-        const allUserIds = Object.keys(state.users);
-        for (const userId of allUserIds) {
-          const user = updatedUsers[userId]!;
-          updatedUsers[userId] = { ...user, points: 0 };
+
+        const teamsEnabled = get().teamSettings.teamsEnabled;
+        const updatedParticipants = teamsEnabled
+          ? { ...state.teams }
+          : { ...state.users };
+        const participantIds = Object.keys(updatedParticipants);
+
+        for (const pid of participantIds) {
+          // const participant = updatedParticipants[pid]!;
+          updatedParticipants[pid].points = 0;
         }
-        for (const userId of setWinners) {
-          const user = updatedUsers[userId]!;
-          updatedUsers[userId] = { ...user, setWins: user.setWins + 1 };
+        for (const pid of setWinners) {
+          // const participant = updatedParticipants[pid]!;
+          updatedParticipants[pid].setWins += 1;
         }
 
-        return {
-          users: updatedUsers,
-        };
+        if (teamsEnabled) {
+          return { teams: updatedParticipants as Record<string, IRoomTeam> };
+        } else {
+          return { users: updatedParticipants as Record<string, IRoomUser> };
+        }
       }),
 
     finishMatch: (matchWinners: string[]) =>
@@ -529,11 +553,20 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
     resetRoom: () =>
       set((state) => {
         const updatedUsers = { ...state.users };
+        const updatedTeams = { ...state.teams };
+
         for (const roomUser of Object.values(updatedUsers)) {
           roomUser.points = 0;
           roomUser.setWins = 0;
           roomUser.solveStatus = "IDLE";
           roomUser.currentResult = undefined;
+        }
+        for (const roomTeam of Object.values(updatedTeams)) {
+          roomTeam.points = 0;
+          roomTeam.setWins = 0;
+          roomTeam.solveStatus = "IDLE";
+          roomTeam.currentResult = undefined;
+          roomTeam.currentMember = undefined;
         }
 
         return {
@@ -543,6 +576,7 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
           currentSolve: 0,
           winners: state.raceSettings.roomFormat == "RACING" ? [] : undefined,
           users: updatedUsers,
+          teams: updatedTeams,
         };
       }),
 
