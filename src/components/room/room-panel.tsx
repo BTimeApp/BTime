@@ -89,7 +89,7 @@ function UserStatusSection({
   }
 
   if (!user.competing) {
-    return <div className={className}>"SPECTATING"</div>;
+    return <div className={className}>SPECTATING</div>;
   } else {
     if (user.solveStatus == "FINISHED" && user.currentResult) {
       return (
@@ -140,6 +140,7 @@ function UserCenterSection({
   }
 
   const currScramble = solves.at(-1)?.solve.attempts[userId]?.scramble ?? "";
+
   return (
     <div className={cn("flex flex-row w-full h-full", className)}>
       <div className="flex flex-col grow w-full">
@@ -184,6 +185,90 @@ function UserCenterSection({
   );
 }
 
+function TeamCenterSection({
+  className = "",
+  teamId,
+  isLocalTeam = false,
+}: {
+  className?: string;
+  teamId?: string;
+  isLocalTeam: boolean;
+}) {
+  const { user: localUser } = useSession();
+  const [users, teams, solveStatus, solves, roomEvent, drawScramble] =
+    useRoomStore((s) => [
+      s.users,
+      s.teams,
+      s.localSolveStatus,
+      s.solves,
+      s.roomEvent,
+      s.drawScramble,
+    ]);
+
+  const localRoomUser = localUser ? users[localUser.userInfo.id] : undefined;
+  const teamUserIds = teamId
+    ? Object.values(teams[teamId].team.members).filter(
+        (roomUserId) => roomUserId != localUser?.userInfo.id
+      )
+    : [];
+  const currentSolve = solves.at(-1);
+
+  if (!teamId) {
+    if (isLocalTeam) {
+      //user is not on a team. show spectating message
+      return (
+        <div className={cn("flex flex-row w-full h-full", className)}>
+          <div className="flex flex-col grow w-full">
+            <div>You are spectating. Join a team to see team view.</div>
+          </div>
+        </div>
+      );
+    }
+
+    // team doesn't exist. return nothing
+    return <></>;
+  } else if (!teams[teamId]) {
+    // team doesn't exist
+    return <></>;
+  }
+
+  return (
+    <div className={cn("flex flex-row w-full h-full", className)}>
+      <div className="flex flex-col grow w-full">
+        {isLocalTeam && localUser && (
+          <>
+            <div className="text-lg font-bold">
+              {localUser.userInfo.userName}
+            </div>
+            <UserCenterSection
+              userId={localUser.userInfo.id}
+              isLocalUser={true}
+              className="h-fit"
+            />
+          </>
+        )}
+        <div className="text-lg font-bold">
+          {isLocalTeam ? "Your Teammates" : "Team Members"}
+        </div>
+        {teamUserIds.map((teamUserId, idx) => {
+          return (
+            <div key={idx} className="grid grid-cols-4">
+              <div className="col-span-3">
+                {users[teamUserId].user.userName}
+              </div>
+              <div>
+                {currentSolve !== undefined && (
+                  <UserStatusSection userId={teamUserId} />
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function UserRoomPanel({ className, userId }: UserRoomPanelProps) {
   const { user: localUser } = useSession();
   const [users] = useRoomStore((s) => [s.users]);
@@ -194,7 +279,10 @@ function UserRoomPanel({ className, userId }: UserRoomPanelProps) {
 
   return (
     <div
-      className={cn(["flex flex-col text-center h-full w-full p-2", className])}
+      className={cn([
+        "flex flex-col text-center h-full w-full p-2 gap-2",
+        className,
+      ])}
     >
       <div className="flex flex-row w-full shrink-0 relative">
         <div className="grow">
@@ -230,11 +318,18 @@ function UserRoomPanel({ className, userId }: UserRoomPanelProps) {
 
 function TeamRoomPanel({ className, teamId }: TeamRoomPanelProps) {
   const { user: localUser } = useSession();
-  const [users, teams, teamSettings] = useRoomStore((s) => [s.users, s.teams, s.teamSettings]);
+  const [users, teams, teamSettings] = useRoomStore((s) => [
+    s.users,
+    s.teams,
+    s.teamSettings,
+  ]);
 
   // analogous to isLocalUser - is this team the one that belongs to the local user?
   const isLocalTeam = useMemo(() => {
-    return localUser && users[localUser.userInfo.id]?.currentTeam === teamId;
+    return (
+      localUser !== undefined &&
+      users[localUser.userInfo.id]?.currentTeam === teamId
+    );
   }, [teamId, localUser]);
 
   if (!teamSettings.teamsEnabled) {
@@ -243,11 +338,25 @@ function TeamRoomPanel({ className, teamId }: TeamRoomPanelProps) {
 
   return (
     <div
-      className={cn(["flex flex-col text-center h-full w-full p-2", className])}
+      className={cn([
+        "flex flex-col text-center h-full w-full p-2 gap-2",
+        className,
+      ])}
     >
       <div className="flex flex-row w-full shrink-0 relative">
+        {teamId && (
+          <div className="absolute top-0 left-0">
+            {isLocalTeam ? (
+              <LeaveTeamButton teamId={teamId} />
+            ) : (
+              <JoinTeamButton teamId={teamId} />
+            )}
+          </div>
+        )}
         <div className="grow">
-          <p className="text-2xl font-bold">{teamId ? teams[teamId].team.name : "Spectating"}</p>
+          <p className="text-2xl font-bold">
+            {teamId ? teams[teamId].team.name : ""}
+          </p>
         </div>
         {isLocalTeam && (
           <div className="absolute top-0 right-0">
@@ -266,12 +375,11 @@ function TeamRoomPanel({ className, teamId }: TeamRoomPanelProps) {
       </div>
 
       <div className="flex flex-col flex-1 min-h-0 justify-center">
-        {/* <UserCenterSection
+        <TeamCenterSection
           className={className}
-          userId={userId}
-          isLocalUser={isLocalUser}
-        /> */}
-        TODO - Team Center Section
+          teamId={teamId}
+          isLocalTeam={isLocalTeam}
+        />
       </div>
       <div className="flex flex-row justify-end"></div>
     </div>

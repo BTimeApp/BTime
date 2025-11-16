@@ -63,7 +63,7 @@ export default function RoomContent() {
                 ? { teamId: localTeamId } 
                 : { userId: user?.userInfo.id }
               )}
-              className="bg-secondary"
+              className={localTeamId ? "bg-secondary": "bg-container-2"}
             />
 
             <Carousel className="h-full md:col-span-1">
@@ -90,11 +90,13 @@ export default function RoomContent() {
               </CarouselContent>
               <CarouselPrevious
                 variant="ghost"
-                className="top-2 left-2 translate-y-0"
+                size="lg"
+                className="size-10 left-2 translate-y-0 z-1000"
               />
               <CarouselNext
                 variant="ghost"
-                className="top-2 right-2 translate-y-0"
+                size="icon"
+                className="right-2 translate-y-0 z-1000"
               />
             </Carousel>
           </div>

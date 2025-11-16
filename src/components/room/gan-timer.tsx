@@ -232,7 +232,12 @@ export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
       case "SUBMITTING":
         return <div className="text-4xl">{localResult.toString()}</div>;
       case "FINISHED":
-        return <div>Waiting for others to finish</div>;
+        return (
+          <>
+            <div>Waiting for others to finish</div>
+            <div className="text-4xl">{localResult.toString()}</div>
+          </>
+        );
       default:
         break;
     }
