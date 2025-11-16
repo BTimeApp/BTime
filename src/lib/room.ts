@@ -807,10 +807,6 @@ export async function newRoomSolve(room: IRoom) {
   // generates scrambles + properly sets attempts, results
   await resetSolve(room);
 
-  Object.values(room.users).map((roomUser) => {
-    roomUser.currentResult = undefined;
-  });
-
   return newRoomSolve;
 }
 
@@ -866,6 +862,11 @@ export async function resetSolve(room: IRoom) {
   for (const roomUser of Object.values(room.users)) {
     roomUser.currentResult = undefined;
     // we don't set the user's solve status here - client will reset it upon receiving solve_finished
+  }
+  for (const roomTeam of Object.values(room.teams)) {
+    roomTeam.currentResult = undefined;
+
+    // TODO - figure out how to track the currentMember
   }
 }
 

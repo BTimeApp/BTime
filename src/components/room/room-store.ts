@@ -300,16 +300,21 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
 
     addNewSolve: (newSolve: IRoomSolve) =>
       set(() => {
-        //reset every user's current result
-        const updatedUsers: Record<string, IRoomUser> = {};
-        for (const [userId, roomUser] of Object.entries(get().users)) {
-          updatedUsers[userId] = { ...roomUser, currentResult: undefined };
+        const updatedParticipants = get().teamSettings.teamsEnabled
+          ? { ...get().teams }
+          : { ...get().users };
+
+        for (const participant of Object.values(updatedParticipants)) {
+          participant.currentResult = undefined;
         }
+        //TODO - in ONE mode, update the currentMember of each team
 
         return {
           solves: [...get().solves, newSolve],
           currentSolve: get().currentSolve + 1,
-          users: updatedUsers,
+          ...(get().teamSettings.teamsEnabled
+            ? { teams: updatedParticipants as Record<string, IRoomTeam> }
+            : { users: updatedParticipants as Record<string, IRoomUser>}),
         };
       }),
 
