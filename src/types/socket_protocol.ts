@@ -163,6 +163,11 @@ export enum SOCKET_SERVER {
   TEAM_UPDATE = "TEAM_UPDATE",
 
   /**
+   * To broadcast an update to the general room.teams object
+   */
+  TEAMS_UPDATE = "TEAMS_UPDATE",
+
+  /**
    * To broadcast that user has joined team
    */
   USER_JOIN_TEAM = "USER_JOIN_TEAM",

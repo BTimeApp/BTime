@@ -115,9 +115,17 @@ export type RoomStore = {
 
   deleteTeam: (teamId: string) => void;
 
-  userJoinTeam: (userId: string, teamId: string, newScramble?: string) => void;
+  userJoinTeam: (
+    user: IRoomUser,
+    team: IRoomTeam,
+    newScramble?: string
+  ) => void;
 
-  userLeaveTeam: (userId: string, teamId: string) => void;
+  userLeaveTeam: (user: IRoomUser, team: IRoomTeam) => void;
+
+  updateTeam: (team: IRoomTeam) => void;
+
+  updateTeams: (teams: Record<string, IRoomTeam>) => void;
 
   startRoom: (solve: IRoomSolve) => void;
 
@@ -314,7 +322,7 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
           currentSolve: get().currentSolve + 1,
           ...(get().teamSettings.teamsEnabled
             ? { teams: updatedParticipants as Record<string, IRoomTeam> }
-            : { users: updatedParticipants as Record<string, IRoomUser>}),
+            : { users: updatedParticipants as Record<string, IRoomUser> }),
         };
       }),
 
@@ -490,7 +498,7 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         return { teams: updatedTeams };
       }),
 
-    userJoinTeam: (userId: string, teamId: string, newScramble?: string) =>
+    userJoinTeam: (user: IRoomUser, team: IRoomTeam, newScramble?: string) =>
       set((state) => {
         if (!state.teamSettings.teamsEnabled) {
           return {};
@@ -498,33 +506,17 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         const updatedTeams: Record<string, IRoomTeam> = { ...state.teams };
         const updatedUsers: Record<string, IRoomUser> = { ...state.users };
 
-        if (!updatedTeams[teamId] || !updatedUsers[userId]) return {};
+        //if user belonged to another team, remove them
 
-        // check team has space
-        if (
-          state.teamSettings.maxTeamCapacity &&
-          updatedTeams[teamId].team.members.length >=
-            state.teamSettings.maxTeamCapacity
-        ) {
-          return {};
-        }
-
-        // check for user in other team
-        if (updatedUsers[userId].currentTeam !== undefined) {
-          state.userLeaveTeam(userId, updatedUsers[userId].currentTeam);
-        }
-
-        // join team
-        updatedTeams[teamId].team.members.push(userId);
-        updatedUsers[userId].currentTeam = teamId;
-        updatedUsers[userId].competing = true;
+        updatedUsers[user.user.id] = user;
+        updatedTeams[team.team.id] = team;
 
         // if new scramble exists, add it
         const updatedSolves = [...state.solves];
         if (updatedSolves.length > 0 && newScramble) {
           const latestSolve = updatedSolves.at(-1)!;
           latestSolve.solve.scrambles.push(newScramble);
-          latestSolve.solve.attempts[userId] = {
+          latestSolve.solve.attempts[user.user.id] = {
             scramble: newScramble,
             finished: false,
           };
@@ -537,7 +529,7 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         };
       }),
 
-    userLeaveTeam: (userId: string, teamId: string) =>
+    userLeaveTeam: (user: IRoomUser, team: IRoomTeam) =>
       set((state) => {
         if (!state.teamSettings.teamsEnabled) {
           return {};
@@ -545,24 +537,24 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         const updatedTeams: Record<string, IRoomTeam> = { ...state.teams };
         const updatedUsers: Record<string, IRoomUser> = { ...state.users };
 
-        if (!updatedTeams[teamId] || !updatedUsers[userId]) return {};
-
-        updatedUsers[userId].currentTeam = undefined;
-        updatedUsers[userId].competing = false;
-
-        if (updatedTeams[teamId].currentMember === userId) {
-          updatedTeams[userId].currentMember = undefined;
-          updatedTeams[userId].currentResult = undefined;
-          updatedTeams[userId].solveStatus = "IDLE";
-        }
-
-        const idx = updatedTeams[teamId].team.members.indexOf(userId);
-        if (idx != -1) {
-          updatedTeams[teamId].team.members.splice(idx, 1);
-        }
+        updatedUsers[user.user.id] = user;
+        updatedTeams[team.team.id] = team;
 
         return { users: updatedUsers, teams: updatedTeams };
       }),
+
+    updateTeam: (team: IRoomTeam) =>
+      set((state) => {
+        const updatedTeams = { ...state.teams };
+        updatedTeams[team.team.id] = team;
+
+        return { teams: updatedTeams };
+      }),
+
+    updateTeams: (teams: Record<string, IRoomTeam>) =>
+      set(() => ({
+        teams: teams,
+      })),
 
     startRoom: () =>
       set(() => ({

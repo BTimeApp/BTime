@@ -203,8 +203,11 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
     }
 
     if ((room.state as RoomState) !== "FINISHED") {
-      const newSolve: IRoomSolve = await newRoomSolve(room);
+      const { newSolve, updateTeams } = await newRoomSolve(room);
       io.to(room.id).emit(SOCKET_SERVER.NEW_SOLVE, newSolve);
+      if (updateTeams) {
+        io.to(room.id).emit(SOCKET_SERVER.TEAMS_UPDATE, room.teams);
+      }
     }
   }
 
@@ -262,7 +265,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         const teamId = room.users[userId].currentTeam;
         if (room.settings.teamSettings.teamsEnabled && teamId !== undefined) {
           userLeaveTeam(room, userId, teamId);
-          io.to(roomId).emit(SOCKET_SERVER.USER_LEAVE_TEAM, userId, teamId);
+          io.to(roomId).emit(SOCKET_SERVER.USER_LEAVE_TEAM, room.users[userId], room.teams[teamId]);
         }
 
         io.to(roomId).emit(SOCKET_SERVER.USER_UPDATE, room.users[userId]);
@@ -622,11 +625,15 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
       if (room.state == "WAITING" || room.state == "FINISHED") {
         room.state = "STARTED";
-        const newSolve = await newRoomSolve(room);
+        const { newSolve, updateTeams } = await newRoomSolve(room);
 
         stores.rooms.setRoom(room);
         io.to(room.id).emit(SOCKET_SERVER.ROOM_STARTED);
         io.to(room.id).emit(SOCKET_SERVER.NEW_SOLVE, newSolve);
+
+        if (updateTeams) {
+          io.to(room.id).emit(SOCKET_SERVER.TEAMS_UPDATE, room.teams);
+        }
       } else {
         console.log(`Cannot start room when room state is ${room.state}`);
       }
@@ -862,13 +869,31 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         const room = await getSocketRoom();
         if (!room || !user || !room.settings.teamSettings.teamsEnabled) return;
 
+        const userOldTeam = room.users[user.userInfo.id]?.currentTeam;
         const response: SocketResponse<undefined | string> = await userJoinTeam(
           room,
           user.userInfo.id,
           teamId
         );
-        stores.rooms.setRoom(room);
-        io.to(room.id).emit(SOCKET_SERVER.USER_JOIN_TEAM, userId, teamId, response.data);
+
+        if (response.success) {
+          stores.rooms.setRoom(room);
+          if (userOldTeam && userOldTeam != teamId) {
+            // it's awkward to send another bit of extra data to the client to update the old team within the user join team event, so manually check if we need to send leave team event
+            io.to(room.id).emit(
+              SOCKET_SERVER.USER_LEAVE_TEAM,
+              room.users[user.userInfo.id],
+              room.teams[userOldTeam]
+            );
+          }
+
+          io.to(room.id).emit(
+            SOCKET_SERVER.USER_JOIN_TEAM,
+            room.users[user.userInfo.id],
+            room.teams[teamId],
+            response.data
+          );
+        }
 
         joinTeamCallback({ ...response, data: undefined });
       }
@@ -892,7 +917,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       stores.rooms.setRoom(room);
 
       if (success) {
-        io.to(room.id).emit(SOCKET_SERVER.USER_LEAVE_TEAM, userId, teamId);
+        io.to(room.id).emit(SOCKET_SERVER.USER_LEAVE_TEAM, room.users[user.userInfo.id], room.teams[teamId]);
       }
     });
     /**

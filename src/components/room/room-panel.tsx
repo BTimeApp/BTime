@@ -274,11 +274,11 @@ function TeamCenterSection({
 
       return (
         <div className={cn("flex flex-row w-full h-full", className)}>
-          <div className="flex flex-col grow w-full">
+          <div className="flex flex-col grow w-full items-center">
             {currentTurnUser && (
               <>
                 <div className="text-lg font-bold">
-                  {users[currentTurnUser].user.userName ?? "BTime User"}
+                  {"Current Solver: " + users[currentTurnUser].user.userName}
                 </div>
                 <UserCenterSection
                   userId={currentTurnUser}
@@ -287,21 +287,21 @@ function TeamCenterSection({
                 />
               </>
             )}
-            <div className="text-lg font-bold">Team Members</div>
-            {allTeamUserIds.map((teamUserId, idx) => {
-              return (
-                <div key={idx} className="grid grid-cols-4">
-                  <div className={cn("col-span-3", currentTurnUser === teamUserId && "font-bold")}>
+            <div className="text-lg font-bold w-fit">Team Members</div>
+            <div className="overflow-y-auto max-h-[25vh] w-fit">
+              {allTeamUserIds.map((teamUserId, idx) => {
+                return (
+                  <div
+                    key={idx}
+                    className={
+                      currentTurnUser === teamUserId ? "font-bold" : ""
+                    }
+                  >
                     {users[teamUserId].user.userName}
                   </div>
-                  <div>
-                    {currentSolve !== undefined && (
-                      <UserStatusSection userId={teamUserId} />
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
       );

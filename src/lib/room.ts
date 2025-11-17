@@ -700,27 +700,46 @@ export async function userJoinTeam(
 
   // 3. put user on team
   team.team.members.push(userId);
+  if (
+    room.settings.teamSettings.teamFormatSettings.teamSolveFormat === "ONE" &&
+    team.team.members.length === 1 &&
+    room.state === "STARTED"
+  ) {
+    // user will be the active member
+    team.currentMember = userId;
+  }
+
   room.users[userId].currentTeam = teamId;
   room.users[userId].competing = true; //in teams mode, competing = on team or not
 
   let extraData = undefined;
   // 3.5. generate a scramble for the user (create an attempt) if they're joining in the middle of a solve AND (we are in ALL mode || we are in ONE mode and it's this user's turn)
-  if (
-    room.state === "STARTED" &&
-    room.solves.length > 0 &&
-    room.settings.teamSettings.teamFormatSettings.teamSolveFormat === "ALL" &&
-    room.settings.teamSettings.teamFormatSettings.teamScrambleFormat ===
-      "DIFFERENT"
-  ) {
+  if (room.state === "STARTED" && room.solves.length > 0) {
     const currentSolve = room.solves.at(-1)!;
-    const newScramble = await generateScramble(room.settings.roomEvent);
-    currentSolve.solve.scrambles.push(newScramble);
-    currentSolve.solve.attempts[userId] = {
-      scramble: newScramble,
-      finished: false,
-    } as IAttempt;
+    if (
+      room.settings.teamSettings.teamFormatSettings.teamSolveFormat === "ALL" &&
+      room.settings.teamSettings.teamFormatSettings.teamScrambleFormat ===
+        "DIFFERENT"
+    ) {
+      const newScramble = await generateScramble(room.settings.roomEvent);
+      currentSolve.solve.scrambles.push(newScramble);
+      currentSolve.solve.attempts[userId] = {
+        scramble: newScramble,
+        finished: false,
+      } as IAttempt;
 
-    extraData = newScramble;
+      extraData = newScramble;
+    } else if (
+      room.settings.teamSettings.teamFormatSettings.teamSolveFormat === "ONE" &&
+      team.team.members.length === 1
+    ) {
+      currentSolve.solve.attempts[userId] = {
+        scramble: currentSolve.solve.scrambles[0],
+        finished: false,
+      } as IAttempt;
+
+      extraData = currentSolve.solve.scrambles[0];
+    }
   }
 
   return { success: true, data: extraData };
@@ -754,6 +773,16 @@ export function userLeaveTeam(
   team.team.members.splice(userIdx, 1);
   room.users[userId].currentTeam = undefined;
   room.users[userId].competing = false; //in teams mode, competing = on team or not
+  
+  if (room.settings.teamSettings.teamsEnabled && room.settings.teamSettings.teamFormatSettings.teamSolveFormat === "ONE") {
+    if (team.team.members.length === 0) {
+      team.currentMember = undefined;
+    } else {
+      // since we removed the user at index, new current member is at this idx
+      team.currentMember = team.team.members[userIdx % team.team.members.length];
+    }
+  }
+  
   return true;
 }
 
@@ -807,7 +836,23 @@ export async function newRoomSolve(room: IRoom) {
   // generates scrambles + properly sets attempts, results
   await resetSolve(room);
 
-  return newRoomSolve;
+  let updateTeams = false;
+  if (room.settings.teamSettings.teamsEnabled && room.settings.teamSettings.teamFormatSettings.teamSolveFormat === "ONE") {
+    // update the currentMember field of each team
+    for (const team of Object.values(room.teams)) {
+      if (team.team.members.length > 0) {
+        // rolls current member to the "next" in the list, or idx 0 if nonexistent
+        const currIdx = team.currentMember ? team.team.members.indexOf(team.currentMember) : -1;
+        const nextIdx = (currIdx + 1) % team.team.members.length; 
+
+        team.currentMember = team.team.members[nextIdx];
+      }
+    }
+
+    updateTeams = true;
+  }
+
+  return {newSolve: newRoomSolve, updateTeams: updateTeams};
 }
 
 /**
@@ -865,8 +910,6 @@ export async function resetSolve(room: IRoom) {
   }
   for (const roomTeam of Object.values(room.teams)) {
     roomTeam.currentResult = undefined;
-
-    // TODO - figure out how to track the currentMember
   }
 }
 
