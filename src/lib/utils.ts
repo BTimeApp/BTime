@@ -4,6 +4,7 @@ import { randomScrambleForEvent } from "cubing/scramble";
 import { RoomEvent } from "@/types/room";
 import { IResult, Result } from "@/types/result";
 import { toast } from "sonner";
+import { IAttempt } from "@/types/solve";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -68,19 +69,29 @@ export function zip<T extends any[]>( //eslint-disable-line @typescript-eslint/n
   });
 }
 
-export function createResultTextLine(
-  scramble: string,
-  result?: IResult,
-  idx?: number
-) {
-  return `${idx != null ? idx + 1 + "\t" : ""}${
-    result != null ? Result.fromIResult(result).toString(true) + "\t" : ""
-  }${scramble}`;
-}
-export function createResultTextLines(scrambles: string[], results: IResult[]) {
-  return scrambles
-    .map((scramble, idx) => createResultTextLine(scramble, results[idx], idx))
-    .join("\n");
+// export function createResultTextLine(
+//   scramble: string,
+//   result?: IResult,
+//   idx?: number
+// ) {
+//   return `${idx != null ? idx + 1 + "\t" : ""}${
+//     result != null ? Result.fromIResult(result).toString(true) + "\t" : ""
+//   }${scramble}`;
+// }
+// export function createResultTextLines(scrambles: string[], results: IResult[]) {
+//   return scrambles
+//     .map((scramble, idx) => createResultTextLine(scramble, results[idx], idx))
+//     .join("\n");
+// }
+
+export function createAttemptTextLine(attempt: IAttempt, userName?: string) {
+  return (
+    (userName ? userName + ": " : "") +
+    (attempt.finished
+      ? Result.fromIResult(attempt.result).toString(true) + "\t"
+      : "") +
+    attempt.scramble
+  );
 }
 
 export async function copyTextToClipboard(text: string) {

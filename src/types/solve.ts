@@ -2,9 +2,11 @@ import { IResult } from "@/types/result";
 
 export type IAttempt = | {
   scramble: string;
+  team?: string; // need to store the team b/c users can change teams in between solves...
   finished: false;
 } | {
   scramble: string;
+  team?: string;
   finished: true;
   result: IResult;
 }

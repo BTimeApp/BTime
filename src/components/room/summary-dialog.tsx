@@ -12,7 +12,7 @@ import React, { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   copyTextToClipboard,
-  createResultTextLines,
+  createAttemptTextLine,
   downloadTextFile,
 } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -32,18 +32,20 @@ export default function SummaryDialog({
   children,
 }: SummaryDialogProps) {
   const resultTextCopy: string = useMemo(() => {
-    return (
-      "BTime Room Summary\nRoom Name: " +
-      roomName +
-      "\n" +
-      createResultTextLines(scrambles, results)
-    );
+    // return (
+    //   "BTime Room Summary\nRoom Name: " +
+    //   roomName +
+    //   "\n" +
+    //   createResultTextLines(scrambles, results)
+    // );
+    return "";
   }, [roomName, scrambles, results]);
 
   const resultTextDownload: string = useMemo(() => {
-    return (
-      "Solve\tResult\tScramble\n" + createResultTextLines(scrambles, results)
-    );
+    // return (
+    //   "Solve\tResult\tScramble\n" + createResultTextLines(scrambles, results)
+    // );
+    return "";
   }, [scrambles, results]);
 
   return (

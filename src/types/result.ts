@@ -180,7 +180,8 @@ export class Result {
     return Result.timeToString(this.time, this.penalty, verbose);
   }
 
-  static fromIResult(obj: IResult): Result {
+  static fromIResult(obj?: IResult): Result {
+    if(!obj) return new Result(0, "DNF");
     return new Result(obj.time, obj.penalty);
   }
 

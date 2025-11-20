@@ -618,15 +618,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={50}>
-          <GlobalTimeList
-            roomName={roomName}
-            users={Object.values(users)} //.filter((roomUser) => roomUser.active)}
-            solves={solves}
-            roomEvent={roomEvent}
-            raceSettings={raceSettings}
-            userId={localUser?.userInfo.id}
-            className="max-h-[50vh] w-full"
-          />
+          <GlobalTimeList className="max-h-[50vh] w-full" />
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>
