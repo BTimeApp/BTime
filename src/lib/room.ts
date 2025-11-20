@@ -726,16 +726,23 @@ export async function userJoinTeam(
       currentSolve.solve.attempts[userId] = {
         scramble: newScramble,
         finished: false,
+        team: teamId,
       } as IAttempt;
 
       extraData = newScramble;
     } else if (
-      room.settings.teamSettings.teamFormatSettings.teamSolveFormat === "ONE" &&
-      team.team.members.length === 1
+      (room.settings.teamSettings.teamFormatSettings.teamSolveFormat ===
+        "ONE" &&
+        team.team.members.length === 1) ||
+      (room.settings.teamSettings.teamFormatSettings.teamSolveFormat ===
+        "ALL" &&
+        room.settings.teamSettings.teamFormatSettings.teamScrambleFormat ===
+          "SAME")
     ) {
       currentSolve.solve.attempts[userId] = {
         scramble: currentSolve.solve.scrambles[0],
         finished: false,
+        team: teamId,
       } as IAttempt;
 
       extraData = currentSolve.solve.scrambles[0];
@@ -773,16 +780,20 @@ export function userLeaveTeam(
   team.team.members.splice(userIdx, 1);
   room.users[userId].currentTeam = undefined;
   room.users[userId].competing = false; //in teams mode, competing = on team or not
-  
-  if (room.settings.teamSettings.teamsEnabled && room.settings.teamSettings.teamFormatSettings.teamSolveFormat === "ONE") {
+
+  if (
+    room.settings.teamSettings.teamsEnabled &&
+    room.settings.teamSettings.teamFormatSettings.teamSolveFormat === "ONE"
+  ) {
     if (team.team.members.length === 0) {
       team.currentMember = undefined;
     } else {
       // since we removed the user at index, new current member is at this idx
-      team.currentMember = team.team.members[userIdx % team.team.members.length];
+      team.currentMember =
+        team.team.members[userIdx % team.team.members.length];
     }
   }
-  
+
   return true;
 }
 
@@ -833,26 +844,30 @@ export async function newRoomSolve(room: IRoom) {
   room.currentSolve += 1;
   room.solves.push(newRoomSolve);
 
-  // generates scrambles + properly sets attempts, results
-  await resetSolve(room);
-
   let updateTeams = false;
-  if (room.settings.teamSettings.teamsEnabled && room.settings.teamSettings.teamFormatSettings.teamSolveFormat === "ONE") {
+  if (
+    room.settings.teamSettings.teamsEnabled &&
+    room.settings.teamSettings.teamFormatSettings.teamSolveFormat === "ONE"
+  ) {
     // update the currentMember field of each team
     for (const team of Object.values(room.teams)) {
       if (team.team.members.length > 0) {
         // rolls current member to the "next" in the list, or idx 0 if nonexistent
-        const currIdx = team.currentMember ? team.team.members.indexOf(team.currentMember) : -1;
-        const nextIdx = (currIdx + 1) % team.team.members.length; 
+        const currIdx = team.currentMember
+          ? team.team.members.indexOf(team.currentMember)
+          : -1;
+        const nextIdx = (currIdx + 1) % team.team.members.length;
 
         team.currentMember = team.team.members[nextIdx];
       }
     }
-
     updateTeams = true;
   }
 
-  return {newSolve: newRoomSolve, updateTeams: updateTeams};
+  // generates scrambles + properly sets attempts, results
+  await resetSolve(room);
+
+  return { newSolve: newRoomSolve, updateTeams: updateTeams };
 }
 
 /**
@@ -873,11 +888,17 @@ export async function resetSolve(room: IRoom) {
 
   //reset attempts
   let eligibleUsers = teamSettings.teamsEnabled
-    ? Object.values(room.teams).flatMap((team) =>
-        team.team.members
-          .map((userId) => room.users[userId])
+    ? teamSettings.teamFormatSettings.teamSolveFormat === "ALL"
+      ? Object.values(room.teams).flatMap((team) =>
+          team.team.members
+            .map((userId) => room.users[userId])
+            .filter((user) => user !== undefined)
+        )
+      : Object.values(room.teams)
+          .map((team) => team.currentMember)
+          .filter((uid) => uid !== undefined)
+          .map((uid) => room.users[uid])
           .filter((user) => user !== undefined)
-      )
     : Object.values(room.users).filter(
         (roomUser) => roomUser.active && roomUser.competing
       );
@@ -898,6 +919,7 @@ export async function resetSolve(room: IRoom) {
             ]
           : currentSolve.solve.scrambles[0]!,
       finished: false,
+      ...(teamSettings.teamsEnabled ? { team: roomUser.currentTeam } : {}),
     };
   }
 
