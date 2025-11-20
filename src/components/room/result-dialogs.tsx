@@ -6,30 +6,45 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Result } from "@/types/result";
-import React, { useMemo, useState } from "react";
+import { IResult, Result } from "@/types/result";
+import React, { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { copyTextToClipboard, createAttemptTextLine } from "@/lib/utils";
+import {
+  copyTextToClipboard,
+  createAttemptTextLine,
+  downloadTextFile,
+  zip,
+} from "@/lib/utils";
 import { useRoomStore } from "@/context/room-context";
 import { IRoomSolve } from "@/types/room-solve";
 import { useSession } from "@/context/session-context";
 import { IAttempt } from "@/types/solve";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "../ui/scroll-area";
 
 type SolveDialogProps = {
   solve: IRoomSolve;
   children: React.ReactNode;
 };
 
-export default function SolveDialog({ solve, children }: SolveDialogProps) {
-  const [roomName, users, teams, raceSettings, teamSettings] =
-    useRoomStore((s) => [
-      s.roomName,
-      s.users,
-      s.teams,
-      s.raceSettings,
-      s.teamSettings,
-    ]);
+// we expect scrambles and results to be of the same length. it should be one to one.
+type SetDialogProps = {
+  setIndex: number;
+  children: React.ReactNode;
+};
+
+// we expect scrambles and results to be of the same length. it should be one to one.
+type SummaryDialogProps = {
+    roomName: string;
+    scrambles: string[];
+    results: IResult[];
+    children: React.ReactNode;
+  };
+
+export function SolveDialog({ solve, children }: SolveDialogProps) {
+  const [roomName, users, teams, raceSettings, teamSettings] = useRoomStore(
+    (s) => [s.roomName, s.users, s.teams, s.raceSettings, s.teamSettings]
+  );
 
   const { user: localUser } = useSession();
 
@@ -94,9 +109,7 @@ export default function SolveDialog({ solve, children }: SolveDialogProps) {
     switch (activeTab) {
       case "user":
         if (localUser && localUserAttempt) {
-          resultTextArr.push(
-            createAttemptTextLine(localUserAttempt)
-          );
+          resultTextArr.push(createAttemptTextLine(localUserAttempt));
         }
         break;
       case "team":
@@ -147,7 +160,7 @@ export default function SolveDialog({ solve, children }: SolveDialogProps) {
     }
 
     return resultTextArr.join("\n");
-  }, [activeTab, roomName]);
+  }, [activeTab, roomName, raceSettings, localUser, localUserAttempt, solveLocalTeam, solveLocalTeamAttempts, solveLocalTeamResult, currentLocalTeam, currentLocalTeamAttempts, currentLocalTeamResult, ]);
 
   if (!localUser) {
     return children;
@@ -235,6 +248,193 @@ export default function SolveDialog({ solve, children }: SolveDialogProps) {
             }}
           >
             Copy to Clipboard
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function SetDialog({ setIndex, children }: SetDialogProps) {
+  const [roomName, users, teams, solves, raceSettings, teamSettings] =
+    useRoomStore((s) => [
+      s.roomName,
+      s.users,
+      s.teams,
+      s.solves,
+      s.raceSettings,
+      s.teamSettings,
+    ]);
+
+  const { user: localUser } = useSession();
+  const localTeam = useMemo(() => {
+    return localUser ? teams[localUser?.userInfo.id] : undefined;
+  }, [localUser, teams]);
+
+  const setSolves: IRoomSolve[] = useMemo(() => {
+    return solves.filter((roomSolve) => roomSolve.setIndex === setIndex);
+  }, [solves, setIndex]);
+
+  const relevantUsers: string[][] = useMemo(() => {
+    return setSolves.map((roomSolve) => {
+      if (!localUser) {
+        return [];
+      }
+      if (teamSettings.teamsEnabled) {
+        if (!localTeam) {
+          return [];
+        }
+        return Object.entries(roomSolve.solve.attempts)
+          .filter(([_uid, attempt]) => attempt.team === localTeam.team.id)
+          .map(([uid, _]) => uid);
+      } else {
+        return [localUser.userInfo.id];
+      }
+    });
+  }, [setSolves, localUser, localTeam, teamSettings]);
+
+  //extract relevant scrambles, results
+  const scrambles: Record<string, string>[] = useMemo(() => {
+    return setSolves.map((roomSolve, idx) => {
+      return Object.fromEntries(
+        zip(
+          relevantUsers[idx],
+          relevantUsers[idx].map(
+            (userId) => roomSolve.solve.attempts[userId].scramble
+          )
+        )
+      );
+    });
+  }, [setSolves, relevantUsers]);
+
+  const results: Record<string, IResult>[] = useMemo(() => {
+    return setSolves.map((roomSolve, idx) => {
+      return Object.fromEntries(
+        zip(
+          relevantUsers[idx],
+          relevantUsers[idx].map((userId) => roomSolve.solve.results[userId])
+        )
+      );
+    });
+  }, [setSolves, relevantUsers]);
+
+  const getUserTextRow = useCallback(
+    (solveIdx: number, uid: string) => {
+      return (
+        users[uid].user.userName +
+        ": " +
+        (results[solveIdx][uid] &&
+          Result.fromIResult(results[solveIdx][uid]).toString(true) + "\t") +
+        scrambles[solveIdx][uid]
+      );
+    },
+    [users, results, scrambles]
+  );
+
+  const resultTextCopy: string = useMemo(() => {
+    return [
+      `BTime Room: ${roomName}` +
+        (teamSettings.teamsEnabled
+          ? localTeam
+            ? "Team: " + localTeam.team.name
+            : ""
+          : localUser
+          ? "User: " + localUser.userInfo.userName
+          : ""),
+      `Set ${setIndex}`,
+      ...setSolves.map((_roomSolve, idx) => [
+        `${idx}.`,
+        ...relevantUsers[idx].map((uid, _uidx) => getUserTextRow(idx, uid)),
+      ]),
+    ].join("\n");
+  }, [roomName, scrambles, results, setIndex]);
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent className="py-3">
+        <DialogHeader>
+          <DialogTitle>{setIndex && `Set ${setIndex}`}</DialogTitle>
+        </DialogHeader>
+        <ScrollArea className="max-h-[50vh]">
+          {setSolves.map((_roomSolve, idx) => (
+            <div key={idx}>
+              <div>{idx}. </div>
+              {relevantUsers[idx].map((uid, _uidx) => getUserTextRow(idx, uid))}
+            </div>
+          ))}
+        </ScrollArea>
+        <DialogFooter className="flex flex-row gap-2">
+          <Button
+            variant="primary"
+            onClick={() => {
+              copyTextToClipboard(resultTextCopy);
+            }}
+          >
+            Copy to Clipboard
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function SummaryDialog({
+  roomName,
+  scrambles,
+  results,
+  children,
+}: SummaryDialogProps) {
+  const resultTextCopy: string = useMemo(() => {
+    // return (
+    //   "BTime Room Summary\nRoom Name: " +
+    //   roomName +
+    //   "\n" +
+    //   createResultTextLines(scrambles, results)
+    // );
+    return "";
+  }, [roomName, scrambles, results]);
+
+  const resultTextDownload: string = useMemo(() => {
+    // return (
+    //   "Solve\tResult\tScramble\n" + createResultTextLines(scrambles, results)
+    // );
+    return "";
+  }, [scrambles, results]);
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent className="py-3">
+        <DialogHeader>
+          <DialogTitle>Room Summary: {roomName}</DialogTitle>
+        </DialogHeader>
+        <ScrollArea className="max-h-[50vh]">
+          {scrambles.map((scramble, idx) => (
+            <div key={idx}>
+              {idx + 1}.{"\t"}
+              {Result.fromIResult(results[idx]).toString()}
+              {"\t"}
+              {scramble}
+            </div>
+          ))}
+        </ScrollArea>
+        <DialogFooter className="flex flex-row gap-2">
+          <Button
+            variant="primary"
+            onClick={() => {
+              copyTextToClipboard(resultTextCopy);
+            }}
+          >
+            Copy to Clipboard
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => {
+              downloadTextFile(`BTime_${roomName}.txt`, resultTextDownload);
+            }}
+          >
+            Download Solves
           </Button>
         </DialogFooter>
       </DialogContent>

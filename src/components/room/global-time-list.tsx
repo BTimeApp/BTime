@@ -7,14 +7,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Crown } from "lucide-react";
-import SolveDialog from "@/components/room/solve-dialog";
 import { IRoomTeam, IRoomUser } from "@/types/room-participant";
 import { IRoomSolve } from "@/types/room-solve";
-import { RaceSettings, RoomEvent, TeamSettings } from "@/types/room";
 import { Result } from "@/types/result";
 import { cn } from "@/lib/utils";
-import SetDialog from "@/components/room/set-dialog";
-import SummaryDialog from "@/components/room/summary-dialog";
+import { SummaryDialog, SetDialog, SolveDialog } from "@/components/room/result-dialogs";
 import { useSession } from "@/context/session-context";
 import { useRoomStore } from "@/context/room-context";
 import { useMemo } from "react";
