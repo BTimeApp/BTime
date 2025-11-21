@@ -84,13 +84,13 @@ export function zip<T extends any[]>( //eslint-disable-line @typescript-eslint/n
 //     .join("\n");
 // }
 
-export function createAttemptTextLine(attempt: IAttempt, userName?: string) {
+export function createAttemptTextLine(attempt: IAttempt, userName?: string, printScramble: boolean = true) {
   return (
     (userName ? userName + ": " : "") +
     (attempt.finished
       ? Result.fromIResult(attempt.result).toString(true) + "\t"
       : "") +
-    attempt.scramble
+    (printScramble ? attempt.scramble : "")
   );
 }
 

@@ -35,11 +35,11 @@ type SetDialogProps = {
 
 // we expect scrambles and results to be of the same length. it should be one to one.
 type SummaryDialogProps = {
-    roomName: string;
-    scrambles: string[];
-    results: IResult[];
-    children: React.ReactNode;
-  };
+  roomName: string;
+  scrambles: string[];
+  results: IResult[];
+  children: React.ReactNode;
+};
 
 export function SolveDialog({ solve, children }: SolveDialogProps) {
   const [roomName, users, teams, raceSettings, teamSettings] = useRoomStore(
@@ -102,7 +102,8 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
 
   const resultTextCopy: string = useMemo(() => {
     const resultTextArr = [
-      `BTime Room ${roomName} ${
+      `BTime Room ${roomName}`,
+      `${
         raceSettings.roomFormat === "RACING" && `Set ${solve.setIndex} `
       } Solve ${solve.solveIndex}`,
     ];
@@ -160,11 +161,28 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
     }
 
     return resultTextArr.join("\n");
-  }, [activeTab, roomName, raceSettings, localUser, localUserAttempt, solveLocalTeam, solveLocalTeamAttempts, solveLocalTeamResult, currentLocalTeam, currentLocalTeamAttempts, currentLocalTeamResult, ]);
+  }, [
+    activeTab,
+    roomName,
+    raceSettings,
+    localUser,
+    localUserAttempt,
+    solveLocalTeam,
+    solveLocalTeamAttempts,
+    solveLocalTeamResult,
+    currentLocalTeam,
+    currentLocalTeamAttempts,
+    currentLocalTeamResult,
+  ]);
 
   if (!localUser) {
     return children;
   }
+
+  const diffScrambles =
+    teamSettings.teamsEnabled &&
+    teamSettings.teamFormatSettings.teamSolveFormat === "ALL" &&
+    teamSettings.teamFormatSettings.teamScrambleFormat === "DIFFERENT";
 
   return (
     <Dialog>
@@ -180,21 +198,25 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
           <TabsList>
             {localUserAttempt && <TabsTrigger value="user">You</TabsTrigger>}
             {solveLocalTeam && (
-              <TabsTrigger value="team">{solveLocalTeam.team.name}</TabsTrigger>
+              <TabsTrigger value="team">
+                Team {solveLocalTeam.team.name}
+              </TabsTrigger>
             )}
             {currentLocalTeam && currentLocalTeam != solveLocalTeam && (
               <TabsTrigger value="currTeam">
-                {currentLocalTeam.team.name}
+                Team {currentLocalTeam.team.name}
               </TabsTrigger>
             )}
             <TabsTrigger value="all">All</TabsTrigger>
           </TabsList>
           {localUserAttempt && (
             <TabsContent value="user">
+              {!diffScrambles && <div>{solve.solve.scrambles[0]}</div>}
               <div>
                 {createAttemptTextLine(
                   localUserAttempt,
-                  users[localUser.userInfo.id]?.user.userName
+                  users[localUser.userInfo.id]?.user.userName,
+                  diffScrambles
                 )}
               </div>
             </TabsContent>
@@ -207,10 +229,15 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
                   ? Result.fromIResult(solveLocalTeamResult).toString(true)
                   : "TBD"}
               </div>
+              {!diffScrambles && <div>{solve.solve.scrambles[0]}</div>}
               {Object.entries(solveLocalTeamAttempts).map(
                 ([uid, attempt], idx) => (
                   <div key={idx}>
-                    {createAttemptTextLine(attempt, users[uid]?.user.userName)}
+                    {createAttemptTextLine(
+                      attempt,
+                      users[uid]?.user.userName,
+                      diffScrambles
+                    )}
                   </div>
                 )
               )}
@@ -222,19 +249,29 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
                 Team Result:{" "}
                 {Result.fromIResult(currentLocalTeamResult).toString(true)}
               </div>
+              {!diffScrambles && <div>{solve.solve.scrambles[0]}</div>}
               {Object.entries(currentLocalTeamAttempts).map(
                 ([uid, attempt], idx) => (
                   <div key={idx}>
-                    {createAttemptTextLine(attempt, users[uid]?.user.userName)}
+                    {createAttemptTextLine(
+                      attempt,
+                      users[uid]?.user.userName,
+                      diffScrambles
+                    )}
                   </div>
                 )
               )}
             </TabsContent>
           )}
           <TabsContent value="all">
+            {!diffScrambles && <div>{solve.solve.scrambles[0]}</div>}
             {Object.entries(solve.solve.attempts).map(([uid, attempt], idx) => (
               <div key={idx}>
-                {createAttemptTextLine(attempt, users[uid]?.user.userName)}
+                {createAttemptTextLine(
+                  attempt,
+                  users[uid]?.user.userName,
+                  diffScrambles
+                )}
               </div>
             ))}
           </TabsContent>
