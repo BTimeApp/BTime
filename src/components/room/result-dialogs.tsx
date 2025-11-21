@@ -7,13 +7,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { IResult, Result } from "@/types/result";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   copyTextToClipboard,
   createAttemptTextLine,
-  downloadTextFile,
-  zip,
+//   downloadTextFile,
+//   zip,
 } from "@/lib/utils";
 import { useRoomStore } from "@/context/room-context";
 import { IRoomSolve } from "@/types/room-solve";
@@ -297,96 +297,6 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
 }
 
 export function SetDialog({ setIndex, children }: SetDialogProps) {
-  const [roomName, users, teams, solves, teamSettings] =
-    useRoomStore((s) => [
-      s.roomName,
-      s.users,
-      s.teams,
-      s.solves,
-      s.teamSettings,
-    ]);
-
-  const { user: localUser } = useSession();
-  const localTeam = useMemo(() => {
-    return localUser ? teams[localUser?.userInfo.id] : undefined;
-  }, [localUser, teams]);
-
-  const setSolves: IRoomSolve[] = useMemo(() => {
-    return solves.filter((roomSolve) => roomSolve.setIndex === setIndex);
-  }, [solves, setIndex]);
-
-  const relevantUsers: string[][] = useMemo(() => {
-    return setSolves.map((roomSolve) => {
-      if (!localUser) {
-        return [];
-      }
-      if (teamSettings.teamsEnabled) {
-        if (!localTeam) {
-          return [];
-        }
-        return Object.keys(roomSolve.solve.attempts)
-          .filter((uid) => roomSolve.solve.attempts[uid].team === localTeam.team.id);
-      } else {
-        return [localUser.userInfo.id];
-      }
-    });
-  }, [setSolves, localUser, localTeam, teamSettings]);
-
-  //extract relevant scrambles, results
-  const scrambles: Record<string, string>[] = useMemo(() => {
-    return setSolves.map((roomSolve, idx) => {
-      return Object.fromEntries(
-        zip(
-          relevantUsers[idx],
-          relevantUsers[idx].map(
-            (userId) => roomSolve.solve.attempts[userId].scramble
-          )
-        )
-      );
-    });
-  }, [setSolves, relevantUsers]);
-
-  const results: Record<string, IResult>[] = useMemo(() => {
-    return setSolves.map((roomSolve, idx) => {
-      return Object.fromEntries(
-        zip(
-          relevantUsers[idx],
-          relevantUsers[idx].map((userId) => roomSolve.solve.results[userId])
-        )
-      );
-    });
-  }, [setSolves, relevantUsers]);
-
-  const getUserTextRow = useCallback(
-    (solveIdx: number, uid: string) => {
-      return (
-        users[uid].user.userName +
-        ": " +
-        (results[solveIdx][uid] &&
-          Result.fromIResult(results[solveIdx][uid]).toString(true) + "\t") +
-        scrambles[solveIdx][uid]
-      );
-    },
-    [users, results, scrambles]
-  );
-
-  const resultTextCopy: string = useMemo(() => {
-    return [
-      `BTime Room: ${roomName}` +
-        (teamSettings.teamsEnabled
-          ? localTeam
-            ? "Team: " + localTeam.team.name
-            : ""
-          : localUser
-          ? "User: " + localUser.userInfo.userName
-          : ""),
-      `Set ${setIndex}`,
-      ...setSolves.map((_roomSolve, idx) => [
-        `${idx}.`,
-        ...relevantUsers[idx].map((uid) => getUserTextRow(idx, uid)),
-      ]),
-    ].join("\n");
-  }, [roomName, setIndex, getUserTextRow, localTeam, localUser, relevantUsers, setSolves, teamSettings]);
 
   return (
     <Dialog>
@@ -396,22 +306,17 @@ export function SetDialog({ setIndex, children }: SetDialogProps) {
           <DialogTitle>{setIndex && `Set ${setIndex}`}</DialogTitle>
         </DialogHeader>
         <ScrollArea className="max-h-[50vh]">
-          {setSolves.map((_roomSolve, idx) => (
-            <div key={idx}>
-              <div>{idx}. </div>
-              {relevantUsers[idx].map((uid) => getUserTextRow(idx, uid))}
-            </div>
-          ))}
+          Set Summary has been temporarily disabled.
         </ScrollArea>
         <DialogFooter className="flex flex-row gap-2">
-          <Button
+          {/* <Button
             variant="primary"
             onClick={() => {
               copyTextToClipboard(resultTextCopy);
             }}
           >
             Copy to Clipboard
-          </Button>
+          </Button> */}
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -420,26 +325,10 @@ export function SetDialog({ setIndex, children }: SetDialogProps) {
 
 export function SummaryDialog({
   roomName,
-  scrambles,
-  results,
+//   scrambles,
+//   results,
   children,
 }: SummaryDialogProps) {
-  const resultTextCopy: string = useMemo(() => {
-    // return (
-    //   "BTime Room Summary\nRoom Name: " +
-    //   roomName +
-    //   "\n" +
-    //   createResultTextLines(scrambles, results)
-    // );
-    return "";
-  }, []);
-
-  const resultTextDownload: string = useMemo(() => {
-    // return (
-    //   "Solve\tResult\tScramble\n" + createResultTextLines(scrambles, results)
-    // );
-    return "";
-  }, []);
 
   return (
     <Dialog>
@@ -449,32 +338,25 @@ export function SummaryDialog({
           <DialogTitle>Room Summary: {roomName}</DialogTitle>
         </DialogHeader>
         <ScrollArea className="max-h-[50vh]">
-          {scrambles.map((scramble, idx) => (
-            <div key={idx}>
-              {idx + 1}.{"\t"}
-              {Result.fromIResult(results[idx]).toString()}
-              {"\t"}
-              {scramble}
-            </div>
-          ))}
+          Room Summary has been temporarily disabled.
         </ScrollArea>
         <DialogFooter className="flex flex-row gap-2">
-          <Button
+          {/* <Button
             variant="primary"
             onClick={() => {
               copyTextToClipboard(resultTextCopy);
             }}
           >
             Copy to Clipboard
-          </Button>
-          <Button
+          </Button> */}
+          {/* <Button
             variant="primary"
             onClick={() => {
               downloadTextFile(`BTime_${roomName}.txt`, resultTextDownload);
             }}
           >
             Download Solves
-          </Button>
+          </Button> */}
         </DialogFooter>
       </DialogContent>
     </Dialog>
