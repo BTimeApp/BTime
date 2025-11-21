@@ -1,11 +1,10 @@
 import { useRoomStore } from "@/context/room-context";
 import { cn } from "@/lib/utils";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo } from "react";
 import {
   getFormatText,
   getVerboseFormatText,
   ROOM_EVENTS_INFO,
-  TeamFormatSettings,
 } from "@/types/room";
 import GlobalTimeList from "@/components/room/global-time-list";
 import {
@@ -26,10 +25,10 @@ import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
-} from "../ui/resizable";
-import CreateTeamDialog from "./create-team-dialog";
-import { JoinTeamButton, LeaveTeamButton } from "./team-action-buttons";
-import RoomTeamDialog from "./room-team-dialog";
+} from "@/components/ui/resizable";
+import CreateTeamDialog from "@/components/room/create-team-dialog";
+import { JoinTeamButton, LeaveTeamButton } from "@/components/room/team-action-buttons";
+import RoomTeamDialog from "@/components/room/room-team-dialog";
 
 type RoomPanelProps = {
   className?: string;
@@ -408,7 +407,7 @@ function TeamRoomPanel({ className, teamId }: TeamRoomPanelProps) {
       localUser !== undefined &&
       users[localUser.userInfo.id]?.currentTeam === teamId
     );
-  }, [teamId, localUser]);
+  }, [teamId, localUser, users]);
 
   if (!teamSettings.teamsEnabled) {
     return null;
@@ -467,27 +466,15 @@ function TeamRoomPanel({ className, teamId }: TeamRoomPanelProps) {
 function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
   const { user: localUser } = useSession();
 
-  const [
-    users,
-    teams,
-    solves,
-    roomName,
-    roomEvent,
-    roomState,
-    raceSettings,
-    teamSettings,
-    isUserHost,
-  ] = useRoomStore((s) => [
-    s.users,
-    s.teams,
-    s.solves,
-    s.roomName,
-    s.roomEvent,
-    s.roomState,
-    s.raceSettings,
-    s.teamSettings,
-    s.isUserHost,
-  ]);
+  const [users, teams, roomState, raceSettings, teamSettings, isUserHost] =
+    useRoomStore((s) => [
+      s.users,
+      s.teams,
+      s.roomState,
+      s.raceSettings,
+      s.teamSettings,
+      s.isUserHost,
+    ]);
 
   const participantSortKeyCallback = useCallback(
     (u1: IRoomParticipant, u2: IRoomParticipant) => {
@@ -522,6 +509,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
   const activeParticipants = teamSettings.teamsEnabled
     ? teams
     : (Object.fromEntries(
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         Object.entries(users).filter(([_uid, user]) => user.active)
       ) as Record<string, IRoomUser>);
 
@@ -668,7 +656,7 @@ function ParticipantListRoomPanel({
     return teamSettings.teamsEnabled
       ? roomWinners.map((id) => teams[id]!.team.name)
       : roomWinners.map((id) => users[id]!.user.userName);
-  }, [teamSettings, roomWinners]);
+  }, [teamSettings, roomWinners, teams, users]);
 
   return (
     <div

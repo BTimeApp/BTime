@@ -6,7 +6,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import React, { useCallback, useMemo, useState } from "react";
-import { CreateTeamForm } from "./create-team-form";
+import { CreateTeamForm } from "@/components/room/create-team-form";
 import { useRoomStore } from "@/context/room-context";
 
 type RoomSettingsDialogProps = {
@@ -17,9 +17,7 @@ export default function CreateTeamDialog({
   children,
 }: RoomSettingsDialogProps) {
   const [teams, teamSettings] = useRoomStore((s) => [s.teams, s.teamSettings]);
-  if (!teamSettings.teamsEnabled) {
-    return <></>;
-  }
+  
   const currTeamsLength = useMemo(() => {
     return Object.values(teams).length;
   }, [teams]);
@@ -28,6 +26,10 @@ export default function CreateTeamDialog({
   const closeDialogCallback = useCallback(() => {
     setOpen(false);
   }, []);
+
+  if (!teamSettings.teamsEnabled) {
+    return <></>;
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

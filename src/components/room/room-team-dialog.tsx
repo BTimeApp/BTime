@@ -1,12 +1,12 @@
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { DialogTrigger } from "@radix-ui/react-dialog";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { IRoomTeam } from "@/types/room-participant";
 import {
   DeleteTeamButton,
   JoinTeamButton,
   LeaveTeamButton,
-} from "./team-action-buttons";
+} from "@/components/room/team-action-buttons";
 import { useSession } from "@/context/session-context";
 import { useRoomStore } from "@/context/room-context";
 
@@ -32,7 +32,7 @@ export default function RoomTeamDialog({
 
   const isHost = useMemo(() => {
     return isUserHost(localUser?.userInfo.id);
-  }, [localUser]);
+  }, [localUser, isUserHost]);
   const [open, setOpen] = useState<boolean>(false);
 
   return (

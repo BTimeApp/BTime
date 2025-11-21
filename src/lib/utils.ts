@@ -2,7 +2,7 @@ import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { randomScrambleForEvent } from "cubing/scramble";
 import { RoomEvent } from "@/types/room";
-import { IResult, Result } from "@/types/result";
+import { Result } from "@/types/result";
 import { toast } from "sonner";
 import { IAttempt } from "@/types/solve";
 
@@ -135,12 +135,13 @@ export function abbreviate(name: string) {
  *
  */
 export function displayText(name: string) {
-  let result = name.split("_").map((_) => _.toLowerCase());
+  const result = name.split("_").map((_) => _.toLowerCase());
   if (result.length > 0)
     result[0] = result[0].charAt(0)?.toUpperCase() + result[0].slice(1);
   return result.join(" ");
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function literalKeys<T extends Record<string, any>>(obj: T) {
   return Object.keys(obj) as Array<keyof T & string>;
 }

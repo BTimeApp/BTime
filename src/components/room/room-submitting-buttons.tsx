@@ -4,7 +4,7 @@ import { useRoomStore } from "@/context/room-context";
 import { useCallback, useEffect, useRef } from "react";
 import { useSocket } from "@/context/socket-context";
 import { SOCKET_CLIENT } from "@/types/socket_protocol";
-import { KeybindButton } from "../common/keybind-button";
+import { KeybindButton } from "@/components/common/keybind-button";
 
 function RoomSubmittingButtons() {
   const [

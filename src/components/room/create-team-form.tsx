@@ -3,7 +3,6 @@ import {
   useFieldArray,
   FieldErrors,
   FieldValues,
-  Field,
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -14,13 +13,13 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../ui/form";
+} from "@/components/ui/form";
 import { useCallback, useMemo } from "react";
 import { toast } from "sonner";
-import { Input } from "../ui/input";
+import { Input } from "@/components/ui/input";
 import { useSocket } from "@/context/socket-context";
 import { SOCKET_CLIENT, SocketResponse } from "@/types/socket_protocol";
-import { Button } from "../ui/button";
+import { Button } from "@/components/ui/button";
 import { useRoomStore } from "@/context/room-context";
 
 type CreateTeamFormProps = {
@@ -29,9 +28,7 @@ type CreateTeamFormProps = {
 export function CreateTeamForm({ onSubmit }: CreateTeamFormProps) {
   const { socket } = useSocket();
   const [teams, teamSettings] = useRoomStore((s) => [s.teams, s.teamSettings]);
-  if (!teamSettings.teamsEnabled) {
-    return <></>;
-  }
+  
   const currTeamsLength = useMemo(() => {
     return Object.values(teams).length;
   }, [teams]);
@@ -50,10 +47,11 @@ export function CreateTeamForm({ onSubmit }: CreateTeamFormProps) {
       )
       .refine(
         (arr) =>
+          !teamSettings.teamsEnabled ||
           !teamSettings.maxNumTeams ||
           arr.length <= teamSettings.maxNumTeams - currTeamsLength,
         {
-          message: `Maximum ${teamSettings.maxNumTeams} teams allowed`,
+          message: teamSettings.teamsEnabled ? `Maximum ${teamSettings.maxNumTeams} teams allowed` : `Cannot create teams when teams disabled`,
         }
       ),
   });
@@ -96,6 +94,10 @@ export function CreateTeamForm({ onSubmit }: CreateTeamFormProps) {
         Object.values(errors).map((err) => err?.message?.toString())
     );
   }, []);
+
+  if (!teamSettings.teamsEnabled) {
+    return <></>;
+  }
 
   return (
     <div>

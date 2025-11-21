@@ -9,7 +9,7 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-} from "../ui/carousel";
+} from "@/components/ui/carousel";
 import { useMemo } from "react";
 
 export default function RoomContent() {
@@ -26,7 +26,7 @@ export default function RoomContent() {
         (roomUser) => roomUser.user.id !== user?.userInfo.id && roomUser.active
       )
       .map((roomUser) => roomUser.user.id);
-  }, [users]);
+  }, [users, user]);
   const screenSize = useScreenSize();
 
   switch (localRoomState) {

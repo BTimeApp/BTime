@@ -24,7 +24,6 @@ import { IUser, IUserInfo } from "@/types/user";
 import { IRoomUser } from "@/types/room-participant";
 import { IResult } from "@/types/result";
 import { SolveStatus } from "@/types/status";
-import { IRoomSolve } from "@/types/room-solve";
 import { ServerResponse } from "http";
 import { NextFunction } from "express";
 import { ObjectId } from "bson";

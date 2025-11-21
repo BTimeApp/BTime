@@ -1,5 +1,5 @@
 import { IRoom, RaceSettings, Visibility } from "@/types/room";
-import { RoomEvent, RoomFormat, MatchFormat, SetFormat } from "@/types/room";
+import { RoomEvent } from "@/types/room";
 
 /**
  * A summary of the room used for things such as the room listing on the home page.

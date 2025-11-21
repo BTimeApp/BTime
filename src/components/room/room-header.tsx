@@ -1,4 +1,4 @@
-import { abbreviate, cn, displayText } from "@/lib/utils";
+import { abbreviate, cn } from "@/lib/utils";
 import { ROOM_EVENTS_INFO } from "@/types/room";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/common/header";
@@ -9,7 +9,7 @@ import { useSession } from "@/context/session-context";
 import { Settings } from "lucide-react";
 import RoomSettingsDialog from "@/components/room/room-settings-dialog";
 import { SOCKET_CLIENT } from "@/types/socket_protocol";
-import CreateTeamDialog from "./create-team-dialog";
+import CreateTeamDialog from "@/components/room/create-team-dialog";
 
 export function RoomHeader() {
   const [

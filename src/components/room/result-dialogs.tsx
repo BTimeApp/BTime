@@ -20,7 +20,7 @@ import { IRoomSolve } from "@/types/room-solve";
 import { useSession } from "@/context/session-context";
 import { IAttempt } from "@/types/solve";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "../ui/scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type SolveDialogProps = {
   solve: IRoomSolve;
@@ -55,7 +55,7 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
       users[localUser?.userInfo.id]?.currentTeam !== undefined
       ? teams[users[localUser.userInfo.id].currentTeam!]
       : undefined;
-  }, [localUser, users, teams]);
+  }, [localUser, users, teams, teamSettings]);
 
   // the local team at solve time.
   const solveLocalTeam = useMemo(() => {
@@ -64,7 +64,7 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
       solve.solve.attempts[localUser.userInfo.id]?.team !== undefined
       ? teams[solve.solve.attempts[localUser.userInfo.id].team!]
       : undefined;
-  }, [localUser, users, teams, solve]);
+  }, [localUser, teams, solve, teamSettings]);
 
   const localUserAttempt: IAttempt | undefined = useMemo(() => {
     return localUser ? solve.solve.attempts[localUser.userInfo.id] : undefined;
@@ -77,6 +77,7 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
     return currentLocalTeam
       ? Object.fromEntries(
           Object.entries(solve.solve.attempts).filter(
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             ([_uid, attempt]) => attempt.team === currentLocalTeam.team.id
           )
         )
@@ -90,6 +91,7 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
     return solveLocalTeam
       ? Object.fromEntries(
           Object.entries(solve.solve.attempts).filter(
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             ([_uid, attempt]) => attempt.team === solveLocalTeam.team.id
           )
         )
@@ -173,6 +175,8 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
     currentLocalTeam,
     currentLocalTeamAttempts,
     currentLocalTeamResult,
+    solve,
+    users
   ]);
 
   if (!localUser) {
@@ -293,13 +297,12 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
 }
 
 export function SetDialog({ setIndex, children }: SetDialogProps) {
-  const [roomName, users, teams, solves, raceSettings, teamSettings] =
+  const [roomName, users, teams, solves, teamSettings] =
     useRoomStore((s) => [
       s.roomName,
       s.users,
       s.teams,
       s.solves,
-      s.raceSettings,
       s.teamSettings,
     ]);
 
@@ -321,9 +324,8 @@ export function SetDialog({ setIndex, children }: SetDialogProps) {
         if (!localTeam) {
           return [];
         }
-        return Object.entries(roomSolve.solve.attempts)
-          .filter(([_uid, attempt]) => attempt.team === localTeam.team.id)
-          .map(([uid, _]) => uid);
+        return Object.keys(roomSolve.solve.attempts)
+          .filter((uid) => roomSolve.solve.attempts[uid].team === localTeam.team.id);
       } else {
         return [localUser.userInfo.id];
       }
@@ -381,10 +383,10 @@ export function SetDialog({ setIndex, children }: SetDialogProps) {
       `Set ${setIndex}`,
       ...setSolves.map((_roomSolve, idx) => [
         `${idx}.`,
-        ...relevantUsers[idx].map((uid, _uidx) => getUserTextRow(idx, uid)),
+        ...relevantUsers[idx].map((uid) => getUserTextRow(idx, uid)),
       ]),
     ].join("\n");
-  }, [roomName, scrambles, results, setIndex]);
+  }, [roomName, setIndex, getUserTextRow, localTeam, localUser, relevantUsers, setSolves, teamSettings]);
 
   return (
     <Dialog>
@@ -397,7 +399,7 @@ export function SetDialog({ setIndex, children }: SetDialogProps) {
           {setSolves.map((_roomSolve, idx) => (
             <div key={idx}>
               <div>{idx}. </div>
-              {relevantUsers[idx].map((uid, _uidx) => getUserTextRow(idx, uid))}
+              {relevantUsers[idx].map((uid) => getUserTextRow(idx, uid))}
             </div>
           ))}
         </ScrollArea>
@@ -430,14 +432,14 @@ export function SummaryDialog({
     //   createResultTextLines(scrambles, results)
     // );
     return "";
-  }, [roomName, scrambles, results]);
+  }, []);
 
   const resultTextDownload: string = useMemo(() => {
     // return (
     //   "Solve\tResult\tScramble\n" + createResultTextLines(scrambles, results)
     // );
     return "";
-  }, [scrambles, results]);
+  }, []);
 
   return (
     <Dialog>

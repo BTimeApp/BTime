@@ -1,6 +1,5 @@
 import {
   Access,
-  RaceSettings,
   IRoom,
   IRoomSettings,
   TeamReduceFunction,
@@ -13,7 +12,6 @@ import { ObjectId } from "bson";
 import bcrypt from "bcrypt";
 import { IUserInfo } from "@/types/user";
 import {
-  IRoomParticipant,
   IRoomTeam,
   IRoomUser,
 } from "@/types/room-participant";
@@ -36,7 +34,7 @@ export async function createRoom(
   };
 
   if (roomSettings.access.visibility == "PRIVATE") {
-    let access: Access = { visibility: "PRIVATE", password: "" };
+    const access: Access = { visibility: "PRIVATE", password: "" };
     access.password = roomSettings.access.password
       ? await bcrypt.hash(roomSettings.access.password, 10)
       : "";
@@ -54,7 +52,7 @@ export async function updateRoom(
   room.settings = newRoomSettings;
 
   if (newRoomSettings.access.visibility == "PRIVATE") {
-    let access: Access = { visibility: "PRIVATE", password: "" };
+    const access: Access = { visibility: "PRIVATE", password: "" };
     access.password = newRoomSettings.access.password
       ? await bcrypt.hash(newRoomSettings.access.password, 10)
       : "";
@@ -887,7 +885,7 @@ export async function resetSolve(room: IRoom) {
   currentSolve.solve.scrambles = solveScrambles;
 
   //reset attempts
-  let eligibleUsers = teamSettings.teamsEnabled
+  const eligibleUsers = teamSettings.teamsEnabled
     ? teamSettings.teamFormatSettings.teamSolveFormat === "ALL"
       ? Object.values(room.teams).flatMap((team) =>
           team.team.members

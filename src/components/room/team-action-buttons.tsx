@@ -10,11 +10,7 @@ interface TeamButtonProps {
   className?: string;
 }
 
-interface JoinTeamButtonProps extends TeamButtonProps {}
-interface LeaveTeamButtonProps extends TeamButtonProps {}
-interface DeleteTeamButtonProps extends TeamButtonProps {}
-
-export function JoinTeamButton({ teamId, className }: JoinTeamButtonProps) {
+export function JoinTeamButton({ teamId, className }: TeamButtonProps) {
   const { socket } = useSocket();
   const joinTeamCallback = useCallback((response: SocketResponse<void>) => {
     if (!response.success) {
@@ -34,7 +30,7 @@ export function JoinTeamButton({ teamId, className }: JoinTeamButtonProps) {
   );
 }
 
-export function LeaveTeamButton({ teamId, className }: LeaveTeamButtonProps) {
+export function LeaveTeamButton({ teamId, className }: TeamButtonProps) {
   const { socket } = useSocket();
   const leaveTeamCallback = useCallback((response: SocketResponse<void>) => {
     if (!response.success) {
@@ -54,7 +50,7 @@ export function LeaveTeamButton({ teamId, className }: LeaveTeamButtonProps) {
   );
 }
 
-export function DeleteTeamButton({ teamId, className }: DeleteTeamButtonProps) {
+export function DeleteTeamButton({ teamId, className }: TeamButtonProps) {
   const { socket } = useSocket();
   return (
     <Button

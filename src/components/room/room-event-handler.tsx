@@ -11,7 +11,7 @@ import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { useSocketEvent } from "@/hooks/use-socket-event";
 import { IRoomSolve } from "@/types/room-solve";
-import { IRoomParticipant, IRoomTeam, IRoomUser } from "@/types/room-participant";
+import { IRoomParticipant, IRoomUser } from "@/types/room-participant";
 import { useSession } from "@/context/session-context";
 import { useIsTouchscreen } from "@/hooks/useMobile";
 
