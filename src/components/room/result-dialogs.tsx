@@ -12,8 +12,8 @@ import { Button } from "@/components/ui/button";
 import {
   copyTextToClipboard,
   createAttemptTextLine,
-//   downloadTextFile,
-//   zip,
+  //   downloadTextFile,
+  //   zip,
 } from "@/lib/utils";
 import { useRoomStore } from "@/context/room-context";
 import { IRoomSolve } from "@/types/room-solve";
@@ -176,7 +176,7 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
     currentLocalTeamAttempts,
     currentLocalTeamResult,
     solve,
-    users
+    users,
   ]);
 
   if (!localUser) {
@@ -297,7 +297,6 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
 }
 
 export function SetDialog({ setIndex, children }: SetDialogProps) {
-
   return (
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
@@ -325,11 +324,10 @@ export function SetDialog({ setIndex, children }: SetDialogProps) {
 
 export function SummaryDialog({
   roomName,
-//   scrambles,
-//   results,
+  //   scrambles,
+  //   results,
   children,
 }: SummaryDialogProps) {
-
   return (
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>

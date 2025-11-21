@@ -606,7 +606,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={50}>
-          <GlobalTimeList className="max-h-[50vh] w-full" />
+          <GlobalTimeList className="max-h-[50vh] w-full bg-container-1" />
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>
