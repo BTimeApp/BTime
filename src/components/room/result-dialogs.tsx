@@ -24,7 +24,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   CustomRadioItem,
   RadioGroup,
-  RadioGroupItem,
 } from "@/components/ui/radio-group";
 import { ROOM_EVENTS_INFO } from "@/types/room";
 
