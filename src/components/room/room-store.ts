@@ -111,7 +111,7 @@ export type RoomStore = {
 
   userUnbanned: (userId: string) => void;
 
-  createTeam: (team: IRoomTeam) => void;
+  createTeams: (teams: IRoomTeam[]) => void;
 
   deleteTeam: (teamId: string) => void;
 
@@ -478,13 +478,15 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         }
       }),
 
-    createTeam: (team: IRoomTeam) =>
+    createTeams: (teams: IRoomTeam[]) =>
       set((state) => {
         if (!state.teamSettings.teamsEnabled) {
           return {};
         }
         const updatedTeams: Record<string, IRoomTeam> = { ...state.teams };
-        updatedTeams[team.team.id] = team;
+        for (const team of teams) {
+          updatedTeams[team.team.id] = team;
+        }
         return { teams: updatedTeams };
       }),
 

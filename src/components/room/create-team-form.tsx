@@ -81,9 +81,7 @@ export function CreateTeamForm({ onSubmit }: CreateTeamFormProps) {
 
   const handleSubmit = (data: CreateTeamFormValues) => {
     const teamNames = data.teamNames.map((t) => t.teamName);
-    for (const teamName of teamNames) {
-      socket.emit(SOCKET_CLIENT.CREATE_TEAM, teamName, socketCallback);
-    }
+    socket.emit(SOCKET_CLIENT.CREATE_TEAMS, teamNames, socketCallback);
     onSubmit();
   };
 

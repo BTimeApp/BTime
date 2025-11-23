@@ -50,7 +50,7 @@ export default function RoomEventHandler() {
     finishMatch,
     updateSolveStatus,
     userToggleCompeting,
-    createTeam,
+    createTeams,
     deleteTeam,
     userJoinTeam,
     userLeaveTeam,
@@ -89,7 +89,7 @@ export default function RoomEventHandler() {
     s.finishMatch,
     s.updateSolveStatus,
     s.userToggleCompeting,
-    s.createTeam,
+    s.createTeams,
     s.deleteTeam,
     s.userJoinTeam,
     s.userLeaveTeam,
@@ -340,7 +340,7 @@ export default function RoomEventHandler() {
   useSocketEvent(socket, SOCKET_SERVER.ROOM_UPDATE, handleRoomUpdate);
   useSocketEvent(socket, SOCKET_SERVER.ROOM_RESET, resetRoom);
 
-  useSocketEvent(socket, SOCKET_SERVER.TEAM_CREATED, createTeam);
+  useSocketEvent(socket, SOCKET_SERVER.TEAMS_CREATED, createTeams);
   useSocketEvent(socket, SOCKET_SERVER.TEAM_DELETED, deleteTeam);
   useSocketEvent(socket, SOCKET_SERVER.USER_JOIN_TEAM, userJoinTeam);
   useSocketEvent(socket, SOCKET_SERVER.USER_LEAVE_TEAM, userLeaveTeam);

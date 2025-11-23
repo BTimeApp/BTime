@@ -21,7 +21,7 @@ import {
   userJoinRoom,
 } from "@/lib/room";
 import { IUser, IUserInfo } from "@/types/user";
-import { IRoomUser } from "@/types/room-participant";
+import { IRoomTeam, IRoomUser } from "@/types/room-participant";
 import { IResult } from "@/types/result";
 import { SolveStatus } from "@/types/status";
 import { ServerResponse } from "http";
@@ -316,7 +316,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       }
 
       // write room to room store
-      stores.rooms.setRoom(room);
+      await stores.rooms.setRoom(room);
 
       // remove the room from this socket.
       socket.leave(roomId);
@@ -381,7 +381,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         }
 
         // update room store
-        stores.rooms.setRoom(room);
+        await stores.rooms.setRoom(room);
 
         // broadcast room update
         io.to(roomId).emit(SOCKET_SERVER.ROOM_UPDATE, room);
@@ -500,7 +500,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         }
 
         //write room to room store
-        stores.rooms.setRoom(room);
+        await stores.rooms.setRoom(room);
 
         // formally add this socket connection to the room and call the join callback.
         // this callback (for now) should have all of the room data the user needs, so they are excluded from the following broadcast event.
@@ -537,7 +537,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
       if (room.state == "STARTED") {
         await resetSolve(room);
-        stores.rooms.setRoom(room);
+        await stores.rooms.setRoom(room);
         io.to(room.id).emit(SOCKET_SERVER.SOLVE_RESET, room.solves.at(-1));
       } else {
         console.log(`Cannot skip scramble when room state is ${room.state}`);
@@ -553,7 +553,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
       if (room.state == "STARTED") {
         await handleSolveFinished(room);
-        stores.rooms.setRoom(room);
+        await stores.rooms.setRoom(room);
       } else {
         console.log(`Cannot skip scramble when room state is ${room.state}`);
       }
@@ -571,7 +571,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         `User ${socket.user?.userInfo.userName} banned user ${banUser.user.userName} from room ${socket.roomId}.`
       );
 
-      stores.rooms.setRoom(room);
+      await stores.rooms.setRoom(room);
       //broadcast user update to the rest of the room
       io.to(room.id).emit(SOCKET_SERVER.USER_BANNED, userId);
     });
@@ -588,7 +588,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         `User ${socket.user?.userInfo.userName} unbanned user ${unbanUser.user.userName} from room ${socket.roomId}.`
       );
 
-      stores.rooms.setRoom(room);
+      await stores.rooms.setRoom(room);
       //broadcast user update to the rest of the room
       io.to(room.id).emit(SOCKET_SERVER.USER_UNBANNED, userId);
     });
@@ -623,16 +623,16 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       );
       const room = await getSocketRoom();
       if (!room) return;
+      console.log(room.teams);
 
       if (room.state == "WAITING" || room.state == "FINISHED") {
         room.state = "STARTED";
         const newSolve = await newRoomSolve(room);
 
-        stores.rooms.setRoom(room);
+        await stores.rooms.setRoom(room);
         io.to(room.id).emit(SOCKET_SERVER.ROOM_STARTED);
         io.to(room.id).emit(SOCKET_SERVER.TEAMS_UPDATE, room.teams);
         io.to(room.id).emit(SOCKET_SERVER.NEW_SOLVE, newSolve);
-
       } else {
         console.log(`Cannot start room when room state is ${room.state}`);
       }
@@ -651,7 +651,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       if (room.state == "STARTED" || room.state == "FINISHED") {
         resetRoom(room);
 
-        stores.rooms.setRoom(room);
+        await stores.rooms.setRoom(room);
         io.to(room.id).emit(SOCKET_SERVER.ROOM_RESET);
       } else {
         console.log(`Cannot reset room when room state is ${room.state}`);
@@ -671,7 +671,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       if (room.state == "FINISHED") {
         resetRoom(room);
 
-        stores.rooms.setRoom(room);
+        await stores.rooms.setRoom(room);
         io.to(room.id).emit(SOCKET_SERVER.ROOM_RESET);
       } else {
         console.log(`Cannot rematch room when room state is ${room.state}`);
@@ -713,7 +713,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
               }
             }
 
-            stores.rooms.setRoom(room);
+            await stores.rooms.setRoom(room);
           }
         }
       }
@@ -782,7 +782,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
             result
           );
 
-          stores.rooms.setRoom(room);
+          await stores.rooms.setRoom(room);
           //broadcast user submit event to other users
           io.to(socket.roomId).emit(
             SOCKET_SERVER.USER_SUBMITTED_RESULT,
@@ -802,9 +802,9 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
      * Upon host requesting a new team created
      */
     socket.on(
-      SOCKET_CLIENT.CREATE_TEAM,
+      SOCKET_CLIENT.CREATE_TEAMS,
       async (
-        teamName: string,
+        teamNames: string[],
         createTeamCallback: SocketCallback<undefined>
       ) => {
         const room = await getSocketRoom();
@@ -835,14 +835,24 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           return;
         }
 
-        const newTeam = createTeam(room, teamName);
-        room.teams[newTeam.team.id] = newTeam;
+        const newTeams = [] as IRoomTeam[];
+
+        for (const teamName of teamNames) {
+          if (room.settings.teamSettings.maxNumTeams && Object.keys(room.teams).length >= room.settings.teamSettings.maxNumTeams) {
+            break;
+          }
+          const newTeam = createTeam(room, teamName);
+          room.teams[newTeam.team.id] = newTeam;
+          newTeams.push(newTeam);
+        }
 
         //persist to redis
-        stores.rooms.setRoom(room);
+        await stores.rooms.setRoom(room);
+
+        console.log(`New team(s) created in room ${socket.roomId}: ${teamNames}`);
 
         //broadcast new team event
-        io.to(room.id).emit(SOCKET_SERVER.TEAM_CREATED, newTeam);
+        io.to(room.id).emit(SOCKET_SERVER.TEAMS_CREATED, newTeams);
 
         createTeamCallback({ success: true, data: undefined });
       }
@@ -860,8 +870,10 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       )
         return;
 
+      console.log(`Team ${teamId} deleted in room ${socket.roomId}`);
+
       delete room.teams[teamId];
-      stores.rooms.setRoom(room);
+      await stores.rooms.setRoom(room);
 
       io.to(room.id).emit(SOCKET_SERVER.TEAM_DELETED, teamId);
     });
@@ -884,7 +896,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         );
 
         if (response.success) {
-          stores.rooms.setRoom(room);
+          await stores.rooms.setRoom(room);
           if (userOldTeam && userOldTeam != teamId) {
             // it's awkward to send another bit of extra data to the client to update the old team within the user join team event, so manually check if we need to send leave team event
             io.to(room.id).emit(
@@ -921,7 +933,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         return;
 
       const success = userLeaveTeam(room, user.userInfo.id, teamId);
-      stores.rooms.setRoom(room);
+      await stores.rooms.setRoom(room);
 
       if (success) {
         io.to(room.id).emit(
@@ -973,7 +985,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
             handleSolveFinished(room);
           }
         }
-        stores.rooms.setRoom(room);
+        await stores.rooms.setRoom(room);
         io.to(socket.roomId).emit(
           SOCKET_SERVER.USER_TOGGLE_COMPETING,
           userId,

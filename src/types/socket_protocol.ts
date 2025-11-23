@@ -43,9 +43,9 @@ export enum SOCKET_CLIENT {
   SUBMIT_RESULT = "SUBMIT_RESULT",
 
   /**
-   * Host creates a new team
+   * Host creates new teams. We force a batched creation to avoid race condition on server.
    */
-  CREATE_TEAM = "CREATE_TEAM",
+  CREATE_TEAMS = "CREATE_TEAMS",
 
   /**
    * Host deletes a team
@@ -148,9 +148,9 @@ export enum SOCKET_SERVER {
   ROOM_UPDATE = "ROOM_UPDATE",
 
   /**
-   * Host creates a new team
+   * Host creates new team(s)
    */
-  TEAM_CREATED = "TEAM_CREATED",
+  TEAMS_CREATED = "TEAMS_CREATED",
 
   /**
    * Host deletes a team
