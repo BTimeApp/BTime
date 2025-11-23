@@ -7,11 +7,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { DNF_IRESULT, IResult, Result } from "@/types/result";
-import React, {
-  useCallback,
-  useMemo,
-  useRef,
-} from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   cn,
@@ -25,6 +21,12 @@ import { useSession } from "@/context/session-context";
 import { IAttempt } from "@/types/solve";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  CustomRadioItem,
+  RadioGroup,
+  RadioGroupItem,
+} from "@/components/ui/radio-group";
+import { ROOM_EVENTS_INFO } from "@/types/room";
 
 type SolveDialogProps = {
   solve: IRoomSolve;
@@ -97,8 +99,11 @@ function ScrambleUserResultsListing({
     <div className={cn("", className)}>
       {Object.entries(mapping).map(([scramble, resultMapping], idx) => (
         <React.Fragment key={idx}>
-          <div>{scramble}</div>
-          <div className="pl-2">
+          <CustomRadioItem value={scramble} className="text-left p-1">
+            <p>{scramble}</p>
+          </CustomRadioItem>
+
+          <div className="pl-4">
             {Object.entries(resultMapping).map(([uid, iResult], jdx) => (
               <div key={jdx} className="whitespace-pre-wrap">
                 {users[uid]?.user.userName ?? "BTime User"}
@@ -120,13 +125,18 @@ function ScrambleUserResultsListing({
 function ResultListingWrapper({
   title,
   baseCopyText = "",
+  defaultValue,
   children,
 }: {
   title?: string;
   baseCopyText: string;
+  defaultValue?: string;
   children: React.ReactNode;
 }) {
   const textContainerRef = useRef<HTMLDivElement>(null);
+  const [scramble, setScramble] = useState<string>(defaultValue ?? "");
+
+  const [roomEvent] = useRoomStore((s) => [s.roomEvent]);
 
   const copyText = useCallback(() => {
     const copyText = [];
@@ -142,20 +152,24 @@ function ResultListingWrapper({
   }, [baseCopyText]);
 
   return (
-    <div className="flex flex-col">
-      <div className="flex flex-row">
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-row gap-2">
         <div ref={textContainerRef}>
           {title && <div className="text-lg font-bold">{title}</div>}
-          {children}
+          <div className="max-h-[50vh] overflow-y-auto">
+            <RadioGroup defaultValue={defaultValue} onValueChange={setScramble}>
+              {children}
+            </RadioGroup>
+          </div>
         </div>
-        {/* <twisty-player
-            experimental-setup-alg={"asdf"}
-            puzzle={ROOM_EVENT_JS_NAME_MAP.get(event) ?? "3x3x3"}
-            visualization="2D"
-            control-panel="none"
-            background="none"
-            className="h-25 w-35 flex-none"
-          /> */}
+        <twisty-player
+          experimental-setup-alg={scramble}
+          puzzle={ROOM_EVENTS_INFO[roomEvent]?.jsName ?? "3x3x3"}
+          visualization="2D"
+          control-panel="none"
+          background="none"
+          className="border-2 rounded-lg h-40 w-50 flex-none"
+        />
       </div>
       <div className="flex flex-row">
         <Button
@@ -290,7 +304,10 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
           </TabsList>
           {Object.keys(userScrambleResultMapping).length > 0 && (
             <TabsContent value="user">
-              <ResultListingWrapper baseCopyText={baseCopyText}>
+              <ResultListingWrapper
+                baseCopyText={baseCopyText}
+                defaultValue={Object.keys(userScrambleResultMapping)[0]}
+              >
                 <ScrambleUserResultsListing
                   mapping={userScrambleResultMapping}
                 />
@@ -299,13 +316,15 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
           )}
           {teamSettings.teamsEnabled && solveLocalTeam && (
             <TabsContent value="team">
-              <ResultListingWrapper baseCopyText={baseCopyText}>
-                <div>
-                  Team Result:{" "}
-                  {solveLocalTeamResult
+              <ResultListingWrapper
+                defaultValue={Object.keys(solveLocalTeamResultMapping)[0]}
+                baseCopyText={baseCopyText}
+                title={`Team Result:\t${
+                  solveLocalTeamResult
                     ? Result.fromIResult(solveLocalTeamResult).toString(true)
-                    : "TBD"}
-                </div>
+                    : "TBD"
+                }`}
+              >
                 <ScrambleUserResultsListing
                   mapping={solveLocalTeamResultMapping}
                 />
@@ -314,11 +333,15 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
           )}
           {teamSettings.teamsEnabled && currentLocalTeam && (
             <TabsContent value="currTeam">
-              <ResultListingWrapper baseCopyText={baseCopyText}>
-                <div>
-                  Team Result:{" "}
-                  {Result.fromIResult(currentLocalTeamResult).toString(true)}
-                </div>
+              <ResultListingWrapper
+                defaultValue={Object.keys(currentLocalTeamResultMapping)[0]}
+                baseCopyText={baseCopyText}
+                title={`Team Result:\t${
+                  currentLocalTeamResult
+                    ? Result.fromIResult(currentLocalTeamResult).toString(true)
+                    : "TBD"
+                }`}
+              >
                 <ScrambleUserResultsListing
                   mapping={currentLocalTeamResultMapping}
                 />
@@ -326,8 +349,10 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
             </TabsContent>
           )}
           <TabsContent value="all">
-            {/* TODO - reimplement scramble drawing and pull this component into new wrapper */}
-            <ResultListingWrapper baseCopyText={baseCopyText}>
+            <ResultListingWrapper
+              defaultValue={Object.keys(allResultMapping)[0]}
+              baseCopyText={baseCopyText}
+            >
               <ScrambleUserResultsListing mapping={allResultMapping} />
             </ResultListingWrapper>
           </TabsContent>
