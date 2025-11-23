@@ -183,8 +183,8 @@ function ResultListingWrapper({
 }
 
 export function SolveDialog({ solve, children }: SolveDialogProps) {
-  const [roomName, users, teams, raceSettings, teamSettings] = useRoomStore(
-    (s) => [s.roomName, s.users, s.teams, s.raceSettings, s.teamSettings]
+  const [roomName, teams, raceSettings, teamSettings] = useRoomStore(
+    (s) => [s.roomName, s.teams, s.raceSettings, s.teamSettings]
   );
 
   const { user: localUser } = useSession();
@@ -256,7 +256,7 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
             )}
             <TabsTrigger value="all">All</TabsTrigger>
             {teamSettings.teamsEnabled &&
-              Object.entries(teamScrambleResultMappings).map(([tid, _scrambleResultMapping], idx) => (
+              Object.keys(teamScrambleResultMappings).map((tid, idx) => (
                 <TabsTrigger key={idx} value={tid}>
                   {teams[tid].team.name ?? "[No Name]"}
                 </TabsTrigger>

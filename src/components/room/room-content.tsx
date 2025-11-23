@@ -10,7 +10,6 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-  useCarousel,
 } from "@/components/ui/carousel";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
