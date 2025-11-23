@@ -10,6 +10,7 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
+  useCarousel,
 } from "@/components/ui/carousel";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -126,7 +127,7 @@ export default function RoomContent() {
 function clipStringWithEllipsis(str: string, maxLength: number) {
   if (str.length > maxLength) {
     // Subtract 3 from maxLength to account for the "..."
-    return str.slice(0, maxLength - 3) + '...'; 
+    return str.slice(0, maxLength - 3) + "...";
   }
   return str;
 }
@@ -141,20 +142,31 @@ function ParticipantRoomPanelCarousel({
   idToName: (id: string) => string;
 }) {
   const screenSize = useScreenSize();
-  const [users] = useRoomStore((s) => [s.users]);
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
   const carouselTooltipTexts = [
     "Summary",
     ...participantIds.map((pid) => idToName(pid)),
   ];
+
   useEffect(() => {
     if (!api) return;
 
-    setCurrent(api.selectedScrollSnap());
-    api.on("select", () => {
+    const updateCurrent = () => {
       setCurrent(api.selectedScrollSnap());
-    });
+    };
+    api.on("select", updateCurrent);
+    api.on("reInit", updateCurrent);
+    api.on("slidesChanged", updateCurrent);
+
+    // Initialize
+    updateCurrent();
+
+    return () => {
+      api.off("select", updateCurrent);
+      api.off("reInit", updateCurrent);
+      api.off("slidesChanged", updateCurrent);
+    };
   }, [api]);
   return (
     <Carousel className="h-full md:col-span-1" setApi={setApi}>
@@ -192,7 +204,9 @@ function ParticipantRoomPanelCarousel({
       </CarouselContent>
       <div className="absolute top-1/2 -translate-y-1 left-2 z-1000 flex flex-col items-start">
         <p className="translate-y-1 text-sm text-center w-full">
-          {current > 0 ? clipStringWithEllipsis(carouselTooltipTexts[current - 1], 12) : ""}
+          {current > 0
+            ? clipStringWithEllipsis(carouselTooltipTexts[current - 1], 12)
+            : ""}
         </p>
         <CarouselPrevious
           variant="ghost"
