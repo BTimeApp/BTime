@@ -181,7 +181,7 @@ export class Result {
   }
 
   static fromIResult(obj?: IResult): Result {
-    if(!obj) return new Result(0, "DNF");
+    if (!obj) return new Result(0, "DNF");
     return new Result(obj.time, obj.penalty);
   }
 
@@ -202,6 +202,30 @@ export class Result {
 
   static iSumOf(results: IResult[]): number {
     return Result.sumOf(results.map((iResult) => Result.fromIResult(iResult)));
+  }
+
+  /**
+   * Returns the median of a list of results.
+   * Returns mean of median 2 when even number of results
+   * A median of 0 is 0
+   */
+  static medianOf(results: Result[]): number {
+    if (results.length === 0) return 0;
+    const sortedResults = results.sort((a, b) => a.toTime() - b.toTime());
+    const mid = Math.floor(sortedResults.length / 2);
+    if (sortedResults.length % 2 === 0) {
+      return (
+        (sortedResults[mid - 1].toTime() + sortedResults[mid].toTime()) / 2
+      );
+    } else {
+      return sortedResults[mid].toTime();
+    }
+  }
+
+  static iMedianOf(results: IResult[]): number {
+    return Result.medianOf(
+      results.map((iResult) => Result.fromIResult(iResult))
+    );
   }
 
   /**

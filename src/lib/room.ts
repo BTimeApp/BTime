@@ -386,6 +386,7 @@ const teamReduceFunctionToFunction = new Map<
   ["FASTEST", Result.iMinOf],
   ["MEAN", Result.iMeanOf],
   ["SUM", Result.iSumOf],
+  ["MEDIAN", Result.iMedianOf],
 ]);
 
 export function checkTeamFinished(room: IRoom, teamId: string) {

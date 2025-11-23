@@ -276,6 +276,7 @@ export const TEAM_SCRAMBLE_FORMATS = [
 export const TEAM_REDUCE_FUNCTIONS = [
   "SUM", //sum of all teammates' times
   "MEAN", //mean of all teammates' times
+  "MEDIAN", //median of all teammates' times
   "FASTEST", //fastest (min) of all teammates' times
 ] as const;
 
