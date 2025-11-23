@@ -13,6 +13,7 @@ import {
   cn,
   copyTextToClipboard,
   filterRecord,
+  mapRecordValues,
   //   downloadTextFile,
 } from "@/lib/utils";
 import { useRoomStore } from "@/context/room-context";
@@ -21,11 +22,9 @@ import { useSession } from "@/context/session-context";
 import { IAttempt } from "@/types/solve";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  CustomRadioItem,
-  RadioGroup,
-} from "@/components/ui/radio-group";
+import { CustomRadioItem, RadioGroup } from "@/components/ui/radio-group";
 import { ROOM_EVENTS_INFO } from "@/types/room";
+import { IRoomTeam } from "@/types/room-participant";
 
 type SolveDialogProps = {
   solve: IRoomSolve;
@@ -189,33 +188,6 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
   );
 
   const { user: localUser } = useSession();
-
-  // the local team at current time.
-  const currentLocalTeam = useMemo(() => {
-    return teamSettings.teamsEnabled &&
-      localUser !== undefined &&
-      users[localUser?.userInfo.id]?.currentTeam !== undefined
-      ? teams[users[localUser.userInfo.id].currentTeam!]
-      : undefined;
-  }, [localUser, users, teams, teamSettings]);
-
-  // the local team at solve time.
-  const solveLocalTeam = useMemo(() => {
-    return teamSettings.teamsEnabled &&
-      localUser !== undefined &&
-      solve.solve.attempts[localUser.userInfo.id]?.team !== undefined
-      ? teams[solve.solve.attempts[localUser.userInfo.id].team!]
-      : undefined;
-  }, [localUser, teams, solve, teamSettings]);
-
-  const currentLocalTeamResult = currentLocalTeam
-    ? solve.solve.results[currentLocalTeam.team.id]
-    : undefined;
-
-  const solveLocalTeamResult = solveLocalTeam
-    ? solve.solve.results[solveLocalTeam.team.id]
-    : undefined;
-
   const userScrambleResultMapping = useMemo(
     () =>
       localUser
@@ -229,40 +201,29 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
     [localUser, solve]
   );
 
-  const solveLocalTeamResultMapping = useMemo(
-    () =>
-      solveLocalTeam
-        ? getScrambleResultMapping(
-            filterRecord(
-              solve.solve.attempts,
-              (attempt) => attempt.team === solveLocalTeam.team.id
-            )
-          )
-        : ({} as ScrambleResultMapping),
-    [solveLocalTeam, solve]
-  );
+  const teamScrambleResultMappings: Record<string, ScrambleResultMapping> =
+    useMemo(
+      () =>
+        filterRecord(
+          mapRecordValues<string, IRoomTeam, ScrambleResultMapping>(
+            teams,
+            (roomTeam: IRoomTeam) =>
+              getScrambleResultMapping(
+                filterRecord(
+                  solve.solve.attempts,
+                  (attempt) => attempt.team === roomTeam.team.id
+                )
+              )
+          ),
+          (resultMapping) => Object.keys(resultMapping).length > 0
+        ),
+      [teams, solve]
+    );
 
-  const currentLocalTeamResultMapping = useMemo(
-    () =>
-      currentLocalTeam
-        ? getScrambleResultMapping(
-            filterRecord(
-              solve.solve.attempts,
-              (attempt) => attempt.team === currentLocalTeam.team.id
-            )
-          )
-        : ({} as ScrambleResultMapping),
-    [currentLocalTeam, solve]
-  );
-
-  const allResultMapping = useMemo(
+  const allScrambleResultMapping = useMemo(
     () => getScrambleResultMapping(solve.solve.attempts),
     [solve]
   );
-
-  const defaultTab =
-    teamSettings.teamsEnabled && solveLocalTeam ? "team" : "user";
-
   const baseCopyText = [
     `BTime Room ${roomName}`,
     `${
@@ -284,22 +245,22 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
             {`Solve ${solve.solveIndex}`}
           </DialogTitle>
         </DialogHeader>
-        <Tabs defaultValue={defaultTab}>
+        <Tabs
+          defaultValue={
+            Object.keys(userScrambleResultMapping).length > 0 ? "user" : "all"
+          }
+        >
           <TabsList>
             {Object.keys(userScrambleResultMapping).length > 0 && (
               <TabsTrigger value="user">You</TabsTrigger>
             )}
-            {solveLocalTeam && (
-              <TabsTrigger value="team">
-                Team {solveLocalTeam.team.name}
-              </TabsTrigger>
-            )}
-            {currentLocalTeam && currentLocalTeam != solveLocalTeam && (
-              <TabsTrigger value="currTeam">
-                Team {currentLocalTeam.team.name}
-              </TabsTrigger>
-            )}
             <TabsTrigger value="all">All</TabsTrigger>
+            {teamSettings.teamsEnabled &&
+              Object.entries(teamScrambleResultMappings).map(([tid, _scrambleResultMapping], idx) => (
+                <TabsTrigger key={idx} value={tid}>
+                  {teams[tid].team.name ?? "[No Name]"}
+                </TabsTrigger>
+              ))}
           </TabsList>
           {Object.keys(userScrambleResultMapping).length > 0 && (
             <TabsContent value="user">
@@ -313,48 +274,34 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
               </ResultListingWrapper>
             </TabsContent>
           )}
-          {teamSettings.teamsEnabled && solveLocalTeam && (
-            <TabsContent value="team">
-              <ResultListingWrapper
-                defaultValue={Object.keys(solveLocalTeamResultMapping)[0]}
-                baseCopyText={baseCopyText}
-                title={`Team Result:\t${
-                  solveLocalTeamResult
-                    ? Result.fromIResult(solveLocalTeamResult).toString(true)
-                    : "TBD"
-                }`}
-              >
-                <ScrambleUserResultsListing
-                  mapping={solveLocalTeamResultMapping}
-                />
-              </ResultListingWrapper>
-            </TabsContent>
-          )}
-          {teamSettings.teamsEnabled && currentLocalTeam && (
-            <TabsContent value="currTeam">
-              <ResultListingWrapper
-                defaultValue={Object.keys(currentLocalTeamResultMapping)[0]}
-                baseCopyText={baseCopyText}
-                title={`Team Result:\t${
-                  currentLocalTeamResult
-                    ? Result.fromIResult(currentLocalTeamResult).toString(true)
-                    : "TBD"
-                }`}
-              >
-                <ScrambleUserResultsListing
-                  mapping={currentLocalTeamResultMapping}
-                />
-              </ResultListingWrapper>
-            </TabsContent>
-          )}
           <TabsContent value="all">
             <ResultListingWrapper
-              defaultValue={Object.keys(allResultMapping)[0]}
+              defaultValue={Object.keys(allScrambleResultMapping)[0]}
               baseCopyText={baseCopyText}
             >
-              <ScrambleUserResultsListing mapping={allResultMapping} />
+              <ScrambleUserResultsListing mapping={allScrambleResultMapping} />
             </ResultListingWrapper>
           </TabsContent>
+          {teamSettings.teamsEnabled &&
+            Object.entries(teamScrambleResultMappings).map(([tid, teamScrambleResultMapping], idx) => (
+              <TabsContent key={idx} value={tid}>
+                <ResultListingWrapper
+                  defaultValue={Object.keys(teamScrambleResultMapping)[0]}
+                  baseCopyText={baseCopyText}
+                  title={`Team Result:\t${
+                    solve.solve.results[tid]
+                      ? Result.fromIResult(solve.solve.results[tid]).toString(
+                          true
+                        )
+                      : "TBD"
+                  }`}
+                >
+                  <ScrambleUserResultsListing
+                    mapping={teamScrambleResultMapping}
+                  />
+                </ResultListingWrapper>
+              </TabsContent>
+            ))}
         </Tabs>
       </DialogContent>
     </Dialog>

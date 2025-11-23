@@ -134,15 +134,16 @@ export function filterRecord<K extends string | number | symbol, V>(
   return result;
 }
 
-// function filterRecordStr<T, K extends string>(
-//   record: Record<K, T>,
-//   fn: (value: T, key: K) => boolean
-// ): Partial<Record<K, T>> {
-//   const out: Partial<Record<K, T>> = {};
-//   for (const key in record) {
-//     if (fn(record[key], key)) {
-//       out[key] = record[key];
-//     }
-//   }
-//   return out;
-// }
+export function mapRecordValues<K extends string | number | symbol, V, R>(
+  record: Record<K, V>,
+  mapper: (value: V, key: K) => R
+): Record<K, R> {
+  const result = {} as Record<K, R>;
+
+  for (const key in record) {
+    const value = record[key];
+    result[key] = mapper(value, key);
+  }
+
+  return result;
+}
