@@ -623,7 +623,6 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       );
       const room = await getSocketRoom();
       if (!room) return;
-      console.log(room.teams);
 
       if (room.state == "WAITING" || room.state == "FINISHED") {
         room.state = "STARTED";
