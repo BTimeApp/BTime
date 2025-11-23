@@ -282,3 +282,5 @@ export class Result {
     return this.toTime() > other.toTime();
   }
 }
+
+export const DNF_IRESULT = new Result(0, "DNF").toIResult();

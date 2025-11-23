@@ -2,9 +2,7 @@ import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { randomScrambleForEvent } from "cubing/scramble";
 import { RoomEvent } from "@/types/room";
-import { Result } from "@/types/result";
 import { toast } from "sonner";
-import { IAttempt } from "@/types/solve";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -69,31 +67,6 @@ export function zip<T extends any[]>( //eslint-disable-line @typescript-eslint/n
   });
 }
 
-// export function createResultTextLine(
-//   scramble: string,
-//   result?: IResult,
-//   idx?: number
-// ) {
-//   return `${idx != null ? idx + 1 + "\t" : ""}${
-//     result != null ? Result.fromIResult(result).toString(true) + "\t" : ""
-//   }${scramble}`;
-// }
-// export function createResultTextLines(scrambles: string[], results: IResult[]) {
-//   return scrambles
-//     .map((scramble, idx) => createResultTextLine(scramble, results[idx], idx))
-//     .join("\n");
-// }
-
-export function createAttemptTextLine(attempt: IAttempt, userName?: string, printScramble: boolean = true) {
-  return (
-    (userName ? userName + ": " : "") +
-    (attempt.finished
-      ? Result.fromIResult(attempt.result).toString(true) + "\t"
-      : "") +
-    (printScramble ? attempt.scramble : "")
-  );
-}
-
 export async function copyTextToClipboard(text: string) {
   try {
     await navigator.clipboard.writeText(text);
@@ -145,3 +118,31 @@ export function displayText(name: string) {
 export function literalKeys<T extends Record<string, any>>(obj: T) {
   return Object.keys(obj) as Array<keyof T & string>;
 }
+export function filterRecord<K extends string | number | symbol, V>(
+  record: Record<K, V>,
+  predicate: (value: V, key: K) => boolean
+): Record<K, V> {
+  const result = {} as Record<K, V>;
+
+  for (const key in record) {
+    const value = record[key];
+    if (predicate(value, key)) {
+      result[key] = value;
+    }
+  }
+
+  return result;
+}
+
+// function filterRecordStr<T, K extends string>(
+//   record: Record<K, T>,
+//   fn: (value: T, key: K) => boolean
+// ): Partial<Record<K, T>> {
+//   const out: Partial<Record<K, T>> = {};
+//   for (const key in record) {
+//     if (fn(record[key], key)) {
+//       out[key] = record[key];
+//     }
+//   }
+//   return out;
+// }

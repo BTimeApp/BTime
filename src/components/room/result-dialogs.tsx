@@ -6,14 +6,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { IResult, Result } from "@/types/result";
-import React, { useMemo, useState } from "react";
+import { DNF_IRESULT, IResult, Result } from "@/types/result";
+import React, {
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { Button } from "@/components/ui/button";
 import {
+  cn,
   copyTextToClipboard,
-  createAttemptTextLine,
+  filterRecord,
   //   downloadTextFile,
-  //   zip,
 } from "@/lib/utils";
 import { useRoomStore } from "@/context/room-context";
 import { IRoomSolve } from "@/types/room-solve";
@@ -41,6 +45,131 @@ type SummaryDialogProps = {
   children: React.ReactNode;
 };
 
+type ScrambleResultMapping = Record<string, Record<string, IResult>>;
+
+/**
+ * Turns attempt information into a mapping of
+ * <scramble: <user id, result>>.
+ *
+ * We take in attempts itself to allow pre-filtering out attempts.
+ */
+function getScrambleResultMapping(
+  attempts: Record<string, IAttempt>
+): ScrambleResultMapping {
+  const mapping = {} as ScrambleResultMapping;
+
+  for (const [uid, attempt] of Object.entries(attempts)) {
+    if (!(attempt.scramble in mapping)) {
+      mapping[attempt.scramble] = {} as Record<string, IResult>;
+    }
+
+    //guard against user not existing in the array, but should never happen
+    mapping[attempt.scramble][uid] = attempt.finished
+      ? attempt.result
+      : DNF_IRESULT;
+  }
+
+  return mapping;
+}
+
+/**
+ * If using radio group item, make sure to wrap this with radio group manually
+ * Safe so far b/c only used within this file.
+ *
+ * Given a mapping, lists the scrambles and corresponding results as follows:
+ *
+ * [scramble]
+ *   [user] [result]
+ *   [user] [result]
+ *
+ * [scramble]
+ *   ...
+ */
+function ScrambleUserResultsListing({
+  mapping,
+  className,
+}: {
+  mapping: ScrambleResultMapping;
+  className?: string;
+}) {
+  const [users] = useRoomStore((s) => [s.users]);
+  return (
+    <div className={cn("", className)}>
+      {Object.entries(mapping).map(([scramble, resultMapping], idx) => (
+        <React.Fragment key={idx}>
+          <div>{scramble}</div>
+          <div className="pl-2">
+            {Object.entries(resultMapping).map(([uid, iResult], jdx) => (
+              <div key={jdx} className="whitespace-pre-wrap">
+                {users[uid]?.user.userName ?? "BTime User"}
+                {"\t\t"}
+                {Result.fromIResult(iResult).toString(true)}
+              </div>
+            ))}
+          </div>
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Wraps result listing and
+ * If using radio group items, this component should go around them.
+ */
+function ResultListingWrapper({
+  title,
+  baseCopyText = "",
+  children,
+}: {
+  title?: string;
+  baseCopyText: string;
+  children: React.ReactNode;
+}) {
+  const textContainerRef = useRef<HTMLDivElement>(null);
+
+  const copyText = useCallback(() => {
+    const copyText = [];
+
+    if (baseCopyText) {
+      copyText.push(baseCopyText);
+    }
+    if (textContainerRef.current?.innerText) {
+      copyText.push(textContainerRef.current?.innerText);
+    }
+
+    return copyText.join("\n");
+  }, [baseCopyText]);
+
+  return (
+    <div className="flex flex-col">
+      <div className="flex flex-row">
+        <div ref={textContainerRef}>
+          {title && <div className="text-lg font-bold">{title}</div>}
+          {children}
+        </div>
+        {/* <twisty-player
+            experimental-setup-alg={"asdf"}
+            puzzle={ROOM_EVENT_JS_NAME_MAP.get(event) ?? "3x3x3"}
+            visualization="2D"
+            control-panel="none"
+            background="none"
+            className="h-25 w-35 flex-none"
+          /> */}
+      </div>
+      <div className="flex flex-row">
+        <Button
+          variant="primary"
+          className="ml-auto"
+          onClick={() => copyTextToClipboard(copyText())}
+        >
+          Copy
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function SolveDialog({ solve, children }: SolveDialogProps) {
   const [roomName, users, teams, raceSettings, teamSettings] = useRoomStore(
     (s) => [s.roomName, s.users, s.teams, s.raceSettings, s.teamSettings]
@@ -66,127 +195,71 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
       : undefined;
   }, [localUser, teams, solve, teamSettings]);
 
-  const localUserAttempt: IAttempt | undefined = useMemo(() => {
-    return localUser ? solve.solve.attempts[localUser.userInfo.id] : undefined;
-  }, [solve, localUser]);
-
   const currentLocalTeamResult = currentLocalTeam
     ? solve.solve.results[currentLocalTeam.team.id]
     : undefined;
-  const currentLocalTeamAttempts: Record<string, IAttempt> = useMemo(() => {
-    return currentLocalTeam
-      ? Object.fromEntries(
-          Object.entries(solve.solve.attempts).filter(
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            ([_uid, attempt]) => attempt.team === currentLocalTeam.team.id
-          )
-        )
-      : {};
-  }, [solve, currentLocalTeam]);
 
   const solveLocalTeamResult = solveLocalTeam
     ? solve.solve.results[solveLocalTeam.team.id]
     : undefined;
-  const solveLocalTeamAttempts: Record<string, IAttempt> = useMemo(() => {
-    return solveLocalTeam
-      ? Object.fromEntries(
-          Object.entries(solve.solve.attempts).filter(
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            ([_uid, attempt]) => attempt.team === solveLocalTeam.team.id
+
+  const userScrambleResultMapping = useMemo(
+    () =>
+      localUser
+        ? getScrambleResultMapping(
+            filterRecord(
+              solve.solve.attempts,
+              (_attempt, uid) => uid === localUser.userInfo.id
+            )
           )
-        )
-      : {};
-  }, [solve, solveLocalTeam]);
+        : ({} as ScrambleResultMapping),
+    [localUser, solve]
+  );
+
+  const solveLocalTeamResultMapping = useMemo(
+    () =>
+      solveLocalTeam
+        ? getScrambleResultMapping(
+            filterRecord(
+              solve.solve.attempts,
+              (attempt) => attempt.team === solveLocalTeam.team.id
+            )
+          )
+        : ({} as ScrambleResultMapping),
+    [solveLocalTeam, solve]
+  );
+
+  const currentLocalTeamResultMapping = useMemo(
+    () =>
+      currentLocalTeam
+        ? getScrambleResultMapping(
+            filterRecord(
+              solve.solve.attempts,
+              (attempt) => attempt.team === currentLocalTeam.team.id
+            )
+          )
+        : ({} as ScrambleResultMapping),
+    [currentLocalTeam, solve]
+  );
+
+  const allResultMapping = useMemo(
+    () => getScrambleResultMapping(solve.solve.attempts),
+    [solve]
+  );
 
   const defaultTab =
     teamSettings.teamsEnabled && solveLocalTeam ? "team" : "user";
-  const [activeTab, setActiveTab] = useState<string>(defaultTab);
 
-  const resultTextCopy: string = useMemo(() => {
-    const resultTextArr = [
-      `BTime Room ${roomName}`,
-      `${
-        raceSettings.roomFormat === "RACING" && `Set ${solve.setIndex} `
-      } Solve ${solve.solveIndex}`,
-    ];
-    switch (activeTab) {
-      case "user":
-        if (localUser && localUserAttempt) {
-          resultTextArr.push(createAttemptTextLine(localUserAttempt));
-        }
-        break;
-      case "team":
-        if (solveLocalTeam) {
-          resultTextArr.push(
-            `Team ${solveLocalTeam.team.name} result: ${
-              solveLocalTeamResult
-                ? Result.fromIResult(solveLocalTeamResult).toString(true)
-                : "---"
-            }`,
-            ...Object.entries(solveLocalTeamAttempts).map(([uid, attempt]) =>
-              createAttemptTextLine(attempt, users[uid]?.user.userName)
-            ),
-            `Members: ${Object.keys(solveLocalTeamAttempts)
-              .map((uid) => users[uid]?.user.userName)
-              .filter((username) => username !== undefined)
-              .join(", ")}`
-          );
-        }
-        break;
-      case "currTeam":
-        if (currentLocalTeam) {
-          resultTextArr.push(
-            `Team ${currentLocalTeam.team.name} result: ${
-              currentLocalTeamResult
-                ? Result.fromIResult(currentLocalTeamResult).toString(true)
-                : "---"
-            }`,
-            ...Object.entries(currentLocalTeamAttempts).map(([uid, attempt]) =>
-              createAttemptTextLine(attempt, users[uid]?.user.userName)
-            ),
-            `Members: ${Object.keys(currentLocalTeamAttempts)
-              .map((uid) => users[uid]?.user.userName)
-              .filter((username) => username !== undefined)
-              .join(", ")}`
-          );
-        }
-        break;
-      case "all":
-        resultTextArr.push(
-          ...Object.entries(solve.solve.attempts).map(([uid, attempt]) =>
-            createAttemptTextLine(attempt, users[uid]?.user.userName)
-          )
-        );
-        break;
-      default:
-        return "";
-    }
-
-    return resultTextArr.join("\n");
-  }, [
-    activeTab,
-    roomName,
-    raceSettings,
-    localUser,
-    localUserAttempt,
-    solveLocalTeam,
-    solveLocalTeamAttempts,
-    solveLocalTeamResult,
-    currentLocalTeam,
-    currentLocalTeamAttempts,
-    currentLocalTeamResult,
-    solve,
-    users,
-  ]);
+  const baseCopyText = [
+    `BTime Room ${roomName}`,
+    `${
+      raceSettings.roomFormat === "RACING" && `Set ${solve.setIndex} `
+    } Solve ${solve.solveIndex}`,
+  ].join("\n");
 
   if (!localUser) {
     return children;
   }
-
-  const diffScrambles =
-    teamSettings.teamsEnabled &&
-    teamSettings.teamFormatSettings.teamSolveFormat === "ALL" &&
-    teamSettings.teamFormatSettings.teamScrambleFormat === "DIFFERENT";
 
   return (
     <Dialog>
@@ -198,9 +271,11 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
             {`Solve ${solve.solveIndex}`}
           </DialogTitle>
         </DialogHeader>
-        <Tabs defaultValue={defaultTab} onValueChange={setActiveTab}>
+        <Tabs defaultValue={defaultTab}>
           <TabsList>
-            {localUserAttempt && <TabsTrigger value="user">You</TabsTrigger>}
+            {Object.keys(userScrambleResultMapping).length > 0 && (
+              <TabsTrigger value="user">You</TabsTrigger>
+            )}
             {solveLocalTeam && (
               <TabsTrigger value="team">
                 Team {solveLocalTeam.team.name}
@@ -213,84 +288,50 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
             )}
             <TabsTrigger value="all">All</TabsTrigger>
           </TabsList>
-          {localUserAttempt && (
+          {Object.keys(userScrambleResultMapping).length > 0 && (
             <TabsContent value="user">
-              {!diffScrambles && <div>{solve.solve.scrambles[0]}</div>}
-              <div>
-                {createAttemptTextLine(
-                  localUserAttempt,
-                  users[localUser.userInfo.id]?.user.userName,
-                  diffScrambles
-                )}
-              </div>
+              <ResultListingWrapper baseCopyText={baseCopyText}>
+                <ScrambleUserResultsListing
+                  mapping={userScrambleResultMapping}
+                />
+              </ResultListingWrapper>
             </TabsContent>
           )}
           {teamSettings.teamsEnabled && solveLocalTeam && (
             <TabsContent value="team">
-              <div>
-                Team Result:{" "}
-                {solveLocalTeamResult
-                  ? Result.fromIResult(solveLocalTeamResult).toString(true)
-                  : "TBD"}
-              </div>
-              {!diffScrambles && <div>{solve.solve.scrambles[0]}</div>}
-              {Object.entries(solveLocalTeamAttempts).map(
-                ([uid, attempt], idx) => (
-                  <div key={idx}>
-                    {createAttemptTextLine(
-                      attempt,
-                      users[uid]?.user.userName,
-                      diffScrambles
-                    )}
-                  </div>
-                )
-              )}
+              <ResultListingWrapper baseCopyText={baseCopyText}>
+                <div>
+                  Team Result:{" "}
+                  {solveLocalTeamResult
+                    ? Result.fromIResult(solveLocalTeamResult).toString(true)
+                    : "TBD"}
+                </div>
+                <ScrambleUserResultsListing
+                  mapping={solveLocalTeamResultMapping}
+                />
+              </ResultListingWrapper>
             </TabsContent>
           )}
           {teamSettings.teamsEnabled && currentLocalTeam && (
             <TabsContent value="currTeam">
-              <div>
-                Team Result:{" "}
-                {Result.fromIResult(currentLocalTeamResult).toString(true)}
-              </div>
-              {!diffScrambles && <div>{solve.solve.scrambles[0]}</div>}
-              {Object.entries(currentLocalTeamAttempts).map(
-                ([uid, attempt], idx) => (
-                  <div key={idx}>
-                    {createAttemptTextLine(
-                      attempt,
-                      users[uid]?.user.userName,
-                      diffScrambles
-                    )}
-                  </div>
-                )
-              )}
+              <ResultListingWrapper baseCopyText={baseCopyText}>
+                <div>
+                  Team Result:{" "}
+                  {Result.fromIResult(currentLocalTeamResult).toString(true)}
+                </div>
+                <ScrambleUserResultsListing
+                  mapping={currentLocalTeamResultMapping}
+                />
+              </ResultListingWrapper>
             </TabsContent>
           )}
           <TabsContent value="all">
-            {!diffScrambles && <div>{solve.solve.scrambles[0]}</div>}
-            {Object.entries(solve.solve.attempts).map(([uid, attempt], idx) => (
-              <div key={idx}>
-                {createAttemptTextLine(
-                  attempt,
-                  users[uid]?.user.userName,
-                  diffScrambles
-                )}
-              </div>
-            ))}
+            {/* TODO - reimplement scramble drawing and pull this component into new wrapper */}
+            <ResultListingWrapper baseCopyText={baseCopyText}>
+              <ScrambleUserResultsListing mapping={allResultMapping} />
+            </ResultListingWrapper>
           </TabsContent>
         </Tabs>
-
-        <DialogFooter className="flex flex-row gap-2">
-          <Button
-            variant="primary"
-            onClick={() => {
-              copyTextToClipboard(resultTextCopy);
-            }}
-          >
-            Copy to Clipboard
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
