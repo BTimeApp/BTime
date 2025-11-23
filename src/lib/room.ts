@@ -388,11 +388,115 @@ const teamReduceFunctionToFunction = new Map<
   ["SUM", Result.iSumOf],
 ]);
 
+export function checkTeamFinished(room: IRoom, teamId: string) {
+  if (room.solves.length === 0) return false;
+  if (!room.settings.teamSettings.teamsEnabled || !room.teams[teamId]) {
+    return false;
+  }
+
+  const currentSolve = room.solves.at(-1)!;
+
+  switch (room.settings.teamSettings.teamFormatSettings.teamSolveFormat) {
+    case "ALL":
+      const teamMembers = room.teams[teamId].team.members;
+      return teamMembers.every(
+        (userId) =>
+          userId in currentSolve.solve.attempts &&
+          currentSolve.solve.attempts[userId].finished
+      );
+    case "ONE":
+      const currUid = room.teams[teamId].currentMember;
+      if (!currUid) {
+        // TODO - consider if this should be true
+        return false;
+      }
+      return (
+        currentSolve.solve.attempts[currUid] &&
+        currentSolve.solve.attempts[currUid].finished
+      );
+    default:
+      throw new Error("Unimplemented team solve format");
+  }
+}
+
+export function finishTeamSolve(room: IRoom, teamId: string) {
+  if (room.solves.length === 0) return;
+  if (!room.settings.teamSettings.teamsEnabled || !room.teams[teamId]) {
+    return;
+  }
+
+  const currentSolve = room.solves.at(-1)!;
+
+  switch (room.settings.teamSettings.teamFormatSettings.teamSolveFormat) {
+    case "ALL":
+      const teamMembers = room.teams[teamId].team.members;
+
+      const teamMemberResults = teamMembers.map(
+        (userId) =>
+          (
+            currentSolve.solve.attempts[userId] as Extract<
+              IAttempt,
+              { finished: true }
+            >
+          ).result
+      );
+
+      // let this error out if the reduction function isn't defined - should get caught in dev
+      const reduceFunc = teamReduceFunctionToFunction.get(
+        room.settings.teamSettings.teamFormatSettings.teamReduceFunction
+      )!;
+
+      const teamResult = {
+        time: reduceFunc(teamMemberResults),
+        penalty: "OK",
+      } as IResult;
+
+      currentSolve.solve.results[teamId] = teamResult;
+      room.teams[teamId].currentResult = teamResult;
+      room.teams[teamId].solveStatus = "FINISHED";
+
+      return;
+
+    case "ONE":
+      const currUid = room.teams[teamId].currentMember;
+      if (!currUid) {
+        // TODO - consider if this should be true
+        return;
+      }
+      if (
+        !currentSolve.solve.attempts[currUid] ||
+        !currentSolve.solve.attempts[currUid].finished
+      ) {
+        console.warn(
+          "Tried to finish team solve when team representative not finished..."
+        );
+        return;
+      }
+
+      const result = currentSolve.solve.attempts[currUid].result;
+
+      currentSolve.solve.results[teamId] = result;
+      room.teams[teamId].currentResult = result;
+      room.teams[teamId].solveStatus = "FINISHED";
+
+      return;
+
+    default:
+      console.warn(
+        `Unimplemented team solve format: ${room.settings.teamSettings.teamFormatSettings}`
+      );
+  }
+}
+
 /**
  * Processes a new result from a user. Updates users, teams, current solve.
  * Returns an IRoomTeam if a a team was updated during this operation.
  */
-export function processNewResult(room: IRoom, userId: string, result: IResult): IRoomTeam | undefined {
+export function processNewResult(
+  room: IRoom,
+  userId: string,
+  result: IResult
+): IRoomTeam | undefined {
   if (room.solves.length === 0) return;
 
   const currentSolve = room.solves.at(-1)!;
@@ -415,67 +519,11 @@ export function processNewResult(room: IRoom, userId: string, result: IResult): 
       return;
     }
 
-    const teamMembers = room.teams[teamId].team.members;
+    // const teamMembers = room.teams[teamId].team.members;
 
-    switch (room.settings.teamSettings.teamFormatSettings.teamSolveFormat) {
-      case "ALL":
-        // note - this invariant also catches the case where team's members list is empty
-        if (!teamMembers.includes(userId)) {
-          console.log(
-            `User ${userId} tried to submit a result for their team ${teamId} but no such member exists on the team.`
-          );
-        }
-
-        // only update team result if all users on team have submitted (we assume that only active and competing users are allowed to be on the team)
-        const allMembersFinished = teamMembers.every(
-          (userId) =>
-            userId in currentSolve.solve.attempts &&
-            currentSolve.solve.attempts[userId].finished
-        );
-
-        if (allMembersFinished) {
-          const teamMemberResults = teamMembers.map(
-            (userId) =>
-              (
-                currentSolve.solve.attempts[userId] as Extract<
-                  IAttempt,
-                  { finished: true }
-                >
-              ).result
-          );
-
-          // let this error out if the reduction function isn't defined - should get caught in dev
-          const reduceFunc = teamReduceFunctionToFunction.get(
-            room.settings.teamSettings.teamFormatSettings.teamReduceFunction
-          )!;
-
-          const teamResult = {
-            time: reduceFunc(teamMemberResults),
-            penalty: "OK",
-          } as IResult;
-
-          currentSolve.solve.results[teamId] = teamResult;
-          room.teams[teamId].currentResult = teamResult;
-          room.teams[teamId].solveStatus = "FINISHED";
-
-          return room.teams[teamId];
-        }
-      case "ONE":
-        // only update team result if user is the team's current member
-        if (room.teams[teamId].currentMember === userId) {
-          currentSolve.solve.results[teamId] = result;
-          room.teams[teamId].currentResult = result;
-          room.teams[teamId].solveStatus = "FINISHED";
-
-          return room.teams[teamId];        
-        } else {
-          console.log(
-            `User ${userId} tried to submit a result for their team ${teamId} when not the active member.`
-          );
-        }
-        break;
-      default:
-        break;
+    if (checkTeamFinished(room, teamId)) {
+      finishTeamSolve(room, teamId);
+      return room.teams[teamId];
     }
   } else {
     // teams disabled - just insert result into results
@@ -792,6 +840,11 @@ export function userLeaveTeam(
     }
   }
 
+  // check if the team solve should now be considered finished, and update if true
+  if (checkTeamFinished(room, teamId)) {
+    finishTeamSolve(room, teamId);
+  }
+
   return true;
 }
 
@@ -863,7 +916,7 @@ export async function newRoomSolve(room: IRoom) {
   // generates scrambles + properly sets attempts, results
   await resetSolve(room);
 
-  return newRoomSolve ;
+  return newRoomSolve;
 }
 
 /**

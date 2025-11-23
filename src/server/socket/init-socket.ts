@@ -941,6 +941,10 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           room.users[user.userInfo.id],
           room.teams[teamId]
         );
+
+        if (checkRoomSolveFinished(room)) {
+          await handleSolveFinished(room);
+        }
       }
     });
     /**
