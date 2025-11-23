@@ -159,7 +159,7 @@ function TimerSection() {
           return (
             <>
               <div>Waiting for others to finish</div>
-              <div className="text-4xl">{localResult.toString()}</div>;
+              <div className="text-4xl">{localResult.toString()}</div>
             </>
           );
         default:
