@@ -27,7 +27,10 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import CreateTeamDialog from "@/components/room/create-team-dialog";
-import { JoinTeamButton, LeaveTeamButton } from "@/components/room/team-action-buttons";
+import {
+  JoinTeamButton,
+  LeaveTeamButton,
+} from "@/components/room/team-action-buttons";
 import RoomTeamDialog from "@/components/room/room-team-dialog";
 
 type RoomPanelProps = {

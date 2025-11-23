@@ -159,7 +159,7 @@ export default function GlobalTimeList({ className }: { className: string }) {
                 : { time: 0, penalty: "DNF" }
             )}
           >
-            <TableRow className="bg-inherit">
+            <TableRow className="bg-inherit cursor-pointer hover:underline">
               {raceSettings.roomFormat !== "CASUAL" && (
                 <TableHead className="text-center w-10">Set</TableHead>
               )}
@@ -187,7 +187,7 @@ export default function GlobalTimeList({ className }: { className: string }) {
             if (solve.solveIndex === -1) {
               return (
                 <SetDialog key={index} setIndex={solve.setIndex}>
-                  <TableRow className="font-bold">
+                  <TableRow className="font-bold cursor-pointer hover:underline">
                     <TableCell className="w-10">{solve.setIndex}</TableCell>
                     {raceSettings.roomFormat !== "CASUAL" &&
                       (raceSettings.setFormat === "BEST_OF" ||
@@ -245,7 +245,7 @@ export default function GlobalTimeList({ className }: { className: string }) {
             // row is a solve row
             return (
               <SolveDialog key={index} solve={solve}>
-                <TableRow>
+                <TableRow className="cursor-pointer hover:underline">
                   {raceSettings.roomFormat !== "CASUAL" && (
                     <TableCell className="w-10">{solve.setIndex}</TableCell>
                   )}
