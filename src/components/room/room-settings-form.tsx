@@ -356,7 +356,7 @@ export default function RoomSettingsForm({
                             );
                             form.setValue(
                               "teamSettings.teamFormatSettings.teamReduceFunction",
-                              "SUM"
+                              "MEAN"
                             );
                           }
                         }}
@@ -501,7 +501,7 @@ export default function RoomSettingsForm({
                                 );
                                 form.setValue(
                                   "teamSettings.teamFormatSettings.teamReduceFunction",
-                                  "SUM"
+                                  "MEAN"
                                 );
                               }
                             }}
