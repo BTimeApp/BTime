@@ -202,11 +202,9 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
     }
 
     if ((room.state as RoomState) !== "FINISHED") {
-      const { newSolve, updateTeams } = await newRoomSolve(room);
+      const newSolve = await newRoomSolve(room);
+      io.to(room.id).emit(SOCKET_SERVER.TEAMS_UPDATE, room.teams);
       io.to(room.id).emit(SOCKET_SERVER.NEW_SOLVE, newSolve);
-      if (updateTeams) {
-        io.to(room.id).emit(SOCKET_SERVER.TEAMS_UPDATE, room.teams);
-      }
     }
   }
 
@@ -264,7 +262,11 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         const teamId = room.users[userId].currentTeam;
         if (room.settings.teamSettings.teamsEnabled && teamId !== undefined) {
           userLeaveTeam(room, userId, teamId);
-          io.to(roomId).emit(SOCKET_SERVER.USER_LEAVE_TEAM, room.users[userId], room.teams[teamId]);
+          io.to(roomId).emit(
+            SOCKET_SERVER.USER_LEAVE_TEAM,
+            room.users[userId],
+            room.teams[teamId]
+          );
         }
 
         io.to(roomId).emit(SOCKET_SERVER.USER_UPDATE, room.users[userId]);
@@ -624,15 +626,13 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
       if (room.state == "WAITING" || room.state == "FINISHED") {
         room.state = "STARTED";
-        const { newSolve, updateTeams } = await newRoomSolve(room);
+        const newSolve = await newRoomSolve(room);
 
         stores.rooms.setRoom(room);
         io.to(room.id).emit(SOCKET_SERVER.ROOM_STARTED);
+        io.to(room.id).emit(SOCKET_SERVER.TEAMS_UPDATE, room.teams);
         io.to(room.id).emit(SOCKET_SERVER.NEW_SOLVE, newSolve);
 
-        if (updateTeams) {
-          io.to(room.id).emit(SOCKET_SERVER.TEAMS_UPDATE, room.teams);
-        }
       } else {
         console.log(`Cannot start room when room state is ${room.state}`);
       }
@@ -776,7 +776,11 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
             `User ${socket.user?.userInfo.userName} submitted new result ${result} to room ${socket.roomId}`
           );
 
-          processNewResult(room, socket.user.userInfo.id, result);
+          const updatedTeam = processNewResult(
+            room,
+            socket.user.userInfo.id,
+            result
+          );
 
           stores.rooms.setRoom(room);
           //broadcast user submit event to other users
@@ -785,6 +789,10 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
             userId,
             result
           );
+
+          if (updatedTeam !== undefined) {
+            io.to(socket.roomId).emit(SOCKET_SERVER.TEAM_UPDATE, updatedTeam);
+          }
           onSuccessCallback?.();
         }
       }
@@ -916,7 +924,11 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       stores.rooms.setRoom(room);
 
       if (success) {
-        io.to(room.id).emit(SOCKET_SERVER.USER_LEAVE_TEAM, room.users[user.userInfo.id], room.teams[teamId]);
+        io.to(room.id).emit(
+          SOCKET_SERVER.USER_LEAVE_TEAM,
+          room.users[user.userInfo.id],
+          room.teams[teamId]
+        );
       }
     });
     /**

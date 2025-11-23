@@ -1,9 +1,4 @@
-import {
-  Access,
-  IRoom,
-  IRoomSettings,
-  TeamReduceFunction,
-} from "@/types/room";
+import { Access, IRoom, IRoomSettings, TeamReduceFunction } from "@/types/room";
 import { IAttempt, ISolve } from "@/types/solve";
 import { IRoomSolve } from "@/types/room-solve";
 import { IResult, Result } from "@/types/result";
@@ -11,10 +6,7 @@ import { generateScramble, generateScrambles } from "@/lib/utils";
 import { ObjectId } from "bson";
 import bcrypt from "bcrypt";
 import { IUserInfo } from "@/types/user";
-import {
-  IRoomTeam,
-  IRoomUser,
-} from "@/types/room-participant";
+import { IRoomTeam, IRoomUser } from "@/types/room-participant";
 import { SocketResponse } from "@/types/socket_protocol";
 
 export async function createRoom(
@@ -395,10 +387,12 @@ const teamReduceFunctionToFunction = new Map<
   ["MEAN", Result.iMeanOf],
   ["SUM", Result.iSumOf],
 ]);
+
 /**
  * Processes a new result from a user. Updates users, teams, current solve.
+ * Returns an IRoomTeam if a a team was updated during this operation.
  */
-export function processNewResult(room: IRoom, userId: string, result: IResult) {
+export function processNewResult(room: IRoom, userId: string, result: IResult): IRoomTeam | undefined {
   if (room.solves.length === 0) return;
 
   const currentSolve = room.solves.at(-1)!;
@@ -462,12 +456,18 @@ export function processNewResult(room: IRoom, userId: string, result: IResult) {
 
           currentSolve.solve.results[teamId] = teamResult;
           room.teams[teamId].currentResult = teamResult;
+          room.teams[teamId].solveStatus = "FINISHED";
+
+          return room.teams[teamId];
         }
       case "ONE":
         // only update team result if user is the team's current member
         if (room.teams[teamId].currentMember === userId) {
           currentSolve.solve.results[teamId] = result;
           room.teams[teamId].currentResult = result;
+          room.teams[teamId].solveStatus = "FINISHED";
+
+          return room.teams[teamId];        
         } else {
           console.log(
             `User ${userId} tried to submit a result for their team ${teamId} when not the active member.`
@@ -842,7 +842,6 @@ export async function newRoomSolve(room: IRoom) {
   room.currentSolve += 1;
   room.solves.push(newRoomSolve);
 
-  let updateTeams = false;
   if (
     room.settings.teamSettings.teamsEnabled &&
     room.settings.teamSettings.teamFormatSettings.teamSolveFormat === "ONE"
@@ -859,13 +858,12 @@ export async function newRoomSolve(room: IRoom) {
         team.currentMember = team.team.members[nextIdx];
       }
     }
-    updateTeams = true;
   }
 
   // generates scrambles + properly sets attempts, results
   await resetSolve(room);
 
-  return { newSolve: newRoomSolve, updateTeams: updateTeams };
+  return newRoomSolve ;
 }
 
 /**
@@ -930,6 +928,7 @@ export async function resetSolve(room: IRoom) {
   }
   for (const roomTeam of Object.values(room.teams)) {
     roomTeam.currentResult = undefined;
+    roomTeam.solveStatus = "IDLE";
   }
 }
 
