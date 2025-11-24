@@ -107,7 +107,8 @@ export function abbreviate(name: string) {
  * ex. MY_CONSTANT -> My constant
  *
  */
-export function displayText(name: string) {
+export function displayText(name?: string) {
+  if (!name) return "";
   const result = name.split("_").map((_) => _.toLowerCase());
   if (result.length > 0)
     result[0] = result[0].charAt(0)?.toUpperCase() + result[0].slice(1);

@@ -39,7 +39,36 @@ import { Switch } from "@/components/ui/switch";
 import { useSession } from "@/context/session-context";
 import { toast } from "sonner";
 import { SOCKET_CLIENT } from "@/types/socket_protocol";
-import { displayText } from "@/lib/utils";
+import { displayText, literalKeys } from "@/lib/utils";
+import { Path } from "react-hook-form";
+
+const ROOM_TEMPLATE_INFO = {
+  // TODO - figure out how to allow Select to be blank. Until then, workaround
+  NONE: {},
+  RELAY: {
+    "teamSettings.teamsEnabled": true,
+    "teamSettings.teamFormatSettings.teamSolveFormat": "ALL",
+    "teamSettings.teamFormatSettings.teamReduceFunction": "SUM",
+    "teamSettings.teamFormatSettings.teamScrambleFormat": "DIFFERENT",
+  },
+  CREW_BATTLE: {
+    "teamSettings.teamsEnabled": true,
+    "teamSettings.teamFormatSettings.teamSolveFormat": "ONE",
+  },
+  MONKEY_LEAGUE: {
+    "teamSettings.teamsEnabled": true,
+    "teamSettings.teamFormatSettings.teamSolveFormat": "ONE",
+    "teamSettings.maxNumTeams": 2,
+    "teamSettings.maxTeamCapacity": 1,
+    "raceSettings.matchFormat": "BEST_OF",
+    "raceSettings.nSets": 5,
+    "raceSettings.setFormat": "BEST_OF",
+    "raceSettings.nSolves": 5,
+  },
+};
+
+const ROOM_TEMPLATES = literalKeys(ROOM_TEMPLATE_INFO);
+type RoomTemplateKey = (typeof ROOM_TEMPLATES)[number];
 
 const AccessSchema = z.discriminatedUnion("visibility", [
   z.object({
@@ -106,6 +135,9 @@ const formSchema = z.object({
   access: AccessSchema,
   raceSettings: RaceSettingsSchema,
   teamSettings: TeamSettingsSchema,
+  template: z
+    .enum(ROOM_TEMPLATES as [RoomTemplateKey, ...RoomTemplateKey[]])
+    .optional(),
 });
 
 type RoomSettingsFormProps = {
@@ -179,19 +211,21 @@ export default function RoomSettingsForm({
       }
 
       //this cast should be safe
-      const newRoomSettings: IRoomSettings = values as IRoomSettings;
+      const { template, ...settings } = values;
+      void template;
+      const roomSettings: IRoomSettings = settings as IRoomSettings;
 
       //send room create/update event
       if (createNewRoom) {
         socket.emit(
           SOCKET_CLIENT.CREATE_ROOM,
-          { roomSettings: newRoomSettings },
+          { roomSettings: roomSettings },
           onCreateCallback
         );
       } else {
         socket.emit(
           SOCKET_CLIENT.UPDATE_ROOM,
-          newRoomSettings,
+          roomSettings,
           roomId,
           user.userInfo.id,
           onUpdateCallback
@@ -207,6 +241,22 @@ export default function RoomSettingsForm({
         Object.values(errors).map((err) => err?.message?.toString())
     );
   }, []);
+
+  const handleTemplateChange = useCallback(
+    (templateKey: RoomTemplateKey) => {
+      const templateInfo = ROOM_TEMPLATE_INFO[templateKey];
+      if (templateInfo) {
+        for (const [k, v] of Object.entries(templateInfo)) {
+          console.log(k as Path<z.infer<typeof formSchema>>);
+          form.setValue(k as Path<z.infer<typeof formSchema>>, v, {
+            shouldValidate: true,
+            shouldDirty: true,
+          });
+        }
+      }
+    },
+    [form] // form is a dependency since we're using setValue and trigger
+  );
 
   return (
     <div className="m-1">
@@ -239,9 +289,7 @@ export default function RoomSettingsForm({
                     <FormLabel>Room Type</FormLabel>
                     <FormControl>
                       <Select
-                        onValueChange={(value: string) => {
-                          field.onChange(value);
-                        }}
+                        onValueChange={field.onChange}
                         defaultValue={field.value}
                       >
                         <FormControl>
@@ -361,6 +409,40 @@ export default function RoomSettingsForm({
                           }
                         }}
                       />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="template"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Room Template (optional)</FormLabel>
+                    <FormControl>
+                      <Select
+                        onValueChange={(value: string) => {
+                          field.onChange(value);
+                          handleTemplateChange(value as RoomTemplateKey);
+                        }}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue
+                              placeholder={displayText(field.value)}
+                            />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {ROOM_TEMPLATES.map((val, idx) => (
+                            <SelectItem key={idx} value={val}>
+                              {displayText(val)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
