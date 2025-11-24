@@ -17,7 +17,6 @@ import { timerAllowsInspection, TimerType } from "@/types/timer-type";
 import { IResult, Penalty, Result } from "@/types/result";
 import { SolveStatus } from "@/types/status";
 import { IAttempt } from "@/types/solve";
-import { SolveDialog } from "./result-dialogs";
 
 export type RoomStore = {
   // room related state

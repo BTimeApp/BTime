@@ -314,8 +314,8 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
 }
 
 export function SetDialog({ setIndex, children }: SetDialogProps) {
-  const [roomName, teams, solves, raceSettings, teamSettings] = useRoomStore(
-    (s) => [s.roomName, s.teams, s.solves, s.raceSettings, s.teamSettings]
+  const [roomName, teams, solves, teamSettings] = useRoomStore(
+    (s) => [s.roomName, s.teams, s.solves, s.teamSettings]
   );
 
   const { user: localUser } = useSession();

@@ -8,7 +8,6 @@ import bcrypt from "bcrypt";
 import { IUserInfo } from "@/types/user";
 import { IRoomTeam, IRoomUser } from "@/types/room-participant";
 import { SocketResponse } from "@/types/socket_protocol";
-import { Tiro_Devanagari_Hindi } from "next/font/google";
 
 export async function createRoom(
   roomSettings: IRoomSettings,
