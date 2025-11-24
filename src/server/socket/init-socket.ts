@@ -38,6 +38,7 @@ import {
 import Redis from "ioredis";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { RedisStores } from "@/server/redis/stores";
+import { IAttempt } from "@/types/solve";
 
 //defines useful state variables we want to maintain over the lifestyle of a socket connection (only visible server-side)
 interface CustomSocket extends Socket {
@@ -888,7 +889,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         if (!room || !user || !room.settings.teamSettings.teamsEnabled) return;
 
         const userOldTeam = room.users[user.userInfo.id]?.currentTeam;
-        const response: SocketResponse<undefined | string> = await userJoinTeam(
+        const response: SocketResponse<undefined | IAttempt> = await userJoinTeam(
           room,
           user.userInfo.id,
           teamId

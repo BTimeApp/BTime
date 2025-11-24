@@ -16,6 +16,8 @@ import { StoreApi, createStore } from "zustand";
 import { timerAllowsInspection, TimerType } from "@/types/timer-type";
 import { IResult, Penalty, Result } from "@/types/result";
 import { SolveStatus } from "@/types/status";
+import { IAttempt } from "@/types/solve";
+import { SolveDialog } from "./result-dialogs";
 
 export type RoomStore = {
   // room related state
@@ -118,7 +120,7 @@ export type RoomStore = {
   userJoinTeam: (
     user: IRoomUser,
     team: IRoomTeam,
-    newScramble?: string
+    updatedAttempt?: IAttempt
   ) => void;
 
   userLeaveTeam: (user: IRoomUser, team: IRoomTeam) => void;
@@ -500,7 +502,7 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         return { teams: updatedTeams };
       }),
 
-    userJoinTeam: (user: IRoomUser, team: IRoomTeam, newScramble?: string) =>
+    userJoinTeam: (user: IRoomUser, team: IRoomTeam, updatedAttempt?: IAttempt) =>
       set((state) => {
         if (!state.teamSettings.teamsEnabled) {
           return {};
@@ -515,19 +517,18 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
 
         // if new scramble exists, add it
         const updatedSolves = [...state.solves];
-        if (updatedSolves.length > 0 && newScramble) {
+        if (updatedSolves.length > 0 && updatedAttempt) {
           const latestSolve = updatedSolves.at(-1)!;
-          latestSolve.solve.scrambles.push(newScramble);
-          latestSolve.solve.attempts[user.user.id] = {
-            scramble: newScramble,
-            finished: false,
-          };
+          if (!(updatedAttempt.scramble in latestSolve.solve.scrambles)) {
+            latestSolve.solve.scrambles.push(updatedAttempt.scramble);
+          }
+          latestSolve.solve.attempts[user.user.id] = updatedAttempt;
         }
 
         return {
           users: updatedUsers,
           teams: updatedTeams,
-          ...(newScramble ? { solves: updatedSolves } : {}),
+          ...(updatedAttempt ? { solves: updatedSolves } : {}),
         };
       }),
 

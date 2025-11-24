@@ -8,6 +8,7 @@ import bcrypt from "bcrypt";
 import { IUserInfo } from "@/types/user";
 import { IRoomTeam, IRoomUser } from "@/types/room-participant";
 import { SocketResponse } from "@/types/socket_protocol";
+import { Tiro_Devanagari_Hindi } from "next/font/google";
 
 export async function createRoom(
   roomSettings: IRoomSettings,
@@ -400,6 +401,9 @@ export function checkTeamFinished(room: IRoom, teamId: string) {
   switch (room.settings.teamSettings.teamFormatSettings.teamSolveFormat) {
     case "ALL":
       const teamMembers = room.teams[teamId].team.members;
+      if (teamMembers.length === 0) {
+        return false;
+      }
       return teamMembers.every(
         (userId) =>
           userId in currentSolve.solve.attempts &&
@@ -519,8 +523,6 @@ export function processNewResult(
       );
       return;
     }
-
-    // const teamMembers = room.teams[teamId].team.members;
 
     if (checkTeamFinished(room, teamId)) {
       finishTeamSolve(room, teamId);
@@ -719,7 +721,7 @@ export async function userJoinTeam(
   room: IRoom,
   userId: string,
   teamId: string
-): Promise<SocketResponse<undefined | string>> {
+): Promise<SocketResponse<undefined | IAttempt>> {
   if (!room.settings.teamSettings.teamsEnabled) {
     return { success: false, reason: "Teams not enabled" };
   }
@@ -776,7 +778,7 @@ export async function userJoinTeam(
         team: teamId,
       } as IAttempt;
 
-      extraData = newScramble;
+      extraData = currentSolve.solve.attempts[userId];
     } else if (
       (room.settings.teamSettings.teamFormatSettings.teamSolveFormat ===
         "ONE" &&
@@ -792,7 +794,7 @@ export async function userJoinTeam(
         team: teamId,
       } as IAttempt;
 
-      extraData = currentSolve.solve.scrambles[0];
+      extraData = currentSolve.solve.attempts[userId];
     }
   }
 
