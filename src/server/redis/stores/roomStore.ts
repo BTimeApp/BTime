@@ -104,21 +104,27 @@ export async function createRoomStore(redis: Redis, subClient: Redis) {
       //get the newest rooms
       const roomKeys = await redis.zrevrange(ROOMS_KEY, start, stop);
 
+      // Handle empty case
+      if (roomKeys.length === 0) {
+        const totalRooms = await redis.zcard(ROOMS_KEY);
+        const totalPages = Math.max(Math.ceil(totalRooms / pageSize), 1);
+        return { roomSummaries: [], totalPages, totalRooms };
+      }
+
       try {
         // keys is an array of key names, path is the JSON path (defaulting to the root '$')
         // The command is called using the client.call() method for custom Redis Stack commands
-        const roomStrings = (await redis.call(
-          "JSON.MGET",
+        const roomStrings = (await redis.call("JSON.MGET", [
           ...roomKeys,
-          "$"
-        )) as (string | null)[];
+          "$",
+        ])) as (string | null)[];
         const missingRoomKeys: string[] = [];
 
         // we are ok with returning null if there are no rooms
         const roomSummaries = roomStrings
           ?.map((json, idx) => {
             if (!json) {
-              // This means the room is missing. 
+              // This means the room is missing.
               // This could be the fault of keyspace event pub/sub being best-effort only or other weird behavior
               missingRoomKeys.push(roomKeys[idx]);
               return;
@@ -129,7 +135,9 @@ export async function createRoomStore(redis: Redis, subClient: Redis) {
           .filter((val: IRoomSummary | undefined) => val !== undefined);
 
         //remove missing rooms from redis
-        await redis.zrem(ROOMS_KEY, ...missingRoomKeys);
+        if (missingRoomKeys.length > 0) {
+          await redis.zrem(ROOMS_KEY, missingRoomKeys);
+        }
 
         const totalRooms = await redis.zcard(ROOMS_KEY);
         const totalPages = Math.max(Math.ceil(totalRooms / pageSize), 1); //there should always be at least 1 page, even when there are no rooms
