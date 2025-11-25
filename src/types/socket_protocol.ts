@@ -178,6 +178,11 @@ export enum SOCKET_SERVER {
   USER_LEAVE_TEAM = "USER_LEAVE_TEAM",
 
   /**
+   * Tells user to reset any state related to their local solve 
+   */
+  RESET_LOCAL_SOLVE = "RESET_LOCAL_SOLVE",
+
+  /**
    * Broadcast that the room has started
    */
   ROOM_STARTED = "ROOM_STARTED",
@@ -253,9 +258,9 @@ export enum SOCKET_SERVER {
   USER_UPDATE = "USER_UPDATE",
 
   /**
-   * Broadcast that a user submitted result
+   * Broadcast a new result
    */
-  USER_SUBMITTED_RESULT = "USER_SUBMITTED_RESULT",
+  NEW_RESULT = "NEW_RESULT",
 
   /**
    * A new host is assigned.

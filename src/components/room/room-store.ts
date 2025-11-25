@@ -68,6 +68,7 @@ export type RoomStore = {
 
   updateLocalSolveStatus: (event?: string) => void;
   resetLocalSolveStatus: () => void;
+  resetLocalSolve: () => void;
 
   setIsRoomValid: (isRoomValid: boolean) => void;
   setIsPasswordAuthenticated: (isAuthenticated: boolean) => void;
@@ -136,7 +137,7 @@ export type RoomStore = {
 
   resetRoom: () => void;
 
-  addResult: (userId: string, result: IResult) => void;
+  addResult: (participantId: string, result: IResult) => void;
 };
 
 export const createRoomStore = (): StoreApi<RoomStore> =>
@@ -247,6 +248,12 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
           set(() => ({ localSolveStatus: "IDLE" }));
           break;
       }
+    },
+
+    resetLocalSolve: () => {
+      get().resetLocalSolveStatus();
+      get().setLocalResult(new Result(""));
+      get().setLocalPenalty("OK");
     },
 
     setIsRoomValid: (isRoomValid: boolean) =>
@@ -424,7 +431,7 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
       set((state) => {
         //update set wins for set winners by 1
 
-        const teamsEnabled = get().teamSettings.teamsEnabled;
+        const teamsEnabled = state.teamSettings.teamsEnabled;
         const updatedParticipants = teamsEnabled
           ? { ...state.teams }
           : { ...state.users };
@@ -579,10 +586,23 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         const updatedTeams: Record<string, IRoomTeam> = { ...state.teams };
         const updatedUsers: Record<string, IRoomUser> = { ...state.users };
 
+        const oldCurrentMember = updatedTeams[team.team.id].currentMember;
+
         updatedUsers[user.user.id] = user;
         updatedTeams[team.team.id] = team;
 
-        return { users: updatedUsers, teams: updatedTeams };
+        const updatedSolves: IRoomSolve[] = [...state.solves];
+        if (updatedSolves.length > 0) {
+          const currentSolve = updatedSolves.at(-1)!;
+
+          if (state.teamSettings.teamFormatSettings.teamSolveFormat === "ONE" && oldCurrentMember === user.user.id) {
+            //remove the attempt and team result
+            delete currentSolve.solve.attempts[user.user.id];
+            delete currentSolve.solve.results[team.team.id];
+          }
+        }
+
+        return { users: updatedUsers, teams: updatedTeams, solves: updatedSolves };
       }),
 
     updateTeam: (team: IRoomTeam) =>
@@ -634,17 +654,23 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         };
       }),
 
-    addResult: (userId: string, result: IResult) =>
+    addResult: (participantId: string, result: IResult) =>
       set((state) => {
-        const updatedUsers = { ...state.users };
+        const teamsEnabled = state.teamSettings.teamsEnabled;
+        const updatedParticipants = teamsEnabled
+          ? { ...state.teams }
+          : { ...state.users };
+
         const updatedSolves = [...state.solves];
-        if (updatedUsers[userId] && updatedSolves.length > 0) {
-          updatedUsers[userId].currentResult = result;
-          updatedSolves.at(-1)!.solve.results[userId] = result;
+        if (updatedParticipants[participantId] && updatedSolves.length > 0) {
+          updatedParticipants[participantId].currentResult = result;
+          updatedSolves.at(-1)!.solve.results[participantId] = result;
         }
         return {
-          users: updatedUsers,
           solves: updatedSolves,
+          ...(teamsEnabled
+            ? { teams: updatedParticipants as Record<string, IRoomTeam>}
+            : { users: updatedParticipants as Record<string, IRoomUser>}),
         };
       }),
   }));

@@ -37,6 +37,7 @@ export default function RoomEventHandler() {
     handleRoomUpdate,
     resetRoom,
     resetLocalSolveStatus,
+    resetLocalSolve,
     addUserLiveStartTime,
     addUserLiveStopTime,
     clearUserLiveStartTimes,
@@ -78,6 +79,7 @@ export default function RoomEventHandler() {
     s.handleRoomUpdate,
     s.resetRoom,
     s.resetLocalSolveStatus,
+    s.resetLocalSolve,
     s.addUserLiveStartTime,
     s.addUserLiveStopTime,
     s.clearUserLiveStartTimes,
@@ -337,6 +339,7 @@ export default function RoomEventHandler() {
   useSocketEvent(socket, SOCKET_SERVER.DELETE_ATTEMPT, deleteAttempt);
 
   useSocketEvent(socket, SOCKET_SERVER.NEW_SOLVE, addNewSolve);
+  useSocketEvent(socket, SOCKET_SERVER.NEW_RESULT, addResult);
   useSocketEvent(socket, SOCKET_SERVER.NEW_SET, addNewSet);
   useSocketEvent(socket, SOCKET_SERVER.SET_FINISHED_EVENT, handleSetFinished);
   useSocketEvent(
@@ -347,6 +350,8 @@ export default function RoomEventHandler() {
   useSocketEvent(socket, SOCKET_SERVER.ROOM_STARTED, startRoom);
   useSocketEvent(socket, SOCKET_SERVER.ROOM_UPDATE, handleRoomUpdate);
   useSocketEvent(socket, SOCKET_SERVER.ROOM_RESET, resetRoom);
+
+  useSocketEvent(socket, SOCKET_SERVER.RESET_LOCAL_SOLVE, resetLocalSolve)
 
   useSocketEvent(socket, SOCKET_SERVER.TEAMS_CREATED, createTeams);
   useSocketEvent(socket, SOCKET_SERVER.TEAM_DELETED, deleteTeam);
@@ -359,7 +364,6 @@ export default function RoomEventHandler() {
   useSocketEvent(socket, SOCKET_SERVER.USER_KICKED, handleLocalUserKicked);
   useSocketEvent(socket, SOCKET_SERVER.USER_BANNED, handleUserBanned);
   useSocketEvent(socket, SOCKET_SERVER.USER_UNBANNED, handleUserUnbanned);
-  useSocketEvent(socket, SOCKET_SERVER.USER_SUBMITTED_RESULT, addResult);
   useSocketEvent(socket, SOCKET_SERVER.NEW_HOST, handleNewHost);
   useSocketEvent(socket, SOCKET_SERVER.DISCONNECT, handleSocketDisconnect);
 

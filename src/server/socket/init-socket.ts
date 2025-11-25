@@ -245,12 +245,16 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       await stores.rooms.setRoom(room);
 
       if (response.success) {
-        console.log(JSON.stringify(response));
         io.to(room.id).emit(
           SOCKET_SERVER.USER_LEAVE_TEAM,
           room.users[userId],
           room.teams[teamId]
         );
+
+        // tell the user that left to reset their local solve. Doesn't matter if they actually had a solve to begin with.
+        io.to(userId).emit(
+          SOCKET_SERVER.RESET_LOCAL_SOLVE
+        )
 
         if (response.data !== undefined) {
           io.to(room.id).emit(
@@ -809,14 +813,20 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
           await stores.rooms.setRoom(room);
           //broadcast user submit event to other users
-          io.to(socket.roomId).emit(
-            SOCKET_SERVER.USER_SUBMITTED_RESULT,
-            userId,
-            result
-          );
-
+          
           if (updatedTeam !== undefined) {
             io.to(socket.roomId).emit(SOCKET_SERVER.TEAM_UPDATE, updatedTeam);
+            io.to(socket.roomId).emit(
+              SOCKET_SERVER.NEW_RESULT,
+              updatedTeam.team.id,
+              result
+            );
+          } else {
+            io.to(socket.roomId).emit(
+              SOCKET_SERVER.NEW_RESULT,
+              userId,
+              result
+            );
           }
           onSuccessCallback?.();
         }

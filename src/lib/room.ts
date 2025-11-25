@@ -542,7 +542,7 @@ export function processNewResult(
  */
 export function checkRoomSolveFinished(room: IRoom): boolean {
   if (room.solves.length == 0) return false;
-  const currentSolve = room.solves.at(-1)!;
+  // const currentSolve = room.solves.at(-1)!;
 
   // 1. Calculate correct set of competing users
   let competingUsers = Object.values(room.users);
@@ -584,9 +584,11 @@ export function checkRoomSolveFinished(room: IRoom): boolean {
   let allUsersFinished: boolean = true;
   for (const roomUser of competingUsers) {
     if (
-      roomUser.solveStatus !== "FINISHED" ||
-      !currentSolve.solve.attempts[roomUser.user.id] ||
-      !currentSolve.solve.attempts[roomUser.user.id].finished
+      roomUser.solveStatus !== "FINISHED"
+      // commented the following two lines to keep consistent with current definition of a solve being "complete"
+      // in the future, it would be nice to rely solely on participant completion/result existence.
+      // || !currentSolve.solve.attempts[roomUser.user.id]
+      // || !currentSolve.solve.attempts[roomUser.user.id].finished
     ) {
       allUsersFinished = false;
       break;
@@ -743,7 +745,7 @@ export async function userJoinTeam(
 
   // 2. check if user is on another team. If so, make them leave that team
   if (room.users[userId].currentTeam !== undefined) {
-    userLeaveTeam(room, userId, room.users[userId].currentTeam);
+    await userLeaveTeam(room, userId, room.users[userId].currentTeam);
   }
 
   // 3. put user on team
@@ -827,6 +829,18 @@ export async function userLeaveTeam(
     room.settings.teamSettings.teamsEnabled &&
     room.settings.teamSettings.teamFormatSettings.teamSolveFormat === "ONE"
   ) {
+
+    // remove the team member's attempt, reset the team's result and solve status
+    if (room.solves.length > 0) {
+      const currentSolve = room.solves.at(-1)!;
+      delete currentSolve.solve.attempts[userId];
+      delete currentSolve.solve.results[teamId];
+
+      user.currentResult = undefined;
+      team.currentResult = undefined;
+      team.solveStatus = "IDLE";
+    }
+
     if (team.team.members.length === 0) {
       team.currentMember = undefined;
     } else {
@@ -835,10 +849,9 @@ export async function userLeaveTeam(
         team.currentMember =
           team.team.members[userIdx % team.team.members.length];
 
-        if (!team.currentResult && room.solves.length > 0) {
+        // if there are solves, assign this new current member an attempt.
+        if (room.solves.length > 0) {
           const currentSolve = room.solves.at(-1)!;
-          delete currentSolve.solve.attempts[userId];
-
           const newAttempt: IAttempt = {
             finished: false,
             scramble: currentSolve.solve.scrambles[0],
@@ -846,11 +859,9 @@ export async function userLeaveTeam(
           currentSolve.solve.attempts[team.currentMember] = newAttempt;
           extraData = { userId: team.currentMember, attempt: newAttempt };
         }
-
-        team.currentResult = undefined;
-        team.solveStatus = "IDLE";
       }
     }
+
   }
 
   // check if the team solve should now be considered finished, and update if true
