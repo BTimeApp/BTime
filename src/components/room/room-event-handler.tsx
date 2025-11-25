@@ -11,7 +11,7 @@ import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { useSocketEvent } from "@/hooks/use-socket-event";
 import { IRoomSolve } from "@/types/room-solve";
-import { IRoomParticipant, IRoomUser } from "@/types/room-participant";
+import { IRoomParticipant } from "@/types/room-participant";
 import { useSession } from "@/context/session-context";
 import { useIsTouchscreen } from "@/hooks/useMobile";
 
@@ -170,20 +170,6 @@ export default function RoomEventHandler() {
    * Callbacks for socket events
    */
 
-  const handleUserJoin = useCallback(
-    (user: IRoomUser) => {
-      userJoin(user);
-    },
-    [userJoin]
-  );
-
-  const handleUserUpdate = useCallback(
-    (user: IRoomUser) => {
-      userUpdate(user);
-    },
-    [userUpdate]
-  );
-
   const handleUserStartLiveTimer = useCallback(
     (userId: string) => {
       addUserLiveStartTime(userId, performance.now());
@@ -196,20 +182,6 @@ export default function RoomEventHandler() {
       addUserLiveStopTime(userId, performance.now());
     },
     [addUserLiveStopTime]
-  );
-
-  const handlesolveStatusUpdate = useCallback(
-    (userId: string, newSolveStatus: SolveStatus) => {
-      updateSolveStatus(userId, newSolveStatus);
-    },
-    [updateSolveStatus]
-  );
-
-  const handleUserToggleCompeting = useCallback(
-    (userId: string, newCompeting: boolean) => {
-      userToggleCompeting(userId, newCompeting);
-    },
-    [userToggleCompeting]
   );
 
   const handleSolveFinished = useCallback(
@@ -232,20 +204,6 @@ export default function RoomEventHandler() {
     ]
   );
 
-  const handleSetFinished = useCallback(
-    (setWinners: string[]) => {
-      finishSet(setWinners);
-    },
-    [finishSet]
-  );
-
-  const handleMatchFinished = useCallback(
-    (matchWinners: string[]) => {
-      finishMatch(matchWinners);
-    },
-    [finishMatch]
-  );
-
   const handleLocalUserKicked = useCallback(() => {
     toast.warning("You were kicked from the room");
     window.location.href = "/";
@@ -265,20 +223,6 @@ export default function RoomEventHandler() {
       userBanned(userId);
     },
     [user, handleLocalUserBanned, userBanned]
-  );
-
-  const handleUserUnbanned = useCallback(
-    (userId: string) => {
-      userUnbanned(userId);
-    },
-    [userUnbanned]
-  );
-
-  const handleNewHost = useCallback(
-    (newHostId: string) => {
-      setHostId(newHostId);
-    },
-    [setHostId]
   );
 
   const handleSocketDisconnect = useCallback(() => {
@@ -303,8 +247,8 @@ export default function RoomEventHandler() {
   /**
    * Trigger callbacks on socket events coming from server
    */
-  useSocketEvent(socket, SOCKET_SERVER.USER_JOINED, handleUserJoin);
-  useSocketEvent(socket, SOCKET_SERVER.USER_UPDATE, handleUserUpdate);
+  useSocketEvent(socket, SOCKET_SERVER.USER_JOINED, userJoin);
+  useSocketEvent(socket, SOCKET_SERVER.USER_UPDATE, userUpdate);
   useSocketEvent(
     socket,
     SOCKET_SERVER.USER_START_LIVE_TIMER,
@@ -318,12 +262,12 @@ export default function RoomEventHandler() {
   useSocketEvent(
     socket,
     SOCKET_SERVER.USER_STATUS_UPDATE,
-    handlesolveStatusUpdate
+    updateSolveStatus
   );
   useSocketEvent(
     socket,
     SOCKET_SERVER.USER_TOGGLE_COMPETING,
-    handleUserToggleCompeting
+    userToggleCompeting
   );
   useSocketEvent(socket, SOCKET_SERVER.SOLVE_RESET, resetLatestSolve);
   useSocketEvent(
@@ -341,11 +285,11 @@ export default function RoomEventHandler() {
   useSocketEvent(socket, SOCKET_SERVER.NEW_SOLVE, addNewSolve);
   useSocketEvent(socket, SOCKET_SERVER.NEW_RESULT, addResult);
   useSocketEvent(socket, SOCKET_SERVER.NEW_SET, addNewSet);
-  useSocketEvent(socket, SOCKET_SERVER.SET_FINISHED_EVENT, handleSetFinished);
+  useSocketEvent(socket, SOCKET_SERVER.SET_FINISHED_EVENT, finishSet);
   useSocketEvent(
     socket,
     SOCKET_SERVER.MATCH_FINISHED_EVENT,
-    handleMatchFinished
+    finishMatch
   );
   useSocketEvent(socket, SOCKET_SERVER.ROOM_STARTED, startRoom);
   useSocketEvent(socket, SOCKET_SERVER.ROOM_UPDATE, handleRoomUpdate);
@@ -363,8 +307,8 @@ export default function RoomEventHandler() {
 
   useSocketEvent(socket, SOCKET_SERVER.USER_KICKED, handleLocalUserKicked);
   useSocketEvent(socket, SOCKET_SERVER.USER_BANNED, handleUserBanned);
-  useSocketEvent(socket, SOCKET_SERVER.USER_UNBANNED, handleUserUnbanned);
-  useSocketEvent(socket, SOCKET_SERVER.NEW_HOST, handleNewHost);
+  useSocketEvent(socket, SOCKET_SERVER.USER_UNBANNED, userUnbanned);
+  useSocketEvent(socket, SOCKET_SERVER.NEW_HOST, setHostId);
   useSocketEvent(socket, SOCKET_SERVER.DISCONNECT, handleSocketDisconnect);
 
   /**
