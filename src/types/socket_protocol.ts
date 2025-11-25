@@ -213,6 +213,16 @@ export enum SOCKET_SERVER {
   NEW_SOLVE = "NEW_SOLVE",
 
   /**
+   * Broadcast a new attempt
+   */
+  CREATE_ATTEMPT = "CREATE_ATTEMPT",
+
+  /**
+   * Braodcast a delete attempt
+   */
+  DELETE_ATTEMPT = "DELETE_ATTEMPT",
+
+  /**
    * Broadcast that a new set is starting
    */
   NEW_SET = "NEW_SET",

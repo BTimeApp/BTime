@@ -800,35 +800,29 @@ export async function userJoinTeam(
   return { success: true, data: extraData };
 }
 
-export function userLeaveTeam(
+export async function userLeaveTeam(
   room: IRoom,
   userId: string,
   teamId: string
-): boolean {
+): Promise<SocketResponse<undefined | { userId: string; attempt: IAttempt }>> {
   if (!room.settings.teamSettings.teamsEnabled) {
-    return false;
+    return { success: false, reason: "teams not enabled" };
   }
   const user = room.users[userId];
   const team = room.teams[teamId];
   if (!user || !team) {
-    return false;
-  }
-
-  // remove team current member, result
-  if (team.currentMember === userId) {
-    team.currentMember = undefined;
-    team.currentResult = undefined;
-    team.solveStatus = "IDLE";
+    return { success: false, reason: "user or team doesn't exist" };
   }
 
   const userIdx = team.team.members.indexOf(userId);
   if (userIdx == -1) {
-    return false;
+    return { success: false, reason: "user doesn't exist in team" };
   }
   team.team.members.splice(userIdx, 1);
   room.users[userId].currentTeam = undefined;
   room.users[userId].competing = false; //in teams mode, competing = on team or not
 
+  let extraData = undefined;
   if (
     room.settings.teamSettings.teamsEnabled &&
     room.settings.teamSettings.teamFormatSettings.teamSolveFormat === "ONE"
@@ -836,9 +830,26 @@ export function userLeaveTeam(
     if (team.team.members.length === 0) {
       team.currentMember = undefined;
     } else {
-      // since we removed the user at index, new current member is at this idx
-      team.currentMember =
-        team.team.members[userIdx % team.team.members.length];
+      if (team.currentMember === userId) {
+        // since we removed the user at index, new current member is at this idx
+        team.currentMember =
+          team.team.members[userIdx % team.team.members.length];
+
+        if (!team.currentResult && room.solves.length > 0) {
+          const currentSolve = room.solves.at(-1)!;
+          delete currentSolve.solve.attempts[userId];
+
+          const newAttempt: IAttempt = {
+            finished: false,
+            scramble: currentSolve.solve.scrambles[0],
+          };
+          currentSolve.solve.attempts[team.currentMember] = newAttempt;
+          extraData = { userId: team.currentMember, attempt: newAttempt };
+        }
+
+        team.currentResult = undefined;
+        team.solveStatus = "IDLE";
+      }
     }
   }
 
@@ -847,7 +858,7 @@ export function userLeaveTeam(
     finishTeamSolve(room, teamId);
   }
 
-  return true;
+  return { success: true, data: extraData };
 }
 
 /**

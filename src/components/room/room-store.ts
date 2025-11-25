@@ -83,6 +83,10 @@ export type RoomStore = {
   //update room user information from server - used when initializing the user on client side
   handleRoomUserUpdate: (roomUser: IRoomUser) => void;
 
+  createAttempt: (userId: string, attempt: IAttempt) => void;
+
+  deleteAttempt: (userId: string) => void;
+
   addNewSolve: (newSolve: IRoomSolve) => void;
 
   updateLatestSolve: (updatedSolve: IRoomSolve) => void;
@@ -307,6 +311,38 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         localSolveStatus: roomUser.solveStatus,
       })),
 
+    createAttempt: (userId: string, attempt: IAttempt) =>
+      set((state) => {
+        if (state.solves.length === 0) {
+          return {};
+        }
+        const updatedSolves = [...state.solves];
+        const updatedSolve = { ...state.solves.at(-1)! };
+        updatedSolve.solve.attempts[userId] = attempt;
+
+        updatedSolves[updatedSolves.length - 1] = updatedSolve;
+
+        return {
+          solves: updatedSolves,
+        };
+      }),
+
+    deleteAttempt: (userId: string) =>
+      set((state) => {
+        if (state.solves.length === 0) {
+          return {};
+        }
+        const updatedSolves = [...state.solves];
+        const updatedSolve = { ...state.solves.at(-1)! };
+        delete updatedSolve.solve.attempts[userId];
+
+        updatedSolves[updatedSolves.length - 1] = updatedSolve;
+
+        return {
+          solves: updatedSolves,
+        };
+      }),
+
     addNewSolve: (newSolve: IRoomSolve) =>
       set(() => {
         const updatedParticipants = get().teamSettings.teamsEnabled
@@ -501,7 +537,11 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         return { teams: updatedTeams };
       }),
 
-    userJoinTeam: (user: IRoomUser, team: IRoomTeam, updatedAttempt?: IAttempt) =>
+    userJoinTeam: (
+      user: IRoomUser,
+      team: IRoomTeam,
+      updatedAttempt?: IAttempt
+    ) =>
       set((state) => {
         if (!state.teamSettings.teamsEnabled) {
           return {};

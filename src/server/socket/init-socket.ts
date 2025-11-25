@@ -236,6 +236,36 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
     }
     const userId = socket.user!.userInfo.id;
 
+    async function handleUserLeaveTeam(
+      room: IRoom,
+      userId: string,
+      teamId: string
+    ) {
+      const response = await userLeaveTeam(room, userId, teamId);
+      await stores.rooms.setRoom(room);
+
+      if (response.success) {
+        console.log(JSON.stringify(response));
+        io.to(room.id).emit(
+          SOCKET_SERVER.USER_LEAVE_TEAM,
+          room.users[userId],
+          room.teams[teamId]
+        );
+
+        if (response.data !== undefined) {
+          io.to(room.id).emit(
+            SOCKET_SERVER.CREATE_ATTEMPT,
+            response.data.userId,
+            response.data.attempt
+          );
+        }
+
+        if (checkRoomSolveFinished(room)) {
+          await handleSolveFinished(room);
+        }
+      }
+    }
+
     async function handleUserDisconnect(userId: string) {
       await stores.userSessions.deleteUserSession(userId, socket.id);
 
@@ -262,12 +292,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         // if teams is enabled and this user is on a team, force leave team
         const teamId = room.users[userId].currentTeam;
         if (room.settings.teamSettings.teamsEnabled && teamId !== undefined) {
-          userLeaveTeam(room, userId, teamId);
-          io.to(roomId).emit(
-            SOCKET_SERVER.USER_LEAVE_TEAM,
-            room.users[userId],
-            room.teams[teamId]
-          );
+          await handleUserLeaveTeam(room, userId, teamId);
         }
 
         io.to(roomId).emit(SOCKET_SERVER.USER_UPDATE, room.users[userId]);
@@ -838,7 +863,11 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         const newTeams = [] as IRoomTeam[];
 
         for (const teamName of teamNames) {
-          if (room.settings.teamSettings.maxNumTeams && Object.keys(room.teams).length >= room.settings.teamSettings.maxNumTeams) {
+          if (
+            room.settings.teamSettings.maxNumTeams &&
+            Object.keys(room.teams).length >=
+              room.settings.teamSettings.maxNumTeams
+          ) {
             break;
           }
           const newTeam = createTeam(room, teamName);
@@ -849,7 +878,9 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         //persist to redis
         await stores.rooms.setRoom(room);
 
-        console.log(`New team(s) created in room ${socket.roomId}: ${teamNames}`);
+        console.log(
+          `New team(s) created in room ${socket.roomId}: ${teamNames}`
+        );
 
         //broadcast new team event
         io.to(room.id).emit(SOCKET_SERVER.TEAMS_CREATED, newTeams);
@@ -889,11 +920,8 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         if (!room || !user || !room.settings.teamSettings.teamsEnabled) return;
 
         const userOldTeam = room.users[user.userInfo.id]?.currentTeam;
-        const response: SocketResponse<undefined | IAttempt> = await userJoinTeam(
-          room,
-          user.userInfo.id,
-          teamId
-        );
+        const response: SocketResponse<undefined | IAttempt> =
+          await userJoinTeam(room, user.userInfo.id, teamId);
 
         if (response.success) {
           await stores.rooms.setRoom(room);
@@ -932,20 +960,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       )
         return;
 
-      const success = userLeaveTeam(room, user.userInfo.id, teamId);
-      await stores.rooms.setRoom(room);
-
-      if (success) {
-        io.to(room.id).emit(
-          SOCKET_SERVER.USER_LEAVE_TEAM,
-          room.users[user.userInfo.id],
-          room.teams[teamId]
-        );
-
-        if (checkRoomSolveFinished(room)) {
-          await handleSolveFinished(room);
-        }
-      }
+      await handleUserLeaveTeam(room, user.userInfo.id, teamId);
     });
     /**
      * Upon user pressing compete/spectate button

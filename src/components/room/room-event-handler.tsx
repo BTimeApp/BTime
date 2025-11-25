@@ -42,6 +42,8 @@ export default function RoomEventHandler() {
     clearUserLiveStartTimes,
     clearUserLiveTimes,
     resetLatestSolve,
+    createAttempt,
+    deleteAttempt,
     addNewSolve,
     updateLatestSolve,
     addNewSet,
@@ -81,6 +83,8 @@ export default function RoomEventHandler() {
     s.clearUserLiveStartTimes,
     s.clearUserLiveTimes,
     s.resetLatestSolve,
+    s.createAttempt,
+    s.deleteAttempt,
     s.addNewSolve,
     s.updateLatestSolve,
     s.addNewSet,
@@ -328,6 +332,10 @@ export default function RoomEventHandler() {
   useSocketEvent(
     socket, SOCKET_SERVER.SOLVE_UPDATE, updateLatestSolve
   )
+
+  useSocketEvent(socket, SOCKET_SERVER.CREATE_ATTEMPT, createAttempt);
+  useSocketEvent(socket, SOCKET_SERVER.DELETE_ATTEMPT, deleteAttempt);
+
   useSocketEvent(socket, SOCKET_SERVER.NEW_SOLVE, addNewSolve);
   useSocketEvent(socket, SOCKET_SERVER.NEW_SET, addNewSet);
   useSocketEvent(socket, SOCKET_SERVER.SET_FINISHED_EVENT, handleSetFinished);
