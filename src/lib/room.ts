@@ -1,7 +1,7 @@
 import { Access, IRoom, IRoomSettings, TeamReduceFunction } from "@/types/room";
 import { IAttempt, ISolve } from "@/types/solve";
 import { IRoomSolve } from "@/types/room-solve";
-import { IResult, Result } from "@/types/result";
+import { DNF, IResult, Result } from "@/types/result";
 import { generateScramble, generateScrambles } from "@/lib/utils";
 import { ObjectId } from "bson";
 import bcrypt from "bcrypt";
@@ -196,7 +196,7 @@ export function findSetWinners(room: IRoom): string[] {
       // return all fastest users
       const fastestAvg = Math.min(...Object.values(userAverages));
       // prevent DNF from being considered a min
-      if (fastestAvg === Infinity) return []; //DNF was best
+      if (fastestAvg >= DNF) return []; //DNF was best
 
       return Object.keys(roomParticipants).filter(
         (participant) => userAverages[participant] == fastestAvg
@@ -226,7 +226,7 @@ export function findSetWinners(room: IRoom): string[] {
       // return all fastest users
       const fastestMean = Math.min(...Object.values(userMeans));
       // prevent DNF from being considered a min
-      if (fastestMean === Infinity) return []; //DNF was best
+      if (fastestMean >= DNF) return []; //DNF was best
 
       return Object.keys(roomParticipants).filter(
         (participant) => userMeans[participant] == fastestMean
@@ -255,7 +255,7 @@ export function findSetWinners(room: IRoom): string[] {
       // return all fastest users
       const fastestTime = Math.min(...Object.values(userMinTimes));
       // prevent DNF from being considered a min
-      if (fastestTime === Infinity) return []; //DNF was best
+      if (fastestTime >= DNF) return []; //DNF was best
 
       return Object.keys(roomParticipants).filter(
         (participant) => userMinTimes[participant] == fastestTime
@@ -450,10 +450,10 @@ export function finishTeamSolve(room: IRoom, teamId: string) {
         room.settings.teamSettings.teamFormatSettings.teamReduceFunction
       )!;
 
-      const teamResult = {
-        time: reduceFunc(teamMemberResults),
-        penalty: "OK",
-      } as IResult;
+      const teamResult: IResult = new Result(
+        reduceFunc(teamMemberResults),
+        "OK"
+      ).toIResult();
 
       currentSolve.solve.results[teamId] = teamResult;
       room.teams[teamId].currentResult = teamResult;

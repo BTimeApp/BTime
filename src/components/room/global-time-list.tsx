@@ -9,7 +9,7 @@ import {
 import { Crown } from "lucide-react";
 import { IRoomTeam, IRoomUser } from "@/types/room-participant";
 import { IRoomSolve } from "@/types/room-solve";
-import { Result } from "@/types/result";
+import { DNF, Result } from "@/types/result";
 import { cn } from "@/lib/utils";
 import { SummaryDialog, SetDialog, SolveDialog } from "@/components/room/result-dialogs";
 import { useSession } from "@/context/session-context";
@@ -99,7 +99,7 @@ export default function GlobalTimeList({ className }: { className: string }) {
             );
 
             //calculate summary metric
-            let userPoints = Infinity;
+            let userPoints = DNF;
             switch (raceSettings.setFormat) {
               case "BEST_OF":
                 userPoints = setSolves.filter((solve) =>

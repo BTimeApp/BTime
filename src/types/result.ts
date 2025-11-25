@@ -1,5 +1,11 @@
 import { parseIntNaN } from "@/lib/utils";
 
+/**
+ * Store DNF as JS's max number because NaN, Infinity are not JSON serializable
+ * see https://stackoverflow.com/questions/57127297/serialization-of-nan-and-infinity-in-json-why-not-supported
+ */
+export const DNF = Number.MAX_VALUE;
+
 export const PENALTIES = ["OK", "+2", "DNF"];
 export type Penalty = (typeof PENALTIES)[number];
 
@@ -24,12 +30,23 @@ export class Result {
       this.time = input;
 
       // manually creates a DNF
-      if (input === Number.POSITIVE_INFINITY) {
+      if (input >= DNF) {
         this.time = 0;
         penalty = "DNF";
       }
+    } else if (input == null) {
+      // the most common reason for input being null is JSON serialization not accepting Infinity as a valid numeric value.
+      // when we try to send Infinity the number or parse "Infinity" as an number, it becomes null.
+      // this is a safeguard against that.
+      this.time = 0;
+      penalty = "DNF";
     } else {
-      throw new Error("Invalid input for Time");
+      console.error(
+        "Invalid input for Time! Converting to DNF for now. Please contact BTime team."
+      );
+
+      this.time = 0;
+      penalty = "DNF";
     }
 
     this.penalty = penalty ? penalty : "OK";
@@ -81,8 +98,7 @@ export class Result {
   }
 
   static applyPenalty(timeInCentiseconds: number, penalty?: Penalty): number {
-    if (timeInCentiseconds === Infinity || timeInCentiseconds == null)
-      return Number.POSITIVE_INFINITY;
+    if (timeInCentiseconds >= DNF || timeInCentiseconds == null) return DNF;
     switch (penalty) {
       case undefined:
         return timeInCentiseconds;
@@ -92,8 +108,8 @@ export class Result {
         // +2 is 200 centiseconds
         return timeInCentiseconds + 200;
       case "DNF":
-        // use +inf as DNF. Consider using max integer?
-        return Number.POSITIVE_INFINITY;
+        // use JS max number as Infinity is unsafe in JSON serialization
+        return DNF;
       default:
         // should never get triggered
         return NaN;
@@ -154,7 +170,7 @@ export class Result {
       }
     } else {
       const totalTime = Result.applyPenalty(timeInCentiseconds, penalty);
-      if (totalTime === Infinity) {
+      if (totalTime >= DNF) {
         return "DNF";
       }
 
@@ -182,10 +198,18 @@ export class Result {
 
   static fromIResult(obj?: IResult): Result {
     if (!obj) return new Result(0, "DNF");
-    return new Result(obj.time, obj.penalty);
+    return new Result(obj.time ?? 0, obj.penalty ?? "DNF");
   }
 
   toIResult(): IResult {
+    //for consistency
+    if (this.time >= DNF) {
+      return {
+        time: 0,
+        penalty: "DNF",
+      };
+    }
+
     return {
       time: this.time,
       penalty: this.penalty,
@@ -280,18 +304,7 @@ export class Result {
   }
 
   compare(other: Result): number {
-    const thisTime = this.toTime();
-    const otherTime = other.toTime();
-
-    if (
-      thisTime === Number.POSITIVE_INFINITY &&
-      otherTime === Number.POSITIVE_INFINITY
-    ) {
-      // inf - inf = NaN, so handle this case manually
-      return 0;
-    }
-
-    return thisTime - otherTime;
+    return this.toTime() - other.toTime();
   }
 
   equals(other: Result): boolean {
