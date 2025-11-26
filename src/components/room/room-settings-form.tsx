@@ -39,7 +39,7 @@ import { Switch } from "@/components/ui/switch";
 import { useSession } from "@/context/session-context";
 import { toast } from "sonner";
 import { SOCKET_CLIENT } from "@/types/socket_protocol";
-import { displayText, literalKeys } from "@/lib/utils";
+import { cn, displayText, literalKeys } from "@/lib/utils";
 import { Path } from "react-hook-form";
 
 const ROOM_TEMPLATE_INFO = {
@@ -151,6 +151,7 @@ type RoomSettingsFormProps = {
   submitButtonRef?: React.RefObject<HTMLButtonElement>;
   onCreateCallback?: (roomId: string) => void;
   onUpdateCallback?: () => void;
+  className?: string;
 };
 
 export default function RoomSettingsForm({
@@ -164,6 +165,7 @@ export default function RoomSettingsForm({
   submitButtonRef,
   onCreateCallback,
   onUpdateCallback,
+  className,
 }: RoomSettingsFormProps) {
   const { user, loading: userLoading } = useSession();
   const { socket, socketConnected } = useSocket();
@@ -259,11 +261,11 @@ export default function RoomSettingsForm({
   );
 
   return (
-    <div className="m-1">
+    <div className={cn("m-1 h-full max-h-full overflow-y-auto", className)}>
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit, onError)}
-          className="space-y-8"
+          className="flex flex-col gap-8 h-full"
         >
           <div className="grid grid-cols-3 gap-3">
             <div className="space-x-5 space-y-3">
@@ -742,7 +744,7 @@ export default function RoomSettingsForm({
             <Button
               variant={formError ? "primary_inactive" : "primary"}
               type="submit"
-              className="text-lg font-bold"
+              className="text-lg font-bold mt-auto"
               ref={submitButtonRef}
               disabled={formError}
             >
