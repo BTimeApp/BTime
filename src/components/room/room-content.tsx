@@ -201,7 +201,7 @@ function ParticipantRoomPanelCarousel({
           </CarouselItem>
         ))}
       </CarouselContent>
-      <div className="absolute top-1/2 -translate-y-1 left-2 z-1000 flex flex-col items-start">
+      <div className="absolute top-1/2 -translate-y-1 left-2 z-49 flex flex-col items-start">
         <p className="translate-y-1 text-sm text-center w-full">
           {current > 0
             ? clipStringWithEllipsis(carouselTooltipTexts[current - 1], 12)
@@ -213,7 +213,7 @@ function ParticipantRoomPanelCarousel({
           className="size-10 top-0 left-0 translate-y-0"
         />
       </div>
-      <div className="absolute top-1/2 -translate-y-1 right-2 z-1000 flex flex-col items-end">
+      <div className="absolute top-1/2 -translate-y-1 right-2 z-49 flex flex-col items-end">
         <p className="translate-y-1 text-sm text-center w-full">
           {current < carouselTooltipTexts.length - 1
             ? clipStringWithEllipsis(carouselTooltipTexts[current + 1], 12)
