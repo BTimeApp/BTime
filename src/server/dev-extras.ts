@@ -1,9 +1,15 @@
-import { Access, IRoom } from "@/types/room";
+import {
+  Access,
+  IRoom,
+  RaceSettings,
+  TeamFormatSettings,
+  TeamSettings,
+} from "@/types/room";
 import { createRoom } from "@/lib/room";
 import { RedisStores } from "@/server/redis/stores";
 
 async function addTestRooms(stores: RedisStores) {
-  for (let i = 1; i < 31; i++) {
+  for (let i = 30; i > 0; i--) {
     const room: IRoom = await createRoom(
       {
         roomName: "test_room_" + i,
@@ -13,10 +19,29 @@ async function addTestRooms(stores: RedisStores) {
               visibility: "PUBLIC",
             }
           : { visibility: "PRIVATE", password: "test" }) as Access,
-        raceSettings: {
-          roomFormat: "CASUAL",
-        },
-        teamSettings: { teamsEnabled: false },
+        raceSettings: (i % 2 == 0
+          ? {
+              roomFormat: "CASUAL",
+            }
+          : {
+              roomFormat: "RACING",
+              matchFormat: "BEST_OF",
+              nSets: 3,
+              setFormat: "BEST_OF",
+              nSolves: 7,
+            }) as RaceSettings,
+        teamSettings: (i % 3 == 0
+          ? {
+              teamsEnabled: true,
+              teamFormatSettings: (i % 6 == 0 ? {
+                teamSolveFormat: "ONE",
+              } : {
+                teamSolveFormat: "ALL",
+                teamReduceFunction: "SUM",
+                teamScrambleFormat: "SAME",
+              }) as TeamFormatSettings,
+            }
+          : { teamsEnabled: false }) as TeamSettings,
       },
       i.toString()
     );
