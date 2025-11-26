@@ -2,8 +2,10 @@ import { useRoomStore } from "@/context/room-context";
 import { cn } from "@/lib/utils";
 import React, { useCallback, useMemo } from "react";
 import {
-  getFormatText,
-  getVerboseFormatText,
+  getRaceFormatText,
+  getTeamFormatText,
+  getVerboseRaceFormatTextLines,
+  getVerboseTeamFormatTextLines,
   ROOM_EVENTS_INFO,
 } from "@/types/room";
 import GlobalTimeList from "@/components/room/global-time-list";
@@ -429,7 +431,10 @@ function TeamRoomPanel({ className, teamId }: TeamRoomPanelProps) {
             {isLocalTeam ? (
               <LeaveTeamButton teamId={teamId} />
             ) : (
-              localUser && users[localUser.userInfo.id]?.currentTeam === undefined && <JoinTeamButton teamId={teamId} />
+              localUser &&
+              users[localUser.userInfo.id]?.currentTeam === undefined && (
+                <JoinTeamButton teamId={teamId} />
+              )
             )}
           </div>
         )}
@@ -617,27 +622,45 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
 }
 
 function InfoRoomPanel({ className }: InfoRoomPanelProps) {
-  const [roomName, roomEvent, raceSettings] = useRoomStore((s) => [
-    s.roomName,
-    s.roomEvent,
-    s.raceSettings,
-  ]);
+  const [roomName, roomEvent, raceSettings, teamSettings] = useRoomStore(
+    (s) => [s.roomName, s.roomEvent, s.raceSettings, s.teamSettings]
+  );
+
+  const verboseRaceFormatTextLines =
+    getVerboseRaceFormatTextLines(raceSettings);
+  const verboseTeamFormatTextLines =
+    getVerboseTeamFormatTextLines(teamSettings);
+
   return (
     <div
       className={cn(["flex flex-col text-center h-full w-full p-2", className])}
     >
       <div>
-        <h2 className={cn("text-2xl md-1")}>Room: {roomName}</h2>
+        <h2 className="text-2xl md-1">Room: {roomName}</h2>
       </div>
-      <div className={cn("text-left")}>
+      <div className="text-left">
         <h2 className="text-2xl">Event: {roomEvent}</h2>
       </div>
-      <div className={cn("text-left")}>
-        <h2 className="text-2xl">{getFormatText(raceSettings)}</h2>
+      <div className="text-left">
+        <h2 className="text-2xl">{getRaceFormatText(raceSettings)}</h2>
       </div>
-      <div className={cn("text-left mx-2")}>
-        {getVerboseFormatText(raceSettings)}
+      <div className="text-left pl-4">
+        {verboseRaceFormatTextLines.map((line, idx) => (
+          <p key={idx}>{line}</p>
+        ))}
       </div>
+      {teamSettings.teamsEnabled && (
+        <>
+          <div className="text-left">
+            <h2 className="text-2xl">{getTeamFormatText(teamSettings)}</h2>
+          </div>
+          <div className="text-left pl-4">
+            {verboseTeamFormatTextLines.map((line, idx) => (
+              <p key={idx}>{line}</p>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
