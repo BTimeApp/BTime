@@ -74,7 +74,7 @@ export default function RoomSettingsDialog({
               roomId={roomId}
               createNewRoom={false}
               onUpdateCallback={closeDialogCallback}
-              className="max-h-[80vh] overflow-y-auto"
+              className="max-h-[60vh] overflow-y-auto"
             />
           </TabsContent>
         </Tabs>
