@@ -148,3 +148,12 @@ export function mapRecordValues<K extends string | number | symbol, V, R>(
 
   return result;
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getFirstKey<K extends string | number | symbol>(
+  record: Record<K, any>,
+  defaultValue: K = "" as K
+): K {
+  const keys = Object.keys(record) as K[];
+  return keys.length > 0 ? keys[0] : defaultValue;
+}

@@ -12,17 +12,12 @@ import { IRoomSolve } from "@/types/room-solve";
 import { DNF, Result } from "@/types/result";
 import { cn } from "@/lib/utils";
 import { SummaryDialog, SetDialog, SolveDialog } from "@/components/room/result-dialogs";
-import { useSession } from "@/context/session-context";
 import { useRoomStore } from "@/context/room-context";
 import { useMemo } from "react";
 
 export default function GlobalTimeList({ className }: { className: string }) {
-  const { user: localUser } = useSession();
-  const userId = localUser?.userInfo.id;
-
-  const [roomName, users, teams, solves, raceSettings, teamSettings] =
+  const [users, teams, solves, raceSettings, teamSettings] =
     useRoomStore((s) => [
-      s.roomName,
       s.users,
       s.teams,
       s.solves,
@@ -148,17 +143,7 @@ export default function GlobalTimeList({ className }: { className: string }) {
       <div className="flex-1 text-foreground text-2xl">Time List</div>
       <Table className="w-full border-collapse bg-inherit">
         <TableHeader className="sticky top-0 z-10 shadow-sm bg-inherit">
-          <SummaryDialog
-            roomName={roomName}
-            scrambles={solves.map((solve) =>
-              userId ? solve.solve.attempts[userId]?.scramble ?? "" : ""
-            )}
-            results={solves.map((solve) =>
-              userId && solve.solve.results[userId]
-                ? solve.solve.results[userId]
-                : { time: 0, penalty: "DNF" }
-            )}
-          >
+          <SummaryDialog>
             <TableRow className="bg-inherit cursor-pointer hover:underline">
               {raceSettings.roomFormat !== "CASUAL" && (
                 <TableHead className="text-center w-10">Set</TableHead>
