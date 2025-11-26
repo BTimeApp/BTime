@@ -429,7 +429,7 @@ function TeamRoomPanel({ className, teamId }: TeamRoomPanelProps) {
             {isLocalTeam ? (
               <LeaveTeamButton teamId={teamId} />
             ) : (
-              <JoinTeamButton teamId={teamId} />
+              localUser && users[localUser.userInfo.id]?.currentTeam === undefined && <JoinTeamButton teamId={teamId} />
             )}
           </div>
         )}

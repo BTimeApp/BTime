@@ -586,8 +586,6 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         const updatedTeams: Record<string, IRoomTeam> = { ...state.teams };
         const updatedUsers: Record<string, IRoomUser> = { ...state.users };
 
-        const oldCurrentMember = updatedTeams[team.team.id].currentMember;
-
         updatedUsers[user.user.id] = user;
         updatedTeams[team.team.id] = team;
 
@@ -595,11 +593,9 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         if (updatedSolves.length > 0) {
           const currentSolve = updatedSolves.at(-1)!;
 
-          if (state.teamSettings.teamFormatSettings.teamSolveFormat === "ONE" && oldCurrentMember === user.user.id) {
-            //remove the attempt and team result
-            delete currentSolve.solve.attempts[user.user.id];
-            delete currentSolve.solve.results[team.team.id];
-          }
+          //remove the attempt and team result
+          delete currentSolve.solve.attempts[user.user.id];
+          delete currentSolve.solve.results[team.team.id];
         }
 
         return { users: updatedUsers, teams: updatedTeams, solves: updatedSolves };

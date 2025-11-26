@@ -245,6 +245,8 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       await stores.rooms.setRoom(room);
 
       if (response.success) {
+        // leave team will both remove user from team AND
+        // remove user attempt + team result (when it exists). This needs to go first.
         io.to(room.id).emit(
           SOCKET_SERVER.USER_LEAVE_TEAM,
           room.users[userId],
@@ -252,16 +254,24 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         );
 
         // tell the user that left to reset their local solve. Doesn't matter if they actually had a solve to begin with.
-        io.to(userId).emit(
-          SOCKET_SERVER.RESET_LOCAL_SOLVE
-        )
+        io.to(userId).emit(SOCKET_SERVER.RESET_LOCAL_SOLVE);
 
-        if (response.data !== undefined) {
-          io.to(room.id).emit(
-            SOCKET_SERVER.CREATE_ATTEMPT,
-            response.data.userId,
-            response.data.attempt
-          );
+        if (response.data) {
+          if (response.data.newAttempt) {
+            io.to(room.id).emit(
+              SOCKET_SERVER.CREATE_ATTEMPT,
+              response.data.newAttempt.userId,
+              response.data.newAttempt.attempt
+            );
+          }
+
+          if (response.data.refreshedTeamResult) {
+            io.to(room.id).emit(
+              SOCKET_SERVER.NEW_RESULT,
+              response.data.refreshedTeamResult.teamId,
+              response.data.refreshedTeamResult.result
+            );
+          }
         }
 
         if (checkRoomSolveFinished(room)) {
@@ -813,7 +823,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
           await stores.rooms.setRoom(room);
           //broadcast user submit event to other users
-          
+
           if (updatedTeam !== undefined) {
             io.to(socket.roomId).emit(SOCKET_SERVER.TEAM_UPDATE, updatedTeam);
             io.to(socket.roomId).emit(
@@ -822,11 +832,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
               result
             );
           } else {
-            io.to(socket.roomId).emit(
-              SOCKET_SERVER.NEW_RESULT,
-              userId,
-              result
-            );
+            io.to(socket.roomId).emit(SOCKET_SERVER.NEW_RESULT, userId, result);
           }
           onSuccessCallback?.();
         }
@@ -929,20 +935,11 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         const room = await getSocketRoom();
         if (!room || !user || !room.settings.teamSettings.teamsEnabled) return;
 
-        const userOldTeam = room.users[user.userInfo.id]?.currentTeam;
         const response: SocketResponse<undefined | IAttempt> =
           await userJoinTeam(room, user.userInfo.id, teamId);
 
         if (response.success) {
           await stores.rooms.setRoom(room);
-          if (userOldTeam && userOldTeam != teamId) {
-            // it's awkward to send another bit of extra data to the client to update the old team within the user join team event, so manually check if we need to send leave team event
-            io.to(room.id).emit(
-              SOCKET_SERVER.USER_LEAVE_TEAM,
-              room.users[user.userInfo.id],
-              room.teams[userOldTeam]
-            );
-          }
 
           io.to(room.id).emit(
             SOCKET_SERVER.USER_JOIN_TEAM,

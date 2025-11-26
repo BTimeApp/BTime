@@ -464,7 +464,6 @@ export function finishTeamSolve(room: IRoom, teamId: string) {
     case "ONE":
       const currUid = room.teams[teamId].currentMember;
       if (!currUid) {
-        // TODO - consider if this should be true
         return;
       }
       if (
@@ -743,9 +742,17 @@ export async function userJoinTeam(
     };
   }
 
-  // 2. check if user is on another team. If so, make them leave that team
-  if (room.users[userId].currentTeam !== undefined) {
-    await userLeaveTeam(room, userId, room.users[userId].currentTeam);
+  // 2. check if user not on another team already.
+  if (
+    room.users[userId].currentTeam !== undefined &&
+    room.teams[room.users[userId].currentTeam]
+  ) {
+    return {
+      success: false,
+      reason: `Already on another team: ${
+        room.teams[room.users[userId].currentTeam]
+      }`,
+    };
   }
 
   // 3. put user on team
@@ -806,7 +813,12 @@ export async function userLeaveTeam(
   room: IRoom,
   userId: string,
   teamId: string
-): Promise<SocketResponse<undefined | { userId: string; attempt: IAttempt }>> {
+): Promise<
+  SocketResponse<{
+    refreshedTeamResult?: { teamId: string; result: IResult };
+    newAttempt?: { userId: string; attempt: IAttempt };
+  }>
+> {
   if (!room.settings.teamSettings.teamsEnabled) {
     return { success: false, reason: "teams not enabled" };
   }
@@ -824,23 +836,33 @@ export async function userLeaveTeam(
   room.users[userId].currentTeam = undefined;
   room.users[userId].competing = false; //in teams mode, competing = on team or not
 
-  let extraData = undefined;
-  if (
-    room.settings.teamSettings.teamsEnabled &&
-    room.settings.teamSettings.teamFormatSettings.teamSolveFormat === "ONE"
-  ) {
+  const extraData: {
+    refreshedTeamResult?: { teamId: string; result: IResult };
+    newAttempt?: { userId: string; attempt: IAttempt };
+  } = {};
 
-    // remove the team member's attempt, reset the team's result and solve status
-    if (room.solves.length > 0) {
-      const currentSolve = room.solves.at(-1)!;
-      delete currentSolve.solve.attempts[userId];
-      delete currentSolve.solve.results[teamId];
+  // remove the current attempt from the user.
+  if (room.solves.length > 0) {
+    const currentSolve = room.solves.at(-1)!;
+    delete currentSolve.solve.attempts[userId];
+    user.currentResult = undefined;
 
-      user.currentResult = undefined;
-      team.currentResult = undefined;
-      team.solveStatus = "IDLE";
+    // always reset the team solve.
+    delete currentSolve.solve.results[team.team.id];
+    team.currentResult = undefined;
+
+    // if applicable, recalculate the team result.
+    if (checkTeamFinished(room, teamId)) {
+      finishTeamSolve(room, teamId);
+
+      extraData.refreshedTeamResult = {
+        teamId: teamId,
+        result: currentSolve.solve.results[team.team.id],
+      };
     }
+  }
 
+  if (room.settings.teamSettings.teamFormatSettings.teamSolveFormat === "ONE") {
     if (team.team.members.length === 0) {
       team.currentMember = undefined;
     } else {
@@ -857,11 +879,13 @@ export async function userLeaveTeam(
             scramble: currentSolve.solve.scrambles[0],
           };
           currentSolve.solve.attempts[team.currentMember] = newAttempt;
-          extraData = { userId: team.currentMember, attempt: newAttempt };
+          extraData.newAttempt = {
+            userId: team.currentMember,
+            attempt: newAttempt,
+          };
         }
       }
     }
-
   }
 
   // check if the team solve should now be considered finished, and update if true
