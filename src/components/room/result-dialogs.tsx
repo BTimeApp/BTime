@@ -24,6 +24,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CustomRadioItem, RadioGroup } from "@/components/ui/radio-group";
 import { ROOM_EVENTS_INFO } from "@/types/room";
 import { IRoomTeam } from "@/types/room-participant";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
 
 type SolveDialogProps = {
   solve: IRoomSolve;
@@ -147,24 +152,37 @@ function ResultListingWrapper({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-row gap-2">
-        <div ref={textContainerRef}>
-          {title && <div className="text-lg font-bold">{title}</div>}
-          <div className="max-h-[50vh] overflow-y-auto">
-            <RadioGroup defaultValue={defaultValue} onValueChange={setScramble}>
-              {children}
-            </RadioGroup>
+      <ResizablePanelGroup direction="horizontal">
+        <ResizablePanel defaultSize={65} className="px-2">
+          <div ref={textContainerRef}>
+            {title && <div className="text-lg font-bold">{title}</div>}
+            <div className="max-h-[50vh] overflow-y-auto">
+              <RadioGroup
+                defaultValue={defaultValue}
+                onValueChange={setScramble}
+              >
+                {children}
+              </RadioGroup>
+            </div>
           </div>
-        </div>
-        <twisty-player
-          experimental-setup-alg={scramble}
-          puzzle={ROOM_EVENTS_INFO[roomEvent]?.jsName ?? "3x3x3"}
-          visualization="2D"
-          control-panel="none"
-          background="none"
-          className="border-2 rounded-lg h-40 w-50 flex-none"
-        />
-      </div>
+        </ResizablePanel>
+        <ResizableHandle withHandle />
+        <ResizablePanel defaultSize={35} className="px-2">
+          <div className="mx-5 px-4 border-2 rounded-lg h-fit">
+            <twisty-player
+              experimental-setup-alg={scramble}
+              puzzle={ROOM_EVENTS_INFO[roomEvent]?.jsName ?? "3x3x3"}
+              visualization="2D"
+              control-panel="none"
+              background="none"
+              className="w-full"
+            />
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
+      {/* <div className="flex flex-row gap-2">
+        
+      </div> */}
       <div className="flex flex-row">
         <Button
           variant="primary"
@@ -543,8 +561,7 @@ export function SummaryDialog({ children }: SummaryDialogProps) {
     () =>
       localUser
         ? solves.find(
-            (solve) =>
-              solve.solve.attempts[localUser.userInfo.id] !== undefined
+            (solve) => solve.solve.attempts[localUser.userInfo.id] !== undefined
           )?.solve.attempts[localUser.userInfo.id].scramble ?? ""
         : "",
     [localUser, solves]
@@ -712,7 +729,10 @@ export function SummaryDialog({ children }: SummaryDialogProps) {
                           {teamSetScrambleResultMapping.map(
                             (teamScrambleResultMapping, jdx) => (
                               <div className="pl-4" key={jdx}>
-                                <p className="text-lg font-bold"> Solve {jdx + 1}</p>
+                                <p className="text-lg font-bold">
+                                  {" "}
+                                  Solve {jdx + 1}
+                                </p>
                                 <ScrambleUserResultsListing
                                   mapping={teamScrambleResultMapping}
                                 />
