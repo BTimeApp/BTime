@@ -1049,6 +1049,11 @@ export function resetRoom(room: IRoom) {
     roomUser.setWins = 0;
     roomUser.solveStatus = "IDLE";
     roomUser.currentResult = undefined;
+
+    // set all users to spectating if in teams mode
+    if (room.settings.teamSettings.teamsEnabled) {
+      roomUser.competing = false;
+    }
   }
 
   for (const roomTeam of Object.values(room.teams)) {
@@ -1057,6 +1062,13 @@ export function resetRoom(room: IRoom) {
     roomTeam.solveStatus = "IDLE";
     roomTeam.currentResult = undefined;
     roomTeam.currentMember = undefined;
+
+    // make sure all team members are competing
+    roomTeam.team.members.forEach((uid) => {
+      if (room.users[uid]) {
+        room.users[uid].competing = true;
+      }
+    });
   }
 }
 
