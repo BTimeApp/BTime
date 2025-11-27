@@ -11,8 +11,8 @@ export default function Page() {
   const storeRef = useRef(createRoomStore());
 
   return (
-    <RoomStoreContext.Provider value={storeRef.current}>
+    <RoomStoreContext value={storeRef.current}>
       <Room />
-    </RoomStoreContext.Provider>
+    </RoomStoreContext>
   );
 }

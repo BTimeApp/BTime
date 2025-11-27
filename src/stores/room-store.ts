@@ -12,7 +12,7 @@ import {
   IRoomUser,
 } from "@/types/room-participant";
 import { RoomState } from "@/types/room";
-import { StoreApi, createStore } from "zustand";
+import { create } from "zustand";
 import { timerAllowsInspection, TimerType } from "@/types/timer-type";
 import { IResult, Penalty, Result } from "@/types/result";
 import { SolveStatus } from "@/types/status";
@@ -140,8 +140,10 @@ export type RoomStore = {
   addResult: (participantId: string, result: IResult) => void;
 };
 
-export const createRoomStore = (): StoreApi<RoomStore> =>
-  createStore<RoomStore>((set, get) => ({
+// export const createRoomStore = (): StoreApi<RoomStore> =>
+//   createStore<RoomStore>((set, get) => ({
+export function createRoomStore() {
+  return create<RoomStore>((set, get) => ({
     // general room state
     roomName: "",
     hostId: "",
@@ -669,3 +671,4 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         };
       }),
   }));
+}
