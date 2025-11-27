@@ -73,7 +73,7 @@ function TimerSection() {
               <div>Press Enter to submit time</div>
               <CallbackInput
                 type="text"
-                className="text-center text-4xl mx-auto"
+                className="text-center text-4xl mx-auto bg-container-1/70 border-none"
                 onEnter={endStringTimerCallback}
               />
             </>
