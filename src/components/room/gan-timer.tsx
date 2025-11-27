@@ -151,6 +151,7 @@ export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
       resetLocalSolveStatus,
       updateLocalSolveStatus,
       previousDisplayTimeMS,
+      setPreviousDisplayTimeMS,
       setTimerState,
     ]
   );
