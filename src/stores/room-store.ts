@@ -359,7 +359,6 @@ export const createRoomStore = (): StoreApi<RoomStore> =>
         for (const participant of Object.values(updatedParticipants)) {
           participant.currentResult = undefined;
         }
-        //TODO - in ONE mode, update the currentMember of each team
 
         return {
           solves: [...get().solves, newSolve],
