@@ -1,8 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import {
-  GanTimerEvent,
-  GanTimerState,
-} from "gan-web-bluetooth";
+import { GanTimerEvent, GanTimerState } from "gan-web-bluetooth";
 import { Button } from "@/components/ui/button";
 import { Subscription } from "react-hook-form/dist/utils/createSubject";
 import { toast } from "sonner";
@@ -153,6 +150,8 @@ export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
       onFinishTimer,
       resetLocalSolveStatus,
       updateLocalSolveStatus,
+      previousDisplayTimeMS,
+      setTimerState,
     ]
   );
 
