@@ -27,7 +27,7 @@ import {
   PaginationPreviousButton,
 } from "@/components/ui/pagination";
 import { toast } from "sonner";
-import { abbreviate } from "@/lib/utils";
+import { abbreviate, displayText } from "@/lib/utils";
 
 // # of rooms to fetch at once with pagination
 const ROOM_WINDOW_SIZE = 20;
@@ -146,12 +146,23 @@ export default function RoomListing() {
                     />
                     <div>{ROOM_EVENTS_INFO[room.roomEvent].displayName}</div>
                   </div>
-                  <div>{room.raceSettings.roomFormat}</div>
+                  <div className="grid grid-rows-2">
+                    <div>{displayText(room.raceSettings.roomFormat)}</div>
+                    <div>
+                      {room.teamSettings.teamsEnabled ? "Teams" : "Solo"}
+                    </div>
+                  </div>
                   <div className="grid grid-rows-2">
                     {room.raceSettings.roomFormat === "RACING" ? (
                       <>
-                        <div>{abbreviate(room.raceSettings.matchFormat) + room.raceSettings.nSets}</div>
-                        <div>{abbreviate(room.raceSettings.setFormat) + room.raceSettings.nSolves}</div>
+                        <div>
+                          {abbreviate(room.raceSettings.matchFormat) +
+                            room.raceSettings.nSets}
+                        </div>
+                        <div>
+                          {abbreviate(room.raceSettings.setFormat) +
+                            room.raceSettings.nSolves}
+                        </div>
                       </>
                     ) : (
                       <></>

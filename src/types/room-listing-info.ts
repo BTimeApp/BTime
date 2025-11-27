@@ -1,4 +1,4 @@
-import { IRoom, RaceSettings, Visibility } from "@/types/room";
+import { IRoom, RaceSettings, TeamSettings, Visibility } from "@/types/room";
 import { RoomEvent } from "@/types/room";
 
 /**
@@ -10,6 +10,7 @@ export interface IRoomSummary {
   numUsers: number; //number of active users
   roomEvent: RoomEvent;
   raceSettings: RaceSettings;
+  teamSettings: TeamSettings;
   visibility: Visibility;
 }
 
@@ -21,6 +22,7 @@ export function roomToSummary(room: IRoom): IRoomSummary {
       .length,
     roomEvent: room.settings.roomEvent,
     raceSettings: room.settings.raceSettings,
+    teamSettings: room.settings.teamSettings,
     visibility: room.settings.access.visibility,
   };
 
