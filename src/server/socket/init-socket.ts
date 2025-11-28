@@ -498,6 +498,19 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           return;
         }
 
+        //validate the room still has capacity
+        if (
+          room.settings.maxUsers && 
+          Object.keys(room.users).length >= room.settings.maxUsers
+        ) {
+          console.log(`User ${userId} tried to join a full room ${roomId}.`);
+
+          joinRoomCallback(true, room, {
+            ROOM_FULL: "",
+          });
+          return;
+        }
+
         //validate password if room is private AND user isn't host
         if (
           room.settings.access.visibility === "PRIVATE" &&

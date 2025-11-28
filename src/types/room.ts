@@ -455,4 +455,5 @@ export interface IRoomSettings {
   access: Access;
   raceSettings: RaceSettings;
   teamSettings: TeamSettings;
+  maxUsers?: number; //the maximum number of users we can have in the room
 }

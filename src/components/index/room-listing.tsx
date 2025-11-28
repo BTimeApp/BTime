@@ -68,7 +68,7 @@ export default function RoomListing() {
       if (res.rooms != null) {
         setRooms(
           new Map<string, IRoomSummary>(
-            (res.rooms as IRoomSummary[]).map((room) => [room.id, room])
+            (res.rooms as IRoomSummary[]).map((roomSummary) => [roomSummary.id, roomSummary])
           )
         );
       }
@@ -125,43 +125,43 @@ export default function RoomListing() {
               <div className="col-start-8">Privacy</div>
             </div>
             {rooms.size != 0 ? (
-              [...rooms.entries()].map(([roomId, room]) => (
+              [...rooms.entries()].map(([roomId, roomSummary]) => (
                 <div
                   key={roomId}
                   className="grid grid-cols-9 gap-3 px-1 py-1 text-left items-center shadow-sm rounded-sm"
                 >
-                  <div className="col-span-2">{room.roomName}</div>
+                  <div className="col-span-2">{roomSummary.roomName}</div>
                   <div>
-                    <JoinRoomButton roomId={room.id}></JoinRoomButton>
+                    <JoinRoomButton roomId={roomSummary.id}></JoinRoomButton>
                   </div>
                   <div className="flex flex-row">
                     <User />
-                    <div>{room.numUsers}</div>
+                    <div>{roomSummary.numUsers}{roomSummary.maxUsers ? `/${roomSummary.maxUsers}` : ""}</div>
                   </div>
                   <div className="flex flex-row">
                     <span
                       className={`cubing-icon ${
-                        ROOM_EVENTS_INFO[room.roomEvent].iconSrc
+                        ROOM_EVENTS_INFO[roomSummary.roomEvent].iconSrc
                       }`}
                     />
-                    <div>{ROOM_EVENTS_INFO[room.roomEvent].displayName}</div>
+                    <div>{ROOM_EVENTS_INFO[roomSummary.roomEvent].displayName}</div>
                   </div>
                   <div className="grid grid-rows-2">
-                    <div>{displayText(room.raceSettings.roomFormat)}</div>
+                    <div>{displayText(roomSummary.raceSettings.roomFormat)}</div>
                     <div>
-                      {room.teamSettings.teamsEnabled ? "Teams" : "Solo"}
+                      {roomSummary.teamSettings.teamsEnabled ? "Teams" : "Solo"}
                     </div>
                   </div>
                   <div className="grid grid-rows-2">
-                    {room.raceSettings.roomFormat === "RACING" ? (
+                    {roomSummary.raceSettings.roomFormat === "RACING" ? (
                       <>
                         <div>
-                          {abbreviate(room.raceSettings.matchFormat) +
-                            room.raceSettings.nSets}
+                          {abbreviate(roomSummary.raceSettings.matchFormat) +
+                            roomSummary.raceSettings.nSets}
                         </div>
                         <div>
-                          {abbreviate(room.raceSettings.setFormat) +
-                            room.raceSettings.nSolves}
+                          {abbreviate(roomSummary.raceSettings.setFormat) +
+                            roomSummary.raceSettings.nSolves}
                         </div>
                       </>
                     ) : (
@@ -170,7 +170,7 @@ export default function RoomListing() {
                   </div>
 
                   <div className="col-start-8 flex flex-row">
-                    {room.visibility === "PRIVATE" ? (
+                    {roomSummary.visibility === "PRIVATE" ? (
                       <>
                         <GlobeLock />
                         <div>Private</div>

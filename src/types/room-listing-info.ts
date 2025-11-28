@@ -12,6 +12,7 @@ export interface IRoomSummary {
   raceSettings: RaceSettings;
   teamSettings: TeamSettings;
   visibility: Visibility;
+  maxUsers: undefined | number;
 }
 
 export function roomToSummary(room: IRoom): IRoomSummary {
@@ -24,6 +25,7 @@ export function roomToSummary(room: IRoom): IRoomSummary {
     raceSettings: room.settings.raceSettings,
     teamSettings: room.settings.teamSettings,
     visibility: room.settings.access.visibility,
+    maxUsers: room.settings.maxUsers,
   };
 
   return roomSummary;

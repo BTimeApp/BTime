@@ -34,6 +34,7 @@ export type RoomStore = {
   access: Access;
   raceSettings: RaceSettings;
   teamSettings: TeamSettings;
+  maxUsers?: number;
 
   //local (client) states
   localPenalty: Penalty; //penalty associated with current solve
@@ -162,6 +163,7 @@ export type RoomStore = {
         access: { visibility: "PUBLIC" },
         raceSettings: { roomFormat: "CASUAL" },
         teamSettings: { teamsEnabled: false },
+        maxUsers: undefined,
 
         // local (client) state/options
         localPenalty: "OK",
@@ -301,6 +303,7 @@ export type RoomStore = {
             roomEvent: room.settings.roomEvent,
             raceSettings: room.settings.raceSettings,
             teamSettings: room.settings.teamSettings,
+            maxUsers: room.settings.maxUsers,
             roomState: room.state,
             roomWinners: room.winners || [],
             access: room.settings.access,

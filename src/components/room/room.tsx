@@ -75,6 +75,11 @@ export default function Room() {
           //special process user info
           handleRoomUserUpdate(room!.users[extraData["EXISTING_USER_INFO"]]);
         }
+
+        if (Object.keys(extraData).includes("ROOM_FULL")) {
+          router.push("/");
+          toast.error("The room is already full!");
+        }
       }
     },
     [
@@ -82,7 +87,7 @@ export default function Room() {
       handleRoomUserUpdate,
       setIsPasswordAuthenticated,
       setIsRoomValid,
-      router
+      router,
     ]
   );
 

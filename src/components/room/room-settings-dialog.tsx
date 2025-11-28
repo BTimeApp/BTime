@@ -25,6 +25,7 @@ export default function RoomSettingsDialog({
     access,
     raceSettings,
     teamSettings,
+    maxUsers,
     isUserHost
   ] = useRoomStore((s) => [
     s.roomName,
@@ -32,6 +33,7 @@ export default function RoomSettingsDialog({
     s.access,
     s.raceSettings,
     s.teamSettings,
+    s.maxUsers,
     s.isUserHost
   ]);
 
@@ -71,6 +73,7 @@ export default function RoomSettingsDialog({
               access={access}
               raceSettings={raceSettings}
               teamSettings={teamSettings}
+              maxUsers={maxUsers}
               roomId={roomId}
               createNewRoom={false}
               onUpdateCallback={closeDialogCallback}

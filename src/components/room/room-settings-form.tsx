@@ -112,13 +112,11 @@ const TeamSettingsSchema = z.discriminatedUnion("teamsEnabled", [
     maxTeamCapacity: z
       .number()
       .int()
-      .positive()
       .min(1, "Must allow at least 1 member per team")
       .optional(),
     maxNumTeams: z
       .number()
       .int()
-      .positive()
       .min(1, "Must allow at least 1 team")
       .optional(),
   }),
@@ -138,6 +136,10 @@ const formSchema = z.object({
   template: z
     .enum(ROOM_TEMPLATES as [RoomTemplateKey, ...RoomTemplateKey[]])
     .optional(),
+  maxUsers: z
+    .number()
+    .min(1, { message: "Room cannot have a maximum of fewer than 1 user." })
+    .optional(),
 });
 
 type RoomSettingsFormProps = {
@@ -147,6 +149,7 @@ type RoomSettingsFormProps = {
   raceSettings: RaceSettings;
   teamSettings: TeamSettings;
   roomId?: string;
+  maxUsers?: number;
   createNewRoom: boolean;
   submitButtonRef?: React.RefObject<HTMLButtonElement>;
   onCreateCallback?: (roomId: string) => void;
@@ -161,6 +164,7 @@ export default function RoomSettingsForm({
   raceSettings,
   teamSettings,
   roomId,
+  maxUsers,
   createNewRoom,
   submitButtonRef,
   onCreateCallback,
@@ -179,6 +183,7 @@ export default function RoomSettingsForm({
       access: access,
       raceSettings: raceSettings,
       teamSettings: teamSettings,
+      maxUsers: maxUsers,
     },
   });
 
@@ -682,6 +687,31 @@ export default function RoomSettingsForm({
             </div>
             <div className="space-y-3">
               <p className="text-xl font-bold">EXTRA</p>
+              <FormField
+                control={form.control}
+                name="maxUsers"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Max # Users</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder={field.value ? field.value.toString() : ""}
+                        type="number"
+                        step="1"
+                        {...field}
+                        value={field.value ?? ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          field.onChange(
+                            val === "" ? undefined : parseInt(val)
+                          );
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               {form.watch("teamSettings.teamsEnabled") && (
                 <>
                   <FormField
