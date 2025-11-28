@@ -59,6 +59,7 @@ export function checkRoomUpdateRequireReset(
   let needsReset = true;
   if (
     room.settings.raceSettings === roomSettings.raceSettings &&
+    room.settings.teamSettings === roomSettings.teamSettings &&
     room.settings.roomEvent === roomSettings.roomEvent
   ) {
     // only need reset if
