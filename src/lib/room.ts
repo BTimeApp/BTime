@@ -96,14 +96,12 @@ export function checkSetFinished(room: IRoom): boolean {
     case "AVERAGE_OF":
       return (
         currentSolve.finished &&
-        currentSolve.solveIndex === nSolves &&
-        currentSolve.setIndex === room.currentSet
+        currentSolve.solveIndex === nSolves 
       );
     case "MEAN_OF":
       return (
         currentSolve.finished &&
-        currentSolve.solveIndex === nSolves &&
-        currentSolve.setIndex === room.currentSet
+        currentSolve.solveIndex === nSolves 
       );
     case "BEST_OF":
       return (
@@ -111,8 +109,8 @@ export function checkSetFinished(room: IRoom): boolean {
           (participant) => participant.points > nSolves / 2
         ).length > 0 ||
         (currentSolve.finished &&
-          currentSolve.solveIndex === nSolves &&
-          currentSolve.setIndex === room.currentSet)
+          currentSolve.solveIndex === nSolves 
+        )
       );
     case "FIRST_TO":
       return (
@@ -122,8 +120,7 @@ export function checkSetFinished(room: IRoom): boolean {
     case "FASTEST_OF":
       return (
         currentSolve.finished &&
-        currentSolve.solveIndex === nSolves &&
-        currentSolve.setIndex === room.currentSet
+        currentSolve.solveIndex === nSolves 
       );
     default:
       return false;
