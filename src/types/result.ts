@@ -259,6 +259,7 @@ export class Result {
    */
   static meanOf(results: Result[]): number {
     if (results.length === 0) return 0;
+    if (results.some((result) => result.time >= DNF || result.penalty === "DNF")) return DNF;
     return results.reduce((sum, res) => sum + res.toTime(), 0) / results.length;
   }
 
@@ -269,9 +270,11 @@ export class Result {
   /**
    * Returns the average of a list of results (where average = mean of all but slowest and fastest)
    * AoN with N <=2 is going to use the mean.
+   * DNFing at least 2 solves (or 1 when N <= 2) will DNF the average.
    */
   static averageOf(results: Result[]): number {
     if (results.length <= 2) return Result.meanOf(results);
+    if (results.filter((result) => result.time >= DNF || result.penalty === "DNF").length >= 2) return DNF;
 
     return (
       results
