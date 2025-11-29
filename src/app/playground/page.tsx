@@ -1,7 +1,12 @@
 "use client";
 import Header from "@/components/common/header";
+import { notFound } from "next/navigation";
 
 export default function Page() {
+  if (process.env.NODE_ENV === "production") {
+    notFound();
+  }
+
   return (
     <div className="flex flex-col h-screen w-full">
       <Header>
