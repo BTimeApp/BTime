@@ -29,6 +29,7 @@ import {
   ROOM_EVENTS_INFO,
   ROOM_FORMATS,
   RoomEvent,
+  RoomFormat,
   SET_FORMATS,
   TEAM_REDUCE_FUNCTIONS,
   TEAM_SCRAMBLE_FORMATS,
@@ -265,6 +266,25 @@ export default function RoomSettingsForm({
     [form] // form is a dependency since we're using setValue and trigger
   );
 
+  const handleRoomFormatChange = useCallback(
+    (roomFormat: RoomFormat) => {
+      switch (roomFormat) {
+        case "CASUAL":
+          break;
+        case "RACING":
+          form.setValue("raceSettings.matchFormat", "BEST_OF");
+          form.setValue("raceSettings.setFormat", "BEST_OF");
+          form.setValue("raceSettings.nSets", 3);
+          form.setValue("raceSettings.nSolves", 7);
+          break;
+        default:
+          const illegalRoomFormat: never = roomFormat;
+          console.warn(`Illegal Room Format encountered: ${illegalRoomFormat}`);
+      }
+    },
+    [form]
+  );
+
   return (
     <div className={cn("m-1 h-full max-h-full overflow-y-auto", className)}>
       <Form {...form}>
@@ -296,7 +316,10 @@ export default function RoomSettingsForm({
                     <FormLabel>Room Type</FormLabel>
                     <FormControl>
                       <Select
-                        onValueChange={field.onChange}
+                        onValueChange={(value: RoomFormat) => {
+                          field.onChange(value);
+                          handleRoomFormatChange(value);
+                        }}
                         defaultValue={field.value}
                       >
                         <FormControl>
@@ -469,11 +492,10 @@ export default function RoomSettingsForm({
                         <FormControl>
                           <Select
                             onValueChange={field.onChange}
-                            defaultValue={field.value ?? "BEST_OF"}
                           >
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder={field.value} />
+                                <SelectValue placeholder={field.value ?? "Best of"} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -497,7 +519,7 @@ export default function RoomSettingsForm({
                         <FormLabel># Sets</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder={field.value.toString()}
+                            placeholder={field.value?.toString() ?? "3"}
                             type="number"
                             step="1"
                             {...field}
@@ -523,11 +545,10 @@ export default function RoomSettingsForm({
                         <FormControl>
                           <Select
                             onValueChange={field.onChange}
-                            defaultValue={field.value}
                           >
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder={field.value} />
+                                <SelectValue placeholder={field.value ?? "Best of"} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -551,7 +572,7 @@ export default function RoomSettingsForm({
                         <FormLabel># Solves</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder={field.value.toString()}
+                            placeholder={field.value?.toString() ?? "7"}
                             type="number"
                             step="1"
                             {...field}
