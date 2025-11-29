@@ -17,7 +17,7 @@ import {
   //   downloadTextFile,
 } from "@/lib/utils";
 import { useRoomStore } from "@/context/room-context";
-import { IRoomSolve } from "@/types/room-solve";
+import { IRoomSet, IRoomSolve } from "@/types/room-solve";
 import { useSession } from "@/context/session-context";
 import { IAttempt } from "@/types/solve";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -32,12 +32,13 @@ import {
 
 type SolveDialogProps = {
   solve: IRoomSolve;
+  setIndex: number; //1 indexed (when looking at the sets array)
   children: React.ReactNode;
 };
 
 // we expect scrambles and results to be of the same length. it should be one to one.
 type SetDialogProps = {
-  setIndex: number;
+  setIndex: number; //1 indexed (when looking at the sets array)
   children: React.ReactNode;
 };
 
@@ -196,7 +197,7 @@ function ResultListingWrapper({
   );
 }
 
-export function SolveDialog({ solve, children }: SolveDialogProps) {
+export function SolveDialog({ solve, setIndex, children }: SolveDialogProps) {
   const [roomName, teams, raceSettings, teamSettings] = useRoomStore((s) => [
     s.roomName,
     s.teams,
@@ -243,9 +244,9 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
   );
   const baseCopyText = [
     `BTime Room ${roomName}`,
-    `${
-      raceSettings.roomFormat === "RACING" && `Set ${solve.setIndex} `
-    } Solve ${solve.solveIndex}`,
+    `${raceSettings.roomFormat === "RACING" && `Set ${setIndex} `} Solve ${
+      solve.index
+    }`,
   ].join("\n");
 
   if (!localUser) {
@@ -255,11 +256,11 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
   return (
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="py-3">
+      <DialogContent className="py-3 md:min-w-[50vw]">
         <DialogHeader>
           <DialogTitle>
-            {solve.setIndex && `Set ${solve.setIndex}`}{" "}
-            {`Solve ${solve.solveIndex}`}
+            {raceSettings.roomFormat !== "CASUAL" && `Set ${setIndex}`}{" "}
+            {`Solve ${solve.index}`}
           </DialogTitle>
         </DialogHeader>
         <Tabs
@@ -328,17 +329,17 @@ export function SolveDialog({ solve, children }: SolveDialogProps) {
 }
 
 export function SetDialog({ setIndex, children }: SetDialogProps) {
-  const [roomName, teams, solves, teamSettings] = useRoomStore((s) => [
+  const [roomName, teams, match, teamSettings] = useRoomStore((s) => [
     s.roomName,
     s.teams,
-    s.solves,
+    s.match,
     s.teamSettings,
   ]);
 
   const { user: localUser } = useSession();
-  const setSolves = useMemo(
-    () => solves.filter((solve) => solve.setIndex === setIndex),
-    [solves, setIndex]
+  const setSolves: IRoomSolve[] = useMemo(
+    () => (match.sets.length >= setIndex ? match.sets[setIndex - 1].solves : []),
+    [match, setIndex]
   );
 
   const userScrambleResultMappings: ScrambleResultMapping[] = useMemo(
@@ -517,10 +518,10 @@ export function SetDialog({ setIndex, children }: SetDialogProps) {
 }
 
 export function SummaryDialog({ children }: SummaryDialogProps) {
-  const [roomName, teams, solves, teamSettings] = useRoomStore((s) => [
+  const [roomName, teams, match, teamSettings] = useRoomStore((s) => [
     s.roomName,
     s.teams,
-    s.solves,
+    s.match,
     s.teamSettings,
   ]);
 
@@ -528,22 +529,17 @@ export function SummaryDialog({ children }: SummaryDialogProps) {
 
   // Extract all sets. Creates a nested array of IRoomSolves, with inner array dimension grouped by set index.
   // This method should always be possible b/c solves is already sorted by setindex
-  const sets: IRoomSolve[][] = useMemo(
-    () =>
-      solves.reduce(
-        (a, s) =>
-          a.length && a[a.length - 1][0].setIndex === s.setIndex
-            ? (a[a.length - 1].push(s), a)
-            : (a.push([s]), a),
-        [] as IRoomSolve[][]
-      ),
-    [solves]
+  const sets: IRoomSet[] = useMemo(() => match.sets, [match]);
+
+  const solves: IRoomSolve[] = useMemo(
+    () => match.sets.flatMap((set) => set.solves),
+    [match]
   );
 
   const userScrambleResultMappings: ScrambleResultMapping[][] = useMemo(
     () =>
       sets.map((set) =>
-        set.map((solve) =>
+        set.solves.map((solve) =>
           localUser
             ? getScrambleResultMapping(
                 filterRecord(
@@ -580,7 +576,7 @@ export function SummaryDialog({ children }: SummaryDialogProps) {
             teams,
             (roomTeam: IRoomTeam) => {
               return sets.map((set) =>
-                set.map((solve) =>
+                set.solves.map((solve) =>
                   getScrambleResultMapping(
                     filterRecord(
                       solve.solve.attempts,
@@ -625,7 +621,7 @@ export function SummaryDialog({ children }: SummaryDialogProps) {
   const allScrambleResultMappings: ScrambleResultMapping[][] = useMemo(
     () =>
       sets.map((set) =>
-        set.map((solve) => getScrambleResultMapping(solve.solve.attempts))
+        set.solves.map((solve) => getScrambleResultMapping(solve.solve.attempts))
       ),
     [sets]
   );

@@ -11,19 +11,23 @@ import { IRoomTeam, IRoomUser } from "@/types/room-participant";
 import { IRoomSolve } from "@/types/room-solve";
 import { DNF, Result } from "@/types/result";
 import { cn } from "@/lib/utils";
-import { SummaryDialog, SetDialog, SolveDialog } from "@/components/room/result-dialogs";
+import {
+  SummaryDialog,
+  SetDialog,
+  SolveDialog,
+} from "@/components/room/result-dialogs";
 import { useRoomStore } from "@/context/room-context";
-import { useMemo } from "react";
+import { useMemo, Fragment } from "react";
+
+type SetSummary = {
+  setSummary?: IRoomSolve;
+  solveSummaries: IRoomSolve[];
+};
 
 export default function GlobalTimeList({ className }: { className: string }) {
-  const [users, teams, solves, raceSettings, teamSettings] =
-    useRoomStore((s) => [
-      s.users,
-      s.teams,
-      s.solves,
-      s.raceSettings,
-      s.teamSettings,
-    ]);
+  const [users, teams, match, raceSettings, teamSettings] = useRoomStore(
+    (s) => [s.users, s.teams, s.match, s.raceSettings, s.teamSettings]
+  );
 
   const participants = useMemo(() => {
     return teamSettings.teamsEnabled ? teams : users;
@@ -32,59 +36,36 @@ export default function GlobalTimeList({ className }: { className: string }) {
   /**
    * Potential strategy for incorporating "summary" rows
    *
-   * Create a list rows[]. both Solves and Summaries can be represented by IRoomSolve abstraction
-   *
-   * Iterate through solves and push to rows[]. We inject a summary when:
-   *   - current solve and next solve have diff set indices OR
-   *   - current solve has setWinners with nonzero length OR
-   *   - current solve has matchWinners with nonzero length OR
-   *   - current solve's solveIndex === nSolves && setIndex === nSets (this is nec since last solve in solves doesn't get caught in condition 1)
+   * Create a list rows[][].
+   * Both Solves and Summaries can be represented by IRoomSolve abstraction
+   * Each new list in rows represents a new set.
    */
-  const rows: IRoomSolve[] = useMemo(() => {
+  const rows: SetSummary[] = useMemo(() => {
     const rows = [];
-    for (let i = 0; i < solves.length; i++) {
-      const solve = solves[i];
+    for (let i = 0; i < match.sets.length; i++) {
+      const set = match.sets[i];
 
-      // 1. push solve to rows
-      rows.push(solve);
+      const setSolves = set.solves;
 
-      // 2. check if we should generate a set summary row after this solve. if so, push onto rows
+      const setSummaryRow: SetSummary = {
+        solveSummaries: setSolves,
+      };
+
+      //push a set summary after every set
       if (raceSettings.roomFormat !== "CASUAL") {
-        if (
-          (i < solves.length - 1 &&
-            solves[i].setIndex !== solves[i + 1].setIndex) ||
-          (solve.setWinners && solve.setWinners?.length > 0) ||
-          (solve.matchWinners && solve.matchWinners?.length > 0) ||
-          (solve.finished &&
-            solve.setIndex === raceSettings.nSets &&
-            solve.solveIndex >= raceSettings.nSolves! &&
-            (raceSettings.setFormat === "FASTEST_OF" ||
-              raceSettings.setFormat === "MEAN_OF" ||
-              raceSettings.setFormat === "AVERAGE_OF"))
-        ) {
-          const roomSummaryRow: IRoomSolve = {
-            solve: {
-              id: -1,
-              scrambles: [],
-              attempts: {},
-              results: {},
-            },
-            setIndex: solve.setIndex,
-            solveIndex: -1,
-            finished: true,
-            solveWinners: [],
-            setWinners: solve.setWinners,
-            matchWinners: solve.matchWinners,
-          };
+        const setSummary: IRoomSolve = {
+          solve: {
+            id: -1,
+            scrambles: [],
+            attempts: {},
+            results: {},
+          },
+          index: i + 1,
+          finished: set.finished,
+          winners: set.winners,
+        };
 
-          /**
-           * TODO: consider moving this set calculation logic into a field within IRoom that represents a set
-           */
-
-          const setSolves = solves.filter(
-            (roomSolve) => roomSolve.setIndex === solve.setIndex
-          );
-
+        if (set.finished) {
           for (const pid of Object.keys(participants)) {
             //user's results for the given set
             const participantSetResults = setSolves.map((solve) =>
@@ -98,12 +79,12 @@ export default function GlobalTimeList({ className }: { className: string }) {
             switch (raceSettings.setFormat) {
               case "BEST_OF":
                 userPoints = setSolves.filter((solve) =>
-                  solve.solveWinners?.includes(pid)
+                  solve.winners?.includes(pid)
                 ).length;
                 break;
               case "FIRST_TO":
                 userPoints = setSolves.filter((solve) =>
-                  solve.solveWinners?.includes(pid)
+                  solve.winners?.includes(pid)
                 ).length;
                 break;
               case "AVERAGE_OF":
@@ -119,28 +100,20 @@ export default function GlobalTimeList({ className }: { className: string }) {
                 break;
             }
 
-            roomSummaryRow.solve.results[pid] = new Result(
-              userPoints
-            ).toIResult();
+            setSummary.solve.results[pid] = new Result(userPoints).toIResult();
+            setSummaryRow.setSummary = setSummary;
           }
-
-          if (solve.setWinners && solve.setWinners?.length > 0) {
-            roomSummaryRow.setWinners = solve.setWinners;
-          }
-          if (solve.matchWinners && solve.matchWinners?.length > 0) {
-            roomSummaryRow.matchWinners = solve.matchWinners;
-          }
-
-          rows.push(roomSummaryRow);
         }
       }
+
+      rows.push(setSummaryRow);
     }
     return rows;
-  }, [solves, raceSettings, participants]);
+  }, [match, raceSettings, participants]);
 
   return (
     <div className={cn("flex flex-col bg-inherit", className)}>
-      <div className="flex-1 text-foreground text-2xl">Time List</div>
+      <div className="flex-none my-1 text-foreground text-2xl">Time List</div>
       <Table className="w-full border-collapse bg-inherit">
         <TableHeader className="sticky top-0 z-10 shadow-sm bg-inherit">
           <SummaryDialog>
@@ -162,100 +135,105 @@ export default function GlobalTimeList({ className }: { className: string }) {
         <TableBody className="flex-1 overflow-auto">
           {rows.map((_, i, arr) => {
             //render in reverse order without explicit reversal
-            const index = arr.length - 1 - i;
-            const solve = arr[index];
-
-            const solveWinners: string[] | undefined = solve.solveWinners;
-            const setWinners: string[] | undefined = solve.setWinners;
-            const matchWinners: string[] | undefined = solve.matchWinners;
-
-            if (solve.solveIndex === -1) {
-              return (
-                <SetDialog key={index} setIndex={solve.setIndex}>
-                  <TableRow className="font-bold cursor-pointer hover:underline">
-                    <TableCell className="w-10">{solve.setIndex}</TableCell>
-                    {raceSettings.roomFormat !== "CASUAL" &&
-                      (raceSettings.setFormat === "BEST_OF" ||
-                        raceSettings.setFormat === "FIRST_TO") && (
-                        <TableCell className="w-10">Pts</TableCell>
-                      )}
-                    {raceSettings.roomFormat !== "CASUAL" &&
-                      raceSettings.setFormat === "AVERAGE_OF" && (
-                        <TableCell className="w-10">Avg</TableCell>
-                      )}
-                    {raceSettings.roomFormat !== "CASUAL" &&
-                      raceSettings.setFormat === "MEAN_OF" && (
-                        <TableCell className="w-10">Mean</TableCell>
-                      )}
-                    {raceSettings.roomFormat !== "CASUAL" &&
-                      raceSettings.setFormat === "FASTEST_OF" && (
-                        <TableCell className="w-10">Best</TableCell>
-                      )}
-
-                    {Object.keys(participants).map((pid) => {
-                      const participantResult = solve.solve.results[pid];
-                      return (
-                        <TableCell key={pid}>
-                          <div className="flex flex-row text-center items-center justify-center">
-                            {(setWinners?.includes(pid) ||
-                              matchWinners?.includes(pid)) && <Crown />}
-                            <div>
-                              {raceSettings.roomFormat !== "CASUAL" &&
-                                (raceSettings.setFormat === "AVERAGE_OF" ||
-                                  raceSettings.setFormat === "MEAN_OF" ||
-                                  raceSettings.setFormat === "FASTEST_OF") &&
-                                (participantResult
-                                  ? Result.fromIResult(
-                                      participantResult
-                                    ).toString()
-                                  : "DNF")}
-                              {raceSettings.roomFormat !== "CASUAL" &&
-                                (raceSettings.setFormat === "BEST_OF" ||
-                                  raceSettings.setFormat === "FIRST_TO") &&
-                                (solve.solve.results[pid]
-                                  ? Result.fromIResult(
-                                      participantResult
-                                    ).getTime()
-                                  : 0)}
-                            </div>
-                          </div>
-                        </TableCell>
-                      );
-                    })}
-                  </TableRow>
-                </SetDialog>
-              );
-            }
-
-            // row is a solve row
+            const setIndex = arr.length - 1 - i;
+            const setSummaryRow = arr[setIndex];
+            const setSummary = setSummaryRow.setSummary;
             return (
-              <SolveDialog key={index} solve={solve}>
-                <TableRow className="cursor-pointer hover:underline">
-                  {raceSettings.roomFormat !== "CASUAL" && (
-                    <TableCell className="w-10">{solve.setIndex}</TableCell>
-                  )}
-                  <TableCell className="w-10">{solve.solveIndex}</TableCell>
-                  {Object.keys(participants).map((pid) => {
-                    let cellClassName = "";
-                    if (solveWinners?.includes(pid)) {
-                      cellClassName += "font-bold";
-                    }
-                    return (
-                      <TableCell key={pid} className={cellClassName}>
-                        <div className="flex flex-row text-center items-center justify-center">
-                          <div>
-                            {solve.solve.results[pid]
-                              ? Result.fromIResult(
-                                  solve.solve.results[pid]
-                                ).toString()
-                              : "---"}
-                          </div>
-                        </div>
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              </SolveDialog>
+              <Fragment key={setIndex}>
+                {setSummary && (
+                  <SetDialog key={setSummary.index} setIndex={setSummary.index}>
+                    <TableRow className="font-bold cursor-pointer hover:underline">
+                      <TableCell className="w-10">{setSummary.index}</TableCell>
+                      {raceSettings.roomFormat !== "CASUAL" &&
+                        (raceSettings.setFormat === "BEST_OF" ||
+                          raceSettings.setFormat === "FIRST_TO") && (
+                          <TableCell className="w-10">Pts</TableCell>
+                        )}
+                      {raceSettings.roomFormat !== "CASUAL" &&
+                        raceSettings.setFormat === "AVERAGE_OF" && (
+                          <TableCell className="w-10">Avg</TableCell>
+                        )}
+                      {raceSettings.roomFormat !== "CASUAL" &&
+                        raceSettings.setFormat === "MEAN_OF" && (
+                          <TableCell className="w-10">Mean</TableCell>
+                        )}
+                      {raceSettings.roomFormat !== "CASUAL" &&
+                        raceSettings.setFormat === "FASTEST_OF" && (
+                          <TableCell className="w-10">Best</TableCell>
+                        )}
+
+                      {Object.keys(participants).map((pid) => {
+                        const participantResult = setSummary.solve.results[pid];
+                        return (
+                          <TableCell key={pid}>
+                            <div className="flex flex-row text-center items-center justify-center">
+                              {setSummary.winners.includes(pid) && <Crown />}
+                              <div>
+                                {raceSettings.roomFormat !== "CASUAL" &&
+                                  (raceSettings.setFormat === "AVERAGE_OF" ||
+                                    raceSettings.setFormat === "MEAN_OF" ||
+                                    raceSettings.setFormat === "FASTEST_OF") &&
+                                  (participantResult
+                                    ? Result.fromIResult(
+                                        participantResult
+                                      ).toString()
+                                    : "DNF")}
+                                {raceSettings.roomFormat !== "CASUAL" &&
+                                  (raceSettings.setFormat === "BEST_OF" ||
+                                    raceSettings.setFormat === "FIRST_TO") &&
+                                  (setSummary.solve.results[pid]
+                                    ? Result.fromIResult(
+                                        participantResult
+                                      ).getTime()
+                                    : 0)}
+                              </div>
+                            </div>
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  </SetDialog>
+                )}
+                {setSummaryRow.solveSummaries.map((_, j, solves) => {
+                  const solveIndex = solves.length - 1 - j;
+                  const solve = solves[solveIndex];
+
+                  // row is a solve row
+                  return (
+                    <SolveDialog
+                      key={solveIndex}
+                      solve={solve}
+                      setIndex={setIndex + 1}
+                    >
+                      <TableRow className="cursor-pointer hover:underline">
+                        {raceSettings.roomFormat !== "CASUAL" && (
+                          <TableCell className="w-10">{setIndex + 1}</TableCell>
+                        )}
+                        <TableCell className="w-10">{solveIndex + 1}</TableCell>
+                        {Object.keys(participants).map((pid) => {
+                          let cellClassName = "";
+                          if (solve.winners?.includes(pid)) {
+                            cellClassName += "font-bold";
+                          }
+                          return (
+                            <TableCell key={pid} className={cellClassName}>
+                              <div className="flex flex-row text-center items-center justify-center">
+                                <div>
+                                  {solve.solve.results[pid]
+                                    ? Result.fromIResult(
+                                        solve.solve.results[pid]
+                                      ).toString()
+                                    : "---"}
+                                </div>
+                              </div>
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    </SolveDialog>
+                  );
+                })}
+              </Fragment>
             );
           })}
         </TableBody>

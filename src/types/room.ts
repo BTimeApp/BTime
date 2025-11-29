@@ -1,6 +1,6 @@
 import { IUserInfo } from "@/types/user";
 import { IRoomTeam, IRoomUser } from "@/types/room-participant";
-import { IRoomSolve } from "@/types/room-solve";
+import { IRoomMatch } from "@/types/room-solve";
 import { displayText, literalKeys } from "@/lib/utils";
 
 export interface RoomEventAttributes {
@@ -399,11 +399,13 @@ export interface IRoom {
   host?: IUserInfo;
   users: Record<string, IRoomUser>; //objectId (user) : IRoomUser. The key has to be a string b/c of mongoDB storage.
   teams: Record<string, IRoomTeam>; //objectId (team) : IRoomTeam
-  solves: IRoomSolve[];
+  match: IRoomMatch;
   currentSet: number; //the current set number (1-indexed)
   currentSolve: number; //the solve number WITHIN the current set (1-indexed)
   state: RoomState;
-  winners?: string[]; //the objectId(s) who have won the whole room
+  
+  // solves: IRoomSolve[];
+  // winners?: string[]; //the objectId(s) who have won the whole room
 
   settings: IRoomSettings;
 }

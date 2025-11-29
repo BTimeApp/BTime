@@ -1,6 +1,6 @@
 import { Access, IRoom, IRoomSettings, TeamReduceFunction } from "@/types/room";
 import { IAttempt, ISolve } from "@/types/solve";
-import { IRoomSolve } from "@/types/room-solve";
+import { IRoomSet, IRoomSolve } from "@/types/room-solve";
 import { DNF, IResult, Result } from "@/types/result";
 import { generateScramble, generateScrambles } from "@/lib/utils";
 import { ObjectId } from "bson";
@@ -18,8 +18,12 @@ export async function createRoom(
     id: roomId ? roomId : new ObjectId().toString(),
     users: {},
     teams: {},
-    solves: [],
-    currentSet: 1,
+    match: {
+      sets: [],
+      winners: [],
+      finished: false,
+    },
+    currentSet: 0,
     currentSolve: 0,
     state: "WAITING",
     settings: roomSettings,
@@ -50,6 +54,19 @@ export async function updateRoom(
       : "";
     room.settings.access = access;
   }
+}
+
+export function getLatestSet(room: IRoom): IRoomSet | undefined {
+  if (room.match.sets.length === 0) return;
+
+  return room.match.sets.at(-1);
+}
+
+export function getLatestSolve(room: IRoom): IRoomSolve | undefined {
+  const latestSet = getLatestSet(room);
+  if (latestSet === undefined || latestSet.solves.length === 0) return;
+
+  return latestSet.solves.at(-1);
 }
 
 export function checkRoomUpdateRequireReset(
@@ -84,33 +101,25 @@ export function checkSetFinished(room: IRoom): boolean {
     ? Object.values(room.teams)
     : Object.values(room.users);
 
-  if (
-    room.solves.length === 0 ||
-    room.settings.raceSettings.roomFormat === "CASUAL"
-  )
+  const currentSolve = getLatestSolve(room);
+
+  if (!currentSolve || room.settings.raceSettings.roomFormat === "CASUAL") {
     return false;
-  const currentSolve = room.solves.at(-1)!;
+  }
+
   const nSolves = room.settings.raceSettings.nSolves;
 
   switch (room.settings.raceSettings.setFormat) {
     case "AVERAGE_OF":
-      return (
-        currentSolve.finished &&
-        currentSolve.solveIndex === nSolves 
-      );
+      return currentSolve.finished && currentSolve.index === nSolves;
     case "MEAN_OF":
-      return (
-        currentSolve.finished &&
-        currentSolve.solveIndex === nSolves 
-      );
+      return currentSolve.finished && currentSolve.index === nSolves;
     case "BEST_OF":
       return (
         roomParticipants.filter(
           (participant) => participant.points > nSolves / 2
         ).length > 0 ||
-        (currentSolve.finished &&
-          currentSolve.solveIndex === nSolves 
-        )
+        (currentSolve.finished && currentSolve.index === nSolves)
       );
     case "FIRST_TO":
       return (
@@ -118,10 +127,7 @@ export function checkSetFinished(room: IRoom): boolean {
           .length > 0
       );
     case "FASTEST_OF":
-      return (
-        currentSolve.finished &&
-        currentSolve.solveIndex === nSolves 
-      );
+      return currentSolve.finished && currentSolve.index === nSolves;
     default:
       return false;
   }
@@ -140,6 +146,8 @@ export function findSetWinners(room: IRoom): string[] {
     ? room.teams
     : room.users;
   const nSolves = room.settings.raceSettings.nSolves;
+  const currentSet = getLatestSet(room);
+  if (!currentSet) return [];
 
   switch (room.settings.raceSettings.setFormat) {
     case "BEST_OF":
@@ -172,9 +180,7 @@ export function findSetWinners(room: IRoom): string[] {
         (participantId) => roomParticipants[participantId].points >= nSolves
       );
     case "AVERAGE_OF": {
-      const setSolves = room.solves.filter(
-        (roomSolve) => roomSolve.setIndex == room.currentSet
-      );
+      const setSolves = currentSet.solves;
 
       if (setSolves.length < nSolves) return [];
 
@@ -202,9 +208,7 @@ export function findSetWinners(room: IRoom): string[] {
     }
     case "MEAN_OF": {
       //requires that competing user have done ALL solves in this set
-      const setSolves = room.solves.filter(
-        (roomSolve) => roomSolve.setIndex == room.currentSet
-      );
+      const setSolves = currentSet.solves;
 
       if (setSolves.length < (nSolves || Number.POSITIVE_INFINITY)) return [];
 
@@ -231,9 +235,7 @@ export function findSetWinners(room: IRoom): string[] {
       );
     }
     case "FASTEST_OF": {
-      const setSolves = room.solves.filter(
-        (roomSolve) => roomSolve.setIndex == room.currentSet
-      );
+      const setSolves = currentSet.solves;
 
       if (setSolves.length < (nSolves || Number.POSITIVE_INFINITY)) return [];
 
@@ -276,10 +278,8 @@ export function checkMatchFinished(room: IRoom): boolean {
    * Bo - either finish all sets, or someone has to take majority (> N / 2) of set wins available
    * Ft - someone has to get at least N set wins
    */
-  if (
-    room.solves.length === 0 ||
-    room.settings.raceSettings.roomFormat === "CASUAL"
-  )
+  const currentSolve = getLatestSolve(room);
+  if (!currentSolve || room.settings.raceSettings.roomFormat === "CASUAL")
     return false;
 
   const roomParticipants = room.settings.teamSettings.teamsEnabled
@@ -289,12 +289,11 @@ export function checkMatchFinished(room: IRoom): boolean {
   const nSets = room.settings.raceSettings.nSets;
   switch (room.settings.raceSettings.matchFormat) {
     case "BEST_OF":
-      const currentSolve = room.solves.at(-1)!;
       return (
         roomParticipants.filter(
           (participant) => participant.setWins > nSets / 2
         ).length > 0 ||
-        (currentSolve.setIndex === nSets && checkSetFinished(room))
+        (room.currentSet === nSets && checkSetFinished(room))
       );
     case "FIRST_TO":
       return (
@@ -311,11 +310,9 @@ export function checkMatchFinished(room: IRoom): boolean {
  * This function sHould ONLY be called if the set is finished, and should be called AFTER updating set wins
  */
 export function findMatchWinners(room: IRoom): string[] {
+  const currentSolve = getLatestSolve(room);
   //no set wins when room is a casual room
-  if (
-    room.solves.length === 0 ||
-    room.settings.raceSettings.roomFormat == "CASUAL"
-  )
+  if (!currentSolve || room.settings.raceSettings.roomFormat == "CASUAL")
     return [];
   const roomParticipants = room.settings.teamSettings.teamsEnabled
     ? room.teams
@@ -333,8 +330,7 @@ export function findMatchWinners(room: IRoom): string[] {
       }
 
       // otherwise, it is possible to win w/o majority of sets. if the last set is done, need to check for max set wins of all users
-      const currentSolve = room.solves.at(-1)!;
-      if (currentSolve.setIndex === nSets && currentSolve.finished) {
+      if (room.currentSet === nSets && currentSolve.finished) {
         /**
          * in AO/MO/FO mode, set only finishes when all solves are done.
          * in BO/FT mode, set can finish before the last solve when a user takes the set. In this case, we rely on other functions not checking for match winners before the set is finished (either by set win or by number of solves)
@@ -343,7 +339,7 @@ export function findMatchWinners(room: IRoom): string[] {
           ((room.settings.raceSettings.setFormat === "AVERAGE_OF" ||
             room.settings.raceSettings.setFormat === "MEAN_OF" ||
             room.settings.raceSettings.setFormat === "FASTEST_OF") &&
-            currentSolve.solveIndex === room.settings.raceSettings.nSolves) ||
+            currentSolve.index === room.settings.raceSettings.nSolves) ||
           room.settings.raceSettings.setFormat === "BEST_OF" ||
           room.settings.raceSettings.setFormat === "FIRST_TO"
         ) {
@@ -388,12 +384,14 @@ const teamReduceFunctionToFunction = new Map<
 ]);
 
 export function checkTeamFinished(room: IRoom, teamId: string) {
-  if (room.solves.length === 0) return false;
-  if (!room.settings.teamSettings.teamsEnabled || !room.teams[teamId]) {
+  const currentSolve = getLatestSolve(room);
+  if (
+    !room.settings.teamSettings.teamsEnabled ||
+    !room.teams[teamId] ||
+    !currentSolve
+  ) {
     return false;
   }
-
-  const currentSolve = room.solves.at(-1)!;
 
   switch (room.settings.teamSettings.teamFormatSettings.teamSolveFormat) {
     case "ALL":
@@ -422,12 +420,15 @@ export function checkTeamFinished(room: IRoom, teamId: string) {
 }
 
 export function finishTeamSolve(room: IRoom, teamId: string) {
-  if (room.solves.length === 0) return;
-  if (!room.settings.teamSettings.teamsEnabled || !room.teams[teamId]) {
+  const currentSolve = getLatestSolve(room);
+
+  if (
+    !room.settings.teamSettings.teamsEnabled ||
+    !room.teams[teamId] ||
+    !currentSolve
+  ) {
     return;
   }
-
-  const currentSolve = room.solves.at(-1)!;
 
   switch (room.settings.teamSettings.teamFormatSettings.teamSolveFormat) {
     case "ALL":
@@ -498,9 +499,8 @@ export function processNewResult(
   userId: string,
   result: IResult
 ): IRoomTeam | undefined {
-  if (room.solves.length === 0) return;
-
-  const currentSolve = room.solves.at(-1)!;
+  const currentSolve = getLatestSolve(room);
+  if (!currentSolve) return;
 
   // update user attempt, currentResult
   currentSolve.solve.attempts[userId] = {
@@ -538,8 +538,7 @@ export function processNewResult(
  * TODO: reimplement/redesign the backend so that solves are really finished once all relevant results are in (check the results array of the solve instead)
  */
 export function checkRoomSolveFinished(room: IRoom): boolean {
-  if (room.solves.length == 0) return false;
-  // const currentSolve = room.solves.at(-1)!;
+  if (!getLatestSolve(room)) return false;
 
   // 1. Calculate correct set of competing users
   let competingUsers = Object.values(room.users);
@@ -602,11 +601,10 @@ export function checkRoomSolveFinished(room: IRoom): boolean {
  *  wins - should be done outside of this function
  */
 export function finishRoomSolve(room: IRoom) {
-  if (room.solves.length == 0) return;
-  const currentSolve = room.solves.at(-1);
-  if (currentSolve === undefined) {
-    return;
-  }
+  const currentSolve = getLatestSolve(room);
+  const currentSet = getLatestSet(room);
+  if (!currentSolve || !currentSet) return;
+
   currentSolve.finished = true;
 
   const results = currentSolve.solve.results;
@@ -638,7 +636,7 @@ export function finishRoomSolve(room: IRoom) {
       }
     }
 
-    currentSolve.solveWinners = solveWinners;
+    currentSolve.winners = solveWinners;
     for (const pid of solveWinners) {
       if (room.settings.teamSettings.teamsEnabled) {
         participants[pid].points += 1;
@@ -658,9 +656,7 @@ export function finishRoomSolve(room: IRoom) {
      *
      * we have to recalculate for active & competing users at each point.
      */
-    const setResults = room.solves
-      .filter((solve) => solve.setIndex === room.currentSet)
-      .map((solve) => solve.solve.results);
+    const setResults = currentSet.solves.map((solve) => solve.solve.results);
 
     for (const [pid, participant] of Object.entries(participants)) {
       //recalculate mean over recent set solves
@@ -768,9 +764,9 @@ export async function userJoinTeam(
   room.users[userId].competing = true; //in teams mode, competing = on team or not
 
   let extraData = undefined;
+  const currentSolve = getLatestSolve(room);
   // 3.5. generate a scramble for the user (create an attempt) if they're joining in the middle of a solve AND (we are in ALL mode || we are in ONE mode and it's this user's turn)
-  if (room.state === "STARTED" && room.solves.length > 0) {
-    const currentSolve = room.solves.at(-1)!;
+  if (room.state === "STARTED" && currentSolve) {
     if (
       room.settings.teamSettings.teamFormatSettings.teamSolveFormat === "ALL" &&
       room.settings.teamSettings.teamFormatSettings.teamScrambleFormat ===
@@ -840,8 +836,8 @@ export async function userLeaveTeam(
   } = {};
 
   // remove the current attempt from the user.
-  if (room.solves.length > 0) {
-    const currentSolve = room.solves.at(-1)!;
+  const currentSolve = getLatestSolve(room);
+  if (currentSolve) {
     delete currentSolve.solve.attempts[userId];
     user.currentResult = undefined;
 
@@ -870,8 +866,8 @@ export async function userLeaveTeam(
           team.team.members[userIdx % team.team.members.length];
 
         // if there are solves, assign this new current member an attempt.
-        if (room.solves.length > 0) {
-          const currentSolve = room.solves.at(-1)!;
+
+        if (currentSolve) {
           const newAttempt: IAttempt = {
             finished: false,
             scramble: currentSolve.solve.scrambles[0],
@@ -914,13 +910,43 @@ function getNumScramblesToGenerate(room: IRoom) {
   return numScrambles;
 }
 
+export function newRoomSet(room: IRoom): IRoomSet {
+  console.log("Backend creating a new room set");
+  const currentSet = getLatestSet(room);
+  if (currentSet && !currentSet.finished) {
+    //otherwise, since the latest set isn't finished, we will fail.
+    console.warn(
+      `Tried to start a new set in room ${room.id} without finishing the latest set`
+    );
+  }
+
+  const newSet: IRoomSet = {
+    solves: [],
+    index: room.currentSet + 1,
+    winners: [],
+    finished: false,
+  };
+
+  room.match.sets.push(newSet);
+
+  room.currentSet += 1;
+  room.currentSolve = 0;
+  return newSet;
+}
+
 /**
  * Generates a new solve for a room and its users. Does not update wins or points
  *
  */
 export async function newRoomSolve(room: IRoom) {
+  console.log("Backend creating a new room solve");
   //get current solve Id. Consider storing a currentSolveId field in the room to not need to do this
   const currSolveId = getCurrentSolveId(room);
+
+  let currentSet = getLatestSet(room);
+  if (!currentSet) {
+    currentSet = newRoomSet(room);
+  }
 
   const newSolve: ISolve = {
     id: currSolveId + 1,
@@ -931,15 +957,12 @@ export async function newRoomSolve(room: IRoom) {
 
   const newRoomSolve: IRoomSolve = {
     solve: newSolve,
-    setIndex: room.currentSet,
-    solveIndex: room.currentSolve + 1,
+    index: room.currentSolve + 1,
     finished: false,
-    solveWinners: [],
-    setWinners: [],
-    matchWinners: [],
+    winners: [],
   };
   room.currentSolve += 1;
-  room.solves.push(newRoomSolve);
+  currentSet.solves.push(newRoomSolve);
 
   if (
     room.settings.teamSettings.teamsEnabled &&
@@ -969,9 +992,9 @@ export async function newRoomSolve(room: IRoom) {
  * Resets the current solve and generate new scrambles
  */
 export async function resetSolve(room: IRoom) {
-  if (room.solves.length == 0) return;
+  const currentSolve = getLatestSolve(room);
+  if (!currentSolve) return;
 
-  const currentSolve = room.solves.at(-1)!;
   const numScrambles = getNumScramblesToGenerate(room);
   const solveScrambles = await generateScrambles(
     room.settings.roomEvent,
@@ -1036,11 +1059,13 @@ export async function resetSolve(room: IRoom) {
  */
 export function resetRoom(room: IRoom) {
   room.state = "WAITING";
-  room.solves = [];
-  room.currentSet = 1;
+  room.match = {
+    sets: [],
+    winners: [],
+    finished: false,
+  };
+  room.currentSet = 0;
   room.currentSolve = 0;
-  room.winners =
-    room.settings.raceSettings.roomFormat != "CASUAL" ? [] : undefined;
 
   for (const roomUser of Object.values(room.users)) {
     roomUser.points = 0;
@@ -1106,8 +1131,8 @@ export function userJoinRoom(room: IRoom, user: IUserInfo) {
   } else {
     // we need to explicitly set a user's scramble when they join.
     //  for now, joining with teams enabled disables competing, so we just cover no teams case - which is easy
-    if (room.solves.length > 0) {
-      const currentSolve = room.solves.at(-1)!;
+    const currentSolve = getLatestSolve(room);
+    if (currentSolve) {
       currentSolve.solve.attempts[user.id] = {
         finished: false,
         scramble: currentSolve.solve.scrambles[0]!,
@@ -1124,6 +1149,6 @@ export function userJoinRoom(room: IRoom, user: IUserInfo) {
 }
 
 function getCurrentSolveId(room: IRoom) {
-  if (room.solves.length == 0) return 0;
-  return room.solves.at(-1)!.solve.id;
+  const latestSolve = getLatestSolve(room);
+  return latestSolve?.solve.id ?? 0;
 }

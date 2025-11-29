@@ -19,6 +19,9 @@ import {
   userLeaveTeam,
   processNewResult,
   userJoinRoom,
+  getLatestSolve,
+  getLatestSet,
+  newRoomSet,
 } from "@/lib/room";
 import { IUser, IUserInfo } from "@/types/user";
 import { IRoomTeam, IRoomUser } from "@/types/room-participant";
@@ -126,7 +129,9 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
   //TODO: abstract this function away to room lib
   async function handleSolveFinished(room: IRoom) {
     finishRoomSolve(room);
-    const currentSolve = room.solves.at(-1)!;
+    const currentSolve = getLatestSolve(room);
+    const currentSet = getLatestSet(room);
+    if (!currentSolve || !currentSet) return;
     const participants = room.settings.teamSettings.teamsEnabled
       ? room.teams
       : room.users;
@@ -138,7 +143,8 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       if (setFinished) {
         // find set winners.
         const setWinners: string[] = findSetWinners(room);
-        currentSolve.setWinners = setWinners;
+        currentSet.winners = setWinners;
+        currentSet.finished = true;
 
         // update set wins for set winners
         setWinners.map((pid) => (participants[pid].setWins += 1));
@@ -153,9 +159,9 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         if (matchFinished) {
           const matchWinners: string[] = findMatchWinners(room);
           //handle match finished
-          room.winners = matchWinners;
+          room.match.winners = matchWinners;
+          room.match.finished = true;
           room.state = "FINISHED";
-          currentSolve.matchWinners = matchWinners;
 
           //publish solve finished after updating match winners, but before sending match finished
           io.to(room.id).emit(
@@ -180,11 +186,8 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           //publish set finished event with winners
           io.to(room.id).emit(SOCKET_SERVER.SET_FINISHED_EVENT, setWinners);
 
-          // reset solve counter, update set counter - this is done AFTER match finish check so we dont create a non-existent set
-          room.currentSolve = 0;
-          room.currentSet += 1;
-
-          io.to(room.id).emit(SOCKET_SERVER.NEW_SET);
+          const newSet = newRoomSet(room);
+          io.to(room.id).emit(SOCKET_SERVER.NEW_SET, newSet);
         }
       } else {
         io.to(room.id).emit(
@@ -500,7 +503,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
         //validate the room still has capacity
         if (
-          room.settings.maxUsers && 
+          room.settings.maxUsers &&
           Object.keys(room.users).length >= room.settings.maxUsers
         ) {
           console.log(`User ${userId} tried to join a full room ${roomId}.`);
@@ -566,14 +569,15 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           .except(userId)
           .emit(SOCKET_SERVER.USER_JOINED, room.users[userId]);
         // if room is started, need to update solves object
+        const currentSolve = getLatestSolve(room);
         if (
           room.state === "STARTED" &&
           !room.settings.teamSettings.teamsEnabled &&
-          room.solves.length > 0
+          currentSolve
         ) {
           io.to(roomId)
             .except(userId)
-            .emit(SOCKET_SERVER.SOLVE_UPDATE, room.solves.at(-1)!);
+            .emit(SOCKET_SERVER.SOLVE_UPDATE, currentSolve);
         }
       }
     );
@@ -588,12 +592,15 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       const room = await getSocketRoom();
       if (!room) return;
 
-      if (room.state == "STARTED") {
+      const currentSolve = getLatestSolve(room);
+      if (room.state != "STARTED") {
+        console.log(`Cannot skip scramble when room state is ${room.state}`);
+      } else if (!currentSolve) {
+        console.log(`Cannot skip scramble when there is no current solve.`);
+      } else {
         await resetSolve(room);
         await stores.rooms.setRoom(room);
-        io.to(room.id).emit(SOCKET_SERVER.SOLVE_RESET, room.solves.at(-1));
-      } else {
-        console.log(`Cannot skip scramble when room state is ${room.state}`);
+        io.to(room.id).emit(SOCKET_SERVER.SOLVE_RESET, currentSolve);
       }
     });
 
@@ -679,11 +686,14 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
       if (room.state == "WAITING" || room.state == "FINISHED") {
         room.state = "STARTED";
+        const newSet = await newRoomSet(room);
         const newSolve = await newRoomSolve(room);
 
         await stores.rooms.setRoom(room);
         io.to(room.id).emit(SOCKET_SERVER.ROOM_STARTED);
         io.to(room.id).emit(SOCKET_SERVER.TEAMS_UPDATE, room.teams);
+        //manually remove the solve since we're sending it over the wire right after this - avoids duplicating
+        io.to(room.id).emit(SOCKET_SERVER.NEW_SET, { ...newSet, solves: [] });
         io.to(room.id).emit(SOCKET_SERVER.NEW_SOLVE, newSolve);
       } else {
         console.log(`Cannot start room when room state is ${room.state}`);
@@ -817,7 +827,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
             );
             return;
           }
-          if (room.solves.length == 0) {
+          if (!getLatestSolve(room)) {
             console.log(
               `User ${socket.user?.userInfo.id} tried to submit a result to ${socket.roomId} when there are no solves in the room.`
             );

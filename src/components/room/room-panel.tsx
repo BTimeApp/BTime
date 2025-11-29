@@ -168,15 +168,15 @@ function UserCenterSection({
   userId: string;
   isLocalUser: boolean;
 }) {
-  const [users, solveStatus, solves, roomEvent, drawScramble] = useRoomStore(
-    (s) => [s.users, s.localSolveStatus, s.solves, s.roomEvent, s.drawScramble]
+  const [users, solveStatus, match, roomEvent, drawScramble] = useRoomStore(
+    (s) => [s.users, s.localSolveStatus, s.match, s.roomEvent, s.drawScramble]
   );
 
   if (!users[userId]) {
     return null;
   }
 
-  const currScramble = solves.at(-1)?.solve.attempts[userId]?.scramble ?? "";
+  const currScramble = match.sets.at(-1)?.solves.at(-1)?.solve.attempts[userId]?.scramble ?? "";
 
   return (
     <div className={cn("flex flex-row w-full h-full", className)}>
@@ -236,10 +236,10 @@ function TeamCenterSection({
   isLocalTeam: boolean;
 }) {
   const { user: localUser } = useSession();
-  const [users, teams, solves, teamSettings] = useRoomStore((s) => [
+  const [users, teams, match, teamSettings] = useRoomStore((s) => [
     s.users,
     s.teams,
-    s.solves,
+    s.match,
     s.teamSettings,
   ]);
 
@@ -249,7 +249,7 @@ function TeamCenterSection({
   const teamUserIds = allTeamUserIds.filter(
     (roomUserId) => roomUserId != localUser?.userInfo.id
   );
-  const currentSolve = solves.at(-1);
+  const currentSolve = match.sets.at(-1)?.solves.at(-1);
 
   if (!teamSettings.teamsEnabled) {
     return <></>;
@@ -614,7 +614,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={50}>
-          <GlobalTimeList className="max-h-[50vh] w-full bg-container-1" />
+          <GlobalTimeList className="min-h-50 max-h-full w-full bg-container-1" />
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>
@@ -669,20 +669,21 @@ function ParticipantListRoomPanel({
   className,
 }: ParticipantListRoomPanelProps) {
   const { user: localUser } = useSession();
-  const [users, teams, roomState, roomWinners, teamSettings, isUserHost] =
+  const [users, teams, roomState, match, teamSettings, isUserHost] =
     useRoomStore((s) => [
       s.users,
       s.teams,
       s.roomState,
-      s.roomWinners,
+      s.match,
       s.teamSettings,
       s.isUserHost,
     ]);
+  
   const winnerNames = useMemo(() => {
     return teamSettings.teamsEnabled
-      ? roomWinners.map((id) => teams[id]!.team.name)
-      : roomWinners.map((id) => users[id]!.user.userName);
-  }, [teamSettings, roomWinners, teams, users]);
+      ? match.winners.map((id) => teams[id]!.team.name)
+      : match.winners.map((id) => users[id]!.user.userName);
+  }, [teamSettings, match, teams, users]);
 
   return (
     <div
@@ -691,7 +692,7 @@ function ParticipantListRoomPanel({
       {roomState === "FINISHED" && (
         <div className="flex-1 text-center">
           <h2 className="text-xl font-bold">
-            Winner{roomWinners.length > 1 ? "s" : ""}: {winnerNames.join(", ")}
+            Winner{winnerNames.length > 1 ? "s" : ""}: {winnerNames.join(", ")}
           </h2>
         </div>
       )}
