@@ -237,7 +237,7 @@ export function createRoomStore() {
                 }
                 break;
               case "INSPECTING":
-                if (get().timerType === "GANTIMER" && event === "TIMER_RESET") {
+                if (get().timerType === "BLUETOOTH" && event === "TIMER_RESET") {
                   set(() => ({ localSolveStatus: "IDLE" }));
                 } else {
                   set(() => ({ localSolveStatus: "SOLVING" }));
@@ -266,7 +266,7 @@ export function createRoomStore() {
               case "TYPING":
                 set(() => ({ localSolveStatus: "SOLVING" }));
                 break;
-              case "GANTIMER":
+              case "BLUETOOTH":
                 set(() => ({ localSolveStatus: "IDLE" }));
                 break;
             }

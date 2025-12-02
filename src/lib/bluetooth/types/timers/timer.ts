@@ -40,6 +40,7 @@ export abstract class SmartTimer {
 
   constructor(device: BluetoothDevice) {
     this.device = device;
+    this.disconnect = this.disconnect.bind(this);
   }
 
   getTime() {
@@ -50,18 +51,20 @@ export abstract class SmartTimer {
     return this.state;
   }
 
+  getName() {
+    return this.device?.name ?? "";
+  }
+
   async init(): Promise<void> {
     this.server = await this.device.gatt!.connect();
     await this.setup();
-    console.debug(`setup() function finished`);
     this.device.addEventListener("gattserverdisconnected", this.disconnect);
-
   }
 
   async disconnect() {
     this.device?.removeEventListener("gattserverdisconnected", this.disconnect);
 
-    this.onDisconnect();
+    await this.onDisconnect();
 
     //emit a disconnect event.
     if (this.server.connected) {
@@ -75,7 +78,6 @@ export abstract class SmartTimer {
 
   /** For subclasses to safely emit */
   protected updateStateEvent(event: TimerEvent) {
-    if (event.state === this.state) return;
     this.state = event.state;
     if (event.recordedTime) this.time = event.recordedTime;
     for (const cb of this.stateChangeListeners) cb(event);

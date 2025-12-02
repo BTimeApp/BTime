@@ -68,7 +68,7 @@ function InspectionCountdown({
 
   useEffect(() => {
     return () => {
-      if (timerType === "GANTIMER") {
+      if (timerType === "BLUETOOTH") {
         onFinishInspection?.(penaltyRef.current);
       }
     };

@@ -12,13 +12,11 @@ const GAN_TIMER_TIME_CHARACTERISTIC: string =
 const GAN_TIMER_STATE_CHARACTERISTIC: string =
   "0000fff5-0000-1000-8000-00805f9b34fb";
 
-// Concrete implementations
 class GanTimer extends SmartTimer {
   private timeCharacteristic!: BluetoothRemoteGATTCharacteristic;
   private stateCharacteristic!: BluetoothRemoteGATTCharacteristic;
 
   async setup() {
-    // GAN-specific connection logic
     const timerService = await this.server.getPrimaryService(GAN_TIMER_SERVICE);
     this.timeCharacteristic = await timerService.getCharacteristic(
       GAN_TIMER_TIME_CHARACTERISTIC
@@ -27,35 +25,38 @@ class GanTimer extends SmartTimer {
       GAN_TIMER_STATE_CHARACTERISTIC
     );
 
+    // cleanup 
+    await this.stateCharacteristic.stopNotifications().catch(() => {});
+    this.stateCharacteristic.removeEventListener(
+      "characteristicvaluechanged",
+      this.handleStateValueChanged
+    );
+
     // before setting up event handlers, read initial values
     const initTime = GanTimer.timeFromData(
       await this.timeCharacteristic.readValue(),
       0
     );
-    // const initState = GanTimer.stateFromData(
-    //   await this.stateCharacteristic.readValue()
-    // );
     this.time = initTime;
-    // this.state = initState;
-
-    console.debug(`Values read: ${this.time, this.state}`);
 
     await this.stateCharacteristic.startNotifications();
     this.stateCharacteristic.addEventListener(
       "characteristicvaluechanged",
-      this.handleStateValueChanged.bind(this));
+      this.handleStateValueChanged
+    );
   }
 
-  handleStateValueChanged(event: Event) {
+  handleStateValueChanged = (event: Event) => {
     const view: DataView = (event.target as BluetoothRemoteGATTCharacteristic)
       .value!;
     this.updateStateEvent(GanTimer.buildTimerEvent(view));
-  }
+  };
 
   async onDisconnect() {
     this.stateCharacteristic.removeEventListener(
       "characteristicvaluechanged",
-      this.handleStateValueChanged.bind(this));
+      this.handleStateValueChanged
+    );
     await this.stateCharacteristic.stopNotifications().catch(() => {});
   }
 

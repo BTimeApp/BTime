@@ -1,39 +1,36 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { GanTimerEvent, GanTimerState } from "gan-web-bluetooth";
+import React, { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Subscription } from "react-hook-form/dist/utils/createSubject";
 import { toast } from "sonner";
 import { useRoomStore } from "@/context/room-context";
 import InspectionCountdown from "@/components/room/inspection-countdown";
 import StopwatchTimer from "@/components/room/stopwatch-timer";
 import { Penalty } from "@/types/result";
 import { cn } from "@/lib/utils";
-import { useGanTimerStore } from "@/stores/gan-timer-store";
+import { useSmartTimerStore } from "@/stores/smart-timer-store";
+import { TimerEvent, TimerState } from "@/lib/bluetooth";
 
-type GanTimerProps = {
+type SmartTimerProps = {
   onFinishInspection?: (penalty: Penalty) => void;
   onFinishTimer: (timerValue: number) => void;
 };
 
-export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
+export function SmartTimer({
+  onFinishInspection,
+  onFinishTimer,
+}: SmartTimerProps) {
   const [
-    connection,
     connected,
-    timerState,
-    previousDisplayTimeMS,
+    timer,
+    currentDisplayTimeMS,
+    eventCallbackRef,
     connect,
-    setPreviousDisplayTimeMS,
-    setTimerState,
-  ] = useGanTimerStore((s) => [
-    s.connection,
+  ] = useSmartTimerStore((s) => [
     s.connected,
-    s.timerState,
-    s.previousDisplayTimeMS,
+    s.timer,
+    s.currentDisplayTimeMS,
+    s.eventCallbackRef,
     s.connect,
-    s.setPreviousDisplayTimeMS,
-    s.setTimerState,
   ]);
-  const subscription = useRef<Subscription>(null);
   const [textStyle, setTextStyle] = useState<string>("");
 
   const [localInspectionPenalty, setLocalInspectionPenalty] =
@@ -56,34 +53,34 @@ export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
   ]);
 
   /**
-   * Main callback logic for updating client state when gan timer pushes a new event
+   * Main callback logic for updating client state when timer pushes a new event
+   * Set it up this way to avoid stale closure, maybe there's a better way out there
    */
-  const ganTimerStateUpdateCallback = useCallback(
-    async (evt: GanTimerEvent) => {
-      console.log(evt.state);
+  eventCallbackRef.current = useCallback(
+    (evt: TimerEvent) => {
       //evt.state is the new state coming in from the timer
       switch (evt.state) {
-        case GanTimerState.HANDS_ON:
+        case TimerState.HANDS_ON:
           // only emits when gan timer's current result is cleared
           if (localSolveStatus === "IDLE" || localSolveStatus === "INSPECTING")
             setTextStyle("text-timer-notready");
           break;
-        case GanTimerState.HANDS_OFF:
+        case TimerState.HANDS_OFF:
           // only emits when gan timer's current result is cleared
           setTextStyle("");
           break;
-        case GanTimerState.GET_SET:
+        case TimerState.GET_SET:
           // only emits when gan timer's current result is cleared
           if (localSolveStatus === "IDLE" || localSolveStatus === "INSPECTING")
             setTextStyle("text-timer-ready");
           break;
-        case GanTimerState.IDLE:
+        case TimerState.IDLE:
           //IDLE is triggered by quick pressing the reset button
 
           switch (localSolveStatus) {
             case "IDLE":
               //we cannot extract the current display time to check whether or not to inspect or not b/c upon receiving this event, the current display time is 0
-              if (useInspection && previousDisplayTimeMS === 0)
+              if (useInspection && currentDisplayTimeMS === 0)
                 updateLocalSolveStatus("");
               break;
             case "INSPECTING":
@@ -94,10 +91,8 @@ export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
               break;
           }
 
-          //reset previous display time
-          setPreviousDisplayTimeMS(0);
           break;
-        case GanTimerState.RUNNING:
+        case TimerState.RUNNING:
           // prevent status updates when wrong localSolveStatus
           if (
             localSolveStatus !== "IDLE" &&
@@ -111,38 +106,28 @@ export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
             //this will already include updateLocalSolveStatus
             onFinishInspection?.(localInspectionPenalty);
           } else {
-            console.log("Call updatelocalsolvestatus");
             updateLocalSolveStatus("TIMER_START");
           }
           setTextStyle("");
           break;
-        case GanTimerState.STOPPED:
-          console.log(
-            `gan timer stopped when localSolveStatus was ${localSolveStatus}`
-          );
+        case TimerState.STOPPED:
           // only allow advancing state on first cycle of solving -> stop timer.
-          const actualTimeMS = evt.recordedTime!.asTimestamp;
+          const actualTimeMS = evt.recordedTime!;
           if (localSolveStatus === "SOLVING") {
             //truncate to hundredths + handle updaatelocalsolvestatus to update to SUBMITTING
 
             onFinishTimer(Math.floor(actualTimeMS / 10));
           }
-
-          //update previous display time regardless of whether or not it matters for client state
-          setPreviousDisplayTimeMS(actualTimeMS);
           break;
-        case GanTimerState.DISCONNECT:
+        case TimerState.DISCONNECT:
           toast.info("GAN Timer disconnected.");
-          subscription?.current?.unsubscribe();
-          subscription.current = null;
           resetLocalSolveStatus();
           setTextStyle("");
           break;
       }
-
-      setTimerState(evt.state);
     },
     [
+      currentDisplayTimeMS,
       localSolveStatus,
       useInspection,
       localInspectionPenalty,
@@ -150,56 +135,28 @@ export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
       onFinishTimer,
       resetLocalSolveStatus,
       updateLocalSolveStatus,
-      previousDisplayTimeMS,
-      setPreviousDisplayTimeMS,
-      setTimerState,
     ]
   );
 
-  /**
-   * Callback for attaching subscriber to a connection.
-   * This subscriber attaches the listener logic in ganTimerStateUpdateCallback for us.
-   * Refreshes per new connection.
-   */
-  useEffect(() => {
-    if (connection) {
-      if (subscription.current) {
-        subscription.current.unsubscribe();
-      }
-      subscription.current = connection.events$.subscribe(
-        ganTimerStateUpdateCallback
-      );
-    }
-  }, [ganTimerStateUpdateCallback, connection]);
+  const onConnect = useCallback(() => {
+    toast.success("Successfully connected to bluetooth timer");
+  }, []);
 
   const onFailToConnect = useCallback((err: Error) => {
-    toast.error(`Error when connecting to GAN Timer: ${err.message}`);
+    toast.error(`Error when connecting to bluetooth timer: ${err.message}`);
   }, []);
 
-  /**
-   * Clean up subscription ref on dismount. Don't dc the connection!
-   */
-  useEffect(() => {
-    return () => {
-      try {
-        subscription.current?.unsubscribe();
-        subscription.current = null;
-      } catch (err) {
-        console.log(err);
-      }
-    };
-  }, []);
-
-  if (!connected || !timerState) {
+  if (!connected || !timer) {
     return (
       <div className="flex flex-col">
+        {/* TODO: change this to general bluetooth timer when we support more than GAN timer */}
         <p>
           Warning: You need to use a browser that supports bluetooth to use GAN
           Timer.
         </p>
         <Button
           onClick={() => {
-            connect(undefined, onFailToConnect);
+            connect(onConnect, onFailToConnect);
           }}
           size="sm"
           variant="primary"
@@ -216,7 +173,7 @@ export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
       case "INSPECTING":
         return (
           <InspectionCountdown
-            timerType="GANTIMER"
+            timerType="BLUETOOTH"
             onFinishInspection={(penalty: Penalty) => {
               setLocalInspectionPenalty(penalty);
             }}
@@ -228,7 +185,7 @@ export function GanTimer({ onFinishInspection, onFinishTimer }: GanTimerProps) {
           <StopwatchTimer
             startTime={liveTimerStartTime}
             className="text-4xl"
-            timerType="GANTIMER"
+            timerType="BLUETOOTH"
           />
         );
       case "SUBMITTING":

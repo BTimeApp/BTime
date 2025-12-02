@@ -73,7 +73,8 @@ export default function UserRoomSettingsDialog({
             <SelectContent>
               <SelectItem value="TYPING">Typing</SelectItem>
               <SelectItem value="KEYBOARD">Keyboard</SelectItem>
-              <SelectItem value="GANTIMER">GAN Timer</SelectItem>
+              {/* TODO - update when we implement more than GAN timer */}
+              <SelectItem value="BLUETOOTH">GAN Timer</SelectItem>
             </SelectContent>
           </Select>
         </div>

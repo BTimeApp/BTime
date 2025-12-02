@@ -6,7 +6,7 @@ import { CallbackInput } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import InspectionCountdown from "@/components/room/inspection-countdown";
 import { useRoomStore } from "@/context/room-context";
-import { GanTimer } from "@/components/room/gan-timer";
+import { SmartTimer } from "@/components/room/smart-timer";
 
 function TimerSection() {
   const [spacebarDown, setSpacebarDown] = useState<boolean>(false);
@@ -166,15 +166,16 @@ function TimerSection() {
           return <></>;
       }
       break;
-    case "GANTIMER":
+    case "BLUETOOTH":
       return (
-        <GanTimer
+        <SmartTimer
           onFinishInspection={endInspectionCallback}
           onFinishTimer={endNumberTimerCallback}
         />
       );
       break;
     default:
+      console.warn(`Illegal timer type encountered: ${timerType}`)
       return;
   }
 }
