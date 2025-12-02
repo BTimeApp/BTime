@@ -4,7 +4,7 @@ import {
   TimerEvent,
   TimerState,
   connectTimer,
-} from "../types/timers";
+} from "../core/timers";
 
 export function useSmartTimer(onTimerEvent?: (event: TimerEvent) => void) {
   const timerRef = useRef<SmartTimer>(null);
