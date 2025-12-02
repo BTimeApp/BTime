@@ -34,10 +34,6 @@ export default function Page() {
 
   const [timerTextClassName, setTimerTextClassName] = useState<string>("");
 
-  if (process.env.NODE_ENV === "production") {
-    notFound();
-  }
-
   return (
     <div className="flex flex-col h-screen w-full">
       <Header>
