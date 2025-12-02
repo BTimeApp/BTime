@@ -33,6 +33,12 @@ export function useSmartTimer(onTimerEvent?: (event: TimerEvent) => void) {
           setRecordedTime(0);
         }
 
+        if (event.state === TimerState.DISCONNECT) {
+          timerRef.current = null;
+          setRecordedTime(0);
+          setConnected(false);
+        }
+
         onTimerEvent?.(event);
       });
       setConnected(true);

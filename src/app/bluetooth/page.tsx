@@ -1,7 +1,6 @@
 "use client";
 import Header from "@/components/common/header";
 import { Button } from "@/components/ui/button";
-import { notFound } from "next/navigation";
 import { toast } from "sonner";
 import { TimerEvent, TimerState, useSmartTimer } from "@/lib/bluetooth";
 import { Result } from "@/types/result";
@@ -18,6 +17,9 @@ export default function Page() {
         break;
       case TimerState.STOPPED:
         setTimerTextClassName("text-timer-not-ready");
+        break;
+      case TimerState.DISCONNECT:
+        toast.info("Bluetooth Timer disconnected");
         break;
       default:
         setTimerTextClassName("");
