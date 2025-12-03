@@ -18,6 +18,8 @@ export enum TimerState {
   HANDS_ON = 6,
   /** Timer moves to this state immediately after STOPPED */
   FINISHED = 7,
+  /** For timers with an explicit inspection mode, like Qiyi */
+  INSPECTION = 8,
 }
 
 // time in milliseconds
