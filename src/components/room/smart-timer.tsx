@@ -92,6 +92,12 @@ export function SmartTimer({
           }
 
           break;
+        case TimerState.INSPECTION:
+          //we should only enable inspection when the user has inspection on
+          if (localSolveStatus === "IDLE" && useInspection && currentDisplayTimeMS === 0) {
+            updateLocalSolveStatus();
+          }
+          break;
         case TimerState.RUNNING:
           // prevent status updates when wrong localSolveStatus
           if (
