@@ -4,7 +4,7 @@ import {
   TimerEvent,
   TimerState,
   connectTimer,
-} from "../core/timers";
+} from "@btime/bluetooth-cubing";
 
 export function useSmartTimer(onTimerEvent?: (event: TimerEvent) => void) {
   const timerRef = useRef<SmartTimer>(null);

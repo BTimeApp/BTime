@@ -3,7 +3,7 @@ import {
   SmartTimer,
   TimerEvent,
   TimerState,
-} from "@/lib/bluetooth";
+} from "@btime/bluetooth-cubing";
 import { createStore, useStore } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 
