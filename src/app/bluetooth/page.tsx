@@ -2,7 +2,8 @@
 import Header from "@/components/common/header";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { TimerEvent, TimerState, useSmartTimer } from "@/lib/bluetooth";
+import { TimerEvent, TimerState } from "@btime/bluetooth-cubing";
+import { useSmartTimer } from "@btime/bluetooth-cubing-react";
 import { Result } from "@/types/result";
 import { useCallback, useState } from "react";
 

@@ -1,7 +1,8 @@
-import { Schema, Document, model, ObjectId } from "mongoose";
+import { Schema, Document, model, Types } from "mongoose";
 import { IUser } from "@/types/user";
 
 export interface UserDocument extends Document {
+  _id: Types.ObjectId;
   name: string;
   email: string;
   userName: string;
@@ -44,7 +45,7 @@ export const UserModel = model<UserDocument>("User", userSchema, "Users");
 export function toIUser(user: UserDocument): IUser {
   return {
     userInfo: {
-      id: (user._id as ObjectId).toString(),
+      id: user._id.toString(),
       userName: user.userName,
       avatarURL: user.avatarURL,
     },

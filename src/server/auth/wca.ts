@@ -4,7 +4,10 @@ import { Strategy as CustomStrategy } from "passport-custom";
 import { UserModel, UserDocument, toIUser } from "@/server/models/user";
 import { RedisStores } from "@/server/redis/stores";
 
-export function createWCAAuth(passport: PassportStatic, stores: RedisStores): Router {
+export function createWCAAuth(
+  passport: PassportStatic,
+  stores: RedisStores
+): Router {
   // add WCA auth strategy to passport
   passport.use(
     "wca",
@@ -83,8 +86,8 @@ export function createWCAAuth(passport: PassportStatic, stores: RedisStores): Ro
             new: true,
           }
         )
-          .lean()
-          .then((user: UserDocument) => done(null, toIUser(user)))
+          .lean<UserDocument>()
+          .then((user) => done(null, user ? toIUser(user) : null))
           .catch((err) => done(err));
       } catch (err) {
         return done(err as Error);
@@ -106,7 +109,8 @@ export function createWCAAuth(passport: PassportStatic, stores: RedisStores): Ro
     passport.authenticate(
       "wca",
       { failureRedirect: "/profile", session: true },
-      (err: any, user: any, info: any) => { //eslint-disable-line @typescript-eslint/no-explicit-any
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (err: any, user: any, info: any) => {
         if (err) {
           console.error("Passport error:", err);
           return res.status(500).send("OAuth failed");

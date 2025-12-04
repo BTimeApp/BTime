@@ -1,0 +1,37 @@
+{
+  "name": "@btime/bluetooth-cubing-react",
+  "version": "0.1.0",
+  "description": "React hooks for bluetooth-cubing",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --dts --tsconfig tsconfig.json",
+    "dev": "tsup src/index.ts --watch --tsconfig tsconfig.json"
+  },
+  "keywords": [
+    "bluetooth",
+    "rubiks",
+    "cube"
+  ],
+  "license": "GPL-3.0-only",
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "react": "^19.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@btime/bluetooth-cubing": "^0.1.0"
+  }
+}

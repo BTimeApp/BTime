@@ -18,6 +18,9 @@ const QIYI_TIMER_STATE_ORDER = [
     TimerState.DISCONNECT
 ]
 
+/**
+ * TODO - implement QiyiTimer and add to registry
+ */
 class QiyiTimer extends SmartTimer {
   protected setup(): Promise<void> {
     throw new Error("Method not implemented.");

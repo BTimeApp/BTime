@@ -7,7 +7,7 @@ import StopwatchTimer from "@/components/room/stopwatch-timer";
 import { Penalty } from "@/types/result";
 import { cn } from "@/lib/utils";
 import { useSmartTimerStore } from "@/stores/smart-timer-store";
-import { TimerEvent, TimerState } from "@/lib/bluetooth";
+import { TimerEvent, TimerState } from "@btime/bluetooth-cubing";
 
 type SmartTimerProps = {
   onFinishInspection?: (penalty: Penalty) => void;
