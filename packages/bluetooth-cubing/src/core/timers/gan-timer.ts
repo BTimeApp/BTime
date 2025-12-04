@@ -1,3 +1,4 @@
+import { crc16ccit } from "../utils";
 import { SmartTimer, TimeMS, TimerEvent, TimerState } from "./timer";
 import { TimerRegistry } from "./timer-registry";
 
@@ -25,7 +26,7 @@ class GanTimer extends SmartTimer {
       GAN_TIMER_STATE_CHARACTERISTIC
     );
 
-    // cleanup 
+    // cleanup
     await this.stateCharacteristic.stopNotifications().catch(() => {});
     this.stateCharacteristic.removeEventListener(
       "characteristicvaluechanged",
@@ -49,6 +50,10 @@ class GanTimer extends SmartTimer {
   handleStateValueChanged = (event: Event) => {
     const view: DataView = (event.target as BluetoothRemoteGATTCharacteristic)
       .value!;
+    if (!GanTimer.validateEventData(view)) {
+      // invalid packet - don't send to client
+      return;
+    }
     this.updateStateEvent(GanTimer.buildTimerEvent(view));
   };
 
@@ -90,6 +95,22 @@ class GanTimer extends SmartTimer {
       evt.recordedTime = GanTimer.timeFromData(data, 4);
     }
     return evt;
+  }
+
+  /**
+   * from gan-web-bluetooth
+   */
+  static validateEventData(data: DataView): boolean {
+    try {
+      if (data?.byteLength == 0 || data.getUint8(0) != 0xfe) {
+        return false;
+      }
+      var eventCRC = data.getUint16(data.byteLength - 2, true);
+      var calculatedCRC = crc16ccit(data.buffer.slice(2, data.byteLength - 2));
+      return eventCRC == calculatedCRC;
+    } catch (err) {
+      return false;
+    }
   }
 }
 

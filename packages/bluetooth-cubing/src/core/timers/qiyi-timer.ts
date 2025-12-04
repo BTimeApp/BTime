@@ -22,6 +22,9 @@ const QIYI_TIMER_STATE_ORDER = [
  * TODO - implement QiyiTimer and add to registry
  */
 class QiyiTimer extends SmartTimer {
+  private readCharacteristic!: BluetoothRemoteGATTCharacteristic;
+  private writeCharacteristic!: BluetoothRemoteGATTCharacteristic;
+
   protected setup(): Promise<void> {
     throw new Error("Method not implemented.");
   }
