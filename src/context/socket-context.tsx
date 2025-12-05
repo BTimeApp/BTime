@@ -40,9 +40,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   }, [socket, user]);
 
   return (
-    <SocketContext.Provider value={{ socket, socketConnected }}>
+    <SocketContext value={{ socket, socketConnected }}>
       {children}
-    </SocketContext.Provider>
+    </SocketContext>
   );
 }
 

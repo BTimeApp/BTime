@@ -37,9 +37,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <SessionContext.Provider value={{ user, loading, refresh: fetchUser }}>
+    <SessionContext value={{ user, loading, refresh: fetchUser }}>
       {children}
-    </SessionContext.Provider>
+    </SessionContext>
   );
 }
 
