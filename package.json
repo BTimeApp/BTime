@@ -5,9 +5,9 @@
   "type": "module",
   "license": "GPL-3.0-only",
   "scripts": {
-    "dev": "rm -rf dist && npm run build --workspaces && tsc -p tsconfig.json && tsc-alias && NODE_ENV=development node dist/src/server/run-server.js",
+    "build-packages": "npm run build --workspaces",
+    "dev": "rm -rf dist && tsc -p tsconfig.json && tsc-alias && NODE_ENV=development node dist/src/server/run-server.js",
     "lint": "next lint",
-    "lint:fix": "eslint . --fix",
     "build": "npm run build --workspaces && next build && tsc && tsc-alias",
     "start": "NODE_ENV=production node dist/src/server/run-server.js"
   },
