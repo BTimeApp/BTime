@@ -50,7 +50,8 @@ class GanTimer extends SmartTimer {
   handleStateValueChanged = (event: Event) => {
     const view: DataView = (event.target as BluetoothRemoteGATTCharacteristic)
       .value!;
-    if (!GanTimer.validateEventData(view)) {
+    const bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+    if (!GanTimer.validateEventData(bytes)) {
       // invalid packet - don't send to client
       return;
     }
@@ -97,18 +98,18 @@ class GanTimer extends SmartTimer {
     return evt;
   }
 
-  /**
-   * from gan-web-bluetooth
-   */
-  static validateEventData(data: DataView): boolean {
+  static validateEventData(data: Uint8Array): boolean {
     try {
-      if (data?.byteLength == 0 || data.getUint8(0) != 0xfe) {
+      if (data.length === 0 || data[0] !== 0xfe) {
         return false;
       }
-      var eventCRC = data.getUint16(data.byteLength - 2, true);
-      var calculatedCRC = crc16ccit(data.buffer.slice(2, data.byteLength - 2));
-      return eventCRC == calculatedCRC;
-    } catch (err) {
+
+      const eventCRC = data[data.length - 2] | (data[data.length - 1] << 8); // little-endian
+      const payload = data.subarray(2, data.length - 2);
+      const calculatedCRC = crc16ccit(payload);
+
+      return eventCRC === calculatedCRC;
+    } catch {
       return false;
     }
   }
