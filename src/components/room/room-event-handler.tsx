@@ -13,7 +13,7 @@ import { useSocketEvent } from "@/hooks/use-socket-event";
 import { IRoomSolve } from "@/types/room-solve";
 import { IRoomParticipant } from "@/types/room-participant";
 import { useSession } from "@/context/session-context";
-import { useIsTouchscreen } from "@/hooks/useMobile";
+import { useIsMobile } from "@/hooks/useMobile";
 
 /**
  * Handles all events for the room so that the room component itself doesn't have to re-render upon state udates
@@ -111,13 +111,13 @@ export default function RoomEventHandler() {
   ]);
   const { socket } = useSocket();
 
-  const isTouchscreen = useIsTouchscreen();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
-    if (isTouchscreen) {
+    if (isMobile) {
       setTimerType("TYPING");
     }
-  }, [isTouchscreen, setTimerType]);
+  }, [isMobile, setTimerType]);
 
   //live update for start time
   const liveTimerStartTime = useStartTimeOnTransition<SolveStatus>(
