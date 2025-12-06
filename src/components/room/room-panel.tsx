@@ -637,7 +637,7 @@ function InfoRoomPanel({ className }: InfoRoomPanelProps) {
       className={cn(["flex flex-col text-center h-full w-full p-2", className])}
     >
       <div>
-        <h2 className="text-2xl md-1">Room: {roomName}</h2>
+        <h2 className="text-2xl md-1 break-all">Room: {roomName}</h2>
       </div>
       <div className="text-left">
         <h2 className="text-2xl">Event: {roomEvent}</h2>
