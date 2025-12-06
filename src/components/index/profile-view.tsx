@@ -10,18 +10,24 @@ import {
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 /**
  * This component serves as a card-like summary of a user profile.
  */
-export default function ProfileView() {
+export default function ProfileView({ className }: { className?: string }) {
   const user = useSession();
 
   const username = user?.userInfo.userName ?? "Profile";
   const avatarURL = user?.userInfo.avatarURL ?? "/images/C_logo.png";
 
   return (
-    <Card className="flex flex-col rounded-lg p-2 bg-container-1 gap-1">
+    <Card
+      className={cn(
+        "flex flex-col rounded-lg p-2 bg-container-1 gap-1",
+        className
+      )}
+    >
       <CardHeader className="flex flex-row justify-center items-center">
         <Link
           href="/profile"

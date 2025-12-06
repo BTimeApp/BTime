@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { IRoomSummary } from "@/types/room-listing-info";
 import { ROOM_EVENTS_INFO } from "@/types/room";
 import JoinRoomButton from "@/components/index/join-room-button";
@@ -19,26 +19,26 @@ import {
 } from "@/components/ui/card";
 import {
   Pagination,
-  PaginationButton,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
   PaginationNextButton,
   PaginationPreviousButton,
 } from "@/components/ui/pagination";
 import { toast } from "sonner";
-import { abbreviate, displayText } from "@/lib/utils";
+import { abbreviate, cn, displayText } from "@/lib/utils";
+import LoadingSpinner from "../common/loading-spinner";
 
 // # of rooms to fetch at once with pagination
 const ROOM_WINDOW_SIZE = 20;
 
-export default function RoomListing() {
+export default function RoomListing({ className }: { className?: string }) {
   // the page number we are currently on. 1-indexed
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [rooms, setRooms] = useState<Map<string, IRoomSummary>>(
     new Map<string, IRoomSummary>()
   );
+  const [refreshPending, startRefreshTransition] = useTransition();
+  const [previousPending, startPreviousTransition] = useTransition();
+  const [nextPending, startNextTransition] = useTransition();
 
   const fetchRooms = useCallback(async (page: number) => {
     const res = await fetch(
@@ -57,47 +57,52 @@ export default function RoomListing() {
   /**
    * Updates the rooms local state
    */
-  const updateRooms = useCallback(async () => {
-    // always try to fetch the rooms at the given page number.
-    const res = await fetchRooms(pageNumber);
+  const updateRooms = useCallback(
+    async (pageNumber: number) => {
+      const res = await fetchRooms(pageNumber);
+      if (!res) return;
 
-    if (res) {
-      // update total pages number
       setTotalPages(res.totalPages);
 
-      if (res.rooms != null) {
-        setRooms(
-          new Map<string, IRoomSummary>(
-            (res.rooms as IRoomSummary[]).map((roomSummary) => [
-              roomSummary.id,
-              roomSummary,
-            ])
-          )
-        );
-      }
-
-      // Reset to the number of pages that the response says exist. This will re-trigger the useEffect that wraps this callback.
       if (pageNumber > res.totalPages) {
         setPageNumber(res.totalPages);
+      } else {
+        if (res.rooms != null) {
+          setRooms(
+            new Map(
+              res.rooms.map((roomSummary: IRoomSummary) => [
+                roomSummary.id,
+                roomSummary,
+              ])
+            )
+          );
+        }
+        setPageNumber(pageNumber);
       }
-    }
-  }, [pageNumber, fetchRooms]);
+    },
+    [fetchRooms]
+  );
 
   const goToPreviousPage = useCallback(() => {
-    setPageNumber(Math.max(pageNumber - 1, 1));
-  }, [pageNumber]);
+    updateRooms(Math.max(pageNumber - 1, 1));
+  }, [pageNumber, updateRooms]);
 
   const goToNextPage = useCallback(() => {
-    setPageNumber(pageNumber + 1);
-  }, [pageNumber]);
+    updateRooms(pageNumber + 1);
+  }, [pageNumber, updateRooms]);
 
   useEffect(() => {
     // update current rooms
-    updateRooms();
+    updateRooms(1);
   }, [updateRooms]);
 
   return (
-    <Card className="h-60 lg:h-120 w-full flex flex-col px-3 gap-1 rounded-lg shadow-lg p-1 bg-container-1">
+    <Card
+      className={cn(
+        "h-60 lg:h-120 w-full flex flex-col px-3 gap-1 rounded-lg shadow-lg p-1 bg-container-1",
+        className
+      )}
+    >
       <CardHeader className="shrink-0">
         <div className="flex flex-row px-1">
           <div>
@@ -106,8 +111,19 @@ export default function RoomListing() {
           <h2 className="grow font-semibold text-center text-xl">Rooms</h2>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="sm" onClick={updateRooms}>
-                <RefreshCw />
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={refreshPending}
+                onClick={() => {
+                  startRefreshTransition(() => {
+                    updateRooms(pageNumber);
+                  });
+                }}
+              >
+                <RefreshCw
+                  className={`${refreshPending ? "animate-spin" : ""}`}
+                />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
@@ -117,9 +133,9 @@ export default function RoomListing() {
         </div>
       </CardHeader>
 
-      <CardContent className="px-1 flex-1 min-h-0 overflow-hidden">
-        <ScrollArea className="h-full">
-          <div className="w-max">
+      <CardContent className="px-1 flex-1 min-h-0 w-full overflow-hidden">
+        <ScrollArea className="h-full w-full">
+          <div className="w-full min-w-max">
             <div className="grid grid-cols-9 gap-3 px-1 py-1 text-left shadow-sm rounded-sm sticky top-0 bg-container-1">
               <div className="col-span-2">Room Name</div>
               <div className="col-start-4">Users</div>
@@ -204,20 +220,32 @@ export default function RoomListing() {
       </CardContent>
       <CardFooter>
         <Pagination>
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPreviousButton onClick={goToPreviousPage} />
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationButton>{pageNumber}</PaginationButton>
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationEllipsis />
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationNextButton onClick={goToNextPage} />
-            </PaginationItem>
-          </PaginationContent>
+          <div className="grid grid-cols-3 items-center">
+            {pageNumber != 1 &&
+              (previousPending ? (
+                <LoadingSpinner className="size-6" />
+              ) : (
+                <PaginationPreviousButton
+                  onClick={() => {
+                    startPreviousTransition(() => {
+                      goToPreviousPage();
+                    });
+                  }}
+                />
+              ))}
+            <div className="col-start-2 text-center text-lg">{pageNumber}</div>
+            {nextPending ? (
+              <LoadingSpinner className="size-6" />
+            ) : (
+              <PaginationNextButton
+                onClick={() => {
+                  startNextTransition(() => {
+                    goToNextPage();
+                  });
+                }}
+              />
+            )}
+          </div>
         </Pagination>
       </CardFooter>
     </Card>
