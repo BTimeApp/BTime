@@ -175,7 +175,7 @@ function TimerSection() {
       );
       break;
     default:
-      console.warn(`Illegal timer type encountered: ${timerType}`)
+      console.warn(`Illegal timer type encountered: ${timerType}`);
       return;
   }
 }

@@ -19,9 +19,9 @@ type JoinPrivateRoomDialogProps = {
 };
 
 /** This is meant to be used for joining private rooms. Not in use currently b/c private room pages ask to validate anyways. Should update later.
- * 
- * @param param0 
- * @returns 
+ *
+ * @param param0
+ * @returns
  */
 export default function JoinPrivateRoomDialog({
   roomId,
@@ -31,10 +31,7 @@ export default function JoinPrivateRoomDialog({
     <Dialog>
       <form>
         <DialogTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-          >
+          <Button variant="outline" size="sm">
             Join
           </Button>
         </DialogTrigger>
@@ -43,9 +40,7 @@ export default function JoinPrivateRoomDialog({
             <DialogTitle>Join Private Room</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4">
-            <div className="grid gap-3">
-              {roomName}
-            </div>
+            <div className="grid gap-3">{roomName}</div>
             <div className="grid gap-3">
               <Label htmlFor="password">Password</Label>
               <Input id="password" name="password" placeholder="password" />
@@ -54,8 +49,7 @@ export default function JoinPrivateRoomDialog({
           <DialogFooter>
             <Button variant="outline" type="submit">
               Join Room
-              <Link href={`/room/${roomId}`}>
-              </Link>
+              <Link href={`/room/${roomId}`}></Link>
             </Button>
           </DialogFooter>
         </DialogContent>

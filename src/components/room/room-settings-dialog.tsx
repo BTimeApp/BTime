@@ -26,7 +26,7 @@ export default function RoomSettingsDialog({
     raceSettings,
     teamSettings,
     maxUsers,
-    isUserHost
+    isUserHost,
   ] = useRoomStore((s) => [
     s.roomName,
     s.roomEvent,
@@ -34,7 +34,7 @@ export default function RoomSettingsDialog({
     s.raceSettings,
     s.teamSettings,
     s.maxUsers,
-    s.isUserHost
+    s.isUserHost,
   ]);
 
   const params = useParams<{ roomId: string }>();
@@ -45,7 +45,7 @@ export default function RoomSettingsDialog({
     setOpen(false);
   }, []);
 
-  const {user} = useSession();
+  const { user } = useSession();
 
   // this component is only meant to be accessible to the host. Do a sanity check here so we avoid rendering a dangerous form for non-host users
   if (!isUserHost(user?.userInfo.id)) {
@@ -64,7 +64,7 @@ export default function RoomSettingsDialog({
             <TabsTrigger value="settings">Edit Room</TabsTrigger>
           </TabsList>
           <TabsContent value="actions">
-            <RoomActionsForm onSubmitCallback={closeDialogCallback}/>
+            <RoomActionsForm onSubmitCallback={closeDialogCallback} />
           </TabsContent>
           <TabsContent value="settings">
             <RoomSettingsForm

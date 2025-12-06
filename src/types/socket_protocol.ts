@@ -178,7 +178,7 @@ export enum SOCKET_SERVER {
   USER_LEAVE_TEAM = "USER_LEAVE_TEAM",
 
   /**
-   * Tells user to reset any state related to their local solve 
+   * Tells user to reset any state related to their local solve
    */
   RESET_LOCAL_SOLVE = "RESET_LOCAL_SOLVE",
 

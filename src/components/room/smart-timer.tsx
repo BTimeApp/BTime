@@ -18,19 +18,14 @@ export function SmartTimer({
   onFinishInspection,
   onFinishTimer,
 }: SmartTimerProps) {
-  const [
-    connected,
-    timer,
-    currentDisplayTimeMS,
-    eventCallbackRef,
-    connect,
-  ] = useSmartTimerStore((s) => [
-    s.connected,
-    s.timer,
-    s.currentDisplayTimeMS,
-    s.eventCallbackRef,
-    s.connect,
-  ]);
+  const [connected, timer, currentDisplayTimeMS, eventCallbackRef, connect] =
+    useSmartTimerStore((s) => [
+      s.connected,
+      s.timer,
+      s.currentDisplayTimeMS,
+      s.eventCallbackRef,
+      s.connect,
+    ]);
   const [textStyle, setTextStyle] = useState<string>("");
 
   const [localInspectionPenalty, setLocalInspectionPenalty] =
@@ -94,7 +89,11 @@ export function SmartTimer({
           break;
         case TimerState.INSPECTION:
           //we should only enable inspection when the user has inspection on
-          if (localSolveStatus === "IDLE" && useInspection && currentDisplayTimeMS === 0) {
+          if (
+            localSolveStatus === "IDLE" &&
+            useInspection &&
+            currentDisplayTimeMS === 0
+          ) {
             updateLocalSolveStatus();
           }
           break;

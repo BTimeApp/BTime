@@ -315,16 +315,22 @@ export function getVerboseTeamFormatTextLines(
 
         switch (teamSettings.teamFormatSettings.teamReduceFunction) {
           case "FASTEST":
-            lines.push("The team's result is the fastest individual result.")
+            lines.push("The team's result is the fastest individual result.");
             break;
           case "MEAN":
-            lines.push("The team's result is the mean of all individual results.")
+            lines.push(
+              "The team's result is the mean of all individual results."
+            );
             break;
           case "MEDIAN":
-            lines.push("The team's result is the median of all individual results.")
+            lines.push(
+              "The team's result is the median of all individual results."
+            );
             break;
           case "SUM":
-            lines.push("The team's result is the sum of all individual results.")
+            lines.push(
+              "The team's result is the sum of all individual results."
+            );
             break;
           default:
             const illegalTeamReduceFunction: never =
@@ -337,10 +343,10 @@ export function getVerboseTeamFormatTextLines(
 
         switch (teamSettings.teamFormatSettings.teamScrambleFormat) {
           case "SAME":
-            lines.push("Everyone will receive the same scrambles.")
+            lines.push("Everyone will receive the same scrambles.");
             break;
           case "DIFFERENT":
-            lines.push("Every team member will receive different scrambles.")
+            lines.push("Every team member will receive different scrambles.");
             break;
           default:
             const badValue: never =
@@ -403,7 +409,7 @@ export interface IRoom {
   currentSet: number; //the current set number (1-indexed)
   currentSolve: number; //the solve number WITHIN the current set (1-indexed)
   state: RoomState;
-  
+
   // solves: IRoomSolve[];
   // winners?: string[]; //the objectId(s) who have won the whole room
 

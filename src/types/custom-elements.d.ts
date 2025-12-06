@@ -22,8 +22,7 @@ declare module "react" {
         alg?: string;
         "experimental-setup-alg"?: string;
         "experimental-setup-anchor"?: null | "start" | "end";
-        puzzle:
-          null | string;
+        puzzle: null | string;
         visualization?:
           | "3D"
           | "2D"

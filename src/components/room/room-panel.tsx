@@ -176,7 +176,8 @@ function UserCenterSection({
     return null;
   }
 
-  const currScramble = match.sets.at(-1)?.solves.at(-1)?.solve.attempts[userId]?.scramble ?? "";
+  const currScramble =
+    match.sets.at(-1)?.solves.at(-1)?.solve.attempts[userId]?.scramble ?? "";
 
   return (
     <div className={cn("flex flex-row w-full h-full", className)}>
@@ -678,7 +679,7 @@ function ParticipantListRoomPanel({
       s.teamSettings,
       s.isUserHost,
     ]);
-  
+
   const winnerNames = useMemo(() => {
     return teamSettings.teamsEnabled
       ? match.winners.map((id) => teams[id]!.team.name)

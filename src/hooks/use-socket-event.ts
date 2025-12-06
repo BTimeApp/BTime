@@ -38,5 +38,5 @@ export function useSocketEvent(
     return () => {
       socket.off(event, eventHandler);
     };
-  }, [socket, event, active, once]); 
+  }, [socket, event, active, once]);
 }

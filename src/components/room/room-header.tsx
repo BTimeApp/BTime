@@ -169,12 +169,15 @@ export function RoomHeader() {
                       " sets"
                     : ""}
                   {raceSettings.roomFormat !== "CASUAL"
-                    ? " | " + abbreviate(raceSettings.setFormat) +
+                    ? " | " +
+                      abbreviate(raceSettings.setFormat) +
                       raceSettings.nSolves.toString() +
                       " solves"
                     : ""}
-                  {teamSettings.teamsEnabled && teamSettings.teamFormatSettings.teamSolveFormat === "ALL"
-                    ? " | " + teamSettings.teamFormatSettings.teamReduceFunction.toLowerCase() +
+                  {teamSettings.teamsEnabled &&
+                  teamSettings.teamFormatSettings.teamSolveFormat === "ALL"
+                    ? " | " +
+                      teamSettings.teamFormatSettings.teamReduceFunction.toLowerCase() +
                       " of team"
                     : ""}
                 </h4>

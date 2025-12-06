@@ -15,7 +15,7 @@ export default function RoomActionsForm({
 }: RoomActionsFormProps) {
   const [users, isUserHost] = useRoomStore((s) => [s.users, s.isUserHost]);
 
-  const {user} = useSession();
+  const { user } = useSession();
   const { socket } = useSocket();
 
   const resetRoom = useCallback(() => {
@@ -55,8 +55,14 @@ export default function RoomActionsForm({
         {Object.values(users)
           .filter((roomUser) => roomUser.banned)
           .map((roomUser, idx) => (
-            <RoomUserDialog key={idx} user={roomUser} hostView={isUserHost(user?.userInfo.id)}>
-              <div className="hover:scale-105 hover:font-bold hover:underline">{roomUser.user.userName}</div>
+            <RoomUserDialog
+              key={idx}
+              user={roomUser}
+              hostView={isUserHost(user?.userInfo.id)}
+            >
+              <div className="hover:scale-105 hover:font-bold hover:underline">
+                {roomUser.user.userName}
+              </div>
             </RoomUserDialog>
           ))}
       </div>

@@ -185,7 +185,10 @@ export default function RoomEventHandler() {
   );
 
   const handleSolveFinished = useCallback(
-    (finalSolve: IRoomSolve, participants: Record<string, IRoomParticipant>) => {
+    (
+      finalSolve: IRoomSolve,
+      participants: Record<string, IRoomParticipant>
+    ) => {
       //reset local states
       resetLocalSolveStatus();
       setLocalPenalty("OK");
@@ -259,11 +262,7 @@ export default function RoomEventHandler() {
     SOCKET_SERVER.USER_STOP_LIVE_TIMER,
     handleUserStopLiveTimer
   );
-  useSocketEvent(
-    socket,
-    SOCKET_SERVER.USER_STATUS_UPDATE,
-    updateSolveStatus
-  );
+  useSocketEvent(socket, SOCKET_SERVER.USER_STATUS_UPDATE, updateSolveStatus);
   useSocketEvent(
     socket,
     SOCKET_SERVER.USER_TOGGLE_COMPETING,
@@ -275,9 +274,7 @@ export default function RoomEventHandler() {
     SOCKET_SERVER.SOLVE_FINISHED_EVENT,
     handleSolveFinished
   );
-  useSocketEvent(
-    socket, SOCKET_SERVER.SOLVE_UPDATE, updateLatestSolve
-  )
+  useSocketEvent(socket, SOCKET_SERVER.SOLVE_UPDATE, updateLatestSolve);
 
   useSocketEvent(socket, SOCKET_SERVER.CREATE_ATTEMPT, createAttempt);
   useSocketEvent(socket, SOCKET_SERVER.DELETE_ATTEMPT, deleteAttempt);
@@ -286,16 +283,12 @@ export default function RoomEventHandler() {
   useSocketEvent(socket, SOCKET_SERVER.NEW_RESULT, addResult);
   useSocketEvent(socket, SOCKET_SERVER.NEW_SET, addNewSet);
   useSocketEvent(socket, SOCKET_SERVER.SET_FINISHED_EVENT, finishSet);
-  useSocketEvent(
-    socket,
-    SOCKET_SERVER.MATCH_FINISHED_EVENT,
-    finishMatch
-  );
+  useSocketEvent(socket, SOCKET_SERVER.MATCH_FINISHED_EVENT, finishMatch);
   useSocketEvent(socket, SOCKET_SERVER.ROOM_STARTED, startRoom);
   useSocketEvent(socket, SOCKET_SERVER.ROOM_UPDATE, handleRoomUpdate);
   useSocketEvent(socket, SOCKET_SERVER.ROOM_RESET, resetRoom);
 
-  useSocketEvent(socket, SOCKET_SERVER.RESET_LOCAL_SOLVE, resetLocalSolve)
+  useSocketEvent(socket, SOCKET_SERVER.RESET_LOCAL_SOLVE, resetLocalSolve);
 
   useSocketEvent(socket, SOCKET_SERVER.TEAMS_CREATED, createTeams);
   useSocketEvent(socket, SOCKET_SERVER.TEAM_DELETED, deleteTeam);

@@ -28,7 +28,7 @@ type CreateTeamFormProps = {
 export function CreateTeamForm({ onSubmit }: CreateTeamFormProps) {
   const { socket } = useSocket();
   const [teams, teamSettings] = useRoomStore((s) => [s.teams, s.teamSettings]);
-  
+
   const currTeamsLength = useMemo(() => {
     return Object.values(teams).length;
   }, [teams]);
@@ -51,7 +51,9 @@ export function CreateTeamForm({ onSubmit }: CreateTeamFormProps) {
           !teamSettings.maxNumTeams ||
           arr.length <= teamSettings.maxNumTeams - currTeamsLength,
         {
-          message: teamSettings.teamsEnabled ? `Maximum ${teamSettings.maxNumTeams} teams allowed` : `Cannot create teams when teams disabled`,
+          message: teamSettings.teamsEnabled
+            ? `Maximum ${teamSettings.maxNumTeams} teams allowed`
+            : `Cannot create teams when teams disabled`,
         }
       ),
   });

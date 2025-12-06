@@ -68,7 +68,10 @@ export default function RoomListing() {
       if (res.rooms != null) {
         setRooms(
           new Map<string, IRoomSummary>(
-            (res.rooms as IRoomSummary[]).map((roomSummary) => [roomSummary.id, roomSummary])
+            (res.rooms as IRoomSummary[]).map((roomSummary) => [
+              roomSummary.id,
+              roomSummary,
+            ])
           )
         );
       }
@@ -136,7 +139,10 @@ export default function RoomListing() {
                   </div>
                   <div className="flex flex-row">
                     <User />
-                    <div>{roomSummary.numUsers}{roomSummary.maxUsers ? `/${roomSummary.maxUsers}` : ""}</div>
+                    <div>
+                      {roomSummary.numUsers}
+                      {roomSummary.maxUsers ? `/${roomSummary.maxUsers}` : ""}
+                    </div>
                   </div>
                   <div className="flex flex-row">
                     <span
@@ -144,10 +150,14 @@ export default function RoomListing() {
                         ROOM_EVENTS_INFO[roomSummary.roomEvent].iconSrc
                       }`}
                     />
-                    <div>{ROOM_EVENTS_INFO[roomSummary.roomEvent].displayName}</div>
+                    <div>
+                      {ROOM_EVENTS_INFO[roomSummary.roomEvent].displayName}
+                    </div>
                   </div>
                   <div className="grid grid-rows-2">
-                    <div>{displayText(roomSummary.raceSettings.roomFormat)}</div>
+                    <div>
+                      {displayText(roomSummary.raceSettings.roomFormat)}
+                    </div>
                     <div>
                       {roomSummary.teamSettings.teamsEnabled ? "Teams" : "Solo"}
                     </div>

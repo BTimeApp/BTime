@@ -1,10 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  IconHome,
-  IconLibraryPlus,
-} from "@tabler/icons-react";
+import { IconHome, IconLibraryPlus } from "@tabler/icons-react";
 
 import { NavMain } from "@/components/sidebar/nav-main";
 import { NavUser } from "@/components/sidebar/nav-user";
@@ -72,8 +69,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
       <SidebarFooter>
         <ThemeToggle />
-        
-        <NavUser/>
+
+        <NavUser />
       </SidebarFooter>
     </Sidebar>
   );

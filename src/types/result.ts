@@ -259,7 +259,10 @@ export class Result {
    */
   static meanOf(results: Result[]): number {
     if (results.length === 0) return 0;
-    if (results.some((result) => result.time >= DNF || result.penalty === "DNF")) return DNF;
+    if (
+      results.some((result) => result.time >= DNF || result.penalty === "DNF")
+    )
+      return DNF;
     return results.reduce((sum, res) => sum + res.toTime(), 0) / results.length;
   }
 
@@ -274,7 +277,11 @@ export class Result {
    */
   static averageOf(results: Result[]): number {
     if (results.length <= 2) return Result.meanOf(results);
-    if (results.filter((result) => result.time >= DNF || result.penalty === "DNF").length >= 2) return DNF;
+    if (
+      results.filter((result) => result.time >= DNF || result.penalty === "DNF")
+        .length >= 2
+    )
+      return DNF;
 
     return (
       results

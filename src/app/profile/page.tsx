@@ -19,7 +19,6 @@ export default function Page() {
   const [usernameFieldClass, setUsernameFieldClass] = useState<string>("");
   const [usernameFieldError, setUsernameFieldError] = useState<string>("");
 
-
   const submitProfileChanges = useCallback(async () => {
     const reqBody = {
       userName: username,
@@ -37,7 +36,6 @@ export default function Page() {
     //expect the backend to use json
     const body = await res.json();
 
-
     //set field flash colors based on message
     if (!res.ok) {
       console.log(body.message);
@@ -49,8 +47,6 @@ export default function Page() {
       setUsernameFieldClass("animate-flash-success");
       setTimeout(() => setUsernameFieldClass(""), 2000); // Clear after animation
     }
-  
-    
 
     //reset fillable fields
     setUsername("");
@@ -66,7 +62,9 @@ export default function Page() {
         <div>
           <Image
             src={
-              localUser.userInfo.avatarURL ? localUser.userInfo.avatarURL : "/images/C_logo.png"
+              localUser.userInfo.avatarURL
+                ? localUser.userInfo.avatarURL
+                : "/images/C_logo.png"
             }
             alt="/images/C_logo.png"
             width="200"
@@ -85,9 +83,16 @@ export default function Page() {
               className={`${usernameFieldClass}`}
             ></Input>
           </div>
-          {usernameFieldError && <div className="text-xs text-error">{usernameFieldError}</div>}
+          {usernameFieldError && (
+            <div className="text-xs text-error">{usernameFieldError}</div>
+          )}
           <div>Email: {localUser.userPrivateInfo.email}</div>
-          <div>WCAID: {localUser.userPrivateInfo.wcaId ? localUser.userPrivateInfo.wcaId : "None"}</div>
+          <div>
+            WCAID:{" "}
+            {localUser.userPrivateInfo.wcaId
+              ? localUser.userPrivateInfo.wcaId
+              : "None"}
+          </div>
           <Button
             variant="primary"
             size="sm"

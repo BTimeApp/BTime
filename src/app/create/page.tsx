@@ -22,7 +22,7 @@ export default function Page() {
             nSolves: 7,
           }}
           teamSettings={{
-            teamsEnabled: false
+            teamsEnabled: false,
           }}
           createNewRoom={true}
           onCreateCallback={(roomId: string) => {

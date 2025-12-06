@@ -30,7 +30,9 @@ export function NavUser() {
           onClick={handleUserLogin}
         >
           <Avatar className="h-8 w-8 rounded-lg">
-            <AvatarImage src={user ? user.userInfo.avatarURL : "/images/C_logo.png"} />
+            <AvatarImage
+              src={user ? user.userInfo.avatarURL : "/images/C_logo.png"}
+            />
             <AvatarFallback className="rounded-lg" />
           </Avatar>
 

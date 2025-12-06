@@ -39,13 +39,13 @@ export default function ProfileView() {
       </CardHeader>
       <CardContent className="px-0">
         <div className="flex flex-row justify-center items-center">
-            <Image
-              src={avatarURL ? avatarURL : "/images/C_logo.png"}
-              alt="/images/C_logo.png"
-              width="120"
-              height="120"
-              className="rounded-[50%] shadow-lg"
-            />
+          <Image
+            src={avatarURL ? avatarURL : "/images/C_logo.png"}
+            alt="/images/C_logo.png"
+            width="120"
+            height="120"
+            className="rounded-[50%] shadow-lg"
+          />
         </div>
       </CardContent>
       <CardFooter className="px-0">

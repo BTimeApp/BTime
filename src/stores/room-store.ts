@@ -237,7 +237,10 @@ export function createRoomStore() {
                 }
                 break;
               case "INSPECTING":
-                if (get().timerType === "BLUETOOTH" && event === "TIMER_RESET") {
+                if (
+                  get().timerType === "BLUETOOTH" &&
+                  event === "TIMER_RESET"
+                ) {
                   set(() => ({ localSolveStatus: "IDLE" }));
                 } else {
                   set(() => ({ localSolveStatus: "SOLVING" }));
@@ -377,7 +380,7 @@ export function createRoomStore() {
               const updatedMatch = { ...get().match };
               const currentSet = getLatestSet(updatedMatch);
               if (!currentSet) return {};
-             currentSet.solves.push(newSolve);
+              currentSet.solves.push(newSolve);
 
               return {
                 match: updatedMatch,

@@ -17,7 +17,7 @@ export default function CreateTeamDialog({
   children,
 }: RoomSettingsDialogProps) {
   const [teams, teamSettings] = useRoomStore((s) => [s.teams, s.teamSettings]);
-  
+
   const currTeamsLength = useMemo(() => {
     return Object.values(teams).length;
   }, [teams]);
@@ -44,9 +44,7 @@ export default function CreateTeamDialog({
         {teamSettings.teamsEnabled &&
         teamSettings.maxNumTeams &&
         currTeamsLength >= teamSettings.maxNumTeams ? (
-          <div className="text-lg">
-            Already at max teams length.
-          </div>
+          <div className="text-lg">Already at max teams length.</div>
         ) : (
           <CreateTeamForm onSubmit={closeDialogCallback} />
         )}

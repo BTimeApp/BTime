@@ -338,7 +338,8 @@ export function SetDialog({ setIndex, children }: SetDialogProps) {
 
   const { user: localUser } = useSession();
   const setSolves: IRoomSolve[] = useMemo(
-    () => (match.sets.length >= setIndex ? match.sets[setIndex - 1].solves : []),
+    () =>
+      match.sets.length >= setIndex ? match.sets[setIndex - 1].solves : [],
     [match, setIndex]
   );
 
@@ -621,7 +622,9 @@ export function SummaryDialog({ children }: SummaryDialogProps) {
   const allScrambleResultMappings: ScrambleResultMapping[][] = useMemo(
     () =>
       sets.map((set) =>
-        set.solves.map((solve) => getScrambleResultMapping(solve.solve.attempts))
+        set.solves.map((solve) =>
+          getScrambleResultMapping(solve.solve.attempts)
+        )
       ),
     [sets]
   );

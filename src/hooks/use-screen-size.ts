@@ -7,7 +7,7 @@ export enum ScreenSize {
   MD = 2, // ≥ 768px
   LG = 3, // ≥ 1024px
   XL = 4, // ≥ 1280px
-  _2XL = 5 // ≥ 1536px
+  _2XL = 5, // ≥ 1536px
 }
 
 // Mapping breakpoints to min-width in px, matches Tailwind defaults
@@ -16,7 +16,7 @@ const breakpoints = [
   { size: ScreenSize.XL, minWidth: 1280 },
   { size: ScreenSize.LG, minWidth: 1024 },
   { size: ScreenSize.MD, minWidth: 768 },
-  { size: ScreenSize.SM, minWidth: 640 }
+  { size: ScreenSize.SM, minWidth: 640 },
   // XS is anything less than 640, so no minWidth needed
 ];
 

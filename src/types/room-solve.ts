@@ -8,7 +8,7 @@ export interface IRoomSolve {
 }
 
 export interface IRoomSet {
-  solves: IRoomSolve[],
+  solves: IRoomSolve[];
   index: number; //the set index
   winners: string[];
   finished: boolean;

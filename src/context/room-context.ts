@@ -3,7 +3,9 @@ import { StoreApi, UseBoundStore } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 import type { RoomStore } from "@/stores/room-store";
 
-export const RoomStoreContext = createContext<UseBoundStore<StoreApi<RoomStore>> | null>(null);
+export const RoomStoreContext = createContext<UseBoundStore<
+  StoreApi<RoomStore>
+> | null>(null);
 
 /**
  * Using a context:
@@ -13,6 +15,7 @@ export const RoomStoreContext = createContext<UseBoundStore<StoreApi<RoomStore>>
  */
 export function useRoomStore<T>(selector: (state: RoomStore) => T): T {
   const useStore = useContext(RoomStoreContext);
-  if (!useStore) throw new Error("useRoomStore must be used inside a Room Component");
-  return useStore(useShallow(selector))
+  if (!useStore)
+    throw new Error("useRoomStore must be used inside a Room Component");
+  return useStore(useShallow(selector));
 }

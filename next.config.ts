@@ -21,9 +21,9 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     reactCompiler: {
-      compilationMode: 'annotation'
+      compilationMode: "annotation",
     },
-  }
+  },
 };
 
 export default nextConfig;

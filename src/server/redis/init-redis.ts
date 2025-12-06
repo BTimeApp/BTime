@@ -2,7 +2,8 @@ import { Redis } from "ioredis";
 
 export const connectToRedis = async () => {
   // connect to Redis
-  if (!process.env.REDIS_URI) throw new Error("No Redis URI defined in environment variables.")
+  if (!process.env.REDIS_URI)
+    throw new Error("No Redis URI defined in environment variables.");
   const pubClient = new Redis(process.env.REDIS_URI);
   const subClient = pubClient.duplicate();
   const dataClient = pubClient.duplicate();

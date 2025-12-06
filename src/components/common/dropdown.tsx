@@ -10,7 +10,12 @@ type DropdownProps = {
   className?: string;
 };
 
-export default function Dropdown({ options, onChange, placeholder, className}: DropdownProps) {
+export default function Dropdown({
+  options,
+  onChange,
+  placeholder,
+  className,
+}: DropdownProps) {
   return (
     <div className="">
       <select
@@ -19,7 +24,9 @@ export default function Dropdown({ options, onChange, placeholder, className}: D
         value={placeholder ? placeholder : options[0]}
       >
         {options.map((val) => (
-          <option key={val} value={val}>{val}</option>
+          <option key={val} value={val}>
+            {val}
+          </option>
         ))}
       </select>
     </div>

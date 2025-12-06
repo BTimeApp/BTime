@@ -252,9 +252,7 @@ function Sidebar({
   );
 }
 
-function SidebarTrigger({
-  className
-}: {className: string}) {
+function SidebarTrigger({ className }: { className: string }) {
   const { toggleSidebar } = useSidebar();
 
   return (
@@ -459,7 +457,10 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
     <li
       data-slot="sidebar-menu-item"
       data-sidebar="menu-item"
-      className={cn("group/menu-item relative list-none", className)}
+      className={cn(
+        "group/menu-item relative list-none text-lg font-bold",
+        className
+      )}
       {...props}
     />
   );

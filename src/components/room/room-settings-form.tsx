@@ -490,12 +490,12 @@ export default function RoomSettingsForm({
                       <FormItem>
                         <FormLabel>Match Format</FormLabel>
                         <FormControl>
-                          <Select
-                            onValueChange={field.onChange}
-                          >
+                          <Select onValueChange={field.onChange}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder={field.value ?? "Best of"} />
+                                <SelectValue
+                                  placeholder={field.value ?? "Best of"}
+                                />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -543,12 +543,12 @@ export default function RoomSettingsForm({
                       <FormItem>
                         <FormLabel>Set Format</FormLabel>
                         <FormControl>
-                          <Select
-                            onValueChange={field.onChange}
-                          >
+                          <Select onValueChange={field.onChange}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder={field.value ?? "Best of"} />
+                                <SelectValue
+                                  placeholder={field.value ?? "Best of"}
+                                />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
