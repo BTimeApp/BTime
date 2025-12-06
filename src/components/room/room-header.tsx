@@ -38,7 +38,7 @@ export function RoomHeader() {
     s.isUserHost,
   ]);
 
-  const { user } = useSession();
+  const user = useSession();
   const { socket } = useSocket();
 
   const getNextScramble = useCallback(() => {

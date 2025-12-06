@@ -9,7 +9,7 @@ import {
 import { useSession } from "@/context/session-context";
 
 export function NavUser() {
-  const { user } = useSession();
+  const user = useSession();
 
   function handleUserLogin() {
     if (!user) {

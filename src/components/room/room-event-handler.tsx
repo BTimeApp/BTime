@@ -22,7 +22,7 @@ export default function RoomEventHandler() {
   const params = useParams<{ roomId: string }>();
   const roomId = params.roomId;
 
-  const { user } = useSession();
+  const user = useSession();
 
   const [
     localPenalty,

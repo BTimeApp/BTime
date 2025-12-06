@@ -7,14 +7,13 @@ import { useSocket } from "@/context/socket-context";
 import { IRoom } from "@/types/room";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect } from "react";
-import LoadingSpinner from "@/components/common/loading-spinner";
 import RoomContent from "@/components/room/room-content";
 import RoomEventHandler from "@/components/room/room-event-handler";
 import PasswordPrompt from "@/components/room/password-prompt";
 import LoginButton from "@/components/common/login-button";
 import { toast } from "sonner";
 import { SOCKET_CLIENT } from "@/types/socket_protocol";
-import PageWrapper from "../common/page-wrapper";
+import PageWrapper from "@/components/common/page-wrapper";
 
 export default function Room() {
   // grab the roomId from the URL (from "params")
@@ -23,7 +22,7 @@ export default function Room() {
 
   // generate socket, fetch local user from session
   const { socket, socketConnected } = useSocket();
-  const { user, loading: sessionLoading } = useSession();
+  const user = useSession();
 
   // required state variables for this component
   const [
@@ -138,18 +137,6 @@ export default function Room() {
     // safe to ignore router dependency here since we only push
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRoomValid]);
-
-  // render a loading icon if loading
-  if (sessionLoading) {
-    return (
-      <div className="flex flex-col h-screen w-full">
-        <RoomHeader />
-        <div className="grow">
-          <LoadingSpinner />
-        </div>
-      </div>
-    );
-  }
 
   // if not logged in, make the user log in first.
   if (!user) {

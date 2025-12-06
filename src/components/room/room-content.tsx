@@ -14,7 +14,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 export default function RoomContent() {
-  const { user } = useSession();
+  const user = useSession();
   const [users, teams, teamSettings, localRoomState] = useRoomStore((s) => [
     s.users,
     s.teams,

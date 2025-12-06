@@ -13,6 +13,7 @@ import { SocketProvider } from "@/context/socket-context";
 import Script from "next/script";
 import { Toaster } from "sonner";
 import { cookies } from "next/headers";
+import { getSession } from "@/lib/get-session";
 
 export const metadata: Metadata = {
   title: "BTime",
@@ -27,6 +28,8 @@ export default async function RootLayout({
   "use memo";
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar_state")?.value === "true";
+
+  const user = await getSession();
 
   return (
     <html
@@ -51,7 +54,7 @@ export default async function RootLayout({
         ></Script>
       </head>
       <body className={`${inter.className} antialiased h-screen flex flex-col`}>
-        <SessionProvider>
+        <SessionProvider user={user}>
           <SocketProvider>
             <ThemeProvider
               attribute="class"

@@ -236,7 +236,7 @@ function TeamCenterSection({
   teamId?: string;
   isLocalTeam: boolean;
 }) {
-  const { user: localUser } = useSession();
+  const localUser = useSession();
   const [users, teams, match, teamSettings] = useRoomStore((s) => [
     s.users,
     s.teams,
@@ -353,7 +353,7 @@ function TeamCenterSection({
 }
 
 function UserRoomPanel({ className, userId }: UserRoomPanelProps) {
-  const { user: localUser } = useSession();
+  const localUser = useSession();
   const [users] = useRoomStore((s) => [s.users]);
 
   const isLocalUser = useMemo(() => {
@@ -400,7 +400,7 @@ function UserRoomPanel({ className, userId }: UserRoomPanelProps) {
 }
 
 function TeamRoomPanel({ className, teamId }: TeamRoomPanelProps) {
-  const { user: localUser } = useSession();
+  const localUser = useSession();
   const [users, teams, teamSettings] = useRoomStore((s) => [
     s.users,
     s.teams,
@@ -410,8 +410,7 @@ function TeamRoomPanel({ className, teamId }: TeamRoomPanelProps) {
   // analogous to isLocalUser - is this team the one that belongs to the local user?
   const isLocalTeam = useMemo(() => {
     return (
-      localUser !== undefined &&
-      users[localUser.userInfo.id]?.currentTeam === teamId
+      localUser !== null && users[localUser.userInfo.id]?.currentTeam === teamId
     );
   }, [teamId, localUser, users]);
 
@@ -473,7 +472,7 @@ function TeamRoomPanel({ className, teamId }: TeamRoomPanelProps) {
 }
 
 function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
-  const { user: localUser } = useSession();
+  const localUser = useSession();
 
   const [users, teams, roomState, raceSettings, teamSettings, isUserHost] =
     useRoomStore((s) => [
@@ -669,7 +668,7 @@ function InfoRoomPanel({ className }: InfoRoomPanelProps) {
 function ParticipantListRoomPanel({
   className,
 }: ParticipantListRoomPanelProps) {
-  const { user: localUser } = useSession();
+  const localUser = useSession();
   const [users, teams, roomState, match, teamSettings, isUserHost] =
     useRoomStore((s) => [
       s.users,

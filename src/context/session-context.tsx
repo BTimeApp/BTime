@@ -1,46 +1,19 @@
 "use client";
-// context/SessionContext.tsx
 import { IUser } from "@/types/user";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext } from "react";
 
-const SessionContext = createContext<{
-  user: IUser | undefined;
-  loading: boolean;
-  refresh: () => void;
-}>({
-  user: undefined,
-  loading: true,
-  refresh: () => {},
-});
+const SessionContext = createContext<IUser | null>(null);
 
-export function SessionProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<IUser | undefined>(undefined);
-  const [loading, setLoading] = useState(true);
-
-  const fetchUser = async () => {
-    fetch("/api/v0/me", { method: "GET", credentials: "include" })
-      .then((res) => (res.ok ? res.json() : undefined))
-      .then((data) => {
-        setUser(data);
-      })
-      .catch(() => {
-        console.log("Session hook could not retrieve user data.");
-        setUser(undefined);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  };
-
-  useEffect(() => {
-    fetchUser();
-  }, []);
-
-  return (
-    <SessionContext value={{ user, loading, refresh: fetchUser }}>
-      {children}
-    </SessionContext>
-  );
+export function SessionProvider({
+  user,
+  children,
+}: {
+  user: IUser | null;
+  children: React.ReactNode;
+}) {
+  return <SessionContext value={user}>{children}</SessionContext>;
 }
 
-export const useSession = () => useContext(SessionContext);
+export function useSession() {
+  return useContext(SessionContext);
+}

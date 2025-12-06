@@ -205,7 +205,7 @@ export function SolveDialog({ solve, setIndex, children }: SolveDialogProps) {
     s.teamSettings,
   ]);
 
-  const { user: localUser } = useSession();
+  const localUser = useSession();
   const userScrambleResultMapping = useMemo(
     () =>
       localUser
@@ -336,7 +336,7 @@ export function SetDialog({ setIndex, children }: SetDialogProps) {
     s.teamSettings,
   ]);
 
-  const { user: localUser } = useSession();
+  const localUser = useSession();
   const setSolves: IRoomSolve[] = useMemo(
     () =>
       match.sets.length >= setIndex ? match.sets[setIndex - 1].solves : [],
@@ -526,7 +526,7 @@ export function SummaryDialog({ children }: SummaryDialogProps) {
     s.teamSettings,
   ]);
 
-  const { user: localUser } = useSession();
+  const localUser = useSession();
 
   // Extract all sets. Creates a nested array of IRoomSolves, with inner array dimension grouped by set index.
   // This method should always be possible b/c solves is already sorted by setindex

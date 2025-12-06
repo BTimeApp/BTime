@@ -45,7 +45,7 @@ export default function RoomSettingsDialog({
     setOpen(false);
   }, []);
 
-  const { user } = useSession();
+  const user = useSession();
 
   // this component is only meant to be accessible to the host. Do a sanity check here so we avoid rendering a dangerous form for non-host users
   if (!isUserHost(user?.userInfo.id)) {

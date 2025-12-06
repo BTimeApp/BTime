@@ -9,12 +9,12 @@ import Image from "next/image";
 import { useCallback, useState } from "react";
 
 /** TODO
- *    - find a good way to format this page
- *
+ * Turn the profile change api call into an Action
+ * Format the page nicely
  */
 
 export default function Page() {
-  const { user: localUser, refresh } = useSession();
+  const localUser = useSession();
   const [username, setUsername] = useState<string>("");
   const [usernameFieldClass, setUsernameFieldClass] = useState<string>("");
   const [usernameFieldError, setUsernameFieldError] = useState<string>("");
@@ -50,10 +50,7 @@ export default function Page() {
 
     //reset fillable fields
     setUsername("");
-
-    //pulls new user data
-    refresh();
-  }, [username, refresh]);
+  }, [username]);
 
   let body = <></>;
   if (localUser) {

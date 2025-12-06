@@ -172,7 +172,7 @@ export default function RoomSettingsForm({
   onUpdateCallback,
   className,
 }: RoomSettingsFormProps) {
-  const { user, loading: userLoading } = useSession();
+  const user = useSession();
   const { socket, socketConnected } = useSocket();
 
   // form schema
@@ -192,9 +192,6 @@ export default function RoomSettingsForm({
   const [formErrorText, setFormErrorText] = useState<string>("");
 
   useEffect(() => {
-    if (userLoading) {
-      return;
-    }
     if (!user || !socket || !socketConnected) {
       setFormError(true);
       if (!user) {
@@ -209,7 +206,7 @@ export default function RoomSettingsForm({
       setFormError(false);
       setFormErrorText("");
     }
-  }, [user, userLoading, socket, socketConnected]);
+  }, [user, socket, socketConnected]);
 
   const onSubmit = useCallback(
     (values: z.infer<typeof formSchema>) => {

@@ -22,7 +22,7 @@ export default function RoomTeamDialog({
   team,
   children,
 }: RoomTeamDialogProps) {
-  const { user: localUser } = useSession();
+  const localUser = useSession();
   const [users, teams, teamSettings, isUserHost] = useRoomStore((s) => [
     s.users,
     s.teams,

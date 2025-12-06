@@ -15,7 +15,7 @@ export default function RoomActionsForm({
 }: RoomActionsFormProps) {
   const [users, isUserHost] = useRoomStore((s) => [s.users, s.isUserHost]);
 
-  const { user } = useSession();
+  const user = useSession();
   const { socket } = useSocket();
 
   const resetRoom = useCallback(() => {
