@@ -1,5 +1,4 @@
-import Header from "@/components/common/header";
-import HomeHeaderContent from "@/components/index/home-header-content";
+import { Header, HeaderTitle } from "@/components/common/header";
 import CreateRoomButton from "@/components/index/create-room-button";
 import RoomListing from "@/components/index/room-listing";
 import ProfileView from "@/components/index/profile-view";
@@ -9,7 +8,7 @@ export default function Home() {
   return (
     <div className="flex-col h-full w-full">
       <Header>
-        <HomeHeaderContent />
+        <HeaderTitle title="BTime" />
       </Header>
       <div className="flex h-16 py-4 px-2 items-center justify-center">
         <CreateRoomButton />

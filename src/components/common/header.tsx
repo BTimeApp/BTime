@@ -1,13 +1,23 @@
-export default function Header({
+export function Header({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <div className="flex shrink items-stretch p-2 bg-primary w-full">
-      <div className="flex-row grow text-primary-foreground content-center">
-        {children}
-      </div>
+    <div className="flex flex-row bg-primary text-primary-foreground p-2">
+      {children}
     </div>
+  );
+}
+
+export function HeaderTitle({
+  title,
+}: Readonly<{
+  title?: string;
+}>) {
+  return (
+    <h1 className="grow text-2xl font-bold text-center min-w-0 truncate">
+      {title}
+    </h1>
   );
 }

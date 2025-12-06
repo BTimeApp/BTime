@@ -1,11 +1,12 @@
 "use client";
-import Header from "@/components/common/header";
+import { Header, HeaderTitle } from "@/components/common/header";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { TimerEvent, TimerState } from "@btime/bluetooth-cubing";
 import { useSmartTimer } from "@btime/bluetooth-cubing-react";
 import { Result } from "@/types/result";
 import { useCallback, useState } from "react";
+import PageWrapper from "@/components/common/page-wrapper";
 
 export default function Page() {
   const handleTimerEvent = useCallback((event: TimerEvent) => {
@@ -38,15 +39,9 @@ export default function Page() {
   const [timerTextClassName, setTimerTextClassName] = useState<string>("");
 
   return (
-    <div className="flex flex-col h-screen w-full">
+    <PageWrapper>
       <Header>
-        <div className="flex flex-row">
-          <div className="flex-1">
-            <p className="text-3xl font-bold text-center">
-              Bluetooth Playground
-            </p>
-          </div>
-        </div>
+        <HeaderTitle title="Bluetooth Playground" />
       </Header>
       <div className="flex flex-col h-full w-full py-3">
         <div className="flex flex-row justify-center">
@@ -101,6 +96,6 @@ export default function Page() {
           )}
         </div>
       </div>
-    </div>
+    </PageWrapper>
   );
 }

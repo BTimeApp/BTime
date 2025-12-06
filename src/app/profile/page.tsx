@@ -1,7 +1,7 @@
 "use client";
-import Header from "@/components/common/header";
+import { Header, HeaderTitle } from "@/components/common/header";
 import LoginButton from "@/components/common/login-button";
-import HomeHeaderContent from "@/components/index/home-header-content";
+import PageWrapper from "@/components/common/page-wrapper";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSession } from "@/context/session-context";
@@ -115,11 +115,11 @@ export default function Page() {
     );
   }
   return (
-    <div>
+    <PageWrapper>
       <Header>
-        <HomeHeaderContent />
+        <HeaderTitle title="Profile" />
       </Header>
       {body}
-    </div>
+    </PageWrapper>
   );
 }

@@ -14,6 +14,7 @@ import PasswordPrompt from "@/components/room/password-prompt";
 import LoginButton from "@/components/common/login-button";
 import { toast } from "sonner";
 import { SOCKET_CLIENT } from "@/types/socket_protocol";
+import PageWrapper from "../common/page-wrapper";
 
 export default function Room() {
   // grab the roomId from the URL (from "params")
@@ -183,10 +184,10 @@ export default function Room() {
    * Only render proper content and set up event handling
    */
   return (
-    <div className="flex flex-col h-screen w-full">
+    <PageWrapper>
       <RoomHeader />
       <RoomContent />
       <RoomEventHandler />
-    </div>
+    </PageWrapper>
   );
 }

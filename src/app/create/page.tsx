@@ -1,13 +1,12 @@
 "use client";
-import CreateRoomHeader from "@/components/create/create-header-content";
-import Header from "@/components/common/header";
+import { Header, HeaderTitle } from "@/components/common/header";
 import RoomSettingsForm from "@/components/room/room-settings-form";
 
 export default function Page() {
   return (
     <div className="flex flex-col h-screen">
       <Header>
-        <CreateRoomHeader />
+        <HeaderTitle title="Create Room" />
       </Header>
       <div className="px-1 md:px-4 y-1 md:py-3">
         <RoomSettingsForm
