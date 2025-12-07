@@ -538,7 +538,8 @@ export function processNewResult(
  * TODO: reimplement/redesign the backend so that solves are really finished once all relevant results are in (check the results array of the solve instead)
  */
 export function checkRoomSolveFinished(room: IRoom): boolean {
-  if (!getLatestSolve(room)) return false;
+  const currentSolve = getLatestSolve(room);
+  if (!currentSolve) return false;
 
   // 1. Calculate correct set of competing users
   let competingUsers = Object.values(room.users);
@@ -580,11 +581,11 @@ export function checkRoomSolveFinished(room: IRoom): boolean {
   let allUsersFinished: boolean = true;
   for (const roomUser of competingUsers) {
     if (
-      roomUser.solveStatus !== "FINISHED"
-      // commented the following two lines to keep consistent with current definition of a solve being "complete"
-      // in the future, it would be nice to rely solely on participant completion/result existence.
-      // || !currentSolve.solve.attempts[roomUser.user.id]
-      // || !currentSolve.solve.attempts[roomUser.user.id].finished
+      // roomUser.solveStatus !== "FINISHED"
+
+      // Testing: using attempts to know if the user is done
+      !currentSolve.solve.attempts[roomUser.user.id] ||
+      !currentSolve.solve.attempts[roomUser.user.id].finished
     ) {
       allUsersFinished = false;
       break;

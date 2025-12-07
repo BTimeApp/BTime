@@ -763,12 +763,11 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
               newUserStatus
             );
 
-            if (newUserStatus === "FINISHED") {
-              const solveFinished: boolean = checkRoomSolveFinished(room);
-              if (solveFinished) {
-                await handleSolveFinished(room);
-              }
-            }
+            // if (newUserStatus === "FINISHED") {
+            //   if (checkRoomSolveFinished(room)) {
+            //     await handleSolveFinished(room);
+            //   }
+            // }
 
             await stores.rooms.setRoom(room);
           }
@@ -839,7 +838,6 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
             result
           );
 
-          await stores.rooms.setRoom(room);
           //broadcast user submit event to other users
 
           if (updatedTeam !== undefined) {
@@ -852,7 +850,13 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           } else {
             io.to(socket.roomId).emit(SOCKET_SERVER.NEW_RESULT, userId, result);
           }
+
           onSuccessCallback?.();
+
+          if (checkRoomSolveFinished(room)) {
+            await handleSolveFinished(room);
+          }
+          await stores.rooms.setRoom(room);
         }
       }
     );
