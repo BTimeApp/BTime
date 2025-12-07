@@ -1,5 +1,6 @@
 "use client";
 import { Header, HeaderTitle } from "@/components/common/header";
+import PageWrapper from "@/components/common/page-wrapper";
 import { notFound } from "next/navigation";
 
 export default function Page() {
@@ -8,7 +9,7 @@ export default function Page() {
   }
 
   return (
-    <div className="flex flex-col h-screen w-full">
+    <PageWrapper>
       <Header>
         <HeaderTitle title="Playground" />
       </Header>
@@ -18,6 +19,6 @@ export default function Page() {
           to this file.
         </div>
       </div>
-    </div>
+    </PageWrapper>
   );
 }

@@ -3,11 +3,12 @@ import CreateRoomButton from "@/components/index/create-room-button";
 import RoomListing from "@/components/index/room-listing";
 import ProfileView from "@/components/index/profile-view";
 import { cn } from "@/lib/utils";
+import PageWrapper from "@/components/common/page-wrapper";
 // import DebugButton from "@/components/common/debug-button";
 
 export default function Home() {
   return (
-    <div className="flex flex-col gap-4 h-full w-full">
+    <PageWrapper className="gap-4 w-full">
       <Header>
         <HeaderTitle title="BTime" className="text-3xl my-3 min-w-0" />
       </Header>
@@ -25,6 +26,6 @@ export default function Home() {
         </div>
         {/* <DebugButton/> */}
       </div>
-    </div>
+    </PageWrapper>
   );
 }

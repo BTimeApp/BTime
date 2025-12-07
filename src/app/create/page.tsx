@@ -1,12 +1,13 @@
 "use client";
 import { Header, HeaderTitle } from "@/components/common/header";
+import PageWrapper from "@/components/common/page-wrapper";
 import RoomSettingsForm from "@/components/room/room-settings-form";
 import { useRouter } from "next/navigation";
 
 export default function Page() {
   const router = useRouter();
   return (
-    <div className="flex flex-col h-screen">
+    <PageWrapper>
       <Header>
         <HeaderTitle title="Create Room" />
       </Header>
@@ -31,6 +32,6 @@ export default function Page() {
           }}
         />
       </div>
-    </div>
+    </PageWrapper>
   );
 }
