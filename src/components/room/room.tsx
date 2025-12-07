@@ -6,7 +6,7 @@ import { useSession } from "@/context/session-context";
 import { useSocket } from "@/context/socket-context";
 import { IRoom } from "@/types/room";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import RoomContent from "@/components/room/room-content";
 import RoomEventHandler from "@/components/room/room-event-handler";
 import PasswordPrompt from "@/components/room/password-prompt";
@@ -14,6 +14,7 @@ import LoginButton from "@/components/common/login-button";
 import { toast } from "sonner";
 import { SOCKET_CLIENT } from "@/types/socket_protocol";
 import PageWrapper from "@/components/common/page-wrapper";
+import LoadingSpinner from "@/components/common/loading-spinner";
 
 export default function Room() {
   // grab the roomId from the URL (from "params")
@@ -25,21 +26,15 @@ export default function Room() {
   const user = useSession();
 
   // required state variables for this component
-  const [
-    isRoomValid,
-    isPasswordAuthenticated,
-    handleRoomUpdate,
-    handleRoomUserUpdate,
-    setIsRoomValid,
-    setIsPasswordAuthenticated,
-  ] = useRoomStore((s) => [
-    s.isRoomValid,
-    s.isPasswordAuthenticated,
+  const [handleRoomUpdate, handleRoomUserUpdate] = useRoomStore((s) => [
     s.handleRoomUpdate,
     s.handleRoomUserUpdate,
-    s.setIsRoomValid,
-    s.setIsPasswordAuthenticated,
   ]);
+
+  const [isRoomValid, setIsRoomValid] = useState<boolean | null>(null);
+  const [isPasswordAuthenticated, setIsPasswordAuthenticated] = useState<
+    boolean | null
+  >(null);
 
   const router = useRouter();
 
@@ -52,6 +47,8 @@ export default function Room() {
         setIsRoomValid(false);
         toast.error("Room does not exist. Returning to home page.");
         return;
+      } else {
+        setIsRoomValid(true);
       }
 
       if (room) {
@@ -63,6 +60,7 @@ export default function Room() {
       // use extraData in case of failure
       if (extraData) {
         if (Object.keys(extraData).includes("WRONG_PASSWORD")) {
+          setIsPasswordAuthenticated(false);
           toast.error("Wrong password entered. Try again.");
         }
 
@@ -77,7 +75,7 @@ export default function Room() {
         }
 
         if (Object.keys(extraData).includes("ROOM_FULL")) {
-          router.push("/");
+          setIsRoomValid(false);
           toast.error("The room is already full!");
         }
       }
@@ -127,21 +125,16 @@ export default function Room() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, user, socketConnected, joinRoomCallback]);
 
-  /**
-   * If the room is not valid, route the user back to home page automatically
-   */
   useEffect(() => {
-    if (!isRoomValid) {
+    if (isRoomValid === false) {
       router.push("/");
     }
-    // safe to ignore router dependency here since we only push
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRoomValid]);
+  }, [router, isRoomValid]);
 
   // if not logged in, make the user log in first.
   if (!user) {
     return (
-      <div className="flex flex-col h-screen w-full">
+      <PageWrapper>
         <RoomHeader />
         <div className="flex flex-col">
           <div className="grow font-bold text-xl text-center content-center">
@@ -149,21 +142,31 @@ export default function Room() {
           </div>
           <LoginButton />
         </div>
-      </div>
+      </PageWrapper>
+    );
+  }
+
+  if (isPasswordAuthenticated === null && isRoomValid === null) {
+    return (
+      <PageWrapper>
+        <div className="flex flex-row h-full w-full items-center justify-center">
+          <LoadingSpinner className="size-28" />
+        </div>
+      </PageWrapper>
     );
   }
 
   // if not password authenticated, render blank screen with dialog
   if (!isPasswordAuthenticated) {
     return (
-      <div className="flex flex-col h-screen w-full">
+      <PageWrapper>
         <PasswordPrompt
           socket={socket}
           roomId={roomId}
           userId={user.userInfo.id}
           passwordValidationCallback={joinRoomCallback}
         />
-      </div>
+      </PageWrapper>
     );
   }
 

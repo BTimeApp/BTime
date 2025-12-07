@@ -295,7 +295,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       if (!userId || !roomId) return;
       console.log(`User ${userId} disconnected from room ${roomId}`);
       const room = await stores.rooms.getRoom(roomId);
-      if (!room) return;
+      if (!room || !room.users[userId]) return;
 
       if (room.users[userId]) {
         // mark user as inactive
@@ -508,7 +508,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         ) {
           console.log(`User ${userId} tried to join a full room ${roomId}.`);
 
-          joinRoomCallback(true, room, {
+          joinRoomCallback(true, undefined, {
             ROOM_FULL: "",
           });
           return;
@@ -517,14 +517,9 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         //validate password if room is private AND user isn't host
         if (
           room.settings.access.visibility === "PRIVATE" &&
-          userId !== room.host?.id
+          userId !== room.host?.id &&
+          password
         ) {
-          if (!password) {
-            //this should only occur upon the first join_room ping - safe to return early
-            joinRoomCallback(true, undefined, {});
-            return;
-          }
-
           //room password should never be undefined, but just in case, cast to empty string
           const correctPassword = await bcrypt.compare(
             password,

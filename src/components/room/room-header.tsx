@@ -14,7 +14,6 @@ import CreateTeamDialog from "@/components/room/create-team-dialog";
 export function RoomHeader() {
   const [
     roomName,
-    isPasswordAuthenticated,
     roomState,
     roomEvent,
     currentSet,
@@ -26,7 +25,6 @@ export function RoomHeader() {
     isUserHost,
   ] = useRoomStore((s) => [
     s.roomName,
-    s.isPasswordAuthenticated,
     s.roomState,
     s.roomEvent,
     s.currentSet,
@@ -214,7 +212,7 @@ export function RoomHeader() {
     teamSettings,
   ]);
 
-  if (!isPasswordAuthenticated || !user) {
+  if (!user) {
     return <></>;
   } else {
     return (

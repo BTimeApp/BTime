@@ -40,8 +40,6 @@ export type RoomStore = {
   localResult: Result; //result associated with current solve
   localSolveStatus: SolveStatus; //current solving state of client
   liveTimerStartTime: number; //the start time for the client's current solve
-  isRoomValid: boolean; //is there a room with this roomid?
-  isPasswordAuthenticated: boolean; //has password been accepted?
 
   //user settings
   timerType: TimerType; //type of timer client is using
@@ -70,9 +68,6 @@ export type RoomStore = {
   updateLocalSolveStatus: (event?: string) => void;
   resetLocalSolveStatus: () => void;
   resetLocalSolve: () => void;
-
-  setIsRoomValid: (isRoomValid: boolean) => void;
-  setIsPasswordAuthenticated: (isAuthenticated: boolean) => void;
 
   addUserLiveStartTime: (userId: string, startTime: number) => void;
   clearUserLiveStartTimes: () => void;
@@ -188,8 +183,6 @@ export function createRoomStore() {
           localResult: new Result(""),
           localSolveStatus: "IDLE",
           liveTimerStartTime: 0,
-          isRoomValid: true,
-          isPasswordAuthenticated: false,
 
           //user settings
           timerType: "KEYBOARD",
@@ -279,11 +272,6 @@ export function createRoomStore() {
             get().setLocalResult(new Result(""));
             get().setLocalPenalty("OK");
           },
-
-          setIsRoomValid: (isRoomValid: boolean) =>
-            set(() => ({ isRoomValid: isRoomValid })),
-          setIsPasswordAuthenticated: (isPasswordAuthenticated: boolean) =>
-            set(() => ({ isPasswordAuthenticated: isPasswordAuthenticated })),
 
           /**
            * We need to create an entire new Map here to adhere to the Zustand rules
