@@ -119,19 +119,21 @@ export function RoomHeader() {
   }, [user, roomState, isUserHost, startRoom, getNextScramble, rematchRoom]);
 
   const bottomRightButton = useMemo(() => {
-    if (
-      teamSettings.teamsEnabled &&
-      isUserHost(user?.userInfo.id) &&
-      (!teamSettings.maxNumTeams ||
-        Object.values(teams).length < teamSettings.maxNumTeams)
-    ) {
-      return (
-        <CreateTeamDialog>
-          <Button variant="outline" className="text-md">
-            Add Team(s)
-          </Button>
-        </CreateTeamDialog>
-      );
+    if (teamSettings.teamsEnabled) {
+      if (
+        isUserHost(user?.userInfo.id) &&
+        (!teamSettings.maxNumTeams ||
+          Object.values(teams).length < teamSettings.maxNumTeams)
+      ) {
+        return (
+          <CreateTeamDialog>
+            <Button variant="outline" className="text-md">
+              Add Team(s)
+            </Button>
+          </CreateTeamDialog>
+        );
+      }
+      return <></>;
     } else {
       if (!user) {
         return <></>;
