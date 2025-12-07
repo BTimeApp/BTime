@@ -195,7 +195,9 @@ function UserCenterSection({
                 {solveStatus === "SUBMITTING" && <RoomSubmittingButtons />}
               </>
             ) : (
-              <div>You are spectating. Compete to use timer.</div>
+              <p className="text-lg">
+                You are spectating. Compete to use timer.
+              </p>
             )
           ) : (
             <UserStatusSection className="text-2xl font-bold" userId={userId} />
@@ -204,6 +206,7 @@ function UserCenterSection({
         <div className="flex-0 flex flex-col">
           {drawScramble &&
             solveStatus !== "FINISHED" &&
+            users[userId].competing &&
             (currScramble ? (
               // <scramble-display
               //   className="w-full h-45"
