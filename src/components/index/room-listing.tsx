@@ -99,22 +99,25 @@ export default function RoomListing({ className }: { className?: string }) {
   return (
     <Card
       className={cn(
-        "h-60 lg:h-120 w-full flex flex-col px-3 gap-1 rounded-lg shadow-lg p-1 bg-container-1",
+        "h-120 w-full flex flex-col px-3 gap-1 rounded-lg shadow-lg p-1 bg-container-1",
         className
       )}
     >
-      <CardHeader className="shrink-0">
-        <div className="flex flex-row px-1">
-          <div>
+      <CardHeader className="shrink overflow-x-hidden">
+        <div className="flex flex-row px-1 min-w-0">
+          <p className="min-w-0 truncate">
             {pageNumber} of {totalPages}
-          </div>
-          <h2 className="grow font-semibold text-center text-xl">Rooms</h2>
+          </p>
+          <h2 className="grow font-semibold truncate text-center text-xl">
+            Rooms
+          </h2>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="outline"
                 size="sm"
                 disabled={refreshPending}
+                className="min-w-0 overflow-x-hidden"
                 onClick={() => {
                   startRefreshTransition(() => {
                     updateRooms(pageNumber);

@@ -31,7 +31,7 @@ export default function ProfileView({ className }: { className?: string }) {
       <CardHeader className="flex flex-row justify-center items-center">
         <Link
           href="/profile"
-          className="flex font-semibold text-xl hover:font-bold hover:underline"
+          className="flex font-semibold text-xl hover:font-bold hover:underline truncate"
         >
           {username.length > 0 ? username : "BTime User"}
         </Link>
