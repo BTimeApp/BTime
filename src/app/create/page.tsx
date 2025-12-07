@@ -1,8 +1,10 @@
 "use client";
 import { Header, HeaderTitle } from "@/components/common/header";
 import RoomSettingsForm from "@/components/room/room-settings-form";
+import { useRouter } from "next/navigation";
 
 export default function Page() {
+  const router = useRouter();
   return (
     <div className="flex flex-col h-screen">
       <Header>
@@ -25,8 +27,8 @@ export default function Page() {
           }}
           createNewRoom={true}
           onCreateCallback={(roomId: string) => {
-            window.location.href = `/room/${roomId}`;
-          }} //send user to the room they just made
+            router.push(`/room/${roomId}`);
+          }}
         />
       </div>
     </div>
