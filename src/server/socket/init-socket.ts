@@ -22,6 +22,7 @@ import {
   getLatestSolve,
   getLatestSet,
   newRoomSet,
+  newAttempt,
 } from "@/lib/room";
 import { IUser, IUserInfo } from "@/types/user";
 import { IRoomTeam, IRoomUser } from "@/types/room-participant";
@@ -245,7 +246,6 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       teamId: string
     ) {
       const response = await userLeaveTeam(room, userId, teamId);
-      await stores.rooms.setRoom(room);
 
       if (response.success) {
         // leave team will both remove user from team AND
@@ -281,6 +281,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           await handleSolveFinished(room);
         }
       }
+      await stores.rooms.setRoom(room);
     }
 
     async function handleUserDisconnect(userId: string) {
@@ -1026,19 +1027,42 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         );
         room.users[socket.user?.userInfo.id].competing = competing;
 
-        // when user spectates, need to check if all competing users are done, then advance room
-        if (room.state === "STARTED") {
-          const solveFinished: boolean = checkRoomSolveFinished(room);
-          if (solveFinished) {
-            handleSolveFinished(room);
-          }
-        }
-        await stores.rooms.setRoom(room);
         io.to(socket.roomId).emit(
           SOCKET_SERVER.USER_TOGGLE_COMPETING,
           userId,
           competing
         );
+
+        // when user spectates, need to check if all competing users are done, then advance room
+        if (room.state === "STARTED") {
+          if (competing) {
+            //if user is now competing, we need to add an attempt for them if none exists yet. TODO
+            // right now, the only way the TOGGLE_COMPETING event is triggered is through the button on UI that only shows up in SOLO.
+            const currentSolve = getLatestSolve(room);
+
+            if (currentSolve && !currentSolve.solve.attempts[userId]) {
+              const attempt = newAttempt(
+                room,
+                currentSolve.solve.scrambles[0],
+                userId
+              );
+
+              if (attempt) {
+                io.to(socket.roomId).emit(
+                  SOCKET_SERVER.CREATE_ATTEMPT,
+                  userId,
+                  attempt
+                );
+              }
+            }
+          } else {
+            // if user is now spectating, we need to check if the room solve is finished and handle
+            if (checkRoomSolveFinished(room)) {
+              await handleSolveFinished(room);
+            }
+          }
+        }
+        await stores.rooms.setRoom(room);
       } else {
         console.log(
           `Either roomId or userId not set on socket: ${socket.roomId}, ${socket.user?.userInfo.id}`

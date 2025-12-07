@@ -775,11 +775,7 @@ export async function userJoinTeam(
     ) {
       const newScramble = await generateScramble(room.settings.roomEvent);
       currentSolve.solve.scrambles.push(newScramble);
-      currentSolve.solve.attempts[userId] = {
-        scramble: newScramble,
-        finished: false,
-        team: teamId,
-      } as IAttempt;
+      newAttempt(room, newScramble, userId, teamId);
 
       extraData = currentSolve.solve.attempts[userId];
     } else if (
@@ -791,11 +787,7 @@ export async function userJoinTeam(
         room.settings.teamSettings.teamFormatSettings.teamScrambleFormat ===
           "SAME")
     ) {
-      currentSolve.solve.attempts[userId] = {
-        scramble: currentSolve.solve.scrambles[0],
-        finished: false,
-        team: teamId,
-      } as IAttempt;
+      newAttempt(room, currentSolve.solve.scrambles[0], userId, teamId);
 
       extraData = currentSolve.solve.attempts[userId];
     }
@@ -990,6 +982,28 @@ export async function newRoomSolve(room: IRoom) {
 }
 
 /**
+ * Creates a new attempt for a user.
+ * Do all validation outside this functdion.
+ */
+export function newAttempt(
+  room: IRoom,
+  scramble: string,
+  userId: string,
+  teamId?: string
+) {
+  const currentSolve = getLatestSolve(room);
+  if (!currentSolve) return;
+
+  const newAttempt = {
+    scramble: scramble,
+    finished: false,
+    team: teamId,
+  } as IAttempt;
+  currentSolve.solve.attempts[userId] = newAttempt;
+  return newAttempt;
+}
+
+/**
  * Resets the current solve and generate new scrambles
  */
 export async function resetSolve(room: IRoom) {
@@ -1003,7 +1017,7 @@ export async function resetSolve(room: IRoom) {
   );
   const teamSettings = room.settings.teamSettings;
 
-  currentSolve.solve.scrambles = solveScrambles;
+  currentSolve.solve.scrambles.push(...solveScrambles);
 
   //reset attempts
   const eligibleUsers = teamSettings.teamsEnabled
@@ -1134,10 +1148,7 @@ export function userJoinRoom(room: IRoom, user: IUserInfo) {
     //  for now, joining with teams enabled disables competing, so we just cover no teams case - which is easy
     const currentSolve = getLatestSolve(room);
     if (currentSolve) {
-      currentSolve.solve.attempts[user.id] = {
-        finished: false,
-        scramble: currentSolve.solve.scrambles[0]!,
-      };
+      newAttempt(room, currentSolve.solve.scrambles[0]!, user.id);
     }
   }
 
