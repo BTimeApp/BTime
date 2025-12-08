@@ -348,15 +348,6 @@ function TeamCenterSection({
                   </div>
                 );
               })}
-              <div>asdfasdf</div>
-              <div>asdfasdf</div>
-              <div>asdfasdf</div>
-              <div>asdfasdf</div>
-              <div>asdfasdf</div>
-              <div>asdfasdf</div>
-              <div>asdfasdf</div>
-              <div>asdfasdf</div>
-              <div>asdfasdf</div>
             </div>
           </div>
         </div>
