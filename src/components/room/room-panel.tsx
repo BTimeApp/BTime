@@ -200,7 +200,7 @@ function UserCenterSection({
               </p>
             )
           ) : (
-            <UserStatusSection className="text-2xl font-bold" userId={userId} />
+            <UserStatusSection className="text-4xl font-bold" userId={userId} />
           )}
         </div>
         <div className="flex-0 flex flex-col">
@@ -218,7 +218,7 @@ function UserCenterSection({
                 puzzle={ROOM_EVENTS_INFO[roomEvent].jsName ?? "3x3x3"}
                 visualization="2D"
                 control-panel="none"
-                className="w-full h-45"
+                className="w-full h-40 md:h-48 xl:h-54 2xl:h-60"
                 background="none"
               />
             ) : (
