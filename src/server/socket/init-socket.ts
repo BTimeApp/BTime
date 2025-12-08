@@ -810,8 +810,6 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
     socket.on(
       SOCKET_CLIENT.SUBMIT_RESULT,
       async (result: IResult, onSuccessCallback?: () => void) => {
-        // we store results as an easily-serializable type and reconstruct on client when needed.
-        // Socket.io does not preserve complex object types over the network, so it makes it hard to pass Result types around anyways.
         if (socket.roomId && socket.user) {
           const room = await stores.rooms.getRoom(socket.roomId);
           if (!room) return;
