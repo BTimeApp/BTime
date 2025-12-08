@@ -81,7 +81,7 @@ export function RoomHeader() {
             size="default"
             className="px-1"
             onClick={startRoom}
-            onKeyDown={(e) => e.preventDefault()}
+            onMouseDown={(e) => e.preventDefault()}
           >
             <p className={cn("font-bold text-center text-md")}>START ROOM</p>
           </Button>
@@ -93,7 +93,7 @@ export function RoomHeader() {
             size="lg"
             className="px-1"
             onClick={getNextScramble}
-            onKeyDown={(e) => e.preventDefault()}
+            onMouseDown={(e) => e.preventDefault()}
           >
             <h1 className={cn("font-bold text-center text-md")}>
               NEW SCRAMBLE
@@ -107,7 +107,7 @@ export function RoomHeader() {
             size="default"
             className="px-1"
             onClick={rematchRoom}
-            onKeyDown={(e) => e.preventDefault()}
+            onMouseDown={(e) => e.preventDefault()}
           >
             <h1 className={cn("font-bold text-center text-md")}>REMATCH</h1>
           </Button>
@@ -139,7 +139,12 @@ export function RoomHeader() {
         return <></>;
       }
       return (
-        <Button className="mt-auto" variant="outline" onClick={toggleCompeting}>
+        <Button
+          className="mt-auto"
+          variant="outline"
+          onClick={toggleCompeting}
+          onMouseDown={(e) => e.preventDefault()}
+        >
           <p className="font-bold text-center text-md">
             {users[user.userInfo.id]?.competing ? "SPECTATE" : "COMPETE"}
           </p>
