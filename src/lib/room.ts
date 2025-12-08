@@ -1028,7 +1028,7 @@ export async function resetSolve(room: IRoom) {
   );
   const teamSettings = room.settings.teamSettings;
 
-  currentSolve.solve.scrambles.push(...solveScrambles);
+  currentSolve.solve.scrambles = solveScrambles;
 
   //reset attempts
   const eligibleUsers = teamSettings.teamsEnabled
