@@ -34,7 +34,6 @@ import {
   LeaveTeamButton,
 } from "@/components/room/team-action-buttons";
 import RoomTeamDialog from "@/components/room/room-team-dialog";
-import { ScrollArea, ScrollBar } from "../ui/scroll-area";
 
 type RoomPanelProps = {
   className?: string;
