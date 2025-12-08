@@ -120,7 +120,7 @@ export type RoomStore = {
   userJoinTeam: (
     user: IRoomUser,
     team: IRoomTeam,
-    updatedAttempt?: IAttempt
+    extraData: { attempt: IAttempt | undefined; resetTeamResult: boolean }
   ) => void;
 
   userLeaveTeam: (user: IRoomUser, team: IRoomTeam) => void;
@@ -588,7 +588,10 @@ export function createRoomStore() {
           userJoinTeam: (
             user: IRoomUser,
             team: IRoomTeam,
-            updatedAttempt?: IAttempt
+            extraData: {
+              attempt: IAttempt | undefined;
+              resetTeamResult: boolean;
+            }
           ) =>
             set((state) => {
               if (!state.teamSettings.teamsEnabled) {
@@ -606,13 +609,23 @@ export function createRoomStore() {
               // if new scramble exists, add it
               const updatedMatch = { ...state.match };
               const currentSolve = getLatestSolve(updatedMatch);
-              if (currentSolve && updatedAttempt) {
-                if (
-                  !(updatedAttempt.scramble in currentSolve.solve.scrambles)
-                ) {
-                  currentSolve.solve.scrambles.push(updatedAttempt.scramble);
+              if (currentSolve) {
+                if (extraData.attempt) {
+                  if (
+                    !(
+                      extraData.attempt.scramble in currentSolve.solve.scrambles
+                    )
+                  ) {
+                    currentSolve.solve.scrambles.push(
+                      extraData.attempt.scramble
+                    );
+                  }
+                  currentSolve.solve.attempts[user.user.id] = extraData.attempt;
                 }
-                currentSolve.solve.attempts[user.user.id] = updatedAttempt;
+
+                if (extraData.resetTeamResult) {
+                  delete currentSolve.solve.results[team.team.id];
+                }
               }
               return {
                 users: updatedUsers,
@@ -636,6 +649,9 @@ export function createRoomStore() {
               const updatedMatch = { ...state.match };
               const currentSolve = getLatestSolve(updatedMatch);
               if (currentSolve) {
+                /**
+                 * Note: this is technically wrong in isolation (don't necessarily need to delete the team's result), but backend currently corrects this with a new result event if applicable
+                 */
                 //remove the attempt and team result
                 delete currentSolve.solve.attempts[user.user.id];
                 delete currentSolve.solve.results[team.team.id];

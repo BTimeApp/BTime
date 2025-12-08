@@ -964,8 +964,10 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         const room = await getSocketRoom();
         if (!room || !user || !room.settings.teamSettings.teamsEnabled) return;
 
-        const response: SocketResponse<undefined | IAttempt> =
-          await userJoinTeam(room, user.userInfo.id, teamId);
+        const response: SocketResponse<{
+          resetTeamResult: boolean;
+          attempt: IAttempt | undefined;
+        }> = await userJoinTeam(room, user.userInfo.id, teamId);
 
         if (response.success) {
           await stores.rooms.setRoom(room);

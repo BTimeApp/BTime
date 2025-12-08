@@ -716,7 +716,9 @@ export async function userJoinTeam(
   room: IRoom,
   userId: string,
   teamId: string
-): Promise<SocketResponse<undefined | IAttempt>> {
+): Promise<
+  SocketResponse<{ attempt: IAttempt | undefined; resetTeamResult: boolean }>
+> {
   if (!room.settings.teamSettings.teamsEnabled) {
     return { success: false, reason: "Teams not enabled" };
   }
@@ -764,10 +766,13 @@ export async function userJoinTeam(
   room.users[userId].currentTeam = teamId;
   room.users[userId].competing = true; //in teams mode, competing = on team or not
 
-  let extraData = undefined;
+  const extraData = { resetTeamResult: false, attempt: undefined } as {
+    attempt: IAttempt | undefined;
+    resetTeamResult: boolean;
+  };
   const currentSolve = getLatestSolve(room);
-  // 3.5. generate a scramble for the user (create an attempt) if they're joining in the middle of a solve AND (we are in ALL mode || we are in ONE mode and it's this user's turn)
   if (room.state === "STARTED" && currentSolve) {
+    // generate a scramble for the user (create an attempt) if they're joining in the middle of a solve AND (we are in ALL mode || we are in ONE mode and it's this user's turn)
     if (
       room.settings.teamSettings.teamFormatSettings.teamSolveFormat === "ALL" &&
       room.settings.teamSettings.teamFormatSettings.teamScrambleFormat ===
@@ -777,7 +782,7 @@ export async function userJoinTeam(
       currentSolve.solve.scrambles.push(newScramble);
       newAttempt(room, newScramble, userId, teamId);
 
-      extraData = currentSolve.solve.attempts[userId];
+      extraData.attempt = currentSolve.solve.attempts[userId];
     } else if (
       (room.settings.teamSettings.teamFormatSettings.teamSolveFormat ===
         "ONE" &&
@@ -789,7 +794,17 @@ export async function userJoinTeam(
     ) {
       newAttempt(room, currentSolve.solve.scrambles[0], userId, teamId);
 
-      extraData = currentSolve.solve.attempts[userId];
+      extraData.attempt = currentSolve.solve.attempts[userId];
+    }
+
+    if (
+      room.settings.teamSettings.teamFormatSettings.teamSolveFormat === "ALL"
+    ) {
+      delete currentSolve.solve.results[teamId];
+      room.teams[teamId].currentResult = undefined;
+      room.teams[teamId].solveStatus = "IDLE";
+
+      extraData.resetTeamResult = true;
     }
   }
 
@@ -837,6 +852,7 @@ export async function userLeaveTeam(
     // always reset the team solve.
     delete currentSolve.solve.results[team.team.id];
     team.currentResult = undefined;
+    team.solveStatus = "IDLE";
 
     // if applicable, recalculate the team result.
     if (checkTeamFinished(room, teamId)) {
@@ -873,11 +889,6 @@ export async function userLeaveTeam(
         }
       }
     }
-  }
-
-  // check if the team solve should now be considered finished, and update if true
-  if (checkTeamFinished(room, teamId)) {
-    finishTeamSolve(room, teamId);
   }
 
   return { success: true, data: extraData };
