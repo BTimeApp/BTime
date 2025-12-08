@@ -35,6 +35,9 @@ function TimerSection() {
   const endStringTimerCallback = useCallback(
     (value: string) => {
       try {
+        if (value === "") {
+          return;
+        }
         setLocalResult(new Result(value, localPenalty));
         updateLocalSolveStatus();
       } catch {
