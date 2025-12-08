@@ -233,7 +233,12 @@ export function RoomHeader() {
             {isUserHost(user.userInfo.id) && (
               <div className="flex-1 flex flex-col items-center justify-start">
                 <RoomSettingsDialog>
-                  <Button size="icon" className="self-end" variant="icon">
+                  <Button
+                    size="icon"
+                    className="self-end"
+                    variant="icon"
+                    onMouseDown={(e) => e.preventDefault()}
+                  >
                     <Settings className="size-8" />
                   </Button>
                 </RoomSettingsDialog>
