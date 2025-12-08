@@ -11,9 +11,9 @@ import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { useSocketEvent } from "@/hooks/use-socket-event";
 import { IRoomSolve } from "@/types/room-solve";
-import { IRoomUser } from "@/types/room-user";
+import { IRoomParticipant } from "@/types/room-participant";
 import { useSession } from "@/context/session-context";
-import { useIsTouchscreen } from "@/hooks/useMobile";
+import { useIsMobile } from "@/hooks/useMobile";
 
 /**
  * Handles all events for the room so that the room component itself doesn't have to re-render upon state udates
@@ -22,7 +22,7 @@ export default function RoomEventHandler() {
   const params = useParams<{ roomId: string }>();
   const roomId = params.roomId;
 
-  const { user } = useSession();
+  const user = useSession();
 
   const [
     localPenalty,
@@ -37,25 +37,36 @@ export default function RoomEventHandler() {
     handleRoomUpdate,
     resetRoom,
     resetLocalSolveStatus,
+    resetLocalSolve,
     addUserLiveStartTime,
     addUserLiveStopTime,
     clearUserLiveStartTimes,
     clearUserLiveTimes,
     resetLatestSolve,
+    createAttempt,
+    deleteAttempt,
     addNewSolve,
+    updateLatestSolve,
     addNewSet,
     finishSolve,
     finishSet,
     finishMatch,
-    updateUserStatus,
+    updateSolveStatus,
     userToggleCompeting,
+    createTeams,
+    deleteTeam,
+    userJoinTeam,
+    userLeaveTeam,
+    updateTeam,
+    updateTeams,
     userJoin,
     userUpdate,
     userBanned,
     userUnbanned,
     setHostId,
     addResult,
-    setTimerType
+    addUserResult,
+    setTimerType,
   ] = useRoomStore((s) => [
     s.localPenalty,
     s.localResult,
@@ -69,36 +80,46 @@ export default function RoomEventHandler() {
     s.handleRoomUpdate,
     s.resetRoom,
     s.resetLocalSolveStatus,
+    s.resetLocalSolve,
     s.addUserLiveStartTime,
     s.addUserLiveStopTime,
     s.clearUserLiveStartTimes,
     s.clearUserLiveTimes,
     s.resetLatestSolve,
+    s.createAttempt,
+    s.deleteAttempt,
     s.addNewSolve,
+    s.updateLatestSolve,
     s.addNewSet,
     s.finishSolve,
     s.finishSet,
     s.finishMatch,
-    s.updateUserStatus,
+    s.updateSolveStatus,
     s.userToggleCompeting,
+    s.createTeams,
+    s.deleteTeam,
+    s.userJoinTeam,
+    s.userLeaveTeam,
+    s.updateTeam,
+    s.updateTeams,
     s.userJoin,
     s.userUpdate,
     s.userBanned,
     s.userUnbanned,
     s.setHostId,
     s.addResult,
+    s.addUserResult,
     s.setTimerType,
   ]);
   const { socket } = useSocket();
 
-  const isTouchscreen = useIsTouchscreen();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
-    if (isTouchscreen) {
+    if (isMobile) {
       setTimerType("TYPING");
     }
-  }, [isTouchscreen, setTimerType]);
-
+  }, [isMobile, setTimerType]);
 
   //live update for start time
   const liveTimerStartTime = useStartTimeOnTransition<SolveStatus>(
@@ -113,7 +134,7 @@ export default function RoomEventHandler() {
   }, [setLiveTimerStartTime]);
 
   /**
-   * Update user status on backend whenever frontend updates.
+   * Update user status on backend whenever client updates.
    */
   useEffect(() => {
     socket.emit(SOCKET_CLIENT.UPDATE_SOLVE_STATUS, localSolveStatus);
@@ -131,7 +152,7 @@ export default function RoomEventHandler() {
    */
   useEffect(() => {
     resetLocalSolveStatus();
-    // ignore lint warning - we do not want userStatus change to trigger this hook
+    // ignore lint warning - we do not want solveStatus change to trigger this hook
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomState, timerType]);
 
@@ -151,20 +172,6 @@ export default function RoomEventHandler() {
    * Callbacks for socket events
    */
 
-  const handleUserJoin = useCallback(
-    (user: IRoomUser) => {
-      userJoin(user);
-    },
-    [userJoin]
-  );
-
-  const handleUserUpdate = useCallback(
-    (user: IRoomUser) => {
-      userUpdate(user);
-    },
-    [userUpdate]
-  );
-
   const handleUserStartLiveTimer = useCallback(
     (userId: string) => {
       addUserLiveStartTime(userId, performance.now());
@@ -179,22 +186,11 @@ export default function RoomEventHandler() {
     [addUserLiveStopTime]
   );
 
-  const handleUserStatusUpdate = useCallback(
-    (userId: string, newSolveStatus: SolveStatus) => {
-      updateUserStatus(userId, newSolveStatus);
-    },
-    [updateUserStatus]
-  );
-
-  const handleUserToggleCompeting = useCallback(
-    (userId: string, newCompeting: boolean) => {
-      userToggleCompeting(userId, newCompeting);
-    },
-    [userToggleCompeting]
-  );
-
   const handleSolveFinished = useCallback(
-    (finalSolve: IRoomSolve, users: Record<string, IRoomUser>) => {
+    (
+      finalSolve: IRoomSolve,
+      participants: Record<string, IRoomParticipant>
+    ) => {
       //reset local states
       resetLocalSolveStatus();
       setLocalPenalty("OK");
@@ -202,7 +198,7 @@ export default function RoomEventHandler() {
       clearUserLiveTimes();
 
       //final update on the current solve
-      finishSolve(finalSolve, users);
+      finishSolve(finalSolve, participants);
     },
     [
       resetLocalSolveStatus,
@@ -211,20 +207,6 @@ export default function RoomEventHandler() {
       clearUserLiveTimes,
       finishSolve,
     ]
-  );
-
-  const handleSetFinished = useCallback(
-    (setWinners: string[]) => {
-      finishSet(setWinners);
-    },
-    [finishSet]
-  );
-
-  const handleMatchFinished = useCallback(
-    (matchWinners: string[]) => {
-      finishMatch(matchWinners);
-    },
-    [finishMatch]
   );
 
   const handleLocalUserKicked = useCallback(() => {
@@ -246,20 +228,6 @@ export default function RoomEventHandler() {
       userBanned(userId);
     },
     [user, handleLocalUserBanned, userBanned]
-  );
-
-  const handleUserUnbanned = useCallback(
-    (userId: string) => {
-      userUnbanned(userId);
-    },
-    [userUnbanned]
-  );
-
-  const handleNewHost = useCallback(
-    (newHostId: string) => {
-      setHostId(newHostId);
-    },
-    [setHostId]
   );
 
   const handleSocketDisconnect = useCallback(() => {
@@ -284,8 +252,8 @@ export default function RoomEventHandler() {
   /**
    * Trigger callbacks on socket events coming from server
    */
-  useSocketEvent(socket, SOCKET_SERVER.USER_JOINED, handleUserJoin);
-  useSocketEvent(socket, SOCKET_SERVER.USER_UPDATE, handleUserUpdate);
+  useSocketEvent(socket, SOCKET_SERVER.USER_JOINED, userJoin);
+  useSocketEvent(socket, SOCKET_SERVER.USER_UPDATE, userUpdate);
   useSocketEvent(
     socket,
     SOCKET_SERVER.USER_START_LIVE_TIMER,
@@ -296,15 +264,11 @@ export default function RoomEventHandler() {
     SOCKET_SERVER.USER_STOP_LIVE_TIMER,
     handleUserStopLiveTimer
   );
-  useSocketEvent(
-    socket,
-    SOCKET_SERVER.USER_STATUS_UPDATE,
-    handleUserStatusUpdate
-  );
+  useSocketEvent(socket, SOCKET_SERVER.USER_STATUS_UPDATE, updateSolveStatus);
   useSocketEvent(
     socket,
     SOCKET_SERVER.USER_TOGGLE_COMPETING,
-    handleUserToggleCompeting
+    userToggleCompeting
   );
   useSocketEvent(socket, SOCKET_SERVER.SOLVE_RESET, resetLatestSolve);
   useSocketEvent(
@@ -312,23 +276,35 @@ export default function RoomEventHandler() {
     SOCKET_SERVER.SOLVE_FINISHED_EVENT,
     handleSolveFinished
   );
+  useSocketEvent(socket, SOCKET_SERVER.SOLVE_UPDATE, updateLatestSolve);
+
+  useSocketEvent(socket, SOCKET_SERVER.CREATE_ATTEMPT, createAttempt);
+  useSocketEvent(socket, SOCKET_SERVER.DELETE_ATTEMPT, deleteAttempt);
+
   useSocketEvent(socket, SOCKET_SERVER.NEW_SOLVE, addNewSolve);
+  useSocketEvent(socket, SOCKET_SERVER.NEW_USER_RESULT, addUserResult);
+  useSocketEvent(socket, SOCKET_SERVER.NEW_RESULT, addResult);
   useSocketEvent(socket, SOCKET_SERVER.NEW_SET, addNewSet);
-  useSocketEvent(socket, SOCKET_SERVER.SET_FINISHED_EVENT, handleSetFinished);
-  useSocketEvent(
-    socket,
-    SOCKET_SERVER.MATCH_FINISHED_EVENT,
-    handleMatchFinished
-  );
+  useSocketEvent(socket, SOCKET_SERVER.SET_FINISHED_EVENT, finishSet);
+  useSocketEvent(socket, SOCKET_SERVER.MATCH_FINISHED_EVENT, finishMatch);
   useSocketEvent(socket, SOCKET_SERVER.ROOM_STARTED, startRoom);
   useSocketEvent(socket, SOCKET_SERVER.ROOM_UPDATE, handleRoomUpdate);
   useSocketEvent(socket, SOCKET_SERVER.ROOM_RESET, resetRoom);
 
+  useSocketEvent(socket, SOCKET_SERVER.RESET_LOCAL_SOLVE, resetLocalSolve);
+
+  useSocketEvent(socket, SOCKET_SERVER.TEAMS_CREATED, createTeams);
+  useSocketEvent(socket, SOCKET_SERVER.TEAM_DELETED, deleteTeam);
+  useSocketEvent(socket, SOCKET_SERVER.USER_JOIN_TEAM, userJoinTeam);
+  useSocketEvent(socket, SOCKET_SERVER.USER_LEAVE_TEAM, userLeaveTeam);
+
+  useSocketEvent(socket, SOCKET_SERVER.TEAM_UPDATE, updateTeam);
+  useSocketEvent(socket, SOCKET_SERVER.TEAMS_UPDATE, updateTeams);
+
   useSocketEvent(socket, SOCKET_SERVER.USER_KICKED, handleLocalUserKicked);
   useSocketEvent(socket, SOCKET_SERVER.USER_BANNED, handleUserBanned);
-  useSocketEvent(socket, SOCKET_SERVER.USER_UNBANNED, handleUserUnbanned);
-  useSocketEvent(socket, SOCKET_SERVER.USER_SUBMITTED_RESULT, addResult);
-  useSocketEvent(socket, SOCKET_SERVER.NEW_HOST, handleNewHost);
+  useSocketEvent(socket, SOCKET_SERVER.USER_UNBANNED, userUnbanned);
+  useSocketEvent(socket, SOCKET_SERVER.NEW_HOST, setHostId);
   useSocketEvent(socket, SOCKET_SERVER.DISCONNECT, handleSocketDisconnect);
 
   /**

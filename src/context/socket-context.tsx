@@ -14,7 +14,7 @@ const SocketContext = createContext<SocketContextValue | null>(null);
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const socket = getSocket();
   const [socketConnected, setSocketConnected] = useState(socket.connected);
-  const { user } = useSession();
+  const user = useSession();
 
   useEffect(() => {
     const onConnect = () => {
@@ -40,9 +40,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   }, [socket, user]);
 
   return (
-    <SocketContext.Provider value={{ socket, socketConnected }}>
+    <SocketContext value={{ socket, socketConnected }}>
       {children}
-    </SocketContext.Provider>
+    </SocketContext>
   );
 }
 

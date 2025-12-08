@@ -1,5 +1,5 @@
-import { IRoom } from "@/types/room";
-import { RoomEvent, RoomFormat, MatchFormat, SetFormat } from "@/types/room";
+import { IRoom, RaceSettings, TeamSettings, Visibility } from "@/types/room";
+import { RoomEvent } from "@/types/room";
 
 /**
  * A summary of the room used for things such as the room listing on the home page.
@@ -9,12 +9,10 @@ export interface IRoomSummary {
   roomName: string;
   numUsers: number; //number of active users
   roomEvent: RoomEvent;
-  roomFormat: RoomFormat;
-  matchFormat?: MatchFormat; //how many sets to take to win
-  setFormat?: SetFormat; //how to win a set
-  nSets?: number; //number for match format
-  nSolves?: number; //number for set format
-  isPrivate: boolean;
+  raceSettings: RaceSettings;
+  teamSettings: TeamSettings;
+  visibility: Visibility;
+  maxUsers: undefined | number;
 }
 
 export function roomToSummary(room: IRoom): IRoomSummary {
@@ -24,15 +22,11 @@ export function roomToSummary(room: IRoom): IRoomSummary {
     numUsers: Object.values(room.users).filter((roomUser) => roomUser.active)
       .length,
     roomEvent: room.settings.roomEvent,
-    roomFormat: room.settings.roomFormat,
-    isPrivate: room.settings.isPrivate,
+    raceSettings: room.settings.raceSettings,
+    teamSettings: room.settings.teamSettings,
+    visibility: room.settings.access.visibility,
+    maxUsers: room.settings.maxUsers,
   };
-  if (roomSummary.roomFormat === "RACING") {
-    roomSummary.matchFormat = room.settings.matchFormat;
-    roomSummary.setFormat = room.settings.setFormat;
-    roomSummary.nSets = room.settings.nSets;
-    roomSummary.nSolves = room.settings.nSolves;
-  }
 
   return roomSummary;
 }

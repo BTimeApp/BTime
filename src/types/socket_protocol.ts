@@ -43,6 +43,26 @@ export enum SOCKET_CLIENT {
   SUBMIT_RESULT = "SUBMIT_RESULT",
 
   /**
+   * Host creates new teams. We force a batched creation to avoid race condition on server.
+   */
+  CREATE_TEAMS = "CREATE_TEAMS",
+
+  /**
+   * Host deletes a team
+   */
+  DELETE_TEAM = "DELETE_TEAM",
+
+  /**
+   * User joins a team
+   */
+  JOIN_TEAM = "JOIN_TEAM",
+
+  /**
+   * User leaves a team (explicit action)
+   */
+  LEAVE_TEAM = "LEAVE_TEAM",
+
+  /**
    * Host starts the room (bring from WAITING to STARTED)
    */
   START_ROOM = "START_ROOM",
@@ -121,11 +141,46 @@ export enum SOCKET_SERVER {
    * User is toggling whether they compete/spectate
    */
   USER_TOGGLE_COMPETING = "USER_TOGGLE_COMPETING",
-  
+
   /**
    * Used for all state updates to the room object (state tied to the Zustand room store)
    */
   ROOM_UPDATE = "ROOM_UPDATE",
+
+  /**
+   * Host creates new team(s)
+   */
+  TEAMS_CREATED = "TEAMS_CREATED",
+
+  /**
+   * Host deletes a team
+   */
+  TEAM_DELETED = "TEAM_DELETED",
+
+  /**
+   * To broadcast any update to a specific team
+   */
+  TEAM_UPDATE = "TEAM_UPDATE",
+
+  /**
+   * To broadcast an update to the general room.teams object
+   */
+  TEAMS_UPDATE = "TEAMS_UPDATE",
+
+  /**
+   * To broadcast that user has joined team
+   */
+  USER_JOIN_TEAM = "USER_JOIN_TEAM",
+
+  /**
+   * User leaves a team (explicit action)
+   */
+  USER_LEAVE_TEAM = "USER_LEAVE_TEAM",
+
+  /**
+   * Tells user to reset any state related to their local solve
+   */
+  RESET_LOCAL_SOLVE = "RESET_LOCAL_SOLVE",
 
   /**
    * Broadcast that the room has started
@@ -153,9 +208,24 @@ export enum SOCKET_SERVER {
   SOLVE_RESET = "SOLVE_RESET",
 
   /**
+   * Broadcast a general update to the current solve
+   */
+  SOLVE_UPDATE = "SOLVE_UPDATE",
+
+  /**
    * Broadcast that a new solve is starting
    */
   NEW_SOLVE = "NEW_SOLVE",
+
+  /**
+   * Broadcast a new attempt
+   */
+  CREATE_ATTEMPT = "CREATE_ATTEMPT",
+
+  /**
+   * Braodcast a delete attempt
+   */
+  DELETE_ATTEMPT = "DELETE_ATTEMPT",
 
   /**
    * Broadcast that a new set is starting
@@ -183,14 +253,19 @@ export enum SOCKET_SERVER {
   USER_UNBANNED = "USER_UNBANNED",
 
   /**
-   * Generic way to update a room user. 
+   * Generic way to update a room user.
    */
   USER_UPDATE = "USER_UPDATE",
 
   /**
-   * Broadcast that a user submitted result
+   * Broadcast a new user result
    */
-  USER_SUBMITTED_RESULT = "USER_SUBMITTED_RESULT",
+  NEW_USER_RESULT = "NEW_USER_RESULT",
+
+  /**
+   * Broadcast a new result
+   */
+  NEW_RESULT = "NEW_RESULT",
 
   /**
    * A new host is assigned.
@@ -200,5 +275,20 @@ export enum SOCKET_SERVER {
   /**
    * Disconnect the socket
    */
-  DISCONNECT = "DISCONNECT"
+  DISCONNECT = "DISCONNECT",
 }
+
+/**
+ * A response type and related callback type for websocket when we need to transport some data.
+ * Includes a reason for failure, which can be passed to user or processed in client side.
+ *
+ * Only need to use this construct when we need feedback in case of failure. If we only need to know the time of success, just use a () => void callback
+ */
+export type SocketResponse<T> =
+  | { success: true; data: T }
+  | {
+      success: false;
+      data?: T;
+      reason: string;
+    };
+export type SocketCallback<T> = (response: SocketResponse<T>) => void;

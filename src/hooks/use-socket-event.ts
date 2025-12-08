@@ -1,5 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Socket } from "socket.io-client";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type GenericFunc = (...args: any[]) => void;
 
 /**
  * A generic hook for attaching listeners (on the client side) for socket events coming in from the server.
@@ -12,19 +14,29 @@ import { Socket } from "socket.io-client";
 export function useSocketEvent(
   socket: Socket,
   event: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  handler: (...args: any[]) => void, 
+  handler: GenericFunc,
   active: boolean = true,
   once: boolean = false
 ) {
+  const handlerRef = useRef<GenericFunc>(handler);
+
+  // Update ref when handler changes (without re-registering)
+  useEffect(() => {
+    handlerRef.current = handler;
+  }, [handler]);
+
   useEffect(() => {
     if (!socket || !active) return;
 
-    if (once) socket.once(event, handler);
-    else socket.on(event, handler);
+    // Wrapper that always calls the latest handler
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const eventHandler = (...args: any[]) => handlerRef.current(...args);
+
+    if (once) socket.once(event, eventHandler);
+    else socket.on(event, eventHandler);
 
     return () => {
-      socket.off(event, handler);
+      socket.off(event, eventHandler);
     };
-  }, [socket, event, handler, active, once]);
+  }, [socket, event, active, once]);
 }

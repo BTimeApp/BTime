@@ -1,9 +1,18 @@
+import { cn } from "@/lib/utils";
 import { LoaderCircle } from "lucide-react";
+import React from "react";
 
-export default function LoadingSpinner() {
+export default function LoadingSpinner({
+  className,
+  ...props
+}: React.ComponentProps<typeof LoaderCircle>) {
   return (
-    <div className="flex items-center justify-center h-[100%]">
-      <LoaderCircle className="animate-spin w-12 h-12 text-primary dark:text-primary-foreground" />
-    </div>
+    <LoaderCircle
+      className={cn(
+        "animate-spin text-primary dark:text-primary-foreground",
+        className
+      )}
+      {...props}
+    />
   );
 }

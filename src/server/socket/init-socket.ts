@@ -13,22 +13,36 @@ import {
   findSetWinners,
   checkMatchFinished,
   findMatchWinners,
-  newScramble,
+  resetSolve,
+  createTeam,
+  userJoinTeam,
+  userLeaveTeam,
+  processNewResult,
+  userJoinRoom,
+  getLatestSolve,
+  getLatestSet,
+  newRoomSet,
+  newAttempt,
 } from "@/lib/room";
 import { IUser, IUserInfo } from "@/types/user";
-import { IRoomUser } from "@/types/room-user";
+import { IRoomTeam, IRoomUser } from "@/types/room-participant";
 import { IResult } from "@/types/result";
 import { SolveStatus } from "@/types/status";
-import { IRoomSolve } from "@/types/room-solve";
 import { ServerResponse } from "http";
 import { NextFunction } from "express";
 import { ObjectId } from "bson";
 import passport from "passport";
 import bcrypt from "bcrypt";
-import { SOCKET_CLIENT, SOCKET_SERVER } from "@/types/socket_protocol";
+import {
+  SOCKET_CLIENT,
+  SOCKET_SERVER,
+  SocketCallback,
+  SocketResponse,
+} from "@/types/socket_protocol";
 import Redis from "ioredis";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { RedisStores } from "@/server/redis/stores";
+import { IAttempt } from "@/types/solve";
 
 //defines useful state variables we want to maintain over the lifestyle of a socket connection (only visible server-side)
 interface CustomSocket extends Socket {
@@ -92,7 +106,6 @@ export const initSocket = (
 };
 
 const listenSocketEvents = (io: Server, stores: RedisStores) => {
-
   async function onConnect(socket: CustomSocket) {
     //check for user. DC if no user
     socket.user = socket.request.user;
@@ -114,45 +127,52 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
     await stores.userSessions.addUserSession(userId, socket.id);
   }
 
+  //TODO: abstract this function away to room lib
   async function handleSolveFinished(room: IRoom) {
     finishRoomSolve(room);
-    const currentSolve = room.solves.at(-1)!;
+    const currentSolve = getLatestSolve(room);
+    const currentSet = getLatestSet(room);
+    if (!currentSolve || !currentSet) return;
+    const participants = room.settings.teamSettings.teamsEnabled
+      ? room.teams
+      : room.users;
 
     // only check set and match wins if not a casual room
-    if (room.settings.roomFormat !== "CASUAL") {
+    if (room.settings.raceSettings.roomFormat !== "CASUAL") {
       //check set finished.
       const setFinished = checkSetFinished(room);
       if (setFinished) {
         // find set winners.
         const setWinners: string[] = findSetWinners(room);
-        currentSolve.setWinners = setWinners;
+        currentSet.winners = setWinners;
+        currentSet.finished = true;
 
         // update set wins for set winners
-        setWinners.map((uid) => (room.users[uid].setWins += 1));
+        setWinners.map((pid) => (participants[pid].setWins += 1));
 
         // reset all users' points
-        Object.values(room.users).map((roomUser) => {
-          roomUser.points = 0;
+        Object.values(participants).map((participant) => {
+          participant.points = 0;
         });
-
-        //publish set finished event with winners
-        io.to(room.id).emit(SOCKET_SERVER.SET_FINISHED_EVENT, setWinners);
 
         // check match finished. right now a match can only be finished if the set is finished.
         const matchFinished = checkMatchFinished(room);
         if (matchFinished) {
           const matchWinners: string[] = findMatchWinners(room);
           //handle match finished
-          room.winners = matchWinners;
+          room.match.winners = matchWinners;
+          room.match.finished = true;
           room.state = "FINISHED";
-          currentSolve.matchWinners = matchWinners;
 
           //publish solve finished after updating match winners, but before sending match finished
           io.to(room.id).emit(
             SOCKET_SERVER.SOLVE_FINISHED_EVENT,
             currentSolve,
-            room.users
+            participants
           );
+
+          //publish set finished event with winners
+          io.to(room.id).emit(SOCKET_SERVER.SET_FINISHED_EVENT, setWinners);
 
           //publish match finished event with winners
           io.to(room.id).emit(SOCKET_SERVER.MATCH_FINISHED_EVENT, matchWinners);
@@ -161,21 +181,20 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           io.to(room.id).emit(
             SOCKET_SERVER.SOLVE_FINISHED_EVENT,
             currentSolve,
-            room.users
+            participants
           );
 
-          // reset solve counter, update set counter - this is done AFTER match finish check so we dont create a non-existent set
-          room.currentSolve = 0;
-          room.currentSet += 1;
+          //publish set finished event with winners
+          io.to(room.id).emit(SOCKET_SERVER.SET_FINISHED_EVENT, setWinners);
 
-          //TODO emit new set event
-          io.to(room.id).emit(SOCKET_SERVER.NEW_SET);
+          const newSet = newRoomSet(room);
+          io.to(room.id).emit(SOCKET_SERVER.NEW_SET, newSet);
         }
       } else {
         io.to(room.id).emit(
           SOCKET_SERVER.SOLVE_FINISHED_EVENT,
           currentSolve,
-          room.users
+          participants
         );
       }
     } else {
@@ -183,12 +202,13 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       io.to(room.id).emit(
         SOCKET_SERVER.SOLVE_FINISHED_EVENT,
         currentSolve,
-        room.users
+        participants
       );
     }
 
     if ((room.state as RoomState) !== "FINISHED") {
-      const newSolve: IRoomSolve = await newRoomSolve(room);
+      const newSolve = await newRoomSolve(room);
+      io.to(room.id).emit(SOCKET_SERVER.TEAMS_UPDATE, room.teams);
       io.to(room.id).emit(SOCKET_SERVER.NEW_SOLVE, newSolve);
     }
   }
@@ -220,6 +240,50 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
     }
     const userId = socket.user!.userInfo.id;
 
+    async function handleUserLeaveTeam(
+      room: IRoom,
+      userId: string,
+      teamId: string
+    ) {
+      const response = await userLeaveTeam(room, userId, teamId);
+
+      if (response.success) {
+        // leave team will both remove user from team AND
+        // remove user attempt + team result (when it exists). This needs to go first.
+        io.to(room.id).emit(
+          SOCKET_SERVER.USER_LEAVE_TEAM,
+          room.users[userId],
+          room.teams[teamId]
+        );
+
+        // tell the user that left to reset their local solve. Doesn't matter if they actually had a solve to begin with.
+        io.to(userId).emit(SOCKET_SERVER.RESET_LOCAL_SOLVE);
+
+        if (response.data) {
+          if (response.data.newAttempt) {
+            io.to(room.id).emit(
+              SOCKET_SERVER.CREATE_ATTEMPT,
+              response.data.newAttempt.userId,
+              response.data.newAttempt.attempt
+            );
+          }
+
+          if (response.data.refreshedTeamResult) {
+            io.to(room.id).emit(
+              SOCKET_SERVER.NEW_RESULT,
+              response.data.refreshedTeamResult.teamId,
+              response.data.refreshedTeamResult.result
+            );
+          }
+        }
+
+        if (checkRoomSolveFinished(room)) {
+          await handleSolveFinished(room);
+        }
+      }
+      await stores.rooms.setRoom(room);
+    }
+
     async function handleUserDisconnect(userId: string) {
       await stores.userSessions.deleteUserSession(userId, socket.id);
 
@@ -232,18 +296,29 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       if (!userId || !roomId) return;
       console.log(`User ${userId} disconnected from room ${roomId}`);
       const room = await stores.rooms.getRoom(roomId);
-      if (!room) return;
+      if (!room || !room.users[userId]) return;
 
-      // mark user as inactive
-      room.users[userId].active = false;
+      if (room.users[userId]) {
+        // mark user as inactive
+        room.users[userId].active = false;
 
-      //TODO - this might not be safe in the future if a timer is supposed to default to something other than IDLE and we persist timertype
-      //unless the user already submitted a time, reset their solve status too
-      if (room.users[userId].userStatus !== "FINISHED") {
-        room.users[userId].userStatus = "IDLE";
+        //TODO - this might not be safe in the future if a timer is supposed to default to something other than IDLE and we persist timertype
+        //unless the user already submitted a time, reset their solve status too
+        if (room.users[userId].solveStatus !== "FINISHED") {
+          room.users[userId].solveStatus = "IDLE";
+        }
+        // if teams is enabled and this user is on a team, force leave team
+        const teamId = room.users[userId].currentTeam;
+        if (room.settings.teamSettings.teamsEnabled && teamId !== undefined) {
+          await handleUserLeaveTeam(room, userId, teamId);
+        }
+
+        io.to(roomId).emit(SOCKET_SERVER.USER_UPDATE, room.users[userId]);
+      } else {
+        console.log(
+          `Warning: user ${userId} does not exist in room ${roomId}'s users but is trying to leave room.`
+        );
       }
-
-      io.to(roomId).emit(SOCKET_SERVER.USER_UPDATE, room.users[userId]);
 
       //check if no more users, if so, schedule room deletion.
       if (
@@ -283,9 +358,9 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       if (checkRoomSolveFinished(room)) {
         await handleSolveFinished(room);
       }
-      
+
       // write room to room store
-      stores.rooms.setRoom(room);
+      await stores.rooms.setRoom(room);
 
       // remove the room from this socket.
       socket.leave(roomId);
@@ -350,7 +425,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         }
 
         // update room store
-        stores.rooms.setRoom(room);
+        await stores.rooms.setRoom(room);
 
         // broadcast room update
         io.to(roomId).emit(SOCKET_SERVER.ROOM_UPDATE, room);
@@ -417,7 +492,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         ) {
           console.log(`User ${userId} double join in room ${roomId}.`);
 
-          // precautionary persist - there is currently a race condition 
+          // precautionary persist - there is currently a race condition
           await stores.rooms.persistRoom(room.id);
 
           joinRoomCallback(true, room, {
@@ -427,18 +502,29 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           return;
         }
 
-        //validate password if room is private AND user isn't host
-        if (room.settings.isPrivate && userId !== room.host?.id) {
-          if (!password) {
-            //this should only occur upon the first join_room ping - safe to return early
-            joinRoomCallback(true, undefined, {});
-            return;
-          }
+        //validate the room still has capacity
+        if (
+          room.settings.maxUsers &&
+          Object.keys(room.users).length >= room.settings.maxUsers
+        ) {
+          console.log(`User ${userId} tried to join a full room ${roomId}.`);
 
+          joinRoomCallback(true, undefined, {
+            ROOM_FULL: "",
+          });
+          return;
+        }
+
+        //validate password if room is private AND user isn't host
+        if (
+          room.settings.access.visibility === "PRIVATE" &&
+          userId !== room.host?.id &&
+          password
+        ) {
           //room password should never be undefined, but just in case, cast to empty string
           const correctPassword = await bcrypt.compare(
             password,
-            room.settings.password ?? ""
+            room.settings.access.password
           );
           if (!correctPassword) {
             console.log(
@@ -460,34 +546,13 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
         const extraData: Record<string, string> = {};
 
-        if (Object.hasOwn(room.users, userId)) {
-          room.users[userId].active = true;
-          room.users[userId].joinedAt = new Date();
-
+        const newUser: boolean = userJoinRoom(room, user);
+        if (!newUser) {
           extraData["EXISTING_USER_INFO"] = userId;
-        } else {
-          const roomUser: IRoomUser = {
-            user: user,
-            points: 0,
-            setWins: 0,
-            joinedAt: new Date(),
-            active: true,
-            competing: true,
-            banned: false,
-            userStatus: "IDLE",
-            currentResult: undefined,
-          };
-
-          room.users[userId] = roomUser;
-        }
-
-        // if there is no host for some reason, promote this user to be host
-        if (!room.host) {
-          room.host = user;
         }
 
         //write room to room store
-        stores.rooms.setRoom(room);
+        await stores.rooms.setRoom(room);
 
         // formally add this socket connection to the room and call the join callback.
         // this callback (for now) should have all of the room data the user needs, so they are excluded from the following broadcast event.
@@ -495,10 +560,21 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         socket.roomId = roomId;
         joinRoomCallback(true, room, extraData);
 
-        //broadcast update to all other users
+        // broadcast update to all other users
         io.to(roomId)
           .except(userId)
           .emit(SOCKET_SERVER.USER_JOINED, room.users[userId]);
+        // if room is started, need to update solves object
+        const currentSolve = getLatestSolve(room);
+        if (
+          room.state === "STARTED" &&
+          !room.settings.teamSettings.teamsEnabled &&
+          currentSolve
+        ) {
+          io.to(roomId)
+            .except(userId)
+            .emit(SOCKET_SERVER.SOLVE_UPDATE, currentSolve);
+        }
       }
     );
 
@@ -512,12 +588,15 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       const room = await getSocketRoom();
       if (!room) return;
 
-      if (room.state == "STARTED") {
-        await newScramble(room);
-        stores.rooms.setRoom(room);
-        io.to(room.id).emit(SOCKET_SERVER.SOLVE_RESET, room.solves.at(-1));
-      } else {
+      const currentSolve = getLatestSolve(room);
+      if (room.state != "STARTED") {
         console.log(`Cannot skip scramble when room state is ${room.state}`);
+      } else if (!currentSolve) {
+        console.log(`Cannot skip scramble when there is no current solve.`);
+      } else {
+        await resetSolve(room);
+        await stores.rooms.setRoom(room);
+        io.to(room.id).emit(SOCKET_SERVER.SOLVE_RESET, currentSolve);
       }
     });
 
@@ -530,7 +609,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
       if (room.state == "STARTED") {
         await handleSolveFinished(room);
-        stores.rooms.setRoom(room);
+        await stores.rooms.setRoom(room);
       } else {
         console.log(`Cannot skip scramble when room state is ${room.state}`);
       }
@@ -538,7 +617,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
     socket.on(SOCKET_CLIENT.BAN_USER, async (userId: string) => {
       const room = await getSocketRoom();
-      if (!room || !await userIsHost()) return;
+      if (!room || !(await userIsHost())) return;
 
       const banUser = room?.users[userId];
       if (!banUser) return;
@@ -548,14 +627,14 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         `User ${socket.user?.userInfo.userName} banned user ${banUser.user.userName} from room ${socket.roomId}.`
       );
 
-      stores.rooms.setRoom(room);
+      await stores.rooms.setRoom(room);
       //broadcast user update to the rest of the room
       io.to(room.id).emit(SOCKET_SERVER.USER_BANNED, userId);
     });
 
     socket.on(SOCKET_CLIENT.UNBAN_USER, async (userId: string) => {
       const room = await getSocketRoom();
-      if (!room || !await userIsHost()) return;
+      if (!room || !(await userIsHost())) return;
 
       const unbanUser = room?.users[userId];
       if (!unbanUser) return;
@@ -565,14 +644,14 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         `User ${socket.user?.userInfo.userName} unbanned user ${unbanUser.user.userName} from room ${socket.roomId}.`
       );
 
-      stores.rooms.setRoom(room);
+      await stores.rooms.setRoom(room);
       //broadcast user update to the rest of the room
       io.to(room.id).emit(SOCKET_SERVER.USER_UNBANNED, userId);
     });
 
     socket.on(SOCKET_CLIENT.KICK_USER, async (userId: string) => {
       const room = await getSocketRoom();
-      if (!room || !await userIsHost()) return;
+      if (!room || !(await userIsHost())) return;
 
       const kickUser = room?.users[userId];
       if (!kickUser) return;
@@ -603,10 +682,14 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
       if (room.state == "WAITING" || room.state == "FINISHED") {
         room.state = "STARTED";
+        const newSet = await newRoomSet(room);
         const newSolve = await newRoomSolve(room);
 
-        stores.rooms.setRoom(room);
+        await stores.rooms.setRoom(room);
         io.to(room.id).emit(SOCKET_SERVER.ROOM_STARTED);
+        io.to(room.id).emit(SOCKET_SERVER.TEAMS_UPDATE, room.teams);
+        //manually remove the solve since we're sending it over the wire right after this - avoids duplicating
+        io.to(room.id).emit(SOCKET_SERVER.NEW_SET, { ...newSet, solves: [] });
         io.to(room.id).emit(SOCKET_SERVER.NEW_SOLVE, newSolve);
       } else {
         console.log(`Cannot start room when room state is ${room.state}`);
@@ -626,7 +709,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       if (room.state == "STARTED" || room.state == "FINISHED") {
         resetRoom(room);
 
-        stores.rooms.setRoom(room);
+        await stores.rooms.setRoom(room);
         io.to(room.id).emit(SOCKET_SERVER.ROOM_RESET);
       } else {
         console.log(`Cannot reset room when room state is ${room.state}`);
@@ -646,7 +729,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       if (room.state == "FINISHED") {
         resetRoom(room);
 
-        stores.rooms.setRoom(room);
+        await stores.rooms.setRoom(room);
         io.to(room.id).emit(SOCKET_SERVER.ROOM_RESET);
       } else {
         console.log(`Cannot rematch room when room state is ${room.state}`);
@@ -664,30 +747,30 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           if (!room) return;
 
           const currentUserStatus: SolveStatus =
-            room.users[socket.user?.userInfo.id].userStatus;
+            room.users[socket.user?.userInfo.id].solveStatus;
           if (newUserStatus == currentUserStatus) {
             console.log(
-              `User ${socket.user?.userInfo.id} submitted new user status to room ${socket.roomId} which is the same as old user status.`
+              `User ${socket.user?.userInfo.id} submitted new user status ${newUserStatus} to room ${socket.roomId} which is the same as old user status.`
             );
           } else {
             console.log(
               `User ${socket.user?.userInfo.userName} submitted new user status ${newUserStatus} to room ${socket.roomId}`
             );
-            room.users[socket.user?.userInfo.id].userStatus = newUserStatus;
+            room.users[socket.user?.userInfo.id].solveStatus = newUserStatus;
 
-            if (newUserStatus === "FINISHED") {
-              const solveFinished: boolean = checkRoomSolveFinished(room);
-              if (solveFinished) {
-                await handleSolveFinished(room);
-              }
-            }
-
-            stores.rooms.setRoom(room);
             io.to(socket.roomId).emit(
               SOCKET_SERVER.USER_STATUS_UPDATE,
               userId,
               newUserStatus
             );
+
+            // if (newUserStatus === "FINISHED") {
+            //   if (checkRoomSolveFinished(room)) {
+            //     await handleSolveFinished(room);
+            //   }
+            // }
+
+            await stores.rooms.setRoom(room);
           }
         }
       }
@@ -727,8 +810,6 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
     socket.on(
       SOCKET_CLIENT.SUBMIT_RESULT,
       async (result: IResult, onSuccessCallback?: () => void) => {
-        // we store results as an easily-serializable type and reconstruct on client when needed.
-        // Socket.io does not preserve complex object types over the network, so it makes it hard to pass Result types around anyways.
         if (socket.roomId && socket.user) {
           const room = await stores.rooms.getRoom(socket.roomId);
           if (!room) return;
@@ -739,7 +820,8 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
             );
             return;
           }
-          if (room.solves.length == 0) {
+          const currentSolve = getLatestSolve(room);
+          if (!currentSolve) {
             console.log(
               `User ${socket.user?.userInfo.id} tried to submit a result to ${socket.roomId} when there are no solves in the room.`
             );
@@ -750,23 +832,172 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
             `User ${socket.user?.userInfo.userName} submitted new result ${result} to room ${socket.roomId}`
           );
 
-          const solveObject: IRoomSolve = room.solves.at(-1)!;
-          solveObject.solve.results[socket.user?.userInfo.id] = result;
+          const updatedTeam = processNewResult(
+            room,
+            socket.user.userInfo.id,
+            result
+          );
 
-          room.users[socket.user?.userInfo.id].currentResult = result;
-
-          stores.rooms.setRoom(room);
-          //broadcast user submit event to other users
           io.to(socket.roomId).emit(
-            SOCKET_SERVER.USER_SUBMITTED_RESULT,
+            SOCKET_SERVER.NEW_USER_RESULT,
             userId,
             result
           );
+
+          if (updatedTeam !== undefined) {
+            io.to(socket.roomId).emit(SOCKET_SERVER.TEAM_UPDATE, updatedTeam);
+            // this is the wrong result!
+            io.to(socket.roomId).emit(
+              SOCKET_SERVER.NEW_RESULT,
+              updatedTeam.team.id,
+              currentSolve.solve.results[updatedTeam.team.id]
+            );
+          } else {
+            io.to(socket.roomId).emit(SOCKET_SERVER.NEW_RESULT, userId, result);
+          }
+
           onSuccessCallback?.();
+
+          if (checkRoomSolveFinished(room)) {
+            await handleSolveFinished(room);
+          }
+          await stores.rooms.setRoom(room);
         }
       }
     );
 
+    /**
+     * Upon host requesting a new team created
+     */
+    socket.on(
+      SOCKET_CLIENT.CREATE_TEAMS,
+      async (
+        teamNames: string[],
+        createTeamCallback: SocketCallback<undefined>
+      ) => {
+        const room = await getSocketRoom();
+        if (!room) {
+          createTeamCallback({ success: false, reason: "Room does not exist" });
+          return;
+        } else if (!(await userIsHost())) {
+          createTeamCallback({
+            success: false,
+            reason: "User is not host user",
+          });
+          return;
+        } else if (!room.settings.teamSettings.teamsEnabled) {
+          createTeamCallback({
+            success: false,
+            reason: "Teams mode is not enabled in this room",
+          });
+          return;
+        } else if (
+          room.settings.teamSettings.maxNumTeams &&
+          Object.keys(room.teams).length >=
+            room.settings.teamSettings.maxNumTeams
+        ) {
+          createTeamCallback({
+            success: false,
+            reason: "Maximum amount of teams already created",
+          });
+          return;
+        }
+
+        const newTeams = [] as IRoomTeam[];
+
+        for (const teamName of teamNames) {
+          if (
+            room.settings.teamSettings.maxNumTeams &&
+            Object.keys(room.teams).length >=
+              room.settings.teamSettings.maxNumTeams
+          ) {
+            break;
+          }
+          const newTeam = createTeam(room, teamName);
+          room.teams[newTeam.team.id] = newTeam;
+          newTeams.push(newTeam);
+        }
+
+        //persist to redis
+        await stores.rooms.setRoom(room);
+
+        console.log(
+          `New team(s) created in room ${socket.roomId}: ${teamNames}`
+        );
+
+        //broadcast new team event
+        io.to(room.id).emit(SOCKET_SERVER.TEAMS_CREATED, newTeams);
+
+        createTeamCallback({ success: true, data: undefined });
+      }
+    );
+
+    /**
+     * Upon host requesting a team deleted
+     */
+    socket.on(SOCKET_CLIENT.DELETE_TEAM, async (teamId: string) => {
+      const room = await getSocketRoom();
+      if (
+        !room ||
+        !(await userIsHost()) ||
+        !room.settings.teamSettings.teamsEnabled
+      )
+        return;
+
+      console.log(`Team ${teamId} deleted in room ${socket.roomId}`);
+
+      delete room.teams[teamId];
+      await stores.rooms.setRoom(room);
+
+      io.to(room.id).emit(SOCKET_SERVER.TEAM_DELETED, teamId);
+    });
+
+    /**
+     * Upon user trying to join team
+     */
+    socket.on(
+      SOCKET_CLIENT.JOIN_TEAM,
+      async (teamId: string, joinTeamCallback: SocketCallback<undefined>) => {
+        const user = socket.user;
+        const room = await getSocketRoom();
+        if (!room || !user || !room.settings.teamSettings.teamsEnabled) return;
+
+        const response: SocketResponse<{
+          resetTeamResult: boolean;
+          attempt: IAttempt | undefined;
+        }> = await userJoinTeam(room, user.userInfo.id, teamId);
+
+        if (response.success) {
+          await stores.rooms.setRoom(room);
+
+          io.to(room.id).emit(
+            SOCKET_SERVER.USER_JOIN_TEAM,
+            room.users[user.userInfo.id],
+            room.teams[teamId],
+            response.data
+          );
+        }
+
+        joinTeamCallback({ ...response, data: undefined });
+      }
+    );
+
+    /**
+     * Upon user trying to leave team
+     */
+    socket.on(SOCKET_CLIENT.LEAVE_TEAM, async (teamId: string) => {
+      const user = socket.user;
+      const room = await getSocketRoom();
+      if (
+        !room ||
+        !user ||
+        !room.settings.teamSettings.teamsEnabled ||
+        !room.teams[teamId]
+      )
+        return;
+
+      await handleUserLeaveTeam(room, user.userInfo.id, teamId);
+    });
     /**
      * Upon user pressing compete/spectate button
      */
@@ -776,8 +1007,24 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         if (
           !room ||
           room.users[socket.user?.userInfo.id].competing == competing
-        )
+        ) {
+          console.log(
+            `User ${
+              socket.user?.userInfo.id
+            } tried to toggle competing status to the same as it currently is: ${
+              competing ? "competing" : "spectating"
+            } in room ${socket.roomId}`
+          );
           return;
+        }
+
+        if (room.settings.teamSettings.teamsEnabled) {
+          // users should never try to toggle their competing mode when in teams mode
+          console.log(
+            `User ${socket.user?.userInfo.id} tried to toggle competing status while teams is enabled in room ${socket.roomId}`
+          );
+          return;
+        }
 
         console.log(
           `User ${socket.user?.userInfo.id} is now ${
@@ -786,19 +1033,42 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         );
         room.users[socket.user?.userInfo.id].competing = competing;
 
-        // when user spectates, need to check if all competing users are done, then advance room
-        if (room.state === "STARTED") {
-          const solveFinished: boolean = checkRoomSolveFinished(room);
-          if (solveFinished) {
-            handleSolveFinished(room);
-          }
-        }
-        stores.rooms.setRoom(room);
         io.to(socket.roomId).emit(
           SOCKET_SERVER.USER_TOGGLE_COMPETING,
           userId,
           competing
         );
+
+        // when user spectates, need to check if all competing users are done, then advance room
+        if (room.state === "STARTED") {
+          if (competing) {
+            //if user is now competing, we need to add an attempt for them if none exists yet. TODO
+            // right now, the only way the TOGGLE_COMPETING event is triggered is through the button on UI that only shows up in SOLO.
+            const currentSolve = getLatestSolve(room);
+
+            if (currentSolve && !currentSolve.solve.attempts[userId]) {
+              const attempt = newAttempt(
+                room,
+                currentSolve.solve.scrambles[0],
+                userId
+              );
+
+              if (attempt) {
+                io.to(socket.roomId).emit(
+                  SOCKET_SERVER.CREATE_ATTEMPT,
+                  userId,
+                  attempt
+                );
+              }
+            }
+          } else {
+            // if user is now spectating, we need to check if the room solve is finished and handle
+            if (checkRoomSolveFinished(room)) {
+              await handleSolveFinished(room);
+            }
+          }
+        }
+        await stores.rooms.setRoom(room);
       } else {
         console.log(
           `Either roomId or userId not set on socket: ${socket.roomId}, ${socket.user?.userInfo.id}`

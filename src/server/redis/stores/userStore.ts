@@ -10,7 +10,7 @@ import { REDIS_KEY_REGISTRY } from "@/server/redis/key-registry";
  *  - user:[userId] -> IUserInfo hash
  */
 
-const USER_KEY_PREFIX = 'user:'
+const USER_KEY_PREFIX = "user:";
 
 function userKey(userId: string) {
   return USER_KEY_PREFIX + userId;
@@ -44,4 +44,4 @@ export function createUserStore(redis: Redis) {
 }
 
 export type UserStore = ReturnType<typeof createUserStore>;
-REDIS_KEY_REGISTRY.registerKey(USER_KEY_PREFIX)
+REDIS_KEY_REGISTRY.registerKey(USER_KEY_PREFIX);

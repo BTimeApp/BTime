@@ -9,8 +9,8 @@ type KeyListenerProps = {
   children?: React.ReactNode;
 };
 
-/** A listener component that triggers optional callbacks when the key is first pressed or released. 
- * 
+/** A listener component that triggers optional callbacks when the key is first pressed or released.
+ *
  */
 function KeyListener({
   keyName = "Space",
@@ -18,10 +18,10 @@ function KeyListener({
   onKeyUp,
   onDismount,
   forceInitialValue = false,
-  children
+  children,
 }: KeyListenerProps) {
-  /** It is not possible to listen to the actual state of the key upon first mounting. 
-   *  That would require listening some global key state tracking/listeners that aren't necessary yet. 
+  /** It is not possible to listen to the actual state of the key upon first mounting.
+   *  That would require listening some global key state tracking/listeners that aren't necessary yet.
    *  TODO - implement such trackers/listeners if need arises
    */
   const isPressedRef = useRef(forceInitialValue);
@@ -54,6 +54,6 @@ function KeyListener({
   if (!children) return null;
 
   return children;
-};
+}
 
 export default KeyListener;

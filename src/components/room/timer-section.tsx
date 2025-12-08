@@ -6,7 +6,7 @@ import { CallbackInput } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import InspectionCountdown from "@/components/room/inspection-countdown";
 import { useRoomStore } from "@/context/room-context";
-import { GanTimer } from "@/components/room/gan-timer";
+import { SmartTimer } from "@/components/room/smart-timer";
 
 function TimerSection() {
   const [spacebarDown, setSpacebarDown] = useState<boolean>(false);
@@ -35,6 +35,9 @@ function TimerSection() {
   const endStringTimerCallback = useCallback(
     (value: string) => {
       try {
+        if (value === "") {
+          return;
+        }
         setLocalResult(new Result(value, localPenalty));
         updateLocalSolveStatus();
       } catch {
@@ -73,7 +76,7 @@ function TimerSection() {
               <div>Press Enter to submit time</div>
               <CallbackInput
                 type="text"
-                className="text-center text-4xl mx-auto"
+                className="text-center text-4xl mx-auto bg-container-1/70 border-none"
                 onEnter={endStringTimerCallback}
               />
             </>
@@ -85,6 +88,7 @@ function TimerSection() {
           return (
             <>
               <div>Waiting for others to finish</div>
+              <div className="text-4xl">{localResult.toString()}</div>
             </>
           );
       }
@@ -102,12 +106,10 @@ function TimerSection() {
               <KeyListener
                 keyName="Space"
                 onKeyUp={() => {
-                  console.log("keyup");
                   setSpacebarDown(false);
                   updateLocalSolveStatus(); //updateLocalSolveStatus
                 }}
                 onKeyDown={() => {
-                  console.log("keydown");
                   setSpacebarDown(true);
                 }}
               >
@@ -160,21 +162,23 @@ function TimerSection() {
           return (
             <>
               <div>Waiting for others to finish</div>
+              <div className="text-4xl">{localResult.toString()}</div>
             </>
           );
         default:
           return <></>;
       }
       break;
-    case "GANTIMER":
+    case "BLUETOOTH":
       return (
-        <GanTimer
+        <SmartTimer
           onFinishInspection={endInspectionCallback}
           onFinishTimer={endNumberTimerCallback}
         />
       );
       break;
     default:
+      console.warn(`Illegal timer type encountered: ${timerType}`);
       return;
   }
 }

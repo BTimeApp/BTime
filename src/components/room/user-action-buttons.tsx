@@ -36,7 +36,7 @@ export function KickUserButton({
   const { socket } = useSocket();
 
   const kickUser = useCallback(() => {
-    console.log(`Kicking user ${userId}`)
+    console.log(`Kicking user ${userId}`);
     socket.emit(SOCKET_CLIENT.KICK_USER, userId);
     onClick?.();
   }, [socket, userId, onClick]);

@@ -1,7 +1,7 @@
 import { IRoom } from "@/types/room";
 import { Redis } from "ioredis";
 import { REDIS_KEY_REGISTRY } from "@/server/redis/key-registry";
-import { roomToSummary } from "@/types/room-listing-info";
+import { IRoomSummary, roomToSummary } from "@/types/room-listing-info";
 /**
  * Defines the Redis store for rooms
  *
@@ -30,7 +30,7 @@ export async function createRoomStore(redis: Redis, subClient: Redis) {
       channel === "__keyevent@0__:expired" &&
       key.startsWith(ROOM_KEY_PREFIX)
     ) {
-      console.log(`Room ${key} has expired. Deleting.`)
+      console.log(`Room ${key} has expired. Deleting.`);
       await redis.zrem(ROOMS_KEY, key);
     }
   });
@@ -104,25 +104,49 @@ export async function createRoomStore(redis: Redis, subClient: Redis) {
       //get the newest rooms
       const roomKeys = await redis.zrevrange(ROOMS_KEY, start, stop);
 
-      const transaction = redis.multi();
-      for (const roomKey of roomKeys) {
-        transaction.call("JSON.GET", roomKey, "$");
+      // Handle empty case
+      if (roomKeys.length === 0) {
+        const totalRooms = await redis.zcard(ROOMS_KEY);
+        const totalPages = Math.max(Math.ceil(totalRooms / pageSize), 1);
+        return { roomSummaries: [], totalPages, totalRooms };
       }
-      const roomStrings = await transaction.exec();
 
-      // we are ok with returning null if there are no rooms
-      const roomSummaries = roomStrings?.map(([err, json]) => {
-        if (err) throw err;
-        // This means the room is missing. This could be the fault of keyspace event pub/sub being best-effort only
-        if (!json) return;
-        const parsed = JSON.parse(json as string)[0];
-        return roomToSummary(parsed);
-      });
+      try {
+        // keys is an array of key names, path is the JSON path (defaulting to the root '$')
+        // The command is called using the client.call() method for custom Redis Stack commands
+        const roomStrings = (await redis.call("JSON.MGET", [
+          ...roomKeys,
+          "$",
+        ])) as (string | null)[];
+        const missingRoomKeys: string[] = [];
 
-      const totalRooms = await redis.zcard(ROOMS_KEY);
-      const totalPages = Math.max(Math.ceil(totalRooms / pageSize), 1); //there should always be at least 1 page, even when there are no rooms
+        // we are ok with returning null if there are no rooms
+        const roomSummaries = roomStrings
+          ?.map((json, idx) => {
+            if (!json) {
+              // This means the room is missing.
+              // This could be the fault of keyspace event pub/sub being best-effort only or other weird behavior
+              missingRoomKeys.push(roomKeys[idx]);
+              return;
+            }
+            const parsed = JSON.parse(json)[0];
+            return roomToSummary(parsed);
+          })
+          .filter((val: IRoomSummary | undefined) => val !== undefined);
 
-      return { roomSummaries, totalPages, totalRooms };
+        //remove missing rooms from redis
+        if (missingRoomKeys.length > 0) {
+          await redis.zrem(ROOMS_KEY, missingRoomKeys);
+        }
+
+        const totalRooms = await redis.zcard(ROOMS_KEY);
+        const totalPages = Math.max(Math.ceil(totalRooms / pageSize), 1); //there should always be at least 1 page, even when there are no rooms
+
+        return { roomSummaries, totalPages, totalRooms };
+      } catch (error) {
+        console.error("Error fetching JSON data with JSON.MGET:", error);
+        throw error;
+      }
     },
   };
 }

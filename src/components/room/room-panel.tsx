@@ -1,13 +1,19 @@
 import { useRoomStore } from "@/context/room-context";
 import { cn } from "@/lib/utils";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useMemo } from "react";
 import {
-  getFormatText,
-  getVerboseFormatText,
-  ROOM_EVENT_JS_NAME_MAP,
+  getRaceFormatText,
+  getTeamFormatText,
+  getVerboseRaceFormatTextLines,
+  getVerboseTeamFormatTextLines,
+  ROOM_EVENTS_INFO,
 } from "@/types/room";
 import GlobalTimeList from "@/components/room/global-time-list";
-import { IRoomUser } from "@/types/room-user";
+import {
+  IRoomParticipant,
+  IRoomTeam,
+  IRoomUser,
+} from "@/types/room-participant";
 import { Result } from "@/types/result";
 import { Button } from "@/components/ui/button";
 import { Settings } from "lucide-react";
@@ -21,24 +27,31 @@ import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
-} from "../ui/resizable";
+} from "@/components/ui/resizable";
+import CreateTeamDialog from "@/components/room/create-team-dialog";
+import {
+  JoinTeamButton,
+  LeaveTeamButton,
+} from "@/components/room/team-action-buttons";
+import RoomTeamDialog from "@/components/room/room-team-dialog";
 
 type RoomPanelProps = {
   className?: string;
   /**
    * Type of Room Panel we want to render.
    *   user - displays info about a user or the user's active panel for the room
+   *   team - displays info about a team or the team's active panel for the room
    *   summary - displays summary info about the room. use for when the room is STARTED
    *   info - displays high-level info about the room. use for when the room is WAITING or FINISHED
-   *   userlist - displays info about users in the room (competitors, spectators)
+   *   participantlist - displays info about participants in the room (competitors, spectators)
    */
-  type?: "user" | "summary" | "info" | "userlist";
+  type?: "user" | "team" | "summary" | "info" | "participantlist";
   /**
    * whether this panel belongs on the left or right (in a web display). On small screens, might be top and bottom.
    */
   side?: "left" | "right";
-  userId?: string; //if this is a user panel, the userId corresponding to the user
-  isLocalUser?: boolean;
+  userId?: string; //if this is a user panel, userId map to the user
+  teamId?: string; //if this is a team panel, teamId map to the team
   inCarousel?: boolean; //if we are in a carousel
 };
 
@@ -52,45 +65,17 @@ type SubRoomPanelBaseProps = {
 
 type UserRoomPanelProps = SubRoomPanelBaseProps & {
   userId: string; //user associated with this panel
-  isLocalUser?: boolean;
+};
+
+type TeamRoomPanelProps = SubRoomPanelBaseProps & {
+  teamId?: string; //team associated with this panel. This is optional because it's possible for local user to not have a team
 };
 
 type SummaryRoomPanelProps = SubRoomPanelBaseProps & {};
 
 type InfoRoomPanelProps = SubRoomPanelBaseProps & {};
 
-type UserListRoomPanelProps = SubRoomPanelBaseProps & {};
-
-// TODO: buggy - exceeds height limits and causes room to scroll
-// function UserTimeList({
-//   userId,
-//   className = "",
-// }: {
-//   userId: string;
-//   className?: string;
-// }) {
-//   const [solves, currentSet] = useRoomStore((s) => [s.solves, s.currentSet]);
-
-//   return (
-//     <div className={cn("flex flex-col", className)}>
-//       <p>Times</p>
-//       <div className="flex-1 min-h-0">
-//         {solves //all solves
-//           .filter((userResult) => userResult.setIndex == currentSet) //from current set
-//           .map((solve) => solve.solve.results[userId]) //get result belonging to local user
-//           .slice(0, -1) //exclude current solve
-//           .reverse()
-//           .map((userResult, index) =>
-//             userResult === undefined ? (
-//               <p key={index}>---</p>
-//             ) : (
-//               <p key={index}>{Result.fromIResult(userResult).toString()}</p>
-//             )
-//           )}
-//       </div>
-//     </div>
-//   );
-// }
+type ParticipantListRoomPanelProps = SubRoomPanelBaseProps & {};
 
 function UserStatusSection({
   className,
@@ -99,39 +84,107 @@ function UserStatusSection({
   className?: string;
   userId: string;
 }) {
-  const [users] = useRoomStore((s) => [s.users]);
-  return (
-    <div className={className}>
-      <p>{users[userId].userStatus}</p>
-    </div>
-  );
+  const [users, userLiveTimes, userLiveTimerStartTimes] = useRoomStore((s) => [
+    s.users,
+    s.userLiveTimes,
+    s.userLiveTimerStartTimes,
+  ]);
+  const user = useMemo(() => {
+    return users[userId];
+  }, [users, userId]);
+
+  if (!user) {
+    return <></>;
+  }
+
+  if (!user.competing) {
+    return <div className={className}>SPECTATING</div>;
+  } else {
+    if (user.solveStatus == "FINISHED" && user.currentResult) {
+      return (
+        <div className={className}>
+          {Result.fromIResult(user.currentResult).toString()}
+        </div>
+      );
+    } else if (
+      user.solveStatus === "SOLVING" &&
+      userLiveTimerStartTimes[user.user.id]
+    ) {
+      return (
+        <UserLiveTimer
+          className={className}
+          startTime={userLiveTimerStartTimes[user.user.id]!}
+        />
+      );
+    } else if (
+      user.solveStatus === "SUBMITTING" &&
+      userLiveTimes[user.user.id]
+    ) {
+      return (
+        <div className={cn("italic", className)}>
+          {Result.timeToString(Math.floor(userLiveTimes[user.user.id]! / 10))}
+        </div>
+      );
+    } else {
+      return <div className={className}>{user.solveStatus}</div>;
+    }
+  }
+}
+
+function TeamStatusSection({
+  className,
+  teamId,
+}: {
+  className?: string;
+  teamId: string;
+}) {
+  const [teams] = useRoomStore((s) => [s.teams]);
+  const team = useMemo(() => {
+    return teams[teamId];
+  }, [teams, teamId]);
+
+  if (!team) {
+    return <></>;
+  }
+  //TODO - augment this by showing the "so far" result for the team
+
+  if (team.solveStatus == "FINISHED" && team.currentResult) {
+    return (
+      <div className={className}>
+        {Result.fromIResult(team.currentResult).toString()}
+      </div>
+    );
+  } else {
+    return <div className={className}>{team.solveStatus}</div>;
+  }
 }
 
 function UserCenterSection({
   className = "",
-  // side,
   userId,
   isLocalUser = false,
-}: UserRoomPanelProps) {
-  const [users, solveStatus, solves, roomEvent, drawScramble] = useRoomStore(
-    (s) => [s.users, s.localSolveStatus, s.solves, s.roomEvent, s.drawScramble]
+}: {
+  className?: string;
+  userId: string;
+  isLocalUser: boolean;
+}) {
+  const [users, solveStatus, match, roomEvent, drawScramble] = useRoomStore(
+    (s) => [s.users, s.localSolveStatus, s.match, s.roomEvent, s.drawScramble]
   );
 
   if (!users[userId]) {
     return null;
   }
 
-  const currScramble = solves.length > 0 ? solves.at(-1)?.solve.scramble : "";
+  const currScramble =
+    match.sets.at(-1)?.solves.at(-1)?.solve.attempts[userId]?.scramble ?? "";
+
   return (
-    <div className={cn("flex flex-row w-full h-full", className)}>
-      {/* TODO: figure out why the time lists cause the screen to get longer */}
-      {/* {side === "right" && (
-          <UserTimeList userId={userId} className="max-h-[50%]" />
-        )} */}
-      <div className="flex flex-col grow w-full">
+    <div className={cn("flex flex-row h-full w-full", className)}>
+      <div className="flex flex-col grow w-full h-full">
         <div className="flex-0 flex flex-col">
           {solveStatus !== "FINISHED" && (
-            <div className="text-2xl">{currScramble}</div>
+            <div className="text-xl">{currScramble}</div>
           )}
         </div>
         <div className="flex-1 flex flex-col justify-center">
@@ -142,50 +195,184 @@ function UserCenterSection({
                 {solveStatus === "SUBMITTING" && <RoomSubmittingButtons />}
               </>
             ) : (
-              <div>You are spectating. Compete to use timer.</div>
+              <p className="text-xl">
+                You are spectating. Compete to use timer.
+              </p>
             )
           ) : (
-            <UserStatusSection className="text-2xl font-bold" userId={userId} />
+            <UserStatusSection className="text-4xl font-bold" userId={userId} />
           )}
         </div>
         <div className="flex-0 flex flex-col">
-          {drawScramble && solveStatus !== "FINISHED" && (
-            // <scramble-display
-            //   className="w-full h-45"
-            //   scramble={currScramble}
-            //   event={ROOM_EVENT_JS_NAME_MAP.get(roomEvent) ?? null}
-            // />
-            <twisty-player
-              experimental-setup-alg={currScramble}
-              puzzle={ROOM_EVENT_JS_NAME_MAP.get(roomEvent) ?? "3x3x3"}
-              visualization="2D"
-              control-panel="none"
-              className="w-full h-45"
-              background="none"
-            />
-          )}
+          {drawScramble &&
+            solveStatus !== "FINISHED" &&
+            users[userId].competing &&
+            (currScramble ? (
+              // <scramble-display
+              //   className="w-full h-45"
+              //   scramble={currScramble}
+              //   event={ROOM_EVENT_JS_NAME_MAP.get(roomEvent) ?? null}
+              // />
+              <twisty-player
+                experimental-setup-alg={currScramble}
+                puzzle={ROOM_EVENTS_INFO[roomEvent].jsName ?? "3x3x3"}
+                visualization="2D"
+                control-panel="none"
+                className="w-full h-40 md:h-48 xl:h-54 2xl:h-60"
+                background="none"
+              />
+            ) : (
+              <div>missing scramble...</div>
+            ))}
         </div>
       </div>
-      {/* {side === "left" && (
-          <UserTimeList userId={userId} className="max-h-[50%]" />
-        )} */}
     </div>
   );
 }
 
-function UserRoomPanel({
-  className,
-  side,
-  userId,
-  isLocalUser,
-}: UserRoomPanelProps) {
+function TeamCenterSection({
+  className = "",
+  teamId,
+  isLocalTeam = false,
+}: {
+  className?: string;
+  teamId?: string;
+  isLocalTeam: boolean;
+}) {
+  const localUser = useSession();
+  const [users, teams, match, teamSettings] = useRoomStore((s) => [
+    s.users,
+    s.teams,
+    s.match,
+    s.teamSettings,
+  ]);
+
+  const allTeamUserIds = teamId
+    ? Object.values(teams[teamId].team.members)
+    : [];
+  const teamUserIds = allTeamUserIds.filter(
+    (roomUserId) => roomUserId != localUser?.userInfo.id
+  );
+  const currentSolve = match.sets.at(-1)?.solves.at(-1);
+
+  if (!teamSettings.teamsEnabled) {
+    return <></>;
+  } else if (!teamId) {
+    if (isLocalTeam) {
+      //user is not on a team. show spectating message
+      return (
+        <div className={cn("flex flex-row w-full h-full", className)}>
+          <div className="flex flex-col grow w-full">
+            <div>You are spectating. Join a team to see team view.</div>
+          </div>
+        </div>
+      );
+    }
+
+    // team doesn't exist. return nothing
+    return <></>;
+  } else if (!teams[teamId]) {
+    // team doesn't exist
+    return <></>;
+  }
+
+  switch (teamSettings.teamFormatSettings.teamSolveFormat) {
+    case "ONE":
+      const currentTurnUser = teams[teamId].currentMember;
+
+      return (
+        <div className={cn("flex flex-row w-full h-full", className)}>
+          <div className="flex flex-col grow w-full items-center">
+            {currentTurnUser && (
+              <>
+                <div className="flex-0 text-lg font-bold">
+                  {"Current Solver: " + users[currentTurnUser].user.userName}
+                </div>
+                <UserCenterSection
+                  userId={currentTurnUser}
+                  isLocalUser={currentTurnUser === localUser?.userInfo.id}
+                  className="flex-0"
+                />
+              </>
+            )}
+            <div className="flex-0 text-lg font-bold w-fit">Team Members</div>
+            <div className="flex-1 overflow-y-auto max-h-[25vh] w-fit">
+              {allTeamUserIds.map((teamUserId, idx) => {
+                return (
+                  <div
+                    key={idx}
+                    className={
+                      currentTurnUser === teamUserId ? "font-bold" : ""
+                    }
+                  >
+                    {users[teamUserId].user.userName}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+
+    case "ALL":
+      return (
+        <div className={cn("flex flex-row w-full h-full", className)}>
+          <div className="flex flex-col w-full h-full">
+            {isLocalTeam && localUser && (
+              <>
+                <div className="flex-0 text-lg font-bold">
+                  {localUser.userInfo.userName}
+                </div>
+                <UserCenterSection
+                  userId={localUser.userInfo.id}
+                  isLocalUser={true}
+                  className="flex-0"
+                />
+              </>
+            )}
+            <div className="flex flex-0 text-lg font-bold">
+              {isLocalTeam ? "Your Teammates" : "Team Members"}
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              {teamUserIds.map((teamUserId, idx) => {
+                return (
+                  <div key={idx} className="grid grid-cols-4">
+                    <div className="col-span-3">
+                      {users[teamUserId].user.userName}
+                    </div>
+                    <div>
+                      {currentSolve !== undefined && (
+                        <UserStatusSection userId={teamUserId} />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    default:
+      return <></>;
+  }
+}
+
+function UserRoomPanel({ className, userId }: UserRoomPanelProps) {
+  const localUser = useSession();
   const [users] = useRoomStore((s) => [s.users]);
+
+  const isLocalUser = useMemo(() => {
+    return localUser?.userInfo.id === userId;
+  }, [userId, localUser]);
 
   return (
     <div
-      className={cn(["flex flex-col text-center h-full w-full p-2", className])}
+      className={cn([
+        "flex flex-col text-center h-full w-full p-2 gap-2",
+        className,
+      ])}
     >
-      <div className="flex flex-row w-full shrink-0 relative">
+      <div className="flex flex-row w-full relative">
         <div className="grow">
           <p className="text-2xl font-bold">{users[userId]?.user.userName}</p>
         </div>
@@ -205,10 +392,10 @@ function UserRoomPanel({
         )}
       </div>
 
-      <div className="flex flex-col flex-1 min-h-0 justify-center">
+      <div className="flex flex-col flex-1 min-h-0">
+        {/* <div className="flex flex-col flex-1 min-h-0 justify-center"> */}
         <UserCenterSection
           className={className}
-          side={side}
           userId={userId}
           isLocalUser={isLocalUser}
         />
@@ -218,48 +405,102 @@ function UserRoomPanel({
   );
 }
 
-function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
-  const { user: localUser } = useSession();
-
-  const [
-    users,
-    solves,
-    roomName,
-    roomEvent,
-    roomFormat,
-    roomState,
-    setFormat,
-    nSets,
-    nSolves,
-    userLiveTimerStartTimes,
-    userLiveTimes,
-    isUserHost,
-  ] = useRoomStore((s) => [
+function TeamRoomPanel({ className, teamId }: TeamRoomPanelProps) {
+  const localUser = useSession();
+  const [users, teams, teamSettings] = useRoomStore((s) => [
     s.users,
-    s.solves,
-    s.roomName,
-    s.roomEvent,
-    s.roomFormat,
-    s.roomState,
-    s.setFormat,
-    s.nSets,
-    s.nSolves,
-    s.userLiveTimerStartTimes,
-    s.userLiveTimes,
-    s.isUserHost,
+    s.teams,
+    s.teamSettings,
   ]);
-  const [sortedActiveUsers, setSortedActiveUsers] = useState<IRoomUser[]>(
-    Object.values(users).filter((roomUser) => roomUser.active)
-  );
 
-  const userSortKeyCallback = useCallback(
-    (u1: IRoomUser, u2: IRoomUser) => {
+  // analogous to isLocalUser - is this team the one that belongs to the local user?
+  const isLocalTeam = useMemo(() => {
+    return (
+      localUser !== null && users[localUser.userInfo.id]?.currentTeam === teamId
+    );
+  }, [teamId, localUser, users]);
+
+  if (!teamSettings.teamsEnabled) {
+    return null;
+  }
+
+  return (
+    <div
+      className={cn([
+        "flex flex-col text-center h-full w-full p-2 gap-2",
+        className,
+      ])}
+    >
+      <div className="flex flex-row flex-0 w-full relative">
+        {teamId && (
+          <div className="absolute top-0 left-0">
+            {isLocalTeam ? (
+              <LeaveTeamButton teamId={teamId} />
+            ) : (
+              localUser &&
+              users[localUser.userInfo.id]?.currentTeam === undefined && (
+                <JoinTeamButton teamId={teamId} />
+              )
+            )}
+          </div>
+        )}
+        <div className="grow">
+          <p className="text-2xl font-bold">
+            {teamId ? teams[teamId].team.name : ""}
+          </p>
+        </div>
+        {isLocalTeam && (
+          <div className="absolute top-0 right-0">
+            <UserRoomSettingsDialog>
+              <Button
+                size="icon"
+                className="self-end"
+                variant="icon"
+                onKeyDown={(e) => e.preventDefault()}
+              >
+                <Settings className="size-8" />
+              </Button>
+            </UserRoomSettingsDialog>
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-col flex-1 min-h-0 justify-center">
+        <TeamCenterSection
+          className={className}
+          teamId={teamId}
+          isLocalTeam={isLocalTeam}
+        />
+      </div>
+      <div className="flex flex-row justify-end"></div>
+    </div>
+  );
+}
+
+function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
+  const localUser = useSession();
+
+  const [users, teams, roomState, raceSettings, teamSettings, isUserHost] =
+    useRoomStore((s) => [
+      s.users,
+      s.teams,
+      s.roomState,
+      s.raceSettings,
+      s.teamSettings,
+      s.isUserHost,
+    ]);
+
+  const participantSortKeyCallback = useCallback(
+    (u1: IRoomParticipant, u2: IRoomParticipant) => {
+      if (raceSettings.roomFormat === "CASUAL") {
+        return u2.points - u1.points;
+      }
       //TODO - if we ever expand to match formats that don't use this logic, will need to update here.
       const matchPtDiff = u2.setWins - u1.setWins;
       if (matchPtDiff != 0) {
         return matchPtDiff;
       } else {
-        switch (setFormat) {
+        switch (raceSettings.setFormat) {
           case "BEST_OF":
             return u2.points - u1.points;
           case "FIRST_TO":
@@ -276,44 +517,19 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
         }
       }
     },
-    [setFormat]
+    [raceSettings]
   );
 
-  function userStatusText(user: IRoomUser) {
-    if (!user.competing) {
-      return "SPECTATING";
-    } else {
-      if (user.userStatus == "FINISHED" && user.currentResult) {
-        return Result.fromIResult(user.currentResult).toString();
-      } else if (
-        user.userStatus === "SOLVING" &&
-        userLiveTimerStartTimes[user.user.id]
-      ) {
-        return (
-          <UserLiveTimer startTime={userLiveTimerStartTimes[user.user.id]!} />
-        );
-      } else if (
-        user.userStatus === "SUBMITTING" &&
-        userLiveTimes[user.user.id]
-      ) {
-        return (
-          <p className="italic">
-            {Result.timeToString(Math.floor(userLiveTimes[user.user.id]! / 10))}
-          </p>
-        );
-      } else {
-        return user.userStatus;
-      }
-    }
-  }
+  const activeParticipants = teamSettings.teamsEnabled
+    ? teams
+    : (Object.fromEntries(
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        Object.entries(users).filter(([_uid, user]) => user.active)
+      ) as Record<string, IRoomUser>);
 
-  useEffect(() => {
-    setSortedActiveUsers(
-      Object.values(users)
-        .filter((roomUser) => roomUser.active)
-        .sort(userSortKeyCallback)
-    );
-  }, [users, userSortKeyCallback]);
+  const sortedActiveParticipants = useMemo(() => {
+    return Object.values(activeParticipants).sort(participantSortKeyCallback);
+  }, [activeParticipants, participantSortKeyCallback]);
 
   return (
     <div
@@ -322,65 +538,89 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
       <ResizablePanelGroup direction="vertical">
         <ResizablePanel defaultSize={50}>
           <div className="grid grid-cols-12">
-            <div className="col-span-5">User</div>
+            <div className="col-span-5">
+              {teamSettings.teamsEnabled ? "Team" : "User"}
+            </div>
             {roomState === "STARTED" && <div className="col-span-3">Time</div>}
-            {roomFormat === "RACING" && <div className="col-span-2">Sets</div>}
-            {(setFormat === "BEST_OF" || setFormat === "FIRST_TO") && (
-              <div className="col-span-2">Solves</div>
+            {raceSettings.roomFormat === "RACING" && (
+              <div className="col-span-2">Sets</div>
             )}
-            {setFormat === "AVERAGE_OF" && (
-              <div className="col-span-2">Avg</div>
-            )}
-            {setFormat === "MEAN_OF" && <div className="col-span-2">Mean</div>}
-            {setFormat === "FASTEST_OF" && (
-              <div className="col-span-2">Best</div>
-            )}
+            {raceSettings.roomFormat === "RACING" &&
+              (raceSettings.setFormat === "BEST_OF" ||
+                raceSettings.setFormat === "FIRST_TO") && (
+                <div className="col-span-2">Solves</div>
+              )}
+            {raceSettings.roomFormat === "RACING" &&
+              raceSettings.setFormat === "AVERAGE_OF" && (
+                <div className="col-span-2">Avg</div>
+              )}
+            {raceSettings.roomFormat === "RACING" &&
+              raceSettings.setFormat === "MEAN_OF" && (
+                <div className="col-span-2">Mean</div>
+              )}
+            {raceSettings.roomFormat === "RACING" &&
+              raceSettings.setFormat === "FASTEST_OF" && (
+                <div className="col-span-2">Best</div>
+              )}
           </div>
           <div className="flex flex-col overflow-y-auto">
-            {sortedActiveUsers.map((user, index) => (
-              <div key={index} className="grid grid-cols-12">
-                <RoomUserDialog
-                  user={user}
-                  hostView={isUserHost(localUser?.userInfo.id)}
-                >
-                  <div className="col-span-5 hover:scale-105 hover:font-bold hover:underline">
-                    {user.user.userName.length > 0 ? user.user.userName : "BTime User"}
-                  </div>
-                </RoomUserDialog>
-                {roomState === "STARTED" && (
-                  <div className="col-span-3">{userStatusText(user)}</div>
-                )}
-                {roomFormat === "RACING" && (
-                  <div className="col-span-2">{user.setWins}</div>
-                )}
-                {(setFormat === "AVERAGE_OF" || setFormat === "MEAN_OF" || setFormat === "FASTEST_OF") && (
-                  <div className="col-span-2">
-                    {Result.timeToString(user.points)}
-                  </div>
-                )}
-                {(setFormat === "BEST_OF" ||
-                  setFormat === "FIRST_TO"
-                  ) && (
-                  <div className="col-span-2">{user.points}</div>
-                )}
-              </div>
-            ))}
+            {sortedActiveParticipants.map(
+              (participant: IRoomParticipant, index) => (
+                <div key={index} className="grid grid-cols-12">
+                  {teamSettings.teamsEnabled ? (
+                    <RoomTeamDialog team={participant as IRoomTeam}>
+                      <div className="col-span-5 hover:scale-105 hover:font-bold hover:underline">
+                        {(participant as IRoomTeam).team.name || "BTime Team"}
+                      </div>
+                    </RoomTeamDialog>
+                  ) : (
+                    <RoomUserDialog
+                      user={participant as IRoomUser}
+                      hostView={isUserHost(localUser?.userInfo.id)}
+                    >
+                      <div className="col-span-5 hover:scale-105 hover:font-bold hover:underline">
+                        {(participant as IRoomUser).user.userName ||
+                          "BTime User"}
+                      </div>
+                    </RoomUserDialog>
+                  )}
+
+                  {roomState === "STARTED" &&
+                    (teamSettings.teamsEnabled ? (
+                      <TeamStatusSection
+                        className="col-span-3"
+                        teamId={(participant as IRoomTeam).team.id}
+                      />
+                    ) : (
+                      <UserStatusSection
+                        className="col-span-3"
+                        userId={(participant as IRoomUser).user.id}
+                      />
+                    ))}
+                  {raceSettings.roomFormat === "RACING" && (
+                    <div className="col-span-2">{participant.setWins}</div>
+                  )}
+                  {raceSettings.roomFormat === "RACING" &&
+                    (raceSettings.setFormat === "AVERAGE_OF" ||
+                      raceSettings.setFormat === "MEAN_OF" ||
+                      raceSettings.setFormat === "FASTEST_OF") && (
+                      <div className="col-span-2">
+                        {Result.timeToString(participant.points)}
+                      </div>
+                    )}
+                  {raceSettings.roomFormat === "RACING" &&
+                    (raceSettings.setFormat === "BEST_OF" ||
+                      raceSettings.setFormat === "FIRST_TO") && (
+                      <div className="col-span-2">{participant.points}</div>
+                    )}
+                </div>
+              )
+            )}
           </div>
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={50}>
-          <GlobalTimeList
-            roomName={roomName}
-            users={Object.values(users)} //.filter((roomUser) => roomUser.active)}
-            solves={solves}
-            roomEvent={roomEvent}
-            roomFormat={roomFormat}
-            setFormat={setFormat}
-            nSets={nSets}
-            nSolves={nSolves}
-            userId={localUser?.userInfo.id}
-            className="max-h-[50vh] w-full"
-          />
+          <GlobalTimeList className="min-h-50 max-h-full w-full bg-container-1" />
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>
@@ -388,57 +628,69 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
 }
 
 function InfoRoomPanel({ className }: InfoRoomPanelProps) {
-  const [
-    roomName,
-    roomEvent,
-    roomFormat,
-    matchFormat,
-    setFormat,
-    nSets,
-    nSolves,
-  ] = useRoomStore((s) => [
-    s.roomName,
-    s.roomEvent,
-    s.roomFormat,
-    s.matchFormat,
-    s.setFormat,
-    s.nSets,
-    s.nSolves,
-  ]);
+  const [roomName, roomEvent, raceSettings, teamSettings] = useRoomStore(
+    (s) => [s.roomName, s.roomEvent, s.raceSettings, s.teamSettings]
+  );
+
+  const verboseRaceFormatTextLines =
+    getVerboseRaceFormatTextLines(raceSettings);
+  const verboseTeamFormatTextLines =
+    getVerboseTeamFormatTextLines(teamSettings);
+
   return (
     <div
       className={cn(["flex flex-col text-center h-full w-full p-2", className])}
     >
       <div>
-        <h2 className={cn("text-2xl md-1")}>Room: {roomName}</h2>
+        <h2 className="text-2xl md-1 break-all">Room: {roomName}</h2>
       </div>
-      <div className={cn("text-left")}>
+      <div className="text-left">
         <h2 className="text-2xl">Event: {roomEvent}</h2>
       </div>
-      <div className={cn("text-left")}>
-        <h2 className="text-2xl">
-          {getFormatText(roomFormat, matchFormat, setFormat, nSets, nSolves)}
-        </h2>
+      <div className="text-left">
+        <h2 className="text-2xl">{getRaceFormatText(raceSettings)}</h2>
       </div>
-      <div className={cn("text-left mx-2")}>
-        {getVerboseFormatText(
-          roomFormat,
-          matchFormat,
-          setFormat,
-          nSets,
-          nSolves
-        )}
+      <div className="text-left pl-4">
+        {verboseRaceFormatTextLines.map((line, idx) => (
+          <p key={idx}>{line}</p>
+        ))}
       </div>
+      {teamSettings.teamsEnabled && (
+        <>
+          <div className="text-left">
+            <h2 className="text-2xl">{getTeamFormatText(teamSettings)}</h2>
+          </div>
+          <div className="text-left pl-4">
+            {verboseTeamFormatTextLines.map((line, idx) => (
+              <p key={idx}>{line}</p>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
-function UserListRoomPanel({ className }: UserListRoomPanelProps) {
-  const [users, roomState, roomWinners] = useRoomStore((s) => [
-    s.users,
-    s.roomState,
-    s.roomWinners,
-  ]);
+function ParticipantListRoomPanel({
+  className,
+}: ParticipantListRoomPanelProps) {
+  const localUser = useSession();
+  const [users, teams, roomState, match, teamSettings, isUserHost] =
+    useRoomStore((s) => [
+      s.users,
+      s.teams,
+      s.roomState,
+      s.match,
+      s.teamSettings,
+      s.isUserHost,
+    ]);
+
+  const winnerNames = useMemo(() => {
+    return teamSettings.teamsEnabled
+      ? match.winners.map((id) => teams[id]!.team.name)
+      : match.winners.map((id) => users[id]!.user.userName);
+  }, [teamSettings, match, teams, users]);
+
   return (
     <div
       className={cn(["flex flex-col text-center h-full w-full p-2", className])}
@@ -446,35 +698,121 @@ function UserListRoomPanel({ className }: UserListRoomPanelProps) {
       {roomState === "FINISHED" && (
         <div className="flex-1 text-center">
           <h2 className="text-xl font-bold">
-            Winner{roomWinners.length > 1 ? "s" : ""}:{" "}
-            {roomWinners.map((uid) => users[uid]!.user.userName).join(", ")}
+            Winner{winnerNames.length > 1 ? "s" : ""}: {winnerNames.join(", ")}
           </h2>
         </div>
       )}
-      <div className="flex flex-col flex-1 align-center">
-        <h2 className="text-xl font-bold">Competitors</h2>
-        {Object.values(users)
-          .filter((roomUser) => roomUser.competing)
-          .map((roomUser, idx) => {
-            return (
-              <p className="text-md" key={idx}>
-                {roomUser.user.userName}
-              </p>
-            );
-          })}
-      </div>
-      <div className="flex flex-col flex-1 align-center">
-        <h2 className="text-xl font-bold">Spectators</h2>
-        {Object.values(users)
-          .filter((roomUser) => !roomUser.competing)
-          .map((roomUser, idx) => {
-            return (
-              <p className="text-md" key={idx}>
-                {roomUser.user.userName}
-              </p>
-            );
-          })}
-      </div>
+      {teamSettings.teamsEnabled ? (
+        <>
+          {/* Teams Enabled - users are either on a team or not on a team (allow backend to process this info) */}
+          <div className="flex flex-col flex-1 align-center">
+            <div className="flex flex-row justify-center items-center gap-2">
+              <h2 className="text-xl font-bold">
+                Teams{" "}
+                {teamSettings.maxNumTeams
+                  ? `(${Object.values(teams).length}/${
+                      teamSettings.maxNumTeams
+                    })`
+                  : ""}
+              </h2>
+              {isUserHost(localUser?.userInfo.id) &&
+                (!teamSettings.maxNumTeams ||
+                  Object.values(teams).length < teamSettings.maxNumTeams) && (
+                  <CreateTeamDialog>
+                    <Button variant="primary" className="text-lg h-6">
+                      +
+                    </Button>
+                  </CreateTeamDialog>
+                )}
+            </div>
+
+            {Object.values(teams).map((team, idx) => {
+              return (
+                <React.Fragment key={idx}>
+                  <div className="flex flex-row gap-2 justify-center items-center">
+                    <RoomTeamDialog team={team}>
+                      <div className="text-lg hover:scale-105 hover:font-bold hover:underline">
+                        {team.team.name}{" "}
+                        {teamSettings.maxTeamCapacity
+                          ? `(${Object.values(team.team.members).length}/${
+                              teamSettings.maxTeamCapacity
+                            })`
+                          : ""}
+                      </div>
+                    </RoomTeamDialog>
+
+                    {
+                      // allow user to join if not on another team AND team capacity is satisfied
+                      localUser &&
+                        !users[localUser.userInfo.id].currentTeam &&
+                        (!teamSettings.maxTeamCapacity ||
+                          Object.values(team.team.members).length <
+                            teamSettings.maxTeamCapacity) && (
+                          <JoinTeamButton teamId={team.team.id} />
+                        )
+                    }
+                    {
+                      // allow user to join if not on another team AND team capacity is satisfied
+                      localUser &&
+                        users[localUser.userInfo.id].currentTeam ===
+                          team.team.id && (
+                          <LeaveTeamButton teamId={team.team.id} />
+                        )
+                    }
+                  </div>
+                  {team.team.members.map((userId, uIdx) => {
+                    return (
+                      <p className="text-md" key={uIdx}>
+                        {users[userId]?.user.userName}
+                      </p>
+                    );
+                  })}
+                </React.Fragment>
+              );
+            })}
+          </div>
+          <div className="flex flex-col flex-1 align-center">
+            <h2 className="text-xl font-bold">Spectators</h2>
+            {Object.values(users)
+              .filter((roomUser) => !roomUser.competing)
+              .map((roomUser, idx) => {
+                return (
+                  <p className="text-md" key={idx}>
+                    {roomUser.user.userName}
+                  </p>
+                );
+              })}
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Teams Disabled - users are either competing or spectating */}
+          <div className="flex flex-col flex-1 align-center">
+            <h2 className="text-xl font-bold">Competitors</h2>
+            {Object.values(users)
+              .filter((roomUser) => roomUser.competing)
+              .map((roomUser, idx) => {
+                return (
+                  <p className="text-md" key={idx}>
+                    {roomUser.user.userName}
+                  </p>
+                );
+              })}
+          </div>
+          <div className="flex flex-col flex-1 align-center">
+            <h2 className="text-xl font-bold">Spectators</h2>
+            {Object.values(users)
+              .filter((roomUser) => !roomUser.competing)
+              .map((roomUser, idx) => {
+                return (
+                  <p className="text-md" key={idx}>
+                    {roomUser.user.userName}
+                  </p>
+                );
+              })}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -484,26 +822,25 @@ export default function RoomPanel({
   type = "user",
   side,
   userId,
-  isLocalUser = false,
+  teamId,
 }: RoomPanelProps) {
   switch (type) {
     case "user":
       if (!userId) return null;
 
       return (
-        <UserRoomPanel
-          className={className}
-          userId={userId!}
-          side={side}
-          isLocalUser={isLocalUser}
-        />
+        <UserRoomPanel className={className} userId={userId!} side={side} />
+      );
+    case "team":
+      return (
+        <TeamRoomPanel className={className} teamId={teamId} side={side} />
       );
     case "summary":
       return <SummaryRoomPanel className={className} />;
     case "info":
       return <InfoRoomPanel className={className} />;
-    case "userlist":
-      return <UserListRoomPanel className={className} />;
+    case "participantlist":
+      return <ParticipantListRoomPanel className={className} />;
     default:
       return null;
   }

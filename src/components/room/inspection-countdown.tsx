@@ -68,7 +68,7 @@ function InspectionCountdown({
 
   useEffect(() => {
     return () => {
-      if (timerType === "GANTIMER") {
+      if (timerType === "BLUETOOTH") {
         onFinishInspection?.(penaltyRef.current);
       }
     };
@@ -88,7 +88,7 @@ function InspectionCountdown({
           className,
           remainingTime <= 8 && "text-timer-warning",
           remainingTime <= 3 && "text-timer-notready",
-          spacebarDown && "text-timer-ready",
+          spacebarDown && "text-timer-ready"
         )}
       >
         {penalty === "DNF"

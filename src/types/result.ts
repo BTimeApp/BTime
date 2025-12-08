@@ -1,5 +1,11 @@
 import { parseIntNaN } from "@/lib/utils";
 
+/**
+ * Store DNF as JS's max number because NaN, Infinity are not JSON serializable
+ * see https://stackoverflow.com/questions/57127297/serialization-of-nan-and-infinity-in-json-why-not-supported
+ */
+export const DNF = Number.MAX_VALUE;
+
 export const PENALTIES = ["OK", "+2", "DNF"];
 export type Penalty = (typeof PENALTIES)[number];
 
@@ -24,12 +30,23 @@ export class Result {
       this.time = input;
 
       // manually creates a DNF
-      if (input === Number.POSITIVE_INFINITY) {
+      if (input >= DNF) {
         this.time = 0;
         penalty = "DNF";
       }
+    } else if (input == null) {
+      // the most common reason for input being null is JSON serialization not accepting Infinity as a valid numeric value.
+      // when we try to send Infinity the number or parse "Infinity" as an number, it becomes null.
+      // this is a safeguard against that.
+      this.time = 0;
+      penalty = "DNF";
     } else {
-      throw new Error("Invalid input for Time");
+      console.error(
+        "Invalid input for Time! Converting to DNF for now. Please contact BTime team."
+      );
+
+      this.time = 0;
+      penalty = "DNF";
     }
 
     this.penalty = penalty ? penalty : "OK";
@@ -81,8 +98,7 @@ export class Result {
   }
 
   static applyPenalty(timeInCentiseconds: number, penalty?: Penalty): number {
-    if (timeInCentiseconds === Infinity || timeInCentiseconds == null)
-      return Number.POSITIVE_INFINITY;
+    if (timeInCentiseconds >= DNF || timeInCentiseconds == null) return DNF;
     switch (penalty) {
       case undefined:
         return timeInCentiseconds;
@@ -92,8 +108,8 @@ export class Result {
         // +2 is 200 centiseconds
         return timeInCentiseconds + 200;
       case "DNF":
-        // use +inf as DNF. Consider using max integer?
-        return Number.POSITIVE_INFINITY;
+        // use JS max number as Infinity is unsafe in JSON serialization
+        return DNF;
       default:
         // should never get triggered
         return NaN;
@@ -123,7 +139,9 @@ export class Result {
       const penaltiedMinutes = Math.floor(totalSeconds / 60);
       const penaltiedCentiseconds = Math.floor(totalTime) % 100;
       const penaltiedSeconds = totalSeconds % 60;
-      const totalResultString = `${penaltiedMinutes ? penaltiedMinutes + ":" : ""}${
+      const totalResultString = `${
+        penaltiedMinutes ? penaltiedMinutes + ":" : ""
+      }${
         penaltiedMinutes
           ? penaltiedSeconds.toString().padStart(2, "0")
           : penaltiedSeconds.toString().padStart(1, "0")
@@ -134,7 +152,9 @@ export class Result {
       const originalMinutes = Math.floor(originalTotalSeconds / 60);
       const originalCentiseconds = Math.floor(timeInCentiseconds) % 100;
       const originalSeconds = originalTotalSeconds % 60;
-      const originalResultString = `${originalMinutes ? originalMinutes + ":" : ""}${
+      const originalResultString = `${
+        originalMinutes ? originalMinutes + ":" : ""
+      }${
         originalMinutes
           ? originalSeconds.toString().padStart(2, "0")
           : originalSeconds.toString().padStart(1, "0")
@@ -144,14 +164,13 @@ export class Result {
       if (penalty === "DNF") {
         return `DNF (${originalResultString})`;
       } else if (penalty === "+2") {
-        return `${originalResultString} +2 = ${totalResultString}`
+        return `${originalResultString} +2 = ${totalResultString}`;
       } else {
         return `${totalResultString}`;
       }
-
     } else {
       const totalTime = Result.applyPenalty(timeInCentiseconds, penalty);
-      if (totalTime === Infinity) {
+      if (totalTime >= DNF) {
         return "DNF";
       }
 
@@ -177,15 +196,60 @@ export class Result {
     return Result.timeToString(this.time, this.penalty, verbose);
   }
 
-  static fromIResult(obj: IResult): Result {
-    return new Result(obj.time, obj.penalty);
+  static fromIResult(obj?: IResult): Result {
+    if (!obj) return new Result(0, "DNF");
+    return new Result(obj.time ?? 0, obj.penalty ?? "DNF");
   }
 
   toIResult(): IResult {
+    //for consistency
+    if (this.time >= DNF) {
+      return {
+        time: 0,
+        penalty: "DNF",
+      };
+    }
+
     return {
       time: this.time,
       penalty: this.penalty,
     };
+  }
+
+  /**
+   * Returns the sum of a list of results.
+   * Any DNF included will DNF the sum.
+   */
+  static sumOf(results: Result[]): number {
+    return results.reduce((sum, res) => sum + res.toTime(), 0);
+  }
+
+  static iSumOf(results: IResult[]): number {
+    return Result.sumOf(results.map((iResult) => Result.fromIResult(iResult)));
+  }
+
+  /**
+   * Returns the median of a list of results.
+   * Returns mean of median 2 when even number of results
+   * A median of 0 is 0
+   */
+  static medianOf(results: Result[]): number {
+    if (results.length === 0) return 0;
+    const sortedResults = results.sort((a, b) => a.toTime() - b.toTime());
+    const mid = Math.floor(sortedResults.length / 2);
+    if (sortedResults.length % 2 === 0) {
+      return (
+        (sortedResults[mid - 1].toTime() + sortedResults[mid].toTime()) / 2
+      );
+    } else {
+      return sortedResults[mid].toTime();
+    }
+  }
+
+  static iMedianOf(results: IResult[]): number {
+    return Result.medianOf(
+      results.map((iResult) => Result.fromIResult(iResult))
+    );
   }
 
   /**
@@ -195,6 +259,10 @@ export class Result {
    */
   static meanOf(results: Result[]): number {
     if (results.length === 0) return 0;
+    if (
+      results.some((result) => result.time >= DNF || result.penalty === "DNF")
+    )
+      return DNF;
     return results.reduce((sum, res) => sum + res.toTime(), 0) / results.length;
   }
 
@@ -205,9 +273,15 @@ export class Result {
   /**
    * Returns the average of a list of results (where average = mean of all but slowest and fastest)
    * AoN with N <=2 is going to use the mean.
+   * DNFing at least 2 solves (or 1 when N <= 2) will DNF the average.
    */
   static averageOf(results: Result[]): number {
     if (results.length <= 2) return Result.meanOf(results);
+    if (
+      results.filter((result) => result.time >= DNF || result.penalty === "DNF")
+        .length >= 2
+    )
+      return DNF;
 
     return (
       results
@@ -240,18 +314,7 @@ export class Result {
   }
 
   compare(other: Result): number {
-    const thisTime = this.toTime();
-    const otherTime = other.toTime();
-
-    if (
-      thisTime === Number.POSITIVE_INFINITY &&
-      otherTime === Number.POSITIVE_INFINITY
-    ) {
-      // inf - inf = NaN, so handle this case manually
-      return 0;
-    }
-
-    return thisTime - otherTime;
+    return this.toTime() - other.toTime();
   }
 
   equals(other: Result): boolean {
@@ -266,3 +329,5 @@ export class Result {
     return this.toTime() > other.toTime();
   }
 }
+
+export const DNF_IRESULT = new Result(0, "DNF").toIResult();

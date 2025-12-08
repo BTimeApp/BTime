@@ -49,8 +49,8 @@ export function v0(stores: RedisStores): Router {
       { $set: updates },
       { new: true, runValidators: true }
     )
-      .lean()
-      .then((updatedUser: UserDocument | null) => {
+      .lean<UserDocument>()
+      .then((updatedUser) => {
         if (!updatedUser) {
           //user not found
           res.status(404).json({ success: false, message: "User not found." });

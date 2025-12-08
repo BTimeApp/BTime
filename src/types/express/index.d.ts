@@ -1,20 +1,20 @@
 import { IUser } from "@/types/user";
-import 'express-session';
+import "express-session";
 
 declare global {
-  namespace Express { 
-    interface User extends IUser{ // eslint-disable-line @typescript-eslint/no-empty-object-type
-    }
+  namespace Express {
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+    interface User extends IUser {}
   }
 }
 
-declare module 'http' {
+declare module "http" {
   interface IncomingMessage {
     user?: IUser;
   }
 }
 
-declare module 'express-session' {
+declare module "express-session" {
   interface SessionData {
     redirectTo?: string;
   }

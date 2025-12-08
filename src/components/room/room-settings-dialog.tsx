@@ -22,23 +22,19 @@ export default function RoomSettingsDialog({
   const [
     roomName,
     roomEvent,
-    roomFormat,
-    matchFormat,
-    setFormat,
-    isPrivate,
-    nSets,
-    nSolves,
-    isUserHost
+    access,
+    raceSettings,
+    teamSettings,
+    maxUsers,
+    isUserHost,
   ] = useRoomStore((s) => [
     s.roomName,
     s.roomEvent,
-    s.roomFormat,
-    s.matchFormat,
-    s.setFormat,
-    s.isPrivate,
-    s.nSets,
-    s.nSolves,
-    s.isUserHost
+    s.access,
+    s.raceSettings,
+    s.teamSettings,
+    s.maxUsers,
+    s.isUserHost,
   ]);
 
   const params = useParams<{ roomId: string }>();
@@ -49,7 +45,7 @@ export default function RoomSettingsDialog({
     setOpen(false);
   }, []);
 
-  const {user} = useSession();
+  const user = useSession();
 
   // this component is only meant to be accessible to the host. Do a sanity check here so we avoid rendering a dangerous form for non-host users
   if (!isUserHost(user?.userInfo.id)) {
@@ -68,21 +64,20 @@ export default function RoomSettingsDialog({
             <TabsTrigger value="settings">Edit Room</TabsTrigger>
           </TabsList>
           <TabsContent value="actions">
-            <RoomActionsForm onSubmitCallback={closeDialogCallback}/>
+            <RoomActionsForm onSubmitCallback={closeDialogCallback} />
           </TabsContent>
           <TabsContent value="settings">
             <RoomSettingsForm
               roomName={roomName}
               roomEvent={roomEvent}
-              roomFormat={roomFormat}
-              matchFormat={matchFormat}
-              setFormat={setFormat}
-              isPrivate={isPrivate}
-              nSets={nSets}
-              nSolves={nSolves}
+              access={access}
+              raceSettings={raceSettings}
+              teamSettings={teamSettings}
+              maxUsers={maxUsers}
               roomId={roomId}
               createNewRoom={false}
               onUpdateCallback={closeDialogCallback}
+              className="max-h-[60vh] overflow-y-auto"
             />
           </TabsContent>
         </Tabs>

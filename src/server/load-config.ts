@@ -1,33 +1,31 @@
 import dotenv from "dotenv";
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import fs from 'fs';
+import { join } from "path";
+import fs from "fs";
 
 export const handleConfig = (): void => {
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = dirname(__filename);
-  const env = process.env.NODE_ENV; //should either be "production", "development", or "test"
+  const env = process.env.NODE_ENV; // "production", "development", or "test"
+  const projectRoot = process.cwd(); // Project root directory
 
-  // global env settings
+  // Load base .env
   dotenv.config({
-    path: join(__dirname, `../../../.env`)
+    path: join(projectRoot, ".env"),
   });
 
-  const envSpecificPath: string = join(__dirname, `../../../.env.${env}`);
-  // override with node env specific settings if they exist (e.g. dev settings)
+  // Load environment-specific .env (e.g., .env.development)
+  const envSpecificPath = join(projectRoot, `.env.${env}`);
   if (fs.existsSync(envSpecificPath)) {
     dotenv.config({
       path: envSpecificPath,
-      override: true 
+      override: true,
     });
   }
-  
-  const localEnvPath: string = envSpecificPath + ".local"
-  // override with local settings if they exist
+
+  // Load local override .env (e.g., .env.development.local)
+  const localEnvPath = `${envSpecificPath}.local`;
   if (fs.existsSync(localEnvPath)) {
     dotenv.config({
       path: localEnvPath,
-      override: true 
+      override: true,
     });
   }
-}
+};

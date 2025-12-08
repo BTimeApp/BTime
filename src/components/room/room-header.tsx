@@ -1,51 +1,42 @@
-import { cn } from "@/lib/utils";
-import {
-  MATCH_FORMAT_ABBREVIATION_MAP,
-  ROOM_EVENT_DISPLAY_NAME_MAP,
-  SET_FORMAT_ABBREVIATION_MAP,
-} from "@/types/room";
+import { abbreviate, cn } from "@/lib/utils";
+import { ROOM_EVENTS_INFO } from "@/types/room";
 import { Button } from "@/components/ui/button";
-import Header from "@/components/common/header";
-import { useCallback } from "react";
+import { Header, HeaderTitle } from "@/components/common/header";
+import { useCallback, useMemo } from "react";
 import { useRoomStore } from "@/context/room-context";
 import { useSocket } from "@/context/socket-context";
 import { useSession } from "@/context/session-context";
 import { Settings } from "lucide-react";
 import RoomSettingsDialog from "@/components/room/room-settings-dialog";
 import { SOCKET_CLIENT } from "@/types/socket_protocol";
+import CreateTeamDialog from "@/components/room/create-team-dialog";
 
 export function RoomHeader() {
   const [
     roomName,
-    isPasswordAuthenticated,
     roomState,
     roomEvent,
-    roomFormat,
     currentSet,
     currentSolve,
     users,
-    matchFormat,
-    setFormat,
-    numSets,
-    numSolves,
+    teams,
+    raceSettings,
+    teamSettings,
     isUserHost,
   ] = useRoomStore((s) => [
     s.roomName,
-    s.isPasswordAuthenticated,
     s.roomState,
     s.roomEvent,
-    s.roomFormat,
     s.currentSet,
     s.currentSolve,
     s.users,
-    s.matchFormat,
-    s.setFormat,
-    s.nSets,
-    s.nSolves,
+    s.teams,
+    s.raceSettings,
+    s.teamSettings,
     s.isUserHost,
   ]);
 
-  const { user } = useSession();
+  const user = useSession();
   const { socket } = useSocket();
 
   const getNextScramble = useCallback(() => {
@@ -70,202 +61,195 @@ export function RoomHeader() {
   const toggleCompeting = useCallback(() => {
     if (user) {
       //submit the NEW competing boolean - true if currently spectating
-      socket.emit(SOCKET_CLIENT.TOGGLE_COMPETING, !users[user.userInfo.id].competing);
+      socket.emit(
+        SOCKET_CLIENT.TOGGLE_COMPETING,
+        !users[user.userInfo.id].competing
+      );
     }
   }, [user, users, socket]);
 
-  if (!isPasswordAuthenticated || !user) {
-    return (
-      <Header>
-        <></>
-      </Header>
-    );
-  } else {
+  const bottomLeftButton = useMemo(() => {
+    if (!isUserHost(user?.userInfo.id)) {
+      return <></>;
+    }
+
     switch (roomState) {
       case "WAITING":
         return (
-          <Header>
-            <div className="flex flex-row gap-3 items-center justify-center text-center items-stretch">
-              <div className="flex-1 flex flex-col gap-3">
-                {isUserHost(user.userInfo.id) && (
-                  <div className="flex-1 flex flex-col justify-end">
-                    <Button
-                      variant="outline"
-                      size="default"
-                      className={cn("px-1 self-end")}
-                      onClick={startRoom}
-                      onKeyDown={(e) => e.preventDefault()}
-                    >
-                      <p className={cn("font-bold text-center text-md")}>
-                        START ROOM
-                      </p>
-                    </Button>
-                  </div>
-                )}
-              </div>
-              <div className="flex-5 md:flex-10 text-center flex flex-col overflow-wrap">
-                <h2 className="text-3xl font-bold">{roomName}</h2>
-                <h4 className="text-lg">
-                  {ROOM_EVENT_DISPLAY_NAME_MAP.get(roomEvent)}
-                </h4>
-              </div>
-              <div className="flex-1 flex flex-col gap-3">
-                {isUserHost(user.userInfo.id) && (
-                  <div className="flex-1 flex flex-col justify-start">
-                    <RoomSettingsDialog>
-                      <Button size="icon" className="self-end" variant="icon">
-                        <Settings className="size-8" />
-                      </Button>
-                    </RoomSettingsDialog>
-                  </div>
-                )}
-                <div className="flex-1 flex flex-col justify-end">
-                  <Button
-                    className="mt-auto"
-                    variant="outline"
-                    onClick={toggleCompeting}
-                  >
-                    <p className="font-bold text-center text-md">
-                      {users[user.userInfo.id]?.competing ? "SPECTATE" : "COMPETE"}
-                    </p>
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </Header>
+          <Button
+            variant="outline"
+            size="default"
+            className="px-1"
+            onClick={startRoom}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <p className={cn("font-bold text-center text-md")}>START ROOM</p>
+          </Button>
         );
       case "STARTED":
         return (
-          <Header>
-            <div className="flex flex-row gap-3 items-center justify-center text-center items-stretch">
-              <div className="flex-1 flex flex-col gap-3">
-                {isUserHost(user.userInfo.id) && (
-                  <div className="flex-1 text-center flex flex-col justify-end">
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className={cn("px-1")}
-                      onClick={getNextScramble}
-                      onKeyDown={(e) => e.preventDefault()}
-                    >
-                      <h1 className={cn("font-bold text-center text-md")}>
-                        NEW SCRAMBLE
-                      </h1>
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex-5 md:flex-10 text-center flex flex-col overflow-wrap justify-center">
-                <h2 className="text-3xl font-bold">{roomName}</h2>
-                <h4 className="text-lg">
-                  {ROOM_EVENT_DISPLAY_NAME_MAP.get(roomEvent)}
-                  {MATCH_FORMAT_ABBREVIATION_MAP.has(matchFormat) &&
-                  roomFormat !== "CASUAL"
-                    ? " | " +
-                      MATCH_FORMAT_ABBREVIATION_MAP.get(matchFormat) +
-                      numSets.toString() +
-                      " sets | "
-                    : ""}
-                  {SET_FORMAT_ABBREVIATION_MAP.has(setFormat) &&
-                  roomFormat !== "CASUAL"
-                    ? SET_FORMAT_ABBREVIATION_MAP.get(setFormat) +
-                      numSolves.toString() +
-                      " solves"
-                    : ""}
-                </h4>
-                {roomFormat === "RACING" && (
-                  <p className="text-lg">
-                    Set {currentSet} Solve {currentSolve}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex-1 flex flex-col gap-3">
-                {isUserHost(user.userInfo.id) && (
-                  <div className="flex-1 flex flex-col justify-start">
-                    <RoomSettingsDialog>
-                      <Button
-                        size="icon"
-                        className="self-end"
-                        variant="icon"
-                        onKeyDown={(e) => e.preventDefault()}
-                      >
-                        <Settings className="size-8" />
-                      </Button>
-                    </RoomSettingsDialog>
-                  </div>
-                )}
-                <div className="flex-1 flex flex-col justify-end">
-                  <Button
-                    className="mt-auto"
-                    variant="outline"
-                    onClick={toggleCompeting}
-                    onKeyDown={(e) => e.preventDefault()}
-                  >
-                    <p className="font-bold text-center text-md">
-                      {users[user.userInfo.id]?.competing ? "SPECTATE" : "COMPETE"}
-                    </p>
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </Header>
+          <Button
+            variant="outline"
+            size="lg"
+            className="px-1"
+            onClick={getNextScramble}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <h1 className={cn("font-bold text-center text-md")}>
+              NEW SCRAMBLE
+            </h1>
+          </Button>
         );
       case "FINISHED":
         return (
-          <Header>
-            <div className="flex flex-row gap-3 items-center justify-center text-center items-stretch">
-              <div className="flex-1 flex flex-col gap-3">
-                {isUserHost(user.userInfo.id) && (
-                  <div className="flex-1 flex flex-col justify-end">
-                    <Button
-                      variant="outline"
-                      size="default"
-                      className={cn("px-1 self-end")}
-                      onClick={rematchRoom}
-                      onKeyDown={(e) => e.preventDefault()}
-                    >
-                      <h1 className={cn("font-bold text-center text-md")}>
-                        REMATCH
-                      </h1>
-                    </Button>
-                  </div>
-                )}
-              </div>
-              <div className="flex-5 md:flex-10 text-center flex flex-col overflow-wrap">
-                <h2 className="text-3xl font-bold">{roomName}</h2>
-                <h4 className="text-lg">
-                  {ROOM_EVENT_DISPLAY_NAME_MAP.get(roomEvent)}
-                </h4>
-              </div>
-              <div className="flex-1 flex flex-col gap-3">
-                {isUserHost(user.userInfo.id) && (
-                  <div className="flex-1 flex flex-col justify-start">
-                    <RoomSettingsDialog>
-                      <Button size="icon" className="self-end" variant="icon">
-                        <Settings className="size-8" />
-                      </Button>
-                    </RoomSettingsDialog>
-                  </div>
-                )}
-                <div className="flex-1 flex flex-col justify-end">
-                  <Button
-                    className="mt-auto"
-                    variant="outline"
-                    onClick={toggleCompeting}
-                  >
-                    <p className="font-bold text-center text-md">
-                      {users[user.userInfo.id]?.competing ? "SPECTATE" : "COMPETE"}
-                    </p>
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </Header>
+          <Button
+            variant="outline"
+            size="default"
+            className="px-1"
+            onClick={rematchRoom}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <h1 className={cn("font-bold text-center text-md")}>REMATCH</h1>
+          </Button>
         );
       default:
-        break;
+        console.error(`Illegal Room State: ${roomState}`);
+        return <></>;
     }
+  }, [user, roomState, isUserHost, startRoom, getNextScramble, rematchRoom]);
+
+  const bottomRightButton = useMemo(() => {
+    if (teamSettings.teamsEnabled) {
+      if (
+        isUserHost(user?.userInfo.id) &&
+        (!teamSettings.maxNumTeams ||
+          Object.values(teams).length < teamSettings.maxNumTeams)
+      ) {
+        return (
+          <CreateTeamDialog>
+            <Button variant="outline" className="text-md">
+              Add Team(s)
+            </Button>
+          </CreateTeamDialog>
+        );
+      }
+      return <></>;
+    } else {
+      if (!user) {
+        return <></>;
+      }
+      return (
+        <Button
+          className="mt-auto"
+          variant="outline"
+          onClick={toggleCompeting}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <p className="font-bold text-center text-md">
+            {users[user.userInfo.id]?.competing ? "SPECTATE" : "COMPETE"}
+          </p>
+        </Button>
+      );
+    }
+  }, [teamSettings, user, users, teams, isUserHost, toggleCompeting]);
+
+  const headerCenterElement = useMemo(() => {
+    switch (roomState) {
+      case "WAITING":
+        return (
+          <>
+            <HeaderTitle title={roomName} />
+            <h4 className="text-lg">
+              {ROOM_EVENTS_INFO[roomEvent].displayName}
+            </h4>
+          </>
+        );
+      case "STARTED":
+        return (
+          <>
+            <HeaderTitle title={roomName} />
+            <h4 className="text-lg hidden sm:block">
+              {ROOM_EVENTS_INFO[roomEvent].displayName}
+              {raceSettings.roomFormat !== "CASUAL"
+                ? " | " +
+                  abbreviate(raceSettings.matchFormat) +
+                  raceSettings.nSets.toString() +
+                  ` set${raceSettings.nSets > 1 ? "s" : ""}` +
+                  " | " +
+                  abbreviate(raceSettings.setFormat) +
+                  raceSettings.nSolves.toString() +
+                  ` solve${raceSettings.nSolves > 1 ? "s" : ""}`
+                : ""}
+              {teamSettings.teamsEnabled &&
+              teamSettings.teamFormatSettings.teamSolveFormat === "ALL"
+                ? " | " +
+                  teamSettings.teamFormatSettings.teamReduceFunction.toLowerCase() +
+                  " of team"
+                : ""}
+            </h4>
+            {raceSettings.roomFormat === "RACING" && (
+              <p className="text-lg">
+                Set {currentSet} Solve {currentSolve}
+              </p>
+            )}
+          </>
+        );
+      case "FINISHED":
+        return (
+          <>
+            <HeaderTitle title={roomName} />
+            <h4 className="text-lg">
+              {ROOM_EVENTS_INFO[roomEvent].displayName}
+            </h4>
+          </>
+        );
+      default:
+        console.error(`Illegal Room State: ${roomState}`);
+        return <></>;
+    }
+  }, [
+    currentSet,
+    currentSolve,
+    roomState,
+    roomName,
+    roomEvent,
+    raceSettings,
+    teamSettings,
+  ]);
+
+  if (!user) {
+    return <></>;
+  } else {
+    return (
+      <Header>
+        <div className="flex gap-3 w-full h-fit">
+          <div className="flex-1 flex flex-col justify-end gap-3">
+            {bottomLeftButton}
+          </div>
+          <div className="flex-5 md:flex-10 min-w-0 text-center flex flex-col justify-center overflow-hidden">
+            {headerCenterElement}
+          </div>
+          <div className="flex-1 flex flex-col gap-3">
+            {isUserHost(user.userInfo.id) && (
+              <div className="flex-1 flex flex-col items-center justify-start">
+                <RoomSettingsDialog>
+                  <Button
+                    size="icon"
+                    className="self-end"
+                    variant="icon"
+                    onMouseDown={(e) => e.preventDefault()}
+                  >
+                    <Settings className="size-8" />
+                  </Button>
+                </RoomSettingsDialog>
+              </div>
+            )}
+            <div className="flex-1 flex flex-col items-center justify-end">
+              {bottomRightButton}
+            </div>
+          </div>
+        </div>
+      </Header>
+    );
   }
 }

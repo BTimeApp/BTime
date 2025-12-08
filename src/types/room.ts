@@ -1,62 +1,13 @@
 import { IUserInfo } from "@/types/user";
-import { IRoomUser } from "@/types/room-user";
-import { IRoomSolve } from "@/types/room-solve";
+import { IRoomTeam, IRoomUser } from "@/types/room-participant";
+import { IRoomMatch } from "@/types/room-solve";
+import { displayText, literalKeys } from "@/lib/utils";
 
-//defines all legal events
-export const ROOM_EVENTS = [
-  "333",
-  "222",
-  "444",
-  "555",
-  "666",
-  "777",
-  "megaminx",
-  "pyraminx",
-  "skewb",
-  "clock",
-  "sq1",
-  "3oh",
-  "3bld",
-  "4bld",
-  "5bld",
-] as const;
-
-export const ROOM_EVENT_DISPLAY_NAME_MAP = new Map<RoomEvent, string>([
-  ["333", "3x3"],
-  ["222", "2x2"],
-  ["444", "4x4"],
-  ["555", "5x5"],
-  ["666", "6x6"],
-  ["777", "7x7"],
-  ["megaminx", "Megaminx"],
-  ["pyraminx", "Pyraminx"],
-  ["skewb", "Skewb"],
-  ["clock", "Clock"],
-  ["sq1", "Sq-1"],
-  ["3oh", "3x3 OH"],
-  ["3bld", "3BLD"],
-  ["4bld", "4BLD"],
-  ["5bld", "5BLD"],
-]);
-
-// Source - https://icons.cubing.net/#svg
-export const ROOM_EVENT_ICON_SRC_MAP = new Map<RoomEvent, string>([
-  ["333", "event-333"],
-  ["222", "event-222"],
-  ["444", "event-444"],
-  ["555", "event-555"],
-  ["666", "event-666"],
-  ["777", "event-777"],
-  ["megaminx", "event-minx"],
-  ["pyraminx", "event-pyram"],
-  ["skewb", "event-skewb"],
-  ["clock", "event-clock"],
-  ["sq1", "event-sq1"],
-  ["3oh", "event-333oh"],
-  ["3bld", "event-333bf"],
-  ["4bld", "event-444bf"],
-  ["5bld", "event-555bf"],
-]);
+export interface RoomEventAttributes {
+  displayName: string;
+  jsName: string;
+  iconSrc: string;
+}
 
 // These are currently updated to be used with cubing.js/twisty.
 // export const ROOM_EVENT_JS_NAME_MAP = new Map<RoomEvent, string>([
@@ -77,47 +28,103 @@ export const ROOM_EVENT_ICON_SRC_MAP = new Map<RoomEvent, string>([
 //   ["5bld", "555bf"],
 // ]);
 
-// These are currently updated to be used with cubing.js/twisty. 
-export const ROOM_EVENT_JS_NAME_MAP = new Map<RoomEvent, string>([
-  ["333", "3x3x3"],
-  ["222", "2x2x2"],
-  ["444", "4x4x4"],
-  ["555", "5x5x5"],
-  ["666", "6x6x6"],
-  ["777", "7x7x7"],
-  ["megaminx", "megaminx"],
-  ["pyraminx", "pyraminx"],
-  ["skewb", "skewb"],
-  ["clock", "clock"],
-  ["sq1", "square1"],
-  ["3oh", "3x3x3"],
-  ["3bld", "3x3x3"],
-  ["4bld", "4x4x4"],
-  ["5bld", "5x5x5"],
-]);
+// Source - https://icons.cubing.net/#svg
+export const ROOM_EVENTS_INFO = {
+  "333": {
+    displayName: "3x3",
+    jsName: "3x3x3",
+    iconSrc: "event-333",
+  },
+  "222": {
+    displayName: "2x2",
+    jsName: "2x2x2",
+    iconSrc: "event-222",
+  },
+  "444": {
+    displayName: "4x4",
+    jsName: "4x4x4",
+    iconSrc: "event-444",
+  },
+  "555": {
+    displayName: "5x5",
+    jsName: "5x5x5",
+    iconSrc: "event-555",
+  },
+  "666": {
+    displayName: "6x6",
+    jsName: "6x6x6",
+    iconSrc: "event-666",
+  },
+  "777": {
+    displayName: "7x7",
+    jsName: "7x7x7",
+    iconSrc: "event-777",
+  },
+  megaminx: {
+    displayName: "Megaminx",
+    jsName: "megaminx",
+    iconSrc: "event-minx",
+  },
+  pyraminx: {
+    displayName: "Pyraminx",
+    jsName: "pyraminx",
+    iconSrc: "event-pyra",
+  },
+  skewb: {
+    displayName: "Skewb",
+    jsName: "skewb",
+    iconSrc: "event-skewb",
+  },
+  clock: {
+    displayName: "Clock",
+    jsName: "clock",
+    iconSrc: "event-clock",
+  },
+  sq1: {
+    displayName: "Sq-1",
+    jsName: "square1",
+    iconSrc: "event-sq1",
+  },
+  "3oh": {
+    displayName: "3x3 OH",
+    jsName: "3x3x3",
+    iconSrc: "event-333oh",
+  },
+  "3bld": {
+    displayName: "3BLD",
+    jsName: "3x3x3",
+    iconSrc: "event-3bf",
+  },
+  "4bld": {
+    displayName: "4BLD",
+    jsName: "4x4x4",
+    iconSrc: "event-4bf",
+  },
+  "5bld": {
+    displayName: "5BLD",
+    jsName: "5x5x5",
+    iconSrc: "event-5bf",
+  },
+} satisfies Record<string, RoomEventAttributes>;
+export const ROOM_EVENTS = literalKeys(ROOM_EVENTS_INFO);
 
-//defines all legal formats (more to come hopefully)
-export const ROOM_FORMATS = [
-  "CASUAL", //no points or score, just cubing
-  "RACING", //racing with sets and points
-  //TODO: add a competitive mode with ranking, etc
-] as const;
+export interface RoomFormatAttributes {
+  teams: boolean; //whether teams is enabled in this format
+  competitive: boolean; //whether this format is considered "competitive"
+  requiredSettings?: string[]; //required room settings
+  disabledSetFormats?: SetFormat[]; //any set formats that don't work with this format
+  // overrides: Record<string, any>
+}
 
-export const ROOM_FORMAT_MAP = new Map<RoomFormat, string>([
-  ["CASUAL", "Casual"],
-  ["RACING", "Racing"]
-])
+export const ROOM_FORMATS = ["CASUAL", "RACING"] as const;
+
+export const VISIBILITIES = ["PUBLIC", "PRIVATE"] as const;
 
 //match formats - how to win a race based on number of sets won
 export const MATCH_FORMATS = [
   "BEST_OF", //best of n sets wins
   "FIRST_TO", //first to n sets wins
 ] as const;
-
-export const MATCH_FORMAT_MAP = new Map<MatchFormat, string>([
-  ["BEST_OF", "Best of"],
-  ["FIRST_TO", "First to"],
-]);
 
 //set formats - how to win a set based on the solves
 export const SET_FORMATS = [
@@ -129,152 +136,233 @@ export const SET_FORMATS = [
   //TOdO - support other formats like total time differential
 ] as const;
 
-export const SET_FORMAT_MAP = new Map<SetFormat, string>([
-  ["BEST_OF", "Best of"],
-  ["FIRST_TO", "First to"],
-  ["AVERAGE_OF", "Average of"],
-  ["MEAN_OF", "Mean of"],
-  ["FASTEST_OF", "Fastest of"]
-]);
-
-export const MATCH_FORMAT_ABBREVIATION_MAP = new Map<MatchFormat, string>([
-  ["BEST_OF", "bo"],
-  ["FIRST_TO", "ft"],
-]);
-
-export const SET_FORMAT_ABBREVIATION_MAP = new Map<SetFormat, string>([
-  ["BEST_OF", "bo"],
-  ["FIRST_TO", "ft"],
-  ["AVERAGE_OF", "ao"],
-  ["MEAN_OF", "mo"],
-  ["FASTEST_OF", "fo"]
-]);
-
-export function getFormatText(
-  roomFormat: RoomFormat,
-  matchFormat: MatchFormat,
-  setFormat: SetFormat,
-  nSets: number,
-  nSolves: number
-): string {
-  if (roomFormat === "CASUAL") {
-    return "casual"
+export function getRaceFormatText(raceSettings: RaceSettings): string {
+  const formatText = [];
+  if (raceSettings.roomFormat === "CASUAL") {
+    formatText.push("Casual");
   } else {
-    let raceFormatText =
-      "Format: " +
-      SET_FORMAT_MAP.get(setFormat) +
-      " " +
-      nSolves +
-      " solve" +
-      (nSolves > 1 ? "s" : "");
-    if (nSets > 1) {
-      raceFormatText +=
-        ", " +
-        MATCH_FORMAT_MAP.get(matchFormat) +
-        " " +
-        nSets +
-        " set" +
-        (nSets > 1 ? "s" : "");
+    if (raceSettings.nSets > 1) {
+      formatText.push(
+        displayText(raceSettings.matchFormat) +
+          " " +
+          raceSettings.nSets +
+          " set" +
+          (raceSettings.nSets > 1 ? "s" : "")
+      );
     }
 
-    return raceFormatText;
+    formatText.push(
+      displayText(raceSettings.setFormat) +
+        " " +
+        raceSettings.nSolves +
+        " solve" +
+        (raceSettings.nSolves > 1 ? "s" : "")
+    );
   }
+
+  return "Format: " + formatText.join(", ");
 }
 
-export function getVerboseFormatText(
-  roomFormat: RoomFormat,
-  matchFormat: MatchFormat,
-  setFormat: SetFormat,
-  nSets: number,
-  nSolves: number
-): string {
-  if (roomFormat == "CASUAL") {
-    return "Enjoy endless solves in this casual room.";
+export function getTeamFormatText(teamSettings: TeamSettings): string {
+  return teamSettings.teamsEnabled
+    ? `Team Format: ${displayText(
+        teamSettings.teamFormatSettings.teamSolveFormat
+      )}${
+        teamSettings.teamFormatSettings.teamSolveFormat === "ALL"
+          ? ` (${displayText(
+              teamSettings.teamFormatSettings.teamScrambleFormat
+            )} scrams, ${displayText(
+              teamSettings.teamFormatSettings.teamReduceFunction
+            )} of team)`
+          : ""
+      }`
+    : "";
+}
+
+export function getVerboseRaceFormatTextLines(
+  raceSettings: RaceSettings
+): string[] {
+  const lines: string[] = [];
+  if (raceSettings.roomFormat == "CASUAL") {
+    lines.push("Enjoy endless solves in this casual room.");
   } else {
-    let formatText = "";
-    if (nSets && nSets > 1) {
-      switch (matchFormat) {
+    if (raceSettings.nSets && raceSettings.nSets > 1) {
+      switch (raceSettings.matchFormat) {
         case "BEST_OF":
-          formatText +=
-            "Win the match by winning the most of " + nSets + " sets.";
+          lines.push(
+            "Win the match by winning the most of " +
+              raceSettings.nSets +
+              " sets."
+          );
           break;
         case "FIRST_TO":
-          formatText +=
-            "Win the match by being the first to win " + nSets + " sets.";
+          lines.push(
+            "Win the match by being the first to win " +
+              raceSettings.nSets +
+              " sets."
+          );
           break;
         default:
+          const illegalMatchFormat: never = raceSettings.matchFormat;
+          console.warn(`Illegal set format: ${illegalMatchFormat}`);
           break;
       }
-      formatText += "\n";
-      switch (setFormat) {
+
+      switch (raceSettings.setFormat) {
         case "BEST_OF":
-          formatText +=
+          lines.push(
             "Win a set by winning the most of " +
-            nSolves +
-            ` solve${nSolves > 1 ? "s" : ""}.`;
+              raceSettings.nSolves +
+              ` solve${raceSettings.nSolves > 1 ? "s" : ""}.`
+          );
           break;
         case "FIRST_TO":
-          formatText +=
+          lines.push(
             "Win a set by being the first to win " +
-            nSolves +
-            ` solve${nSolves > 1 ? "s" : ""}.`;
+              raceSettings.nSolves +
+              ` solve${raceSettings.nSolves > 1 ? "s" : ""}.`
+          );
           break;
         case "AVERAGE_OF":
-          formatText +=
+          lines.push(
             "Win a set by having the best average of " +
-            nSolves +
-            " solves (best and worst times dropped).";
+              raceSettings.nSolves +
+              " solves (best and worst times dropped)."
+          );
           break;
         case "MEAN_OF":
-          formatText +=
+          lines.push(
             "Win a set by having the best mean of " +
-            nSolves +
-            ` solve${nSolves > 1 ? "s" : ""}.`;
+              raceSettings.nSolves +
+              ` solve${raceSettings.nSolves > 1 ? "s" : ""}.`
+          );
           break;
         case "FASTEST_OF":
-          formatText +=
+          lines.push(
             "Win a set by having the best single of " +
-            nSolves +
-            ` solve${nSolves > 1 ? "s" : ""}.`;
+              raceSettings.nSolves +
+              ` solve${raceSettings.nSolves > 1 ? "s" : ""}.`
+          );
+          break;
+        default:
+          const illegalSetFormat: never = raceSettings.setFormat;
+          console.warn(`Illegal set format: ${illegalSetFormat}`);
           break;
       }
     } else {
-      switch (setFormat) {
+      switch (raceSettings.setFormat) {
         case "BEST_OF":
-          formatText +=
+          lines.push(
             "Win the match by winning the most of " +
-            nSolves +
-            ` solve${nSolves > 1 ? "s" : ""}.`;
+              raceSettings.nSolves +
+              ` solve${raceSettings.nSolves > 1 ? "s" : ""}.`
+          );
           break;
         case "FIRST_TO":
-          formatText +=
+          lines.push(
             "Win the match by being the first to win " +
-            nSolves +
-            ` solve${nSolves > 1 ? "s" : ""}.`;
+              raceSettings.nSolves +
+              ` solve${raceSettings.nSolves > 1 ? "s" : ""}.`
+          );
           break;
         case "AVERAGE_OF":
-          formatText +=
+          lines.push(
             "Win the match by having the best average of " +
-            nSolves +
-            " solves (best and worst times dropped).";
+              raceSettings.nSolves +
+              " solves (best and worst times dropped)."
+          );
           break;
         case "MEAN_OF":
-          formatText +=
+          lines.push(
             "Win the match by having the best mean of " +
-            nSolves +
-            ` solve${nSolves > 1 ? "s" : ""}.`;
+              raceSettings.nSolves +
+              ` solve${raceSettings.nSolves > 1 ? "s" : ""}.`
+          );
           break;
         case "FASTEST_OF":
-          formatText +=
+          lines.push(
             "Win the match by having the best single of " +
-            nSolves +
-            ` solve${nSolves > 1 ? "s" : ""}.`;
+              raceSettings.nSolves +
+              ` solve${raceSettings.nSolves > 1 ? "s" : ""}.`
+          );
+          break;
+        default:
+          const illegalSetFormat: never = raceSettings.setFormat;
+          console.warn(`Illegal set format: ${illegalSetFormat}`);
           break;
       }
     }
-
-    return formatText;
   }
+  return lines;
+}
+
+export function getVerboseTeamFormatTextLines(
+  teamSettings: TeamSettings
+): string[] {
+  const lines: string[] = [];
+
+  if (teamSettings.teamsEnabled) {
+    const teamSolveFormat = teamSettings.teamFormatSettings.teamSolveFormat;
+    switch (teamSolveFormat) {
+      case "ONE":
+        lines.push("Each team member will take turns completing solves.");
+        lines.push(
+          "The current member's result will count for the whole team."
+        );
+        break;
+      case "ALL":
+        lines.push("All team members will submit attempt for each solve.");
+
+        switch (teamSettings.teamFormatSettings.teamReduceFunction) {
+          case "FASTEST":
+            lines.push("The team's result is the fastest individual result.");
+            break;
+          case "MEAN":
+            lines.push(
+              "The team's result is the mean of all individual results."
+            );
+            break;
+          case "MEDIAN":
+            lines.push(
+              "The team's result is the median of all individual results."
+            );
+            break;
+          case "SUM":
+            lines.push(
+              "The team's result is the sum of all individual results."
+            );
+            break;
+          default:
+            const illegalTeamReduceFunction: never =
+              teamSettings.teamFormatSettings.teamReduceFunction;
+            console.warn(
+              `Illegal team scramble format ${illegalTeamReduceFunction}`
+            );
+            break;
+        }
+
+        switch (teamSettings.teamFormatSettings.teamScrambleFormat) {
+          case "SAME":
+            lines.push("Everyone will receive the same scrambles.");
+            break;
+          case "DIFFERENT":
+            lines.push("Every team member will receive different scrambles.");
+            break;
+          default:
+            const badValue: never =
+              teamSettings.teamFormatSettings.teamScrambleFormat;
+            console.warn(`Illegal team scramble format ${badValue}`);
+            break;
+        }
+        break;
+      default:
+        const illegalTeamSolveFormat: never = teamSolveFormat;
+        console.warn(`Illegal team scramble format ${illegalTeamSolveFormat}`);
+        break;
+    }
+  }
+
+  return lines;
 }
 
 //all room states
@@ -284,34 +372,96 @@ export const ROOM_STATES = [
   "FINISHED", //either when host ends the room, or when all attempts are done
 ] as const;
 
+export const TEAM_SOLVE_FORMATS = [
+  "ALL", //per solve, everyone in the team competes
+  "ONE", //per solve, only one person in the team competes
+] as const;
+
+export const TEAM_SCRAMBLE_FORMATS = [
+  "SAME", //(assuming multiple ppl per team compete per same solve) everyone gets same scramble
+  "DIFFERENT", //... everyone gets diff scramble
+] as const;
+
+//how the reduction from multiple results per solve in a team goes to one result for evaluation
+export const TEAM_REDUCE_FUNCTIONS = [
+  "SUM", //sum of all teammates' times
+  "MEAN", //mean of all teammates' times
+  "MEDIAN", //median of all teammates' times
+  "FASTEST", //fastest (min) of all teammates' times
+] as const;
+
 export type RoomEvent = (typeof ROOM_EVENTS)[number];
 export type RoomFormat = (typeof ROOM_FORMATS)[number];
+export type Visibility = (typeof VISIBILITIES)[number];
 export type MatchFormat = (typeof MATCH_FORMATS)[number];
 export type SetFormat = (typeof SET_FORMATS)[number];
 export type RoomState = (typeof ROOM_STATES)[number];
+export type TeamSolveFormat = (typeof TEAM_SOLVE_FORMATS)[number];
+export type TeamScrambleFormat = (typeof TEAM_SCRAMBLE_FORMATS)[number];
+export type TeamReduceFunction = (typeof TEAM_REDUCE_FUNCTIONS)[number];
 
 export interface IRoom {
   id: string;
   host?: IUserInfo;
   users: Record<string, IRoomUser>; //objectId (user) : IRoomUser. The key has to be a string b/c of mongoDB storage.
-  solves: IRoomSolve[];
+  teams: Record<string, IRoomTeam>; //objectId (team) : IRoomTeam
+  match: IRoomMatch;
   currentSet: number; //the current set number (1-indexed)
   currentSolve: number; //the solve number WITHIN the current set (1-indexed)
   state: RoomState;
-  winners?: string[]; //the objectIds (users) who have won the whole room
+
+  // solves: IRoomSolve[];
+  // winners?: string[]; //the objectId(s) who have won the whole room
 
   settings: IRoomSettings;
 }
+
+export type Access =
+  | {
+      visibility: Extract<Visibility, "PUBLIC">;
+    }
+  | {
+      visibility: Extract<Visibility, "PRIVATE">;
+      password: string;
+    };
+
+export type RaceSettings =
+  | {
+      roomFormat: Extract<RoomFormat, "CASUAL">;
+    }
+  | {
+      roomFormat: Extract<RoomFormat, "RACING">;
+      matchFormat: MatchFormat;
+      setFormat: SetFormat;
+      nSets: number;
+      nSolves: number;
+    };
+
+export type TeamFormatSettings =
+  | { teamSolveFormat: Extract<TeamSolveFormat, "ONE"> }
+  | {
+      teamSolveFormat: Extract<TeamSolveFormat, "ALL">;
+      teamScrambleFormat: TeamScrambleFormat;
+      teamReduceFunction: TeamReduceFunction;
+    };
+
+export type TeamSettings =
+  | {
+      teamsEnabled: false;
+    }
+  | {
+      teamsEnabled: true;
+      teamFormatSettings: TeamFormatSettings;
+      maxTeamCapacity?: number;
+      maxNumTeams?: number;
+    };
 
 // settings used when creating a room
 export interface IRoomSettings {
   roomName: string;
   roomEvent: RoomEvent;
-  roomFormat: RoomFormat;
-  matchFormat?: MatchFormat;
-  setFormat?: SetFormat;
-  isPrivate: boolean;
-  password?: string;
-  nSets?: number;
-  nSolves?: number;
+  access: Access;
+  raceSettings: RaceSettings;
+  teamSettings: TeamSettings;
+  maxUsers?: number; //the maximum number of users we can have in the room
 }

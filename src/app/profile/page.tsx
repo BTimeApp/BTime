@@ -1,7 +1,7 @@
 "use client";
-import Header from "@/components/common/header";
+import { Header, HeaderTitle } from "@/components/common/header";
 import LoginButton from "@/components/common/login-button";
-import HomeHeaderContent from "@/components/index/home-header-content";
+import PageWrapper from "@/components/common/page-wrapper";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSession } from "@/context/session-context";
@@ -9,16 +9,15 @@ import Image from "next/image";
 import { useCallback, useState } from "react";
 
 /** TODO
- *    - find a good way to format this page
- *
+ * Turn the profile change api call into an Action
+ * Format the page nicely
  */
 
 export default function Page() {
-  const { user: localUser, refresh } = useSession();
+  const localUser = useSession();
   const [username, setUsername] = useState<string>("");
   const [usernameFieldClass, setUsernameFieldClass] = useState<string>("");
   const [usernameFieldError, setUsernameFieldError] = useState<string>("");
-
 
   const submitProfileChanges = useCallback(async () => {
     const reqBody = {
@@ -37,7 +36,6 @@ export default function Page() {
     //expect the backend to use json
     const body = await res.json();
 
-
     //set field flash colors based on message
     if (!res.ok) {
       console.log(body.message);
@@ -49,15 +47,10 @@ export default function Page() {
       setUsernameFieldClass("animate-flash-success");
       setTimeout(() => setUsernameFieldClass(""), 2000); // Clear after animation
     }
-  
-    
 
     //reset fillable fields
     setUsername("");
-
-    //pulls new user data
-    refresh();
-  }, [username, refresh]);
+  }, [username]);
 
   let body = <></>;
   if (localUser) {
@@ -66,7 +59,9 @@ export default function Page() {
         <div>
           <Image
             src={
-              localUser.userInfo.avatarURL ? localUser.userInfo.avatarURL : "/images/C_logo.png"
+              localUser.userInfo.avatarURL
+                ? localUser.userInfo.avatarURL
+                : "/images/C_logo.png"
             }
             alt="/images/C_logo.png"
             width="200"
@@ -85,9 +80,16 @@ export default function Page() {
               className={`${usernameFieldClass}`}
             ></Input>
           </div>
-          {usernameFieldError && <div className="text-xs text-error">{usernameFieldError}</div>}
+          {usernameFieldError && (
+            <div className="text-xs text-error">{usernameFieldError}</div>
+          )}
           <div>Email: {localUser.userPrivateInfo.email}</div>
-          <div>WCAID: {localUser.userPrivateInfo.wcaId ? localUser.userPrivateInfo.wcaId : "None"}</div>
+          <div>
+            WCAID:{" "}
+            {localUser.userPrivateInfo.wcaId
+              ? localUser.userPrivateInfo.wcaId
+              : "None"}
+          </div>
           <Button
             variant="primary"
             size="sm"
@@ -110,11 +112,11 @@ export default function Page() {
     );
   }
   return (
-    <div>
+    <PageWrapper>
       <Header>
-        <HomeHeaderContent />
+        <HeaderTitle title="Profile" />
       </Header>
       {body}
-    </div>
+    </PageWrapper>
   );
 }

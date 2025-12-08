@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { DialogTrigger } from "@radix-ui/react-dialog";
 import React, { useCallback, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { IRoomUser } from "@/types/room-user";
+import { IRoomUser } from "@/types/room-participant";
 import {
   BanUserButton,
   KickUserButton,
