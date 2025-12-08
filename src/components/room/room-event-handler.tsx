@@ -65,6 +65,7 @@ export default function RoomEventHandler() {
     userUnbanned,
     setHostId,
     addResult,
+    addUserResult,
     setTimerType,
   ] = useRoomStore((s) => [
     s.localPenalty,
@@ -107,6 +108,7 @@ export default function RoomEventHandler() {
     s.userUnbanned,
     s.setHostId,
     s.addResult,
+    s.addUserResult,
     s.setTimerType,
   ]);
   const { socket } = useSocket();
@@ -280,6 +282,7 @@ export default function RoomEventHandler() {
   useSocketEvent(socket, SOCKET_SERVER.DELETE_ATTEMPT, deleteAttempt);
 
   useSocketEvent(socket, SOCKET_SERVER.NEW_SOLVE, addNewSolve);
+  useSocketEvent(socket, SOCKET_SERVER.NEW_USER_RESULT, addUserResult);
   useSocketEvent(socket, SOCKET_SERVER.NEW_RESULT, addResult);
   useSocketEvent(socket, SOCKET_SERVER.NEW_SET, addNewSet);
   useSocketEvent(socket, SOCKET_SERVER.SET_FINISHED_EVENT, finishSet);

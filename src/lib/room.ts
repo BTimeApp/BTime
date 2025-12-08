@@ -427,7 +427,7 @@ export function finishTeamSolve(room: IRoom, teamId: string) {
     !room.teams[teamId] ||
     !currentSolve
   ) {
-    return;
+    return undefined;
   }
 
   switch (room.settings.teamSettings.teamFormatSettings.teamSolveFormat) {
@@ -458,12 +458,12 @@ export function finishTeamSolve(room: IRoom, teamId: string) {
       room.teams[teamId].currentResult = teamResult;
       room.teams[teamId].solveStatus = "FINISHED";
 
-      return;
+      return teamResult;
 
     case "ONE":
       const currUid = room.teams[teamId].currentMember;
       if (!currUid) {
-        return;
+        return undefined;
       }
       if (
         !currentSolve.solve.attempts[currUid] ||
@@ -472,7 +472,7 @@ export function finishTeamSolve(room: IRoom, teamId: string) {
         console.warn(
           "Tried to finish team solve when team representative not finished..."
         );
-        return;
+        return undefined;
       }
 
       const result = currentSolve.solve.attempts[currUid].result;
@@ -481,7 +481,7 @@ export function finishTeamSolve(room: IRoom, teamId: string) {
       room.teams[teamId].currentResult = result;
       room.teams[teamId].solveStatus = "FINISHED";
 
-      return;
+      return result;
 
     default:
       console.warn(

@@ -258,6 +258,11 @@ export enum SOCKET_SERVER {
   USER_UPDATE = "USER_UPDATE",
 
   /**
+   * Broadcast a new user result
+   */
+  NEW_USER_RESULT = "NEW_USER_RESULT",
+
+  /**
    * Broadcast a new result
    */
   NEW_RESULT = "NEW_RESULT",

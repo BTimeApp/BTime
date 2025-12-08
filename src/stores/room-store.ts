@@ -133,6 +133,8 @@ export type RoomStore = {
 
   resetRoom: () => void;
 
+  addUserResult: (userId: string, result: IResult) => void;
+
   addResult: (participantId: string, result: IResult) => void;
 };
 
@@ -686,6 +688,18 @@ export function createRoomStore() {
                 currentSolve: 0,
                 users: updatedUsers,
                 teams: updatedTeams,
+              };
+            }),
+          addUserResult: (userId: string, result: IResult) =>
+            set((state) => {
+              const updatedUsers = { ...state.users };
+              const currentSolve = getLatestSolve(state.match);
+              if (updatedUsers[userId] && currentSolve) {
+                updatedUsers[userId].currentResult = result;
+              }
+
+              return {
+                users: updatedUsers,
               };
             }),
           addResult: (participantId: string, result: IResult) =>

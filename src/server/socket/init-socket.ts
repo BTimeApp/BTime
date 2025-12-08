@@ -822,7 +822,8 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
             );
             return;
           }
-          if (!getLatestSolve(room)) {
+          const currentSolve = getLatestSolve(room);
+          if (!currentSolve) {
             console.log(
               `User ${socket.user?.userInfo.id} tried to submit a result to ${socket.roomId} when there are no solves in the room.`
             );
@@ -839,14 +840,19 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
             result
           );
 
-          //broadcast user submit event to other users
+          io.to(socket.roomId).emit(
+            SOCKET_SERVER.NEW_USER_RESULT,
+            userId,
+            result
+          );
 
           if (updatedTeam !== undefined) {
             io.to(socket.roomId).emit(SOCKET_SERVER.TEAM_UPDATE, updatedTeam);
+            // this is the wrong result!
             io.to(socket.roomId).emit(
               SOCKET_SERVER.NEW_RESULT,
               updatedTeam.team.id,
-              result
+              currentSolve.solve.results[updatedTeam.team.id]
             );
           } else {
             io.to(socket.roomId).emit(SOCKET_SERVER.NEW_RESULT, userId, result);
