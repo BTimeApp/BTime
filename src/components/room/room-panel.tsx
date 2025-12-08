@@ -34,6 +34,7 @@ import {
   LeaveTeamButton,
 } from "@/components/room/team-action-buttons";
 import RoomTeamDialog from "@/components/room/room-team-dialog";
+import { ScrollArea, ScrollBar } from "../ui/scroll-area";
 
 type RoomPanelProps = {
   className?: string;
@@ -180,8 +181,8 @@ function UserCenterSection({
     match.sets.at(-1)?.solves.at(-1)?.solve.attempts[userId]?.scramble ?? "";
 
   return (
-    <div className={cn("flex flex-row w-full h-full", className)}>
-      <div className="flex flex-col grow w-full">
+    <div className={cn("flex flex-row w-full", className)}>
+      <div className="flex flex-col grow w-full h-full">
         <div className="flex-0 flex flex-col">
           {solveStatus !== "FINISHED" && (
             <div className="text-xl">{currScramble}</div>
@@ -285,18 +286,18 @@ function TeamCenterSection({
           <div className="flex flex-col grow w-full items-center">
             {currentTurnUser && (
               <>
-                <div className="text-lg font-bold">
+                <div className="flex-0 text-lg font-bold">
                   {"Current Solver: " + users[currentTurnUser].user.userName}
                 </div>
                 <UserCenterSection
                   userId={currentTurnUser}
                   isLocalUser={currentTurnUser === localUser?.userInfo.id}
-                  className="h-fit"
+                  className="flex-0"
                 />
               </>
             )}
-            <div className="text-lg font-bold w-fit">Team Members</div>
-            <div className="overflow-y-auto max-h-[25vh] w-fit">
+            <div className="flex-0 text-lg font-bold w-fit">Team Members</div>
+            <div className="flex-1 overflow-y-auto max-h-[25vh] w-fit">
               {allTeamUserIds.map((teamUserId, idx) => {
                 return (
                   <div
@@ -317,36 +318,47 @@ function TeamCenterSection({
     case "ALL":
       return (
         <div className={cn("flex flex-row w-full h-full", className)}>
-          <div className="flex flex-col grow w-full">
+          <div className="flex flex-col w-full h-full">
             {isLocalTeam && localUser && (
               <>
-                <div className="text-lg font-bold">
+                <div className="flex-0 text-lg font-bold">
                   {localUser.userInfo.userName}
                 </div>
                 <UserCenterSection
                   userId={localUser.userInfo.id}
                   isLocalUser={true}
-                  className="h-fit"
+                  className="flex-0"
                 />
               </>
             )}
-            <div className="text-lg font-bold">
+            <div className="flex flex-0 text-lg font-bold">
               {isLocalTeam ? "Your Teammates" : "Team Members"}
             </div>
-            {teamUserIds.map((teamUserId, idx) => {
-              return (
-                <div key={idx} className="grid grid-cols-4">
-                  <div className="col-span-3">
-                    {users[teamUserId].user.userName}
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              {teamUserIds.map((teamUserId, idx) => {
+                return (
+                  <div key={idx} className="grid grid-cols-4">
+                    <div className="col-span-3">
+                      {users[teamUserId].user.userName}
+                    </div>
+                    <div>
+                      {currentSolve !== undefined && (
+                        <UserStatusSection userId={teamUserId} />
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    {currentSolve !== undefined && (
-                      <UserStatusSection userId={teamUserId} />
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+              <div>asdfasdf</div>
+              <div>asdfasdf</div>
+              <div>asdfasdf</div>
+              <div>asdfasdf</div>
+              <div>asdfasdf</div>
+              <div>asdfasdf</div>
+              <div>asdfasdf</div>
+              <div>asdfasdf</div>
+              <div>asdfasdf</div>
+            </div>
           </div>
         </div>
       );
@@ -370,7 +382,7 @@ function UserRoomPanel({ className, userId }: UserRoomPanelProps) {
         className,
       ])}
     >
-      <div className="flex flex-row w-full shrink-0 relative">
+      <div className="flex flex-row w-full relative">
         <div className="grow">
           <p className="text-2xl font-bold">{users[userId]?.user.userName}</p>
         </div>
@@ -390,7 +402,8 @@ function UserRoomPanel({ className, userId }: UserRoomPanelProps) {
         )}
       </div>
 
-      <div className="flex flex-col flex-1 min-h-0 justify-center">
+      <div className="flex flex-col flex-1 min-h-0">
+        {/* <div className="flex flex-col flex-1 min-h-0 justify-center"> */}
         <UserCenterSection
           className={className}
           userId={userId}
@@ -428,7 +441,7 @@ function TeamRoomPanel({ className, teamId }: TeamRoomPanelProps) {
         className,
       ])}
     >
-      <div className="flex flex-row w-full shrink-0 relative">
+      <div className="flex flex-row flex-0 w-full relative">
         {teamId && (
           <div className="absolute top-0 left-0">
             {isLocalTeam ? (

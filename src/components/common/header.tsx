@@ -10,7 +10,7 @@ export function Header({
   return (
     <div
       className={cn(
-        "flex flex-row bg-primary text-primary-foreground p-2",
+        "flex flex-row shrink-0 bg-primary text-primary-foreground p-2",
         className
       )}
     >

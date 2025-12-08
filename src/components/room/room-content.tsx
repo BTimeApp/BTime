@@ -47,15 +47,17 @@ export default function RoomContent() {
   switch (localRoomState) {
     case "WAITING":
       return (
-        <div className="flex-1 grow grid grid-rows-2 md:grid-rows-1 md:grid-cols-2 w-full">
-          <RoomPanel
-            type="info"
-            side={screenSize >= ScreenSize.MD ? "left" : undefined}
-          />
-          <RoomPanel
-            type="participantlist"
-            side={screenSize >= ScreenSize.MD ? "right" : undefined}
-          />
+        <div className="flex-1 min-h-0">
+          <div className="grow grid grid-rows-2 md:grid-rows-1 md:grid-cols-2 w-full h-full">
+            <RoomPanel
+              type="info"
+              side={screenSize >= ScreenSize.MD ? "left" : undefined}
+            />
+            <RoomPanel
+              type="participantlist"
+              side={screenSize >= ScreenSize.MD ? "right" : undefined}
+            />
+          </div>
         </div>
       );
     case "STARTED":
@@ -70,52 +72,58 @@ export default function RoomContent() {
           .filter((teamId) => teamId != localTeamId);
 
         return (
-          <div className="flex-1 grow grid grid-rows-2 md:grid-rows-1 md:grid-cols-2 w-full">
-            <RoomPanel
-              side={screenSize >= ScreenSize.MD ? "left" : undefined}
-              type={teamSettings.teamsEnabled ? "team" : "user"}
-              {...(teamSettings.teamsEnabled
-                ? { teamId: localTeamId }
-                : { userId: user?.userInfo.id })}
-              className={localTeamId ? "bg-secondary" : "bg-container-2"}
-            />
-            <ParticipantRoomPanelCarousel
-              type="team"
-              participantIds={otherTeamIds}
-              idToName={teamIdToName}
-            />
+          <div className="flex-1 min-h-0">
+            <div className="grid grid-rows-2 md:grid-rows-1 md:grid-cols-2 w-full h-full">
+              <RoomPanel
+                side={screenSize >= ScreenSize.MD ? "left" : undefined}
+                type={teamSettings.teamsEnabled ? "team" : "user"}
+                {...(teamSettings.teamsEnabled
+                  ? { teamId: localTeamId }
+                  : { userId: user?.userInfo.id })}
+                className={localTeamId ? "bg-secondary" : "bg-container-2"}
+              />
+              <ParticipantRoomPanelCarousel
+                type="team"
+                participantIds={otherTeamIds}
+                idToName={teamIdToName}
+              />
+            </div>
           </div>
         );
       } else {
         // no teams - return user room panels
         return (
-          <div className="flex-1 grow grid grid-rows-2 md:grid-rows-1 md:grid-cols-2 w-full">
-            <RoomPanel
-              side={screenSize >= ScreenSize.MD ? "left" : undefined}
-              type="user"
-              userId={user ? user.userInfo.id : undefined}
-              className="bg-secondary"
-            />
-            <ParticipantRoomPanelCarousel
-              type="user"
-              participantIds={otherActiveUserIds}
-              idToName={userIdToName}
-            />
+          <div className="flex-1 min-h-0">
+            <div className="grid grid-rows-2 md:grid-rows-1 md:grid-cols-2 w-full h-full">
+              <RoomPanel
+                side={screenSize >= ScreenSize.MD ? "left" : undefined}
+                type="user"
+                userId={user ? user.userInfo.id : undefined}
+                className="bg-secondary"
+              />
+              <ParticipantRoomPanelCarousel
+                type="user"
+                participantIds={otherActiveUserIds}
+                idToName={userIdToName}
+              />
+            </div>
           </div>
         );
       }
     case "FINISHED":
       return (
-        <div className="flex-1 grow grid grid-rows-2 md:grid-rows-1 md:grid-cols-2 w-full">
-          <RoomPanel
-            type="summary"
-            side={screenSize >= ScreenSize.MD ? "left" : undefined}
-            className="bg-container-1"
-          />
-          <RoomPanel
-            type="participantlist"
-            side={screenSize >= ScreenSize.MD ? "right" : undefined}
-          />
+        <div className="flex-1 min-h-0">
+          <div className="grid grid-rows-2 md:grid-rows-1 md:grid-cols-2 w-full h-full">
+            <RoomPanel
+              type="summary"
+              side={screenSize >= ScreenSize.MD ? "left" : undefined}
+              className="bg-container-1"
+            />
+            <RoomPanel
+              type="participantlist"
+              side={screenSize >= ScreenSize.MD ? "right" : undefined}
+            />
+          </div>
         </div>
       );
     default:
