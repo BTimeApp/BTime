@@ -180,7 +180,7 @@ function UserCenterSection({
     match.sets.at(-1)?.solves.at(-1)?.solve.attempts[userId]?.scramble ?? "";
 
   return (
-    <div className={cn("flex flex-row w-full", className)}>
+    <div className={cn("flex flex-row h-full w-full", className)}>
       <div className="flex flex-col grow w-full h-full">
         <div className="flex-0 flex flex-col">
           {solveStatus !== "FINISHED" && (
