@@ -163,19 +163,17 @@ export function RoomHeader() {
         return (
           <>
             <HeaderTitle title={roomName} />
-            <h4 className="text-lg">
+            <h4 className="text-lg hidden sm:block">
               {ROOM_EVENTS_INFO[roomEvent].displayName}
               {raceSettings.roomFormat !== "CASUAL"
                 ? " | " +
                   abbreviate(raceSettings.matchFormat) +
                   raceSettings.nSets.toString() +
-                  " sets"
-                : ""}
-              {raceSettings.roomFormat !== "CASUAL"
-                ? " | " +
+                  ` set${raceSettings.nSets > 1 ? "s" : ""}` +
+                  " | " +
                   abbreviate(raceSettings.setFormat) +
                   raceSettings.nSolves.toString() +
-                  " solves"
+                  ` solve${raceSettings.nSolves > 1 ? "s" : ""}`
                 : ""}
               {teamSettings.teamsEnabled &&
               teamSettings.teamFormatSettings.teamSolveFormat === "ALL"
