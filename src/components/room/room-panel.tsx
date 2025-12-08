@@ -184,7 +184,7 @@ function UserCenterSection({
       <div className="flex flex-col grow w-full">
         <div className="flex-0 flex flex-col">
           {solveStatus !== "FINISHED" && (
-            <div className="text-2xl">{currScramble}</div>
+            <div className="text-xl">{currScramble}</div>
           )}
         </div>
         <div className="flex-1 flex flex-col justify-center">
@@ -195,7 +195,7 @@ function UserCenterSection({
                 {solveStatus === "SUBMITTING" && <RoomSubmittingButtons />}
               </>
             ) : (
-              <p className="text-lg">
+              <p className="text-xl">
                 You are spectating. Compete to use timer.
               </p>
             )
