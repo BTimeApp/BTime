@@ -69,7 +69,8 @@ function TimerSection() {
     case "TYPING":
       switch (localSolveStatus) {
         case "IDLE":
-          return null;
+        // Make idle (should be illegal) fall back to the solving state.
+        // Currently possible to be in IDLE state if joining an already-started room with timertype TYPING in dev mode b/c of react's strict mode (the second render causes the default localSolveStatus to be IDLE)
         case "SOLVING":
           return (
             <>
