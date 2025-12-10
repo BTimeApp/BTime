@@ -30,7 +30,12 @@ export function useSocketEvent(
 
     // Wrapper that always calls the latest handler
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const eventHandler = (...args: any[]) => handlerRef.current(...args);
+    const eventHandler = (...args: any[]) => {
+      if (process.env.NODE_ENV === "development") {
+        console.debug(`Handling event ${event} with args ${args}`);
+      }
+      handlerRef.current(...args);
+    };
 
     if (once) socket.once(event, eventHandler);
     else socket.on(event, eventHandler);
