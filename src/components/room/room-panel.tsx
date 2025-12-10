@@ -84,11 +84,12 @@ function UserStatusSection({
   className?: string;
   userId: string;
 }) {
-  const [users, userLiveTimes, userLiveTimerStartTimes] = useRoomStore((s) => [
-    s.users,
-    s.userLiveTimes,
-    s.userLiveTimerStartTimes,
-  ]);
+  const users = useRoomStore((s) => s.users);
+  const userLiveTimes = useRoomStore((s) => s.userLiveTimes);
+  const userLiveTimerStartTimes = useRoomStore(
+    (s) => s.userLiveTimerStartTimes
+  );
+
   const user = useMemo(() => {
     return users[userId];
   }, [users, userId]);
@@ -138,7 +139,7 @@ function TeamStatusSection({
   className?: string;
   teamId: string;
 }) {
-  const [teams] = useRoomStore((s) => [s.teams]);
+  const teams = useRoomStore((s) => s.teams);
   const team = useMemo(() => {
     return teams[teamId];
   }, [teams, teamId]);
@@ -240,12 +241,10 @@ function TeamCenterSection({
   isLocalTeam: boolean;
 }) {
   const localUser = useSession();
-  const [users, teams, match, teamSettings] = useRoomStore((s) => [
-    s.users,
-    s.teams,
-    s.match,
-    s.teamSettings,
-  ]);
+  const users = useRoomStore((s) => s.users);
+  const teams = useRoomStore((s) => s.teams);
+  const match = useRoomStore((s) => s.match);
+  const teamSettings = useRoomStore((s) => s.teamSettings);
 
   const allTeamUserIds = teamId
     ? Object.values(teams[teamId].team.members)
@@ -359,7 +358,7 @@ function TeamCenterSection({
 
 function UserRoomPanel({ className, userId }: UserRoomPanelProps) {
   const localUser = useSession();
-  const [users] = useRoomStore((s) => [s.users]);
+  const users = useRoomStore((s) => s.users);
 
   const isLocalUser = useMemo(() => {
     return localUser?.userInfo.id === userId;
@@ -407,11 +406,9 @@ function UserRoomPanel({ className, userId }: UserRoomPanelProps) {
 
 function TeamRoomPanel({ className, teamId }: TeamRoomPanelProps) {
   const localUser = useSession();
-  const [users, teams, teamSettings] = useRoomStore((s) => [
-    s.users,
-    s.teams,
-    s.teamSettings,
-  ]);
+  const users = useRoomStore((s) => s.users);
+  const teams = useRoomStore((s) => s.teams);
+  const teamSettings = useRoomStore((s) => s.teamSettings);
 
   // analogous to isLocalUser - is this team the one that belongs to the local user?
   const isLocalTeam = useMemo(() => {
@@ -480,15 +477,12 @@ function TeamRoomPanel({ className, teamId }: TeamRoomPanelProps) {
 function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
   const localUser = useSession();
 
-  const [users, teams, roomState, raceSettings, teamSettings, isUserHost] =
-    useRoomStore((s) => [
-      s.users,
-      s.teams,
-      s.roomState,
-      s.raceSettings,
-      s.teamSettings,
-      s.isUserHost,
-    ]);
+  const users = useRoomStore((s) => s.users);
+  const teams = useRoomStore((s) => s.teams);
+  const roomState = useRoomStore((s) => s.roomState);
+  const raceSettings = useRoomStore((s) => s.raceSettings);
+  const teamSettings = useRoomStore((s) => s.teamSettings);
+  const isUserHost = useRoomStore((s) => s.isUserHost);
 
   const participantSortKeyCallback = useCallback(
     (u1: IRoomParticipant, u2: IRoomParticipant) => {
@@ -675,15 +669,12 @@ function ParticipantListRoomPanel({
   className,
 }: ParticipantListRoomPanelProps) {
   const localUser = useSession();
-  const [users, teams, roomState, match, teamSettings, isUserHost] =
-    useRoomStore((s) => [
-      s.users,
-      s.teams,
-      s.roomState,
-      s.match,
-      s.teamSettings,
-      s.isUserHost,
-    ]);
+  const users = useRoomStore((s) => s.users);
+  const teams = useRoomStore((s) => s.teams);
+  const roomState = useRoomStore((s) => s.roomState);
+  const match = useRoomStore((s) => s.match);
+  const teamSettings = useRoomStore((s) => s.teamSettings);
+  const isUserHost = useRoomStore((s) => s.isUserHost);
 
   const winnerNames = useMemo(() => {
     return teamSettings.teamsEnabled

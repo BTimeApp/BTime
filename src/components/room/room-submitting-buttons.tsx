@@ -7,17 +7,10 @@ import { SOCKET_CLIENT } from "@/types/socket_protocol";
 import { KeybindButton } from "@/components/common/keybind-button";
 
 function RoomSubmittingButtons() {
-  const [
-    localResult,
-    resetLocalSolveStatus,
-    setLocalPenalty,
-    updateLocalSolveStatus,
-  ] = useRoomStore((s) => [
-    s.localResult,
-    s.resetLocalSolveStatus,
-    s.setLocalPenalty,
-    s.updateLocalSolveStatus,
-  ]);
+  const localResult = useRoomStore((s) => s.localResult);
+  const resetLocalSolveStatus = useRoomStore((s) => s.resetLocalSolveStatus);
+  const setLocalPenalty = useRoomStore((s) => s.setLocalPenalty);
+  const updateLocalSolveStatus = useRoomStore((s) => s.updateLocalSolveStatus);
   const { socket } = useSocket();
 
   const submitButtonRef = useRef<HTMLButtonElement>(null);

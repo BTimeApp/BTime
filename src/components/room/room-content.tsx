@@ -15,12 +15,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 export default function RoomContent() {
   const user = useSession();
-  const [users, teams, teamSettings, localRoomState] = useRoomStore((s) => [
-    s.users,
-    s.teams,
-    s.teamSettings,
-    s.roomState,
-  ]);
+  const users = useRoomStore((s) => s.users);
+  const teams = useRoomStore((s) => s.teams);
+  const teamSettings = useRoomStore((s) => s.teamSettings);
+  const roomState = useRoomStore((s) => s.roomState);
+
   const otherActiveUserIds = useMemo(() => {
     return Object.values(users)
       .filter(
@@ -44,7 +43,7 @@ export default function RoomContent() {
     [teams]
   );
 
-  switch (localRoomState) {
+  switch (roomState) {
     case "WAITING":
       return (
         <div className="flex-1 min-h-0">

@@ -12,29 +12,16 @@ import { SOCKET_CLIENT } from "@/types/socket_protocol";
 import CreateTeamDialog from "@/components/room/create-team-dialog";
 
 export function RoomHeader() {
-  const [
-    roomName,
-    roomState,
-    roomEvent,
-    currentSet,
-    currentSolve,
-    users,
-    teams,
-    raceSettings,
-    teamSettings,
-    isUserHost,
-  ] = useRoomStore((s) => [
-    s.roomName,
-    s.roomState,
-    s.roomEvent,
-    s.currentSet,
-    s.currentSolve,
-    s.users,
-    s.teams,
-    s.raceSettings,
-    s.teamSettings,
-    s.isUserHost,
-  ]);
+  const roomName = useRoomStore((s) => s.roomName);
+  const roomState = useRoomStore((s) => s.roomState);
+  const roomEvent = useRoomStore((s) => s.roomEvent);
+  const currentSet = useRoomStore((s) => s.currentSet);
+  const currentSolve = useRoomStore((s) => s.currentSolve);
+  const users = useRoomStore((s) => s.users);
+  const teams = useRoomStore((s) => s.teams);
+  const raceSettings = useRoomStore((s) => s.raceSettings);
+  const teamSettings = useRoomStore((s) => s.teamSettings);
+  const isUserHost = useRoomStore((s) => s.isUserHost);
 
   const user = useSession();
   const { socket } = useSocket();

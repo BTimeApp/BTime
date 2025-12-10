@@ -5,7 +5,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { DNF_IRESULT, IResult, Result } from "@/types/result";
+import { Result } from "@/types/result";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,7 +47,9 @@ type SummaryDialogProps = {
   children: React.ReactNode;
 };
 
-type ScrambleResultMapping = Record<string, Record<string, IResult>>;
+// uses null to signify user not finished
+// type ScrambleAttemptMapping = Record<string, Record<string, IResult | null>>;
+type ScrambleAttemptMapping = Record<string, Record<string, IAttempt>>;
 
 /**
  * Turns attempt information into a mapping of
@@ -55,20 +57,18 @@ type ScrambleResultMapping = Record<string, Record<string, IResult>>;
  *
  * We take in attempts itself to allow pre-filtering out attempts.
  */
-function getScrambleResultMapping(
+function getScrambleAttemptMapping(
   attempts: Record<string, IAttempt>
-): ScrambleResultMapping {
-  const mapping = {} as ScrambleResultMapping;
+): ScrambleAttemptMapping {
+  const mapping = {} as ScrambleAttemptMapping;
 
   for (const [uid, attempt] of Object.entries(attempts)) {
     if (!(attempt.scramble in mapping)) {
-      mapping[attempt.scramble] = {} as Record<string, IResult>;
+      mapping[attempt.scramble] = {} as Record<string, IAttempt>;
     }
 
     //guard against user not existing in the array, but should never happen
-    mapping[attempt.scramble][uid] = attempt.finished
-      ? attempt.result
-      : DNF_IRESULT;
+    mapping[attempt.scramble][uid] = attempt;
   }
 
   return mapping;
@@ -87,14 +87,14 @@ function getScrambleResultMapping(
  * [scramble]
  *   ...
  */
-function ScrambleUserResultsListing({
+function ScrambleUserAttemptsListing({
   mapping,
   className,
 }: {
-  mapping: ScrambleResultMapping;
+  mapping: ScrambleAttemptMapping;
   className?: string;
 }) {
-  const [users] = useRoomStore((s) => [s.users]);
+  const users = useRoomStore((s) => s.users);
   return (
     <div className={cn("", className)}>
       {Object.entries(mapping).map(([scramble, resultMapping], idx) => (
@@ -104,11 +104,13 @@ function ScrambleUserResultsListing({
           </CustomRadioItem>
 
           <div className="pl-4">
-            {Object.entries(resultMapping).map(([uid, iResult], jdx) => (
+            {Object.entries(resultMapping).map(([uid, attempt], jdx) => (
               <div key={jdx} className="whitespace-pre-wrap">
                 {users[uid]?.user.userName ?? "BTime User"}
                 {"\t\t"}
-                {Result.fromIResult(iResult).toString(true)}
+                {attempt.finished
+                  ? Result.fromIResult(attempt.result).toString(true)
+                  : "---"}
               </div>
             ))}
           </div>
@@ -136,7 +138,7 @@ function ResultListingWrapper({
   const textContainerRef = useRef<HTMLDivElement>(null);
   const [scramble, setScramble] = useState<string>(defaultValue ?? "");
 
-  const [roomEvent] = useRoomStore((s) => [s.roomEvent]);
+  const roomEvent = useRoomStore((s) => s.roomEvent);
 
   const copyText = useCallback(() => {
     const copyText = [];
@@ -198,35 +200,33 @@ function ResultListingWrapper({
 }
 
 export function SolveDialog({ solve, setIndex, children }: SolveDialogProps) {
-  const [roomName, teams, raceSettings, teamSettings] = useRoomStore((s) => [
-    s.roomName,
-    s.teams,
-    s.raceSettings,
-    s.teamSettings,
-  ]);
+  const roomName = useRoomStore((s) => s.roomName);
+  const teams = useRoomStore((s) => s.teams);
+  const raceSettings = useRoomStore((s) => s.raceSettings);
+  const teamSettings = useRoomStore((s) => s.teamSettings);
 
   const localUser = useSession();
-  const userScrambleResultMapping = useMemo(
+  const userScrambleAttemptMapping = useMemo(
     () =>
       localUser
-        ? getScrambleResultMapping(
+        ? getScrambleAttemptMapping(
             filterRecord(
               solve.solve.attempts,
               (_attempt, uid) => uid === localUser.userInfo.id
             )
           )
-        : ({} as ScrambleResultMapping),
+        : ({} as ScrambleAttemptMapping),
     [localUser, solve]
   );
 
-  const teamScrambleResultMappings: Record<string, ScrambleResultMapping> =
+  const teamScrambleAttemptMappings: Record<string, ScrambleAttemptMapping> =
     useMemo(
       () =>
         filterRecord(
-          mapRecordValues<string, IRoomTeam, ScrambleResultMapping>(
+          mapRecordValues<string, IRoomTeam, ScrambleAttemptMapping>(
             teams,
             (roomTeam: IRoomTeam) =>
-              getScrambleResultMapping(
+              getScrambleAttemptMapping(
                 filterRecord(
                   solve.solve.attempts,
                   (attempt) => attempt.team === roomTeam.team.id
@@ -238,8 +238,8 @@ export function SolveDialog({ solve, setIndex, children }: SolveDialogProps) {
       [teams, solve]
     );
 
-  const allScrambleResultMapping = useMemo(
-    () => getScrambleResultMapping(solve.solve.attempts),
+  const allScrambleAttemptMapping = useMemo(
+    () => getScrambleAttemptMapping(solve.solve.attempts),
     [solve]
   );
   const baseCopyText = [
@@ -265,47 +265,49 @@ export function SolveDialog({ solve, setIndex, children }: SolveDialogProps) {
         </DialogHeader>
         <Tabs
           defaultValue={
-            Object.keys(userScrambleResultMapping).length > 0 ? "user" : "all"
+            Object.keys(userScrambleAttemptMapping).length > 0 ? "user" : "all"
           }
         >
           <TabsList>
-            {Object.keys(userScrambleResultMapping).length > 0 && (
+            {Object.keys(userScrambleAttemptMapping).length > 0 && (
               <TabsTrigger value="user">You</TabsTrigger>
             )}
             <TabsTrigger value="all">All</TabsTrigger>
             {teamSettings.teamsEnabled &&
-              Object.keys(teamScrambleResultMappings).map((tid, idx) => (
+              Object.keys(teamScrambleAttemptMappings).map((tid, idx) => (
                 <TabsTrigger key={idx} value={tid}>
                   {teams[tid].team.name ?? "[No Name]"}
                 </TabsTrigger>
               ))}
           </TabsList>
-          {Object.keys(userScrambleResultMapping).length > 0 && (
+          {Object.keys(userScrambleAttemptMapping).length > 0 && (
             <TabsContent value="user">
               <ResultListingWrapper
                 baseCopyText={baseCopyText}
-                defaultValue={Object.keys(userScrambleResultMapping)[0]}
+                defaultValue={Object.keys(userScrambleAttemptMapping)[0]}
               >
-                <ScrambleUserResultsListing
-                  mapping={userScrambleResultMapping}
+                <ScrambleUserAttemptsListing
+                  mapping={userScrambleAttemptMapping}
                 />
               </ResultListingWrapper>
             </TabsContent>
           )}
           <TabsContent value="all">
             <ResultListingWrapper
-              defaultValue={Object.keys(allScrambleResultMapping)[0]}
+              defaultValue={Object.keys(allScrambleAttemptMapping)[0]}
               baseCopyText={baseCopyText}
             >
-              <ScrambleUserResultsListing mapping={allScrambleResultMapping} />
+              <ScrambleUserAttemptsListing
+                mapping={allScrambleAttemptMapping}
+              />
             </ResultListingWrapper>
           </TabsContent>
           {teamSettings.teamsEnabled &&
-            Object.entries(teamScrambleResultMappings).map(
-              ([tid, teamScrambleResultMapping], idx) => (
+            Object.entries(teamScrambleAttemptMappings).map(
+              ([tid, teamScrambleAttemptMapping], idx) => (
                 <TabsContent key={idx} value={tid}>
                   <ResultListingWrapper
-                    defaultValue={Object.keys(teamScrambleResultMapping)[0]}
+                    defaultValue={Object.keys(teamScrambleAttemptMapping)[0]}
                     baseCopyText={baseCopyText}
                     title={`Team Result:\t${
                       solve.solve.results[tid]
@@ -315,8 +317,8 @@ export function SolveDialog({ solve, setIndex, children }: SolveDialogProps) {
                         : "TBD"
                     }`}
                   >
-                    <ScrambleUserResultsListing
-                      mapping={teamScrambleResultMapping}
+                    <ScrambleUserAttemptsListing
+                      mapping={teamScrambleAttemptMapping}
                     />
                   </ResultListingWrapper>
                 </TabsContent>
@@ -329,12 +331,10 @@ export function SolveDialog({ solve, setIndex, children }: SolveDialogProps) {
 }
 
 export function SetDialog({ setIndex, children }: SetDialogProps) {
-  const [roomName, teams, match, teamSettings] = useRoomStore((s) => [
-    s.roomName,
-    s.teams,
-    s.match,
-    s.teamSettings,
-  ]);
+  const roomName = useRoomStore((s) => s.roomName);
+  const teams = useRoomStore((s) => s.teams);
+  const match = useRoomStore((s) => s.match);
+  const teamSettings = useRoomStore((s) => s.teamSettings);
 
   const localUser = useSession();
   const setSolves: IRoomSolve[] = useMemo(
@@ -343,43 +343,43 @@ export function SetDialog({ setIndex, children }: SetDialogProps) {
     [match, setIndex]
   );
 
-  const userScrambleResultMappings: ScrambleResultMapping[] = useMemo(
+  const userScrambleAttemptMappings: ScrambleAttemptMapping[] = useMemo(
     () =>
       setSolves.map((solve) =>
         localUser
-          ? getScrambleResultMapping(
+          ? getScrambleAttemptMapping(
               filterRecord(
                 solve.solve.attempts,
                 (_attempt, uid) => uid === localUser.userInfo.id
               )
             )
-          : ({} as ScrambleResultMapping)
+          : ({} as ScrambleAttemptMapping)
       ),
     [localUser, setSolves]
   );
 
   const showUserTab = useMemo(
-    () => userScrambleResultMappings.some((x) => Object.keys(x).length > 0),
-    [userScrambleResultMappings]
+    () => userScrambleAttemptMappings.some((x) => Object.keys(x).length > 0),
+    [userScrambleAttemptMappings]
   );
 
   const userDefaultScramble = useMemo(
     () =>
       Object.keys(
-        userScrambleResultMappings.find((m) => Object.keys(m).length > 0) ?? {}
+        userScrambleAttemptMappings.find((m) => Object.keys(m).length > 0) ?? {}
       )[0] ?? "",
-    [userScrambleResultMappings]
+    [userScrambleAttemptMappings]
   );
 
-  const teamScrambleResultMappings: Record<string, ScrambleResultMapping[]> =
+  const teamScrambleAttemptMappings: Record<string, ScrambleAttemptMapping[]> =
     useMemo(
       () =>
         filterRecord(
-          mapRecordValues<string, IRoomTeam, ScrambleResultMapping[]>(
+          mapRecordValues<string, IRoomTeam, ScrambleAttemptMapping[]>(
             teams,
             (roomTeam: IRoomTeam) => {
               return setSolves.map((solve) =>
-                getScrambleResultMapping(
+                getScrambleAttemptMapping(
                   filterRecord(
                     solve.solve.attempts,
                     (attempt) => attempt.team === roomTeam.team.id
@@ -398,33 +398,33 @@ export function SetDialog({ setIndex, children }: SetDialogProps) {
 
   const teamDefaultScrambles = useMemo(
     () =>
-      mapRecordValues<string, ScrambleResultMapping[], string>(
-        teamScrambleResultMappings,
-        (setScrambleResultMapping) => {
+      mapRecordValues<string, ScrambleAttemptMapping[], string>(
+        teamScrambleAttemptMappings,
+        (setScrambleAttemptMapping) => {
           return (
             getFirstKey<string>(
-              setScrambleResultMapping.find(
-                (scrambleResultMapping) =>
-                  Object.keys(scrambleResultMapping).length > 0
+              setScrambleAttemptMapping.find(
+                (ScrambleAttemptMapping) =>
+                  Object.keys(ScrambleAttemptMapping).length > 0
               ) ?? {}
             ) ?? ""
           );
         }
       ),
-    [teamScrambleResultMappings]
+    [teamScrambleAttemptMappings]
   );
 
-  const allScrambleResultMappings: ScrambleResultMapping[] = useMemo(
+  const allScrambleAttemptMappings: ScrambleAttemptMapping[] = useMemo(
     () =>
-      setSolves.map((solve) => getScrambleResultMapping(solve.solve.attempts)),
+      setSolves.map((solve) => getScrambleAttemptMapping(solve.solve.attempts)),
     [setSolves]
   );
   const allDefaultScramble = useMemo(
     () =>
       Object.keys(
-        allScrambleResultMappings.find((m) => Object.keys(m).length > 0) ?? {}
+        allScrambleAttemptMappings.find((m) => Object.keys(m).length > 0) ?? {}
       )[0] ?? "",
-    [allScrambleResultMappings]
+    [allScrambleAttemptMappings]
   );
 
   const baseCopyText = [
@@ -447,7 +447,7 @@ export function SetDialog({ setIndex, children }: SetDialogProps) {
             {showUserTab && <TabsTrigger value="user">You</TabsTrigger>}
             <TabsTrigger value="all">All</TabsTrigger>
             {teamSettings.teamsEnabled &&
-              Object.keys(teamScrambleResultMappings).map((tid, idx) => (
+              Object.keys(teamScrambleAttemptMappings).map((tid, idx) => (
                 <TabsTrigger key={idx} value={tid}>
                   {teams[tid].team.name ?? "[No Name]"}
                 </TabsTrigger>
@@ -459,12 +459,12 @@ export function SetDialog({ setIndex, children }: SetDialogProps) {
                 baseCopyText={baseCopyText}
                 defaultValue={userDefaultScramble}
               >
-                {userScrambleResultMappings.map(
-                  (userScrambleResultMapping, idx) => (
+                {userScrambleAttemptMappings.map(
+                  (userScrambleAttemptMapping, idx) => (
                     <div className="pl-4" key={idx}>
                       <p className="text-lg font-bold">Solve {idx + 1}</p>
-                      <ScrambleUserResultsListing
-                        mapping={userScrambleResultMapping}
+                      <ScrambleUserAttemptsListing
+                        mapping={userScrambleAttemptMapping}
                       />
                     </div>
                   )
@@ -477,12 +477,12 @@ export function SetDialog({ setIndex, children }: SetDialogProps) {
               defaultValue={allDefaultScramble}
               baseCopyText={baseCopyText}
             >
-              {allScrambleResultMappings.map(
-                (allScrambleResultMapping, idx) => (
+              {allScrambleAttemptMappings.map(
+                (allScrambleAttemptMapping, idx) => (
                   <div className="pl-4" key={idx}>
                     <p className="text-lg font-bold">Solve {idx + 1}</p>
-                    <ScrambleUserResultsListing
-                      mapping={allScrambleResultMapping}
+                    <ScrambleUserAttemptsListing
+                      mapping={allScrambleAttemptMapping}
                     />
                   </div>
                 )
@@ -490,20 +490,20 @@ export function SetDialog({ setIndex, children }: SetDialogProps) {
             </ResultListingWrapper>
           </TabsContent>
           {teamSettings.teamsEnabled &&
-            Object.entries(teamScrambleResultMappings).map(
-              ([tid, teamScrambleResultMappings], idx) => (
+            Object.entries(teamScrambleAttemptMappings).map(
+              ([tid, teamScrambleAttemptMappings], idx) => (
                 <TabsContent key={idx} value={tid}>
                   <ResultListingWrapper
                     defaultValue={teamDefaultScrambles[tid] ?? ""}
                     baseCopyText={baseCopyText}
                   >
                     {/* TODO - show team result */}
-                    {teamScrambleResultMappings.map(
-                      (teamScrambleResultMapping, jdx) => (
+                    {teamScrambleAttemptMappings.map(
+                      (teamScrambleAttemptMapping, jdx) => (
                         <div className="pl-4" key={jdx}>
                           <p className="text-lg font-bold"> Solve {jdx + 1}</p>
-                          <ScrambleUserResultsListing
-                            mapping={teamScrambleResultMapping}
+                          <ScrambleUserAttemptsListing
+                            mapping={teamScrambleAttemptMapping}
                           />
                         </div>
                       )
@@ -519,12 +519,10 @@ export function SetDialog({ setIndex, children }: SetDialogProps) {
 }
 
 export function SummaryDialog({ children }: SummaryDialogProps) {
-  const [roomName, teams, match, teamSettings] = useRoomStore((s) => [
-    s.roomName,
-    s.teams,
-    s.match,
-    s.teamSettings,
-  ]);
+  const roomName = useRoomStore((s) => s.roomName);
+  const teams = useRoomStore((s) => s.teams);
+  const match = useRoomStore((s) => s.match);
+  const teamSettings = useRoomStore((s) => s.teamSettings);
 
   const localUser = useSession();
 
@@ -537,18 +535,18 @@ export function SummaryDialog({ children }: SummaryDialogProps) {
     [match]
   );
 
-  const userScrambleResultMappings: ScrambleResultMapping[][] = useMemo(
+  const userScrambleAttemptMappings: ScrambleAttemptMapping[][] = useMemo(
     () =>
       sets.map((set) =>
         set.solves.map((solve) =>
           localUser
-            ? getScrambleResultMapping(
+            ? getScrambleAttemptMapping(
                 filterRecord(
                   solve.solve.attempts,
                   (_attempt, uid) => uid === localUser.userInfo.id
                 )
               )
-            : ({} as ScrambleResultMapping)
+            : ({} as ScrambleAttemptMapping)
         )
       ),
     [localUser, sets]
@@ -569,61 +567,63 @@ export function SummaryDialog({ children }: SummaryDialogProps) {
     [userDefaultScramble]
   );
 
-  const teamScrambleResultMappings: Record<string, ScrambleResultMapping[][]> =
-    useMemo(
-      () =>
-        filterRecord(
-          mapRecordValues<string, IRoomTeam, ScrambleResultMapping[][]>(
-            teams,
-            (roomTeam: IRoomTeam) => {
-              return sets.map((set) =>
-                set.solves.map((solve) =>
-                  getScrambleResultMapping(
-                    filterRecord(
-                      solve.solve.attempts,
-                      (attempt) => attempt.team === roomTeam.team.id
-                    )
+  const teamScrambleAttemptMappings: Record<
+    string,
+    ScrambleAttemptMapping[][]
+  > = useMemo(
+    () =>
+      filterRecord(
+        mapRecordValues<string, IRoomTeam, ScrambleAttemptMapping[][]>(
+          teams,
+          (roomTeam: IRoomTeam) => {
+            return sets.map((set) =>
+              set.solves.map((solve) =>
+                getScrambleAttemptMapping(
+                  filterRecord(
+                    solve.solve.attempts,
+                    (attempt) => attempt.team === roomTeam.team.id
                   )
                 )
-              );
-            }
-          ),
-          (setResultMappings) =>
-            setResultMappings.some((setResultMapping) =>
-              setResultMapping.some(
-                (resultMapping) => Object.keys(resultMapping).length > 0
               )
-            )
+            );
+          }
         ),
-      [teams, sets]
-    );
+        (setResultMappings) =>
+          setResultMappings.some((setResultMapping) =>
+            setResultMapping.some(
+              (resultMapping) => Object.keys(resultMapping).length > 0
+            )
+          )
+      ),
+    [teams, sets]
+  );
 
   const teamDefaultScrambles = useMemo(
     () =>
-      mapRecordValues<string, ScrambleResultMapping[][], string>(
-        teamScrambleResultMappings,
-        (matchScrambleResultMapping) => {
+      mapRecordValues<string, ScrambleAttemptMapping[][], string>(
+        teamScrambleAttemptMappings,
+        (matchScrambleAttemptMapping) => {
           return getFirstKey<string>(
-            matchScrambleResultMapping
+            matchScrambleAttemptMapping
               .find(
-                (setScrambleResultMapping) =>
-                  setScrambleResultMapping.length > 0
+                (setScrambleAttemptMapping) =>
+                  setScrambleAttemptMapping.length > 0
               )
               ?.find(
-                (scrambleResultMapping) =>
-                  Object.keys(scrambleResultMapping).length > 0
+                (ScrambleAttemptMapping) =>
+                  Object.keys(ScrambleAttemptMapping).length > 0
               ) ?? {}
           );
         }
       ),
-    [teamScrambleResultMappings]
+    [teamScrambleAttemptMappings]
   );
 
-  const allScrambleResultMappings: ScrambleResultMapping[][] = useMemo(
+  const allScrambleAttemptMappings: ScrambleAttemptMapping[][] = useMemo(
     () =>
       sets.map((set) =>
         set.solves.map((solve) =>
-          getScrambleResultMapping(solve.solve.attempts)
+          getScrambleAttemptMapping(solve.solve.attempts)
         )
       ),
     [sets]
@@ -631,16 +631,16 @@ export function SummaryDialog({ children }: SummaryDialogProps) {
   const allDefaultScramble = useMemo(
     () =>
       getFirstKey<string>(
-        allScrambleResultMappings
+        allScrambleAttemptMappings
           .find(
-            (setScrambleResultMapping) => setScrambleResultMapping.length > 0
+            (setScrambleAttemptMapping) => setScrambleAttemptMapping.length > 0
           )
           ?.find(
-            (scrambleResultMapping) =>
-              Object.keys(scrambleResultMapping).length > 0
+            (ScrambleAttemptMapping) =>
+              Object.keys(ScrambleAttemptMapping).length > 0
           ) ?? {}
       ),
-    [allScrambleResultMappings]
+    [allScrambleAttemptMappings]
   );
 
   const baseCopyText = `BTime Room ${roomName} Summary`;
@@ -656,7 +656,7 @@ export function SummaryDialog({ children }: SummaryDialogProps) {
             {showUserTab && <TabsTrigger value="user">You</TabsTrigger>}
             <TabsTrigger value="all">All</TabsTrigger>
             {teamSettings.teamsEnabled &&
-              Object.keys(teamScrambleResultMappings).map((tid, idx) => (
+              Object.keys(teamScrambleAttemptMappings).map((tid, idx) => (
                 <TabsTrigger key={idx} value={tid}>
                   {teams[tid].team.name ?? "[No Name]"}
                 </TabsTrigger>
@@ -668,16 +668,16 @@ export function SummaryDialog({ children }: SummaryDialogProps) {
                 baseCopyText={baseCopyText}
                 defaultValue={userDefaultScramble}
               >
-                {userScrambleResultMappings.map(
-                  (userSetScrambleResultMapping, jdx) => (
+                {userScrambleAttemptMappings.map(
+                  (userSetScrambleAttemptMapping, jdx) => (
                     <div className="pl-4" key={jdx}>
                       <p className="text-xl font-bold">Set {jdx + 1}</p>
-                      {userSetScrambleResultMapping.map(
-                        (userScrambleResultMapping, idx) => (
+                      {userSetScrambleAttemptMapping.map(
+                        (userScrambleAttemptMapping, idx) => (
                           <div className="pl-4" key={idx}>
                             <p className="text-lg font-bold">Solve {idx + 1}</p>
-                            <ScrambleUserResultsListing
-                              mapping={userScrambleResultMapping}
+                            <ScrambleUserAttemptsListing
+                              mapping={userScrambleAttemptMapping}
                             />
                           </div>
                         )
@@ -693,16 +693,16 @@ export function SummaryDialog({ children }: SummaryDialogProps) {
               defaultValue={allDefaultScramble}
               baseCopyText={baseCopyText}
             >
-              {allScrambleResultMappings.map(
-                (allSetScrambleResultMapping, jdx) => (
+              {allScrambleAttemptMappings.map(
+                (allSetScrambleAttemptMapping, jdx) => (
                   <div className="pl-4" key={jdx}>
                     <p className="text-xl font-bold">Set {jdx + 1}</p>
-                    {allSetScrambleResultMapping.map(
-                      (allScrambleResultMapping, idx) => (
+                    {allSetScrambleAttemptMapping.map(
+                      (allScrambleAttemptMapping, idx) => (
                         <div className="pl-4" key={idx}>
                           <p className="text-lg font-bold">Solve {idx + 1}</p>
-                          <ScrambleUserResultsListing
-                            mapping={allScrambleResultMapping}
+                          <ScrambleUserAttemptsListing
+                            mapping={allScrambleAttemptMapping}
                           />
                         </div>
                       )
@@ -713,27 +713,27 @@ export function SummaryDialog({ children }: SummaryDialogProps) {
             </ResultListingWrapper>
           </TabsContent>
           {teamSettings.teamsEnabled &&
-            Object.entries(teamScrambleResultMappings).map(
-              ([tid, teamScrambleResultMappings], idx) => (
+            Object.entries(teamScrambleAttemptMappings).map(
+              ([tid, teamScrambleAttemptMappings], idx) => (
                 <TabsContent key={idx} value={tid}>
                   <ResultListingWrapper
                     defaultValue={teamDefaultScrambles[tid] ?? ""}
                     baseCopyText={baseCopyText}
                   >
                     {/* TODO - show team result */}
-                    {teamScrambleResultMappings.map(
-                      (teamSetScrambleResultMapping, jdx) => (
+                    {teamScrambleAttemptMappings.map(
+                      (teamSetScrambleAttemptMapping, jdx) => (
                         <div className="pl-4" key={jdx}>
                           <p className="text-xl font-bold">Set {jdx + 1}</p>
-                          {teamSetScrambleResultMapping.map(
-                            (teamScrambleResultMapping, jdx) => (
+                          {teamSetScrambleAttemptMapping.map(
+                            (teamScrambleAttemptMapping, jdx) => (
                               <div className="pl-4" key={jdx}>
                                 <p className="text-lg font-bold">
                                   {" "}
                                   Solve {jdx + 1}
                                 </p>
-                                <ScrambleUserResultsListing
-                                  mapping={teamScrambleResultMapping}
+                                <ScrambleUserAttemptsListing
+                                  mapping={teamScrambleAttemptMapping}
                                 />
                               </div>
                             )
