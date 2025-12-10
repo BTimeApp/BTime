@@ -14,10 +14,16 @@ import {
 import { RoomState } from "@/types/room";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { timerAllowsInspection, TimerType } from "@/types/timer-type";
+import {
+  getDefaultLocalSolveStatus,
+  timerAllowsInspection,
+  TimerType,
+} from "@/types/timer-type";
 import { IResult, Penalty, Result } from "@/types/result";
 import { SolveStatus } from "@/types/status";
 import { IAttempt } from "@/types/solve";
+import { immer } from "zustand/middleware/immer";
+import { Draft } from "immer";
 
 export type RoomStore = {
   // room related state
@@ -77,8 +83,11 @@ export type RoomStore = {
   //only handles room information - not any local user info
   handleRoomUpdate: (room: IRoom) => void;
 
-  //update room user information from server - used when initializing the user on client side
-  handleRoomUserUpdate: (roomUser: IRoomUser) => void;
+  /**
+   * Meant to set up local user state based on some external store (in our case, the backend).
+   * Should only be used for setup, never as a reactive update
+   */
+  setUpLocalUserState: (roomUser: IRoomUser) => void;
 
   createAttempt: (userId: string, attempt: IAttempt) => void;
 
@@ -138,12 +147,10 @@ export type RoomStore = {
   addResult: (participantId: string, result: IResult) => void;
 };
 
-// export const createRoomStore = (): StoreApi<RoomStore> =>
-//   createStore<RoomStore>((set, get) => ({
 export function createRoomStore() {
   return create<RoomStore>()(
     persist(
-      (set, get) => {
+      immer((set, get) => {
         //helper functions
         const getLatestSet = (match: IRoomMatch): IRoomSet | undefined => {
           if (match.sets.length === 0) return;
@@ -180,43 +187,62 @@ export function createRoomStore() {
           teamSettings: { teamsEnabled: false },
           maxUsers: undefined,
 
+          //user settings
+          timerType: "KEYBOARD",
+          useInspection: false,
+          drawScramble: true,
+
           // local (client) state/options
           localPenalty: "OK",
           localResult: new Result(""),
           localSolveStatus: "IDLE",
           liveTimerStartTime: 0,
 
-          //user settings
-          timerType: "KEYBOARD",
-          useInspection: false,
-          drawScramble: true,
-
           userLiveTimerStartTimes: {},
           userLiveTimes: {},
           setLocalPenalty: (penalty: Penalty) =>
-            set(() => ({ localPenalty: penalty })),
+            set((state) => {
+              state.localPenalty = penalty;
+            }),
           setLocalResult: (result: Result) =>
-            set(() => ({ localResult: result })),
+            set((state) => {
+              state.localResult = result;
+            }),
           setRoomName: (roomName: string) =>
-            set(() => ({ roomName: roomName })),
-          setHostId: (hostId: string) => set(() => ({ hostId: hostId })),
+            set((state) => {
+              state.roomName = roomName;
+            }),
+          setHostId: (hostId: string) =>
+            set((state) => {
+              state.hostId = hostId;
+            }),
           setLiveTimerStartTime: (time: number) =>
-            set(() => ({ liveTimerStartTime: time })),
+            set((state) => {
+              state.liveTimerStartTime = time;
+            }),
           isUserHost: (userId: string | undefined) => {
             if (userId === undefined) return false;
             const hostId = get().hostId;
             return userId === hostId;
           },
           setUseInspection: (useInspection: boolean) =>
-            set(() => ({ useInspection: useInspection })),
-          setTimerType: (timerType: TimerType) =>
-            set(() => ({ timerType: timerType })),
+            set((state) => {
+              state.useInspection = useInspection;
+            }),
+          setTimerType: (timerType: TimerType) => {
+            if (get().timerType != timerType) {
+              set((state) => {
+                state.timerType = timerType;
+              });
+              get().resetLocalSolveStatus();
+            }
+          },
           setDrawScramble: (drawScramble: boolean) =>
-            set(() => ({ drawScramble: drawScramble })),
+            set((state) => {
+              state.drawScramble = drawScramble;
+            }),
           /**
            * Handles all state transitions for local SolveStatus.
-           *
-           * @param event event causing status update.
            */
           updateLocalSolveStatus: (event?: string) => {
             switch (get().localSolveStatus) {
@@ -226,9 +252,19 @@ export function createRoomStore() {
                   timerAllowsInspection(get().timerType) &&
                   event !== "TIMER_START"
                 ) {
-                  set(() => ({ localSolveStatus: "INSPECTING" }));
+                  set((state) => {
+                    state.localSolveStatus = "INSPECTING";
+                  });
                 } else {
-                  set(() => ({ localSolveStatus: "SOLVING" }));
+                  if (get().timerType === "TYPING") {
+                    set((state) => {
+                      state.localSolveStatus = "SUBMITTING";
+                    });
+                  } else {
+                    set((state) => {
+                      state.localSolveStatus = "SOLVING";
+                    });
+                  }
                 }
                 break;
               case "INSPECTING":
@@ -236,17 +272,25 @@ export function createRoomStore() {
                   get().timerType === "BLUETOOTH" &&
                   event === "TIMER_RESET"
                 ) {
-                  set(() => ({ localSolveStatus: "IDLE" }));
+                  set((state) => {
+                    state.localSolveStatus = "IDLE";
+                  });
                 } else {
-                  set(() => ({ localSolveStatus: "SOLVING" }));
+                  set((state) => {
+                    state.localSolveStatus = "SOLVING";
+                  });
                 }
                 break;
               case "SOLVING":
-                set(() => ({ localSolveStatus: "SUBMITTING" }));
+                set((state) => {
+                  state.localSolveStatus = "SUBMITTING";
+                });
                 break;
               case "SUBMITTING":
                 if (event === "SUBMIT_TIME") {
-                  set(() => ({ localSolveStatus: "FINISHED" }));
+                  set((state) => {
+                    state.localSolveStatus = "FINISHED";
+                  });
                 } else if (event === "REDO_SOLVE") {
                   get().resetLocalSolveStatus();
                 }
@@ -257,17 +301,12 @@ export function createRoomStore() {
             }
           },
           resetLocalSolveStatus: () => {
-            switch (get().timerType) {
-              case "KEYBOARD":
-                set(() => ({ localSolveStatus: "IDLE" }));
-                break;
-              case "TYPING":
-                set(() => ({ localSolveStatus: "SOLVING" }));
-                break;
-              case "BLUETOOTH":
-                set(() => ({ localSolveStatus: "IDLE" }));
-                break;
-            }
+            const defaultSolveStatus = getDefaultLocalSolveStatus(
+              get().timerType
+            );
+            set((state) => {
+              state.localSolveStatus = defaultSolveStatus;
+            });
           },
           resetLocalSolve: () => {
             get().resetLocalSolveStatus();
@@ -275,315 +314,228 @@ export function createRoomStore() {
             get().setLocalPenalty("OK");
           },
 
-          /**
-           * We need to create an entire new Map here to adhere to the Zustand rules
-           * This shouldn't cause any big issues since we expect not to have massive rooms but TODO find a better way to handle this
-           */
           addUserLiveStartTime: (userId: string, time: number) =>
             set((state) => {
-              const updatedUserLiveStartTimes = {
-                ...state.userLiveTimerStartTimes,
-              };
-              updatedUserLiveStartTimes[userId] = time;
-              return { userLiveTimerStartTimes: updatedUserLiveStartTimes };
+              state.userLiveTimerStartTimes[userId] = time;
             }),
           clearUserLiveStartTimes: () =>
-            set(() => ({ userLiveTimerStartTimes: {} })),
+            set((state) => {
+              state.userLiveTimerStartTimes = {};
+            }),
           addUserLiveStopTime: (userId: string, time: number) =>
             set((state) => {
-              const startTime = get().userLiveTimerStartTimes[userId];
-              if (startTime === undefined) return {};
-              const updatedUserLiveStartTimes = {
-                ...state.userLiveTimerStartTimes,
-              };
-              delete updatedUserLiveStartTimes[userId];
-              const updatedUserLiveTimes = { ...state.userLiveTimes };
-              updatedUserLiveTimes[userId] = time - startTime;
-              return {
-                userLiveTimerStartTimes: updatedUserLiveStartTimes,
-                userLiveTimes: updatedUserLiveTimes,
-              };
+              const startTime = state.userLiveTimerStartTimes[userId];
+              if (startTime === undefined) return;
+              delete state.userLiveTimerStartTimes[userId];
+              state.userLiveTimes[userId] = time - startTime;
             }),
-          clearUserLiveTimes: () => set(() => ({ userLiveTimes: {} })),
+          clearUserLiveTimes: () =>
+            set((state) => {
+              state.userLiveTimes = {};
+            }),
           handleRoomUpdate: (room: IRoom) =>
-            set(() => ({
-              roomName: room.settings.roomName,
-              users: room.users,
-              teams: room.teams,
-              hostId: room.host ? room.host.id : "",
-              match: room.match,
-              // solves: room.solves,
-              currentSet: room.currentSet,
-              currentSolve: room.currentSolve,
-              roomEvent: room.settings.roomEvent,
-              raceSettings: room.settings.raceSettings,
-              teamSettings: room.settings.teamSettings,
-              maxUsers: room.settings.maxUsers,
-              roomState: room.state,
-              // roomWinners: room.winners || [],
-              access: room.settings.access,
-            })),
-          handleRoomUserUpdate: (roomUser: IRoomUser) =>
-            set(() => ({
-              localPenalty: roomUser.currentResult?.penalty ?? "OK",
-              localResult: roomUser.currentResult
+            set((state) => {
+              state.roomName = room.settings.roomName;
+              state.users = room.users;
+              state.teams = room.teams;
+              state.hostId = room.host ? room.host.id : "";
+              state.match = room.match;
+              state.currentSet = room.currentSet;
+              state.currentSolve = room.currentSolve;
+              state.roomEvent = room.settings.roomEvent;
+              state.raceSettings = room.settings.raceSettings;
+              state.teamSettings = room.settings.teamSettings;
+              state.maxUsers = room.settings.maxUsers;
+              state.roomState = room.state;
+              state.access = room.settings.access;
+            }),
+
+          setUpLocalUserState: (roomUser: IRoomUser) => {
+            /**
+             * Set the local solve status to default, which depends on timer type.
+             * We will only set to FINISHED if the remote store says we already have a current result.
+             */
+            get().resetLocalSolveStatus();
+            set((state) => {
+              state.localPenalty = roomUser.currentResult?.penalty ?? "OK";
+              state.localResult = roomUser.currentResult
                 ? Result.fromIResult(roomUser.currentResult)
-                : new Result(""),
-              localSolveStatus: roomUser.solveStatus,
-            })),
+                : new Result("");
+              if (roomUser.currentResult) {
+                state.localSolveStatus = "FINISHED";
+              }
+            });
+          },
           createAttempt: (userId: string, attempt: IAttempt) =>
             set((state) => {
-              const updatedMatch = { ...state.match };
-              const currentSolve = getLatestSolve(updatedMatch);
+              const currentSolve = getLatestSolve(state.match);
               if (!currentSolve) {
-                return {};
+                return;
               }
               currentSolve.solve.attempts[userId] = attempt;
-              return {
-                match: updatedMatch,
-              };
             }),
           deleteAttempt: (userId: string) =>
             set((state) => {
-              const updatedMatch = { ...state.match };
-              const currentSolve = getLatestSolve(updatedMatch);
+              const currentSolve = getLatestSolve(state.match);
               if (!currentSolve) {
-                return {};
+                return;
               }
-
-              delete updatedMatch.sets.at(-1)!.solves.at(-1)!.solve.attempts[
-                userId
-              ];
-              return {
-                match: updatedMatch,
-              };
+              delete currentSolve.solve.attempts[userId];
             }),
           addNewSolve: (newSolve: IRoomSolve) =>
-            set(() => {
-              const updatedParticipants = get().teamSettings.teamsEnabled
-                ? { ...get().teams }
-                : { ...get().users };
-              for (const participant of Object.values(updatedParticipants)) {
+            set((state: Draft<RoomStore>) => {
+              const currentSet = getLatestSet(state.match);
+              if (!currentSet) return;
+
+              const { teamsEnabled } = state.teamSettings;
+              const participants = teamsEnabled ? state.teams : state.users;
+
+              for (const participant of Object.values(participants)) {
                 participant.currentResult = undefined;
               }
 
-              const updatedMatch = { ...get().match };
-              const currentSet = getLatestSet(updatedMatch);
-              if (!currentSet) return {};
               currentSet.solves.push(newSolve);
-
-              return {
-                match: updatedMatch,
-                currentSolve: get().currentSolve + 1,
-                ...(get().teamSettings.teamsEnabled
-                  ? { teams: updatedParticipants as Record<string, IRoomTeam> }
-                  : {
-                      users: updatedParticipants as Record<string, IRoomUser>,
-                    }),
-              };
+              state.currentSolve += 1;
             }),
           addNewSet: (newSet: IRoomSet) =>
             set((state) => {
-              return {
-                match: { ...state.match, sets: [...state.match.sets, newSet] },
-                currentSet: state.currentSet + 1,
-                currentSolve: 0,
-              };
+              state.match.sets.push(newSet);
+              state.currentSet += 1;
+              state.currentSolve = 0;
             }),
 
           updateLatestSolve: (updatedSolve: IRoomSolve) =>
             set((state) => {
-              const updatedMatch = { ...state.match };
+              const latestSet = getLatestSet(state.match);
               if (
-                !getLatestSolve(updatedMatch) ||
-                getLatestSet(updatedMatch)!.solves.length === 0
-              )
-                return {};
+                !getLatestSolve(state.match) ||
+                !latestSet ||
+                getLatestSet(state.match)!.solves.length === 0
+              ) {
+                return;
+              }
 
-              updatedMatch.sets.at(-1)!.solves[
-                updatedMatch.sets.at(-1)!.solves.length - 1
-              ] = updatedSolve;
-              return { match: updatedMatch };
+              latestSet.solves[latestSet.solves.length - 1] = updatedSolve;
             }),
-          resetLatestSolve: (newSolve: IRoomSolve) =>
+
+          resetLatestSolve: (newSolve: IRoomSolve) => {
+            get().updateLatestSolve(newSolve);
+            get().resetLocalSolveStatus();
+            get().clearUserLiveStartTimes();
+            get().clearUserLiveTimes();
             set((state) => {
-              state.updateLatestSolve(newSolve);
-              // handle local solve status update - everyone's solve status will update later
-              state.resetLocalSolveStatus();
-              const updatedUsers = { ...state.users };
-              for (const roomUser of Object.values(updatedUsers)) {
+              for (const roomUser of Object.values(state.users)) {
                 roomUser.currentResult = undefined;
                 roomUser.solveStatus = "IDLE";
               }
-              // clear live times
-              state.clearUserLiveStartTimes();
-              state.clearUserLiveTimes();
-              // the only update we make in this function is to users
-              return { users: updatedUsers };
-            }),
+            });
+          },
 
           finishSolve: (
             solve: IRoomSolve,
             participants: Record<string, IRoomParticipant>
           ) =>
             set((state) => {
-              const updatedMatch = { ...state.match };
-              const currentSolve = getLatestSolve(updatedMatch);
-              const currentSet = getLatestSet(updatedMatch);
-              if (!currentSolve || currentSet!.solves.length === 0) return {};
+              // const updatedMatch = { ...state.match };
+              const currentSolve = getLatestSolve(state.match);
+              const currentSet = getLatestSet(state.match);
+              if (
+                !currentSolve ||
+                !currentSet ||
+                currentSet!.solves.length === 0
+              )
+                return;
 
-              updatedMatch.sets.at(-1)!.solves[
-                updatedMatch.sets.at(-1)!.solves.length - 1
-              ] = solve;
+              currentSet.solves[currentSet.solves.length - 1] = solve;
 
               //update points for ALL users - nec. for Ao, Mo modes
-              const updatedParticipants = state.teamSettings.teamsEnabled
-                ? { ...get().teams }
-                : { ...get().users };
+              const allParticipants = state.teamSettings.teamsEnabled
+                ? state.teams
+                : state.users;
               for (const [pid, participant] of Object.entries(participants)) {
-                updatedParticipants[pid].points = participant.points;
+                allParticipants[pid].points = participant.points;
               }
-              return {
-                match: updatedMatch,
-                ...(state.teamSettings.teamsEnabled
-                  ? { teams: updatedParticipants as Record<string, IRoomTeam> }
-                  : {
-                      users: updatedParticipants as Record<string, IRoomUser>,
-                    }),
-              };
             }),
+
           finishSet: (setWinners: string[]) =>
             set((state) => {
               //update set wins for set winners by 1
-              const teamsEnabled = state.teamSettings.teamsEnabled;
-              const updatedParticipants = teamsEnabled
-                ? { ...state.teams }
-                : { ...state.users };
-              const participantIds = Object.keys(updatedParticipants);
-              const updatedMatch = { ...state.match };
-              const latestSet = getLatestSet(updatedMatch);
+              const allParticipants = state.teamSettings.teamsEnabled
+                ? state.teams
+                : state.users;
+              const participantIds = Object.keys(allParticipants);
+              const latestSet = getLatestSet(state.match);
               if (!latestSet) return {};
               latestSet.finished = true;
               latestSet.winners.push(...setWinners);
               for (const pid of participantIds) {
-                // const participant = updatedParticipants[pid]!;
-                updatedParticipants[pid].points = 0;
+                allParticipants[pid].points = 0;
               }
               for (const pid of setWinners) {
-                // const participant = updatedParticipants[pid]!;
-                updatedParticipants[pid].setWins += 1;
-              }
-              if (teamsEnabled) {
-                return {
-                  teams: updatedParticipants as Record<string, IRoomTeam>,
-                  match: updatedMatch,
-                };
-              } else {
-                return {
-                  users: updatedParticipants as Record<string, IRoomUser>,
-                  match: updatedMatch,
-                };
+                allParticipants[pid].setWins += 1;
               }
             }),
           finishMatch: (matchWinners: string[]) =>
             set((state) => {
-              return {
-                match: { ...state.match, winners: matchWinners },
-                roomState: "FINISHED",
-              };
+              state.match.winners = matchWinners;
+              state.roomState = "FINISHED";
             }),
           updateSolveStatus: (userId: string, newStatus: SolveStatus) =>
             set((state) => {
-              const updatedUsers: Record<string, IRoomUser> = {
-                ...state.users,
-              };
-              if (!updatedUsers[userId]) return {};
-              updatedUsers[userId].solveStatus = newStatus;
-              return { users: updatedUsers };
+              if (!state.users[userId]) return;
+              state.users[userId].solveStatus = newStatus;
             }),
           userToggleCompeting: (userId: string, newCompeting: boolean) =>
             set((state) => {
-              const updatedUsers: Record<string, IRoomUser> = {
-                ...state.users,
-              };
               if (
-                !updatedUsers[userId] ||
-                updatedUsers[userId].competing === newCompeting
+                !state.users[userId] ||
+                state.users[userId].competing === newCompeting
               ) {
-                return {};
+                return;
               }
-              updatedUsers[userId].competing = newCompeting;
-              return { users: updatedUsers };
+              state.users[userId].competing = newCompeting;
             }),
           userJoin: (user: IRoomUser) =>
             set((state) => {
-              const updatedUsers: Record<string, IRoomUser> = {
-                ...state.users,
-              };
-              if (updatedUsers[user.user.id]) {
+              if (state.users[user.user.id]) {
                 // user rejoining - just set active to true
-                updatedUsers[user.user.id].active = true;
+                state.users[user.user.id].active = true;
               } else {
                 // user first join - add whole IRoomUser object
-                updatedUsers[user.user.id] = user;
+                state.users[user.user.id] = user;
               }
-              return { users: updatedUsers };
             }),
           userUpdate: (user: IRoomUser) =>
             set((state) => {
-              const updatedUsers: Record<string, IRoomUser> = {
-                ...state.users,
-              };
-              updatedUsers[user.user.id] = user;
-              return { users: updatedUsers };
+              state.users[user.user.id] = user;
             }),
           userBanned: (userId: string) =>
             set((state) => {
-              const updatedUsers: Record<string, IRoomUser> = {
-                ...state.users,
-              };
-              if (updatedUsers[userId]) {
-                updatedUsers[userId].banned = true;
-                return { users: updatedUsers };
-              } else {
-                return {};
+              if (state.users[userId]) {
+                state.users[userId].banned = true;
               }
             }),
           userUnbanned: (userId: string) =>
             set((state) => {
-              const updatedUsers: Record<string, IRoomUser> = {
-                ...state.users,
-              };
-              if (updatedUsers[userId]) {
-                updatedUsers[userId].banned = false;
-                return { users: updatedUsers };
-              } else {
-                return {};
+              if (state.users[userId]) {
+                state.users[userId].banned = false;
               }
             }),
           createTeams: (teams: IRoomTeam[]) =>
             set((state) => {
               if (!state.teamSettings.teamsEnabled) {
-                return {};
+                return;
               }
-              const updatedTeams: Record<string, IRoomTeam> = {
-                ...state.teams,
-              };
               for (const team of teams) {
-                updatedTeams[team.team.id] = team;
+                state.teams[team.team.id] = team;
               }
-              return { teams: updatedTeams };
             }),
           deleteTeam: (teamId: string) =>
             set((state) => {
               if (!state.teamSettings.teamsEnabled) {
-                return {};
+                return;
               }
-              const updatedTeams: Record<string, IRoomTeam> = {
-                ...state.teams,
-              };
-              delete updatedTeams[teamId];
-              return { teams: updatedTeams };
+              delete state.teams[teamId];
             }),
           userJoinTeam: (
             user: IRoomUser,
@@ -595,20 +547,13 @@ export function createRoomStore() {
           ) =>
             set((state) => {
               if (!state.teamSettings.teamsEnabled) {
-                return {};
+                return;
               }
-              const updatedTeams: Record<string, IRoomTeam> = {
-                ...state.teams,
-              };
-              const updatedUsers: Record<string, IRoomUser> = {
-                ...state.users,
-              };
               //if user belonged to another team, remove them
-              updatedUsers[user.user.id] = user;
-              updatedTeams[team.team.id] = team;
+              state.users[user.user.id] = user;
+              state.teams[team.team.id] = team;
               // if new scramble exists, add it
-              const updatedMatch = { ...state.match };
-              const currentSolve = getLatestSolve(updatedMatch);
+              const currentSolve = getLatestSolve(state.match);
               if (currentSolve) {
                 if (extraData.attempt) {
                   if (
@@ -627,27 +572,15 @@ export function createRoomStore() {
                   delete currentSolve.solve.results[team.team.id];
                 }
               }
-              return {
-                users: updatedUsers,
-                teams: updatedTeams,
-                match: updatedMatch,
-              };
             }),
           userLeaveTeam: (user: IRoomUser, team: IRoomTeam) =>
             set((state) => {
               if (!state.teamSettings.teamsEnabled) {
-                return {};
+                return;
               }
-              const updatedTeams: Record<string, IRoomTeam> = {
-                ...state.teams,
-              };
-              const updatedUsers: Record<string, IRoomUser> = {
-                ...state.users,
-              };
-              updatedUsers[user.user.id] = user;
-              updatedTeams[team.team.id] = team;
-              const updatedMatch = { ...state.match };
-              const currentSolve = getLatestSolve(updatedMatch);
+              state.users[user.user.id] = user;
+              state.teams[team.team.id] = team;
+              const currentSolve = getLatestSolve(state.match);
               if (currentSolve) {
                 /**
                  * Note: this is technically wrong in isolation (don't necessarily need to delete the team's result), but backend currently corrects this with a new result event if applicable
@@ -656,100 +589,88 @@ export function createRoomStore() {
                 delete currentSolve.solve.attempts[user.user.id];
                 delete currentSolve.solve.results[team.team.id];
               }
-              return {
-                users: updatedUsers,
-                teams: updatedTeams,
-                match: updatedMatch,
-              };
             }),
           updateTeam: (team: IRoomTeam) =>
             set((state) => {
-              const updatedTeams = { ...state.teams };
-              updatedTeams[team.team.id] = team;
-              return { teams: updatedTeams };
+              state.teams[team.team.id] = team;
             }),
           updateTeams: (teams: Record<string, IRoomTeam>) =>
-            set(() => ({
-              teams: teams,
-            })),
-          startRoom: () =>
-            set(() => ({
-              roomState: "STARTED",
-            })),
-          resetRoom: () =>
             set((state) => {
-              const updatedUsers = { ...state.users };
-              const updatedTeams = { ...state.teams };
-              for (const roomUser of Object.values(updatedUsers)) {
+              state.teams = teams;
+            }),
+          startRoom: () => {
+            if (get().roomState !== "STARTED") {
+              set((state) => {
+                state.roomState = "STARTED";
+              });
+              get().resetLocalSolveStatus();
+            }
+          },
+          resetRoom: () => {
+            set((state) => {
+              for (const roomUser of Object.values(state.users)) {
                 roomUser.points = 0;
                 roomUser.setWins = 0;
                 roomUser.solveStatus = "IDLE";
                 roomUser.currentResult = undefined;
               }
-              for (const roomTeam of Object.values(updatedTeams)) {
+              for (const roomTeam of Object.values(state.teams)) {
                 roomTeam.points = 0;
                 roomTeam.setWins = 0;
                 roomTeam.solveStatus = "IDLE";
                 roomTeam.currentResult = undefined;
                 roomTeam.currentMember = undefined;
               }
-              return {
-                roomState: "WAITING",
-                match: {
-                  sets: [],
-                  winners: [],
-                  finished: false,
-                },
-                currentSet: 0,
-                currentSolve: 0,
-                users: updatedUsers,
-                teams: updatedTeams,
-              };
-            }),
+              state.currentSet = 0;
+              state.currentSolve = 0;
+              state.match = { sets: [], winners: [], finished: false };
+              state.roomState = "WAITING";
+            });
+            get().resetLocalSolveStatus();
+          },
           addUserResult: (userId: string, result: IResult) =>
             set((state) => {
-              const updatedUsers = { ...state.users };
               const currentSolve = getLatestSolve(state.match);
-              if (updatedUsers[userId] && currentSolve) {
-                updatedUsers[userId].currentResult = result;
-              }
 
-              return {
-                users: updatedUsers,
-              };
+              if (state.users[userId] && currentSolve) {
+                state.users[userId].currentResult = result;
+                currentSolve.solve.attempts[userId] = {
+                  ...currentSolve.solve.attempts[userId],
+                  finished: true,
+                  result: result,
+                };
+              }
             }),
           addResult: (participantId: string, result: IResult) =>
             set((state) => {
               const teamsEnabled = state.teamSettings.teamsEnabled;
-              const updatedParticipants = teamsEnabled
-                ? { ...state.teams }
-                : { ...state.users };
-              // const updatedSolves = [...state.solves];
-              const updatedMatch = { ...state.match };
-              const currentSolve = getLatestSolve(updatedMatch);
-              if (updatedParticipants[participantId] && currentSolve) {
-                updatedParticipants[participantId].currentResult = result;
+              const allParticipants = teamsEnabled ? state.teams : state.users;
+              const currentSolve = getLatestSolve(state.match);
+              if (allParticipants[participantId] && currentSolve) {
+                allParticipants[participantId].currentResult = result;
                 currentSolve.solve.results[participantId] = result;
               }
-              return {
-                match: updatedMatch,
-                ...(teamsEnabled
-                  ? { teams: updatedParticipants as Record<string, IRoomTeam> }
-                  : {
-                      users: updatedParticipants as Record<string, IRoomUser>,
-                    }),
-              };
             }),
         };
-      },
+      }),
       {
         name: "btime-user-room-preferences",
-        version: 0, //Increment number upon making breaking change. This will invalidate (and rmeove) the old version on client
+        //Increment number upon making breaking change. This will invalidate (and remove) the old version on client
+        version: 0,
+        // runs on write AND read.
         partialize: (state) => ({
           timerType: state.timerType,
           useInspection: state.useInspection,
           drawScramble: state.drawScramble,
         }),
+        // runs right after reading persisted state
+        onRehydrateStorage: () => (state) => {
+          if (!state) return; //
+
+          state.localSolveStatus = getDefaultLocalSolveStatus(
+            state.timerType //
+          );
+        },
         migrate: () => {
           return {};
         },
@@ -757,3 +678,9 @@ export function createRoomStore() {
     )
   );
 }
+export type RoomStoreUse = ReturnType<typeof createRoomStore>;
+type StoreActions<T> = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [K in keyof T as T[K] extends (...args: any[]) => any ? K : never]: T[K];
+};
+export type RoomStoreActions = StoreActions<RoomStore>;

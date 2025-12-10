@@ -1,4 +1,4 @@
-import { useRoomStore } from "@/context/room-context";
+import { useRoomActions, useRoomStore } from "@/context/room-context";
 import { useSocket } from "@/context/socket-context";
 import { useCallbackOnTransition } from "@/hooks/useCallbackOnTransition";
 import { useStartTimeOnTransition } from "@/hooks/useStartTimeOnTransition";
@@ -13,7 +13,6 @@ import { useSocketEvent } from "@/hooks/use-socket-event";
 import { IRoomSolve } from "@/types/room-solve";
 import { IRoomParticipant } from "@/types/room-participant";
 import { useSession } from "@/context/session-context";
-import { useIsMobile } from "@/hooks/useMobile";
 
 /**
  * Handles all events for the room so that the room component itself doesn't have to re-render upon state udates
@@ -23,13 +22,14 @@ export default function RoomEventHandler() {
   const roomId = params.roomId;
 
   const user = useSession();
+  const { socket } = useSocket();
 
-  const [
-    localPenalty,
-    localResult,
-    localSolveStatus,
-    roomState,
-    timerType,
+  const localPenalty = useRoomStore((s) => s.localPenalty);
+  const localResult = useRoomStore((s) => s.localResult);
+  const localSolveStatus = useRoomStore((s) => s.localSolveStatus);
+  const roomState = useRoomStore((s) => s.roomState);
+  const timerType = useRoomStore((s) => s.timerType);
+  const {
     startRoom,
     setLocalResult,
     setLocalPenalty,
@@ -66,60 +66,7 @@ export default function RoomEventHandler() {
     setHostId,
     addResult,
     addUserResult,
-    setTimerType,
-  ] = useRoomStore((s) => [
-    s.localPenalty,
-    s.localResult,
-    s.localSolveStatus,
-    s.roomState,
-    s.timerType,
-    s.startRoom,
-    s.setLocalResult,
-    s.setLocalPenalty,
-    s.setLiveTimerStartTime,
-    s.handleRoomUpdate,
-    s.resetRoom,
-    s.resetLocalSolveStatus,
-    s.resetLocalSolve,
-    s.addUserLiveStartTime,
-    s.addUserLiveStopTime,
-    s.clearUserLiveStartTimes,
-    s.clearUserLiveTimes,
-    s.resetLatestSolve,
-    s.createAttempt,
-    s.deleteAttempt,
-    s.addNewSolve,
-    s.updateLatestSolve,
-    s.addNewSet,
-    s.finishSolve,
-    s.finishSet,
-    s.finishMatch,
-    s.updateSolveStatus,
-    s.userToggleCompeting,
-    s.createTeams,
-    s.deleteTeam,
-    s.userJoinTeam,
-    s.userLeaveTeam,
-    s.updateTeam,
-    s.updateTeams,
-    s.userJoin,
-    s.userUpdate,
-    s.userBanned,
-    s.userUnbanned,
-    s.setHostId,
-    s.addResult,
-    s.addUserResult,
-    s.setTimerType,
-  ]);
-  const { socket } = useSocket();
-
-  const isMobile = useIsMobile();
-
-  useEffect(() => {
-    if (isMobile) {
-      setTimerType("TYPING");
-    }
-  }, [isMobile, setTimerType]);
+  } = useRoomActions();
 
   //live update for start time
   const liveTimerStartTime = useStartTimeOnTransition<SolveStatus>(
@@ -137,6 +84,7 @@ export default function RoomEventHandler() {
    * Update user status on backend whenever client updates.
    */
   useEffect(() => {
+    // console.log(`New local solve status ${localSolveStatus}`);
     socket.emit(SOCKET_CLIENT.UPDATE_SOLVE_STATUS, localSolveStatus);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localSolveStatus]);
@@ -148,13 +96,13 @@ export default function RoomEventHandler() {
   }, [localPenalty]);
 
   /**
-   * Reset local solve status whenever room state or timer type change
+   * Reset local solve status whenever room state changes
    */
   useEffect(() => {
     resetLocalSolveStatus();
     // ignore lint warning - we do not want solveStatus change to trigger this hook
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomState, timerType]);
+  }, [roomState, resetLocalSolveStatus]);
 
   const broadcastStartLiveTimerCallback = useCallback(() => {
     if (socket && socket.connected && isLiveTimer(timerType)) {
