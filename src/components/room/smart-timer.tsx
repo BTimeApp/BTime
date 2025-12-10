@@ -31,21 +31,12 @@ export function SmartTimer({
   const [localInspectionPenalty, setLocalInspectionPenalty] =
     useState<Penalty>("OK");
 
-  const [
-    localSolveStatus,
-    liveTimerStartTime,
-    localResult,
-    useInspection,
-    updateLocalSolveStatus,
-    resetLocalSolveStatus,
-  ] = useRoomStore((s) => [
-    s.localSolveStatus,
-    s.liveTimerStartTime,
-    s.localResult,
-    s.useInspection,
-    s.updateLocalSolveStatus,
-    s.resetLocalSolveStatus,
-  ]);
+  const localSolveStatus = useRoomStore((s) => s.localSolveStatus);
+  const liveTimerStartTime = useRoomStore((s) => s.liveTimerStartTime);
+  const localResult = useRoomStore((s) => s.localResult);
+  const useInspection = useRoomStore((s) => s.useInspection);
+  const updateLocalSolveStatus = useRoomStore((s) => s.updateLocalSolveStatus);
+  const resetLocalSolveStatus = useRoomStore((s) => s.resetLocalSolveStatus);
 
   /**
    * Main callback logic for updating client state when timer pushes a new event

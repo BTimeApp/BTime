@@ -13,7 +13,8 @@ interface RoomActionsFormProps {
 export default function RoomActionsForm({
   onSubmitCallback,
 }: RoomActionsFormProps) {
-  const [users, isUserHost] = useRoomStore((s) => [s.users, s.isUserHost]);
+  const users = useRoomStore((s) => s.users);
+  const isUserHost = useRoomStore((s) => s.isUserHost);
 
   const user = useSession();
   const { socket } = useSocket();

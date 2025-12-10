@@ -23,12 +23,10 @@ export default function RoomTeamDialog({
   children,
 }: RoomTeamDialogProps) {
   const localUser = useSession();
-  const [users, teams, teamSettings, isUserHost] = useRoomStore((s) => [
-    s.users,
-    s.teams,
-    s.teamSettings,
-    s.isUserHost,
-  ]);
+  const users = useRoomStore((s) => s.users);
+  const teams = useRoomStore((s) => s.teams);
+  const teamSettings = useRoomStore((s) => s.teamSettings);
+  const isUserHost = useRoomStore((s) => s.isUserHost);
 
   const isHost = useMemo(() => {
     return isUserHost(localUser?.userInfo.id);

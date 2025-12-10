@@ -5,7 +5,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { DNF_IRESULT, IResult, Result } from "@/types/result";
+import { Result } from "@/types/result";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -94,7 +94,7 @@ function ScrambleUserAttemptsListing({
   mapping: ScrambleAttemptMapping;
   className?: string;
 }) {
-  const [users] = useRoomStore((s) => [s.users]);
+  const users = useRoomStore((s) => s.users);
   return (
     <div className={cn("", className)}>
       {Object.entries(mapping).map(([scramble, resultMapping], idx) => (
@@ -138,7 +138,7 @@ function ResultListingWrapper({
   const textContainerRef = useRef<HTMLDivElement>(null);
   const [scramble, setScramble] = useState<string>(defaultValue ?? "");
 
-  const [roomEvent] = useRoomStore((s) => [s.roomEvent]);
+  const roomEvent = useRoomStore((s) => s.roomEvent);
 
   const copyText = useCallback(() => {
     const copyText = [];
@@ -200,12 +200,10 @@ function ResultListingWrapper({
 }
 
 export function SolveDialog({ solve, setIndex, children }: SolveDialogProps) {
-  const [roomName, teams, raceSettings, teamSettings] = useRoomStore((s) => [
-    s.roomName,
-    s.teams,
-    s.raceSettings,
-    s.teamSettings,
-  ]);
+  const roomName = useRoomStore((s) => s.roomName);
+  const teams = useRoomStore((s) => s.teams);
+  const raceSettings = useRoomStore((s) => s.raceSettings);
+  const teamSettings = useRoomStore((s) => s.teamSettings);
 
   const localUser = useSession();
   const userScrambleAttemptMapping = useMemo(
@@ -333,12 +331,10 @@ export function SolveDialog({ solve, setIndex, children }: SolveDialogProps) {
 }
 
 export function SetDialog({ setIndex, children }: SetDialogProps) {
-  const [roomName, teams, match, teamSettings] = useRoomStore((s) => [
-    s.roomName,
-    s.teams,
-    s.match,
-    s.teamSettings,
-  ]);
+  const roomName = useRoomStore((s) => s.roomName);
+  const teams = useRoomStore((s) => s.teams);
+  const match = useRoomStore((s) => s.match);
+  const teamSettings = useRoomStore((s) => s.teamSettings);
 
   const localUser = useSession();
   const setSolves: IRoomSolve[] = useMemo(
@@ -523,12 +519,10 @@ export function SetDialog({ setIndex, children }: SetDialogProps) {
 }
 
 export function SummaryDialog({ children }: SummaryDialogProps) {
-  const [roomName, teams, match, teamSettings] = useRoomStore((s) => [
-    s.roomName,
-    s.teams,
-    s.match,
-    s.teamSettings,
-  ]);
+  const roomName = useRoomStore((s) => s.roomName);
+  const teams = useRoomStore((s) => s.teams);
+  const match = useRoomStore((s) => s.match);
+  const teamSettings = useRoomStore((s) => s.teamSettings);
 
   const localUser = useSession();
 

@@ -16,7 +16,8 @@ type RoomSettingsDialogProps = {
 export default function CreateTeamDialog({
   children,
 }: RoomSettingsDialogProps) {
-  const [teams, teamSettings] = useRoomStore((s) => [s.teams, s.teamSettings]);
+  const teams = useRoomStore((s) => s.teams);
+  const teamSettings = useRoomStore((s) => s.teamSettings);
 
   const currTeamsLength = useMemo(() => {
     return Object.values(teams).length;

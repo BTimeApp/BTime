@@ -8,7 +8,7 @@ import React, { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Moon, Sun } from "lucide-react";
-import { useRoomStore } from "@/context/room-context";
+import { useRoomActions, useRoomStore } from "@/context/room-context";
 import {
   Select,
   SelectTrigger,
@@ -25,24 +25,12 @@ type UserRoomSettingsDialogProps = {
 export default function UserRoomSettingsDialog({
   children,
 }: UserRoomSettingsDialogProps) {
-  // const [] = useRoomStore((s) => []);
   const { setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const [
-    useInspection,
-    timerType,
-    drawScramble,
-    setUseInspection,
-    setTimerType,
-    setDrawScramble,
-  ] = useRoomStore((s) => [
-    s.useInspection,
-    s.timerType,
-    s.drawScramble,
-    s.setUseInspection,
-    s.setTimerType,
-    s.setDrawScramble,
-  ]);
+  const useInspection = useRoomStore((s) => s.useInspection);
+  const timerType = useRoomStore((s) => s.timerType);
+  const drawScramble = useRoomStore((s) => s.drawScramble);
+  const { setUseInspection, setTimerType, setDrawScramble } = useRoomActions();
 
   // Prevent mismatch between server and client
   useEffect(() => setMounted(true), []);

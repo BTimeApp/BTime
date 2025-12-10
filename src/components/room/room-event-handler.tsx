@@ -100,8 +100,6 @@ export default function RoomEventHandler() {
    */
   useEffect(() => {
     resetLocalSolveStatus();
-    // ignore lint warning - we do not want solveStatus change to trigger this hook
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomState, resetLocalSolveStatus]);
 
   const broadcastStartLiveTimerCallback = useCallback(() => {

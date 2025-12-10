@@ -19,23 +19,13 @@ type RoomSettingsDialogProps = {
 export default function RoomSettingsDialog({
   children,
 }: RoomSettingsDialogProps) {
-  const [
-    roomName,
-    roomEvent,
-    access,
-    raceSettings,
-    teamSettings,
-    maxUsers,
-    isUserHost,
-  ] = useRoomStore((s) => [
-    s.roomName,
-    s.roomEvent,
-    s.access,
-    s.raceSettings,
-    s.teamSettings,
-    s.maxUsers,
-    s.isUserHost,
-  ]);
+  const roomName = useRoomStore((s) => s.roomName);
+  const roomEvent = useRoomStore((s) => s.roomEvent);
+  const access = useRoomStore((s) => s.access);
+  const raceSettings = useRoomStore((s) => s.raceSettings);
+  const teamSettings = useRoomStore((s) => s.teamSettings);
+  const maxUsers = useRoomStore((s) => s.maxUsers);
+  const isUserHost = useRoomStore((s) => s.isUserHost);
 
   const params = useParams<{ roomId: string }>();
   const roomId = params.roomId;

@@ -1,7 +1,7 @@
 "use client";
 import { RoomHeader } from "@/components/room/room-header";
 
-import { useRoomStore } from "@/context/room-context";
+import { useRoomActions } from "@/context/room-context";
 import { useSession } from "@/context/session-context";
 import { useSocket } from "@/context/socket-context";
 import { IRoom } from "@/types/room";
@@ -26,10 +26,8 @@ export default function Room() {
   const user = useSession();
 
   // required state variables for this component
-  const [handleRoomUpdate, handleRoomUserUpdate] = useRoomStore((s) => [
-    s.handleRoomUpdate,
-    s.handleRoomUserUpdate,
-  ]);
+  const { handleRoomUpdate, setUpLocalUserState, resetLocalSolveStatus } =
+    useRoomActions();
 
   const [isRoomValid, setIsRoomValid] = useState<boolean | null>(null);
   const [isPasswordAuthenticated, setIsPasswordAuthenticated] = useState<
@@ -55,6 +53,7 @@ export default function Room() {
         // as long as a room object is returned, we consider the join attempt successful.
         setIsPasswordAuthenticated(true);
         handleRoomUpdate(room);
+        resetLocalSolveStatus();
       }
 
       // use extraData in case of failure
@@ -71,7 +70,7 @@ export default function Room() {
 
         if (Object.keys(extraData).includes("EXISTING_USER_INFO")) {
           //special process user info
-          handleRoomUserUpdate(room!.users[extraData["EXISTING_USER_INFO"]]);
+          setUpLocalUserState(room!.users[extraData["EXISTING_USER_INFO"]]);
         }
 
         if (Object.keys(extraData).includes("ROOM_FULL")) {
@@ -82,7 +81,8 @@ export default function Room() {
     },
     [
       handleRoomUpdate,
-      handleRoomUserUpdate,
+      setUpLocalUserState,
+      resetLocalSolveStatus,
       setIsPasswordAuthenticated,
       setIsRoomValid,
       router,
