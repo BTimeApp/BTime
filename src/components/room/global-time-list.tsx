@@ -25,9 +25,11 @@ type SetSummary = {
 };
 
 export default function GlobalTimeList({ className }: { className: string }) {
-  const [users, teams, match, raceSettings, teamSettings] = useRoomStore(
-    (s) => [s.users, s.teams, s.match, s.raceSettings, s.teamSettings]
-  );
+  const users = useRoomStore((s) => s.users);
+  const teams = useRoomStore((s) => s.teams);
+  const match = useRoomStore((s) => s.match);
+  const raceSettings = useRoomStore((s) => s.raceSettings);
+  const teamSettings = useRoomStore((s) => s.teamSettings);
 
   const participants = useMemo(() => {
     return teamSettings.teamsEnabled ? teams : users;
