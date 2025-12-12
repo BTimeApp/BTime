@@ -12,12 +12,12 @@ import { rateLimit } from "express-rate-limit";
 import addDevExtras from "@/server/dev-extras";
 import { connectToRedis } from "@/server/redis/init-redis";
 import { createStores } from "@/server/redis/stores";
+import { isProd } from "@/server/server-objects";
 
 export async function startServer(): Promise<void> {
   // handle config with dotenv
   handleConfig();
   console.log(`Running server with ${process.env.NODE_ENV} settings.`);
-  const isProd = process.env.NODE_ENV === "production";
 
   // connect to the DB
   await connectToDB();
