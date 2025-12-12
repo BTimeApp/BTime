@@ -4,6 +4,8 @@ import RoomListing from "@/components/index/room-listing";
 import ProfileView from "@/components/index/profile-view";
 import { cn } from "@/lib/utils";
 import PageWrapper from "@/components/common/page-wrapper";
+import { Footer } from "@/components/common/footer";
+import BTimeVersionNumber from "@/components/common/btime-version";
 // import DebugButton from "@/components/common/debug-button";
 
 export default function Home() {
@@ -26,6 +28,11 @@ export default function Home() {
         </div>
         {/* <DebugButton/> */}
       </div>
+      <Footer>
+        <div className="ml-auto text-md">
+          <BTimeVersionNumber />
+        </div>
+      </Footer>
     </PageWrapper>
   );
 }
