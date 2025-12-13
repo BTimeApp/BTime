@@ -8,7 +8,7 @@ const LOG_LEVEL = process.env.PINO_LOG_LEVEL ?? (isProd ? "info" : "debug");
 const PROD_PINO_TRANSPORT_OPTIONS = {
   targets: [
     {
-      target: "pino-file",
+      target: "pino/file",
       level: LOG_LEVEL,
       options: {
         destination: 1, // stdout
