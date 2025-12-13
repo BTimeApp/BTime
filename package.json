@@ -61,6 +61,7 @@
     "passport-custom": "^1.1.1",
     "passport-oauth2": "^1.8.0",
     "pino": "^10.1.0",
+    "pino-http": "^11.0.0",
     "pino-roll": "^4.0.0",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",

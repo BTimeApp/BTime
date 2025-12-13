@@ -3,6 +3,7 @@ import { PassportStatic } from "passport";
 import { Strategy as CustomStrategy } from "passport-custom";
 import { UserModel, UserDocument, toIUser } from "@/server/models/user";
 import { RedisStores } from "@/server/redis/stores";
+import { AuthLogger } from "@/server/logging/logger";
 
 export function createWCAAuth(
   passport: PassportStatic,
@@ -39,11 +40,7 @@ export function createWCAAuth(
         );
 
         if (!tokenResponse.ok) {
-          const errorText = await tokenResponse.text();
-          console.error("WCA token request failed");
-          console.error("Status:", tokenResponse.status);
-          console.error("Headers:", tokenResponse.headers);
-          console.error("Body:", errorText);
+          AuthLogger.error({ tokenResponse }, "WCA token request failed");
           throw new Error(
             `WCA token request failed with status ${tokenResponse.status}`
           );
@@ -112,16 +109,16 @@ export function createWCAAuth(
       //eslint-disable-next-line @typescript-eslint/no-explicit-any
       (err: any, user: any, info: any) => {
         if (err) {
-          console.error("Passport error:", err);
+          AuthLogger.error({ err }, "Passport error");
           return res.status(500).send("OAuth failed");
         }
         if (!user) {
-          console.error("No user returned. Info:", info);
+          AuthLogger.error({ info }, "No user returned");
           return res.redirect("/profile");
         }
         req.logIn(user, async (err) => {
           if (err) {
-            console.error("Login error:", err);
+            AuthLogger.error({ err }, "Login error");
             return res.redirect("/profile");
           }
 
@@ -137,7 +134,7 @@ export function createWCAAuth(
               }
             }
           } catch (e) {
-            console.warn("Invalid state param:", e);
+            AuthLogger.warn({ e }, "WCAAuth received invalid state param");
           }
 
           // authentication successful - TODO make this redirect to previous page (or other custom logic)
@@ -145,7 +142,7 @@ export function createWCAAuth(
 
           if (!user) {
             //this one should never happen...
-            console.log("No User in auth wca callback...");
+            AuthLogger.warn("No User in auth wca callback...");
           } else {
             await stores.users.setUser(user.userInfo);
           }

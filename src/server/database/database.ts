@@ -1,13 +1,14 @@
 import mongoose from "mongoose";
+import { DBLogger } from "@/server/logging/logger";
 
 export const connectToDB = async () => {
   await mongoose
     .connect(process.env.DB_URI)
     .then(() => {
-      console.log("Connected to DB.");
+      DBLogger.info("Connected to DB.");
     })
     .catch((err) => {
-      console.log("Error when connecting to DB:", err);
+      DBLogger.error({ err }, "Error when connecting to DB");
       process.exit();
     });
 };

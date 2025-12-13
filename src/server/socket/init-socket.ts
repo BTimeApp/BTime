@@ -35,6 +35,7 @@ import passport from "passport";
 import bcrypt from "bcrypt";
 import {
   SOCKET_CLIENT,
+  SOCKET_CLIENT_CONFIG,
   SOCKET_SERVER,
   SocketCallback,
   SocketResponse,
@@ -43,11 +44,15 @@ import Redis from "ioredis";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { RedisStores } from "@/server/redis/stores";
 import { IAttempt } from "@/types/solve";
+import { LogFn, Logger } from "pino";
+import { createSocketLogger } from "@/server/logging/logger";
+import { isPinoLogLevel } from "@/types/log-levels";
 
 //defines useful state variables we want to maintain over the lifestyle of a socket connection (only visible server-side)
 interface CustomSocket extends Socket {
   roomId?: string;
   user?: IUser;
+  logger?: Logger;
 }
 
 export type SocketMiddleware = (
@@ -114,7 +119,10 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       return;
     }
 
-    console.log(
+    const SocketLogger = createSocketLogger(socket.id, socket.user);
+    socket.logger = SocketLogger;
+
+    socket.logger.info(
       `User ${socket.user?.userInfo.userName} (${socket.user?.userInfo.id}) connected via websocket.`
     );
 
@@ -125,6 +133,50 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
     await stores.users.setUser(socket.user.userInfo);
     await stores.userSessions.addUserSession(userId, socket.id);
+  }
+
+  function createLoggingMiddleware(socket: CustomSocket) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (packet: any[], next: (err?: Error) => void) => {
+      const [eventName, ...args] = packet;
+
+      const eventConfig =
+        SOCKET_CLIENT_CONFIG[eventName as keyof typeof SOCKET_CLIENT_CONFIG];
+
+      // Warn if event not registered
+      if (!eventConfig) {
+        socket.logger?.warn(
+          { event: eventName },
+          `Unknown socket client event: ${eventName}`
+        );
+        return next();
+      }
+
+      // skip when logging level is none
+      if (!isPinoLogLevel(eventConfig.logLevel)) {
+        return next();
+      }
+
+      const logData = {
+        event: eventName,
+        /**
+         * Room ID is dynamically changed within the socket's lifetime. Log it here.
+         */
+        roomId: socket.roomId,
+        ...(eventConfig.logArgs && { args }),
+      };
+
+      if (socket.logger) {
+        const logMethod = socket.logger?.[eventConfig.logLevel] as LogFn;
+        logMethod.call(
+          socket.logger,
+          logData,
+          `Received socket event: ${eventName}`
+        );
+      }
+
+      next();
+    };
   }
 
   //TODO: abstract this function away to room lib
@@ -294,7 +346,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
     async function handleRoomDisconnect(userId: string, roomId: string) {
       if (!userId || !roomId) return;
-      console.log(`User ${userId} disconnected from room ${roomId}`);
+      socket.logger?.info(`User ${userId} disconnected from room ${roomId}`);
       const room = await stores.rooms.getRoom(roomId);
       if (!room || !room.users[userId]) return;
 
@@ -315,8 +367,8 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
         io.to(roomId).emit(SOCKET_SERVER.USER_UPDATE, room.users[userId]);
       } else {
-        console.log(
-          `Warning: user ${userId} does not exist in room ${roomId}'s users but is trying to leave room.`
+        socket.logger?.warn(
+          `User ${userId} does not exist in room ${roomId}'s users but is trying to leave room.`
         );
       }
 
@@ -325,7 +377,6 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         Object.values(room.users).filter((roomUser) => roomUser.active)
           .length == 0
       ) {
-        console.log(`Room ${roomId} is empty. Scheduling room for deletion.`);
         stores.rooms.scheduleRoomForDeletion(roomId);
         return;
       }
@@ -347,7 +398,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         }
         if (earliestUser) {
           room.host = earliestUser.user;
-          console.log(
+          socket.logger?.debug(
             `Room ${roomId} promoted a new host: ${room.host.userName}`
           );
           io.to(roomId).emit(SOCKET_SERVER.NEW_HOST, earliestUser.user.id);
@@ -378,6 +429,8 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
       return room.host != null && room.host.id === socket.user?.userInfo.id;
     }
+
+    socket.use(createLoggingMiddleware(socket));
 
     socket.on(
       SOCKET_CLIENT.CREATE_ROOM,
@@ -456,7 +509,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         //validate real user
         const user: IUserInfo | null = await stores.users.getUser(userId);
         if (!user) {
-          console.log(
+          socket.logger?.debug(
             `Nonexistent user with id ${userId} attempting to join room ${roomId}.`
           );
           return;
@@ -465,7 +518,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         //validate real room
         const room = await stores.rooms.getRoom(roomId);
         if (!room) {
-          console.log(
+          socket.logger?.debug(
             `User ${userId} trying to join nonexistent room ${roomId}`
           );
           joinRoomCallback(false, undefined, { INVALID_ROOM: "" });
@@ -477,7 +530,9 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           Object.keys(room.users).includes(userId) &&
           room.users[userId].banned
         ) {
-          console.log(`Banned user ${userId} trying to join room ${roomId}.`);
+          socket.logger?.debug(
+            `Banned user ${userId} trying to join room ${roomId}.`
+          );
 
           joinRoomCallback(true, undefined, {
             USER_BANNED: "",
@@ -490,7 +545,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           Object.keys(room.users).includes(userId) &&
           room.users[userId].active
         ) {
-          console.log(`User ${userId} double join in room ${roomId}.`);
+          socket.logger?.debug(`User ${userId} double join in room ${roomId}.`);
 
           // precautionary persist - there is currently a race condition
           await stores.rooms.persistRoom(room.id);
@@ -507,7 +562,9 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           room.settings.maxUsers &&
           Object.keys(room.users).length >= room.settings.maxUsers
         ) {
-          console.log(`User ${userId} tried to join a full room ${roomId}.`);
+          socket.logger?.debug(
+            `User ${userId} tried to join a full room ${roomId}.`
+          );
 
           joinRoomCallback(true, undefined, {
             ROOM_FULL: "",
@@ -527,7 +584,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
             room.settings.access.password
           );
           if (!correctPassword) {
-            console.log(
+            socket.logger?.info(
               `User ${userId} submitted the wrong password to room ${roomId}.`
             );
             joinRoomCallback(true, undefined, { WRONG_PASSWORD: "" });
@@ -542,7 +599,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         await stores.rooms.persistRoom(roomId);
 
         //add user to room
-        console.log(`User ${user.userName} joining room ${roomId}.`);
+        socket.logger?.info(`User ${user.userName} joining room ${roomId}.`);
 
         const extraData: Record<string, string> = {};
 
@@ -582,17 +639,18 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
      * Upon host pressing skip scramble button
      */
     socket.on(SOCKET_CLIENT.NEW_SCRAMBLE, async () => {
-      console.log(
-        `User ${socket.user?.userInfo.id} new scramble in room ${socket.roomId}.`
-      );
       const room = await getSocketRoom();
       if (!room) return;
 
       const currentSolve = getLatestSolve(room);
       if (room.state != "STARTED") {
-        console.log(`Cannot skip scramble when room state is ${room.state}`);
+        socket.logger?.debug(
+          `Cannot skip scramble when room state is ${room.state}`
+        );
       } else if (!currentSolve) {
-        console.log(`Cannot skip scramble when there is no current solve.`);
+        socket.logger?.debug(
+          `Cannot skip scramble when there is no current solve.`
+        );
       } else {
         await resetSolve(room);
         await stores.rooms.setRoom(room);
@@ -601,9 +659,6 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
     });
 
     socket.on(SOCKET_CLIENT.FORCE_NEXT_SOLVE, async () => {
-      console.log(
-        `User ${socket.user?.userInfo.id} is trying to skip the current solve in room ${socket.roomId}.`
-      );
       const room = await getSocketRoom();
       if (!room) return;
 
@@ -611,7 +666,9 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         await handleSolveFinished(room);
         await stores.rooms.setRoom(room);
       } else {
-        console.log(`Cannot skip scramble when room state is ${room.state}`);
+        socket.logger?.info(
+          `Cannot force next solve when room state is ${room.state}`
+        );
       }
     });
 
@@ -622,10 +679,6 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       const banUser = room?.users[userId];
       if (!banUser) return;
       banUser.banned = true;
-
-      console.log(
-        `User ${socket.user?.userInfo.userName} banned user ${banUser.user.userName} from room ${socket.roomId}.`
-      );
 
       await stores.rooms.setRoom(room);
       //broadcast user update to the rest of the room
@@ -639,10 +692,6 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       const unbanUser = room?.users[userId];
       if (!unbanUser) return;
       unbanUser.banned = false;
-
-      console.log(
-        `User ${socket.user?.userInfo.userName} unbanned user ${unbanUser.user.userName} from room ${socket.roomId}.`
-      );
 
       await stores.rooms.setRoom(room);
       //broadcast user update to the rest of the room
@@ -663,10 +712,6 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         io.to(kickUserSocketId).emit(SOCKET_SERVER.USER_KICKED);
       });
 
-      console.log(
-        `User ${socket.user?.userInfo.userName} kicked user ${kickUser.user.userName} from room ${socket.roomId}.`
-      );
-
       //we do not have to send anything to others - the kicked user will room DC, and that will broadcast to all users immediatley.
     });
 
@@ -674,9 +719,6 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
      * Upon host starting the room
      */
     socket.on(SOCKET_CLIENT.START_ROOM, async () => {
-      console.log(
-        `User ${socket.user?.userInfo.id} is trying to start room ${socket.roomId}.`
-      );
       const room = await getSocketRoom();
       if (!room) return;
 
@@ -692,7 +734,9 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         io.to(room.id).emit(SOCKET_SERVER.NEW_SET, { ...newSet, solves: [] });
         io.to(room.id).emit(SOCKET_SERVER.NEW_SOLVE, newSolve);
       } else {
-        console.log(`Cannot start room when room state is ${room.state}`);
+        socket.logger?.debug(
+          `Cannot start room when room state is ${room.state}`
+        );
       }
     });
 
@@ -700,9 +744,6 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
      * Upon host pressing reset button
      */
     socket.on(SOCKET_CLIENT.RESET_ROOM, async () => {
-      console.log(
-        `User ${socket.user?.userInfo.id} is trying to reset room ${socket.roomId}.`
-      );
       const room = await getSocketRoom();
       if (!room) return;
 
@@ -712,7 +753,9 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         await stores.rooms.setRoom(room);
         io.to(room.id).emit(SOCKET_SERVER.ROOM_RESET);
       } else {
-        console.log(`Cannot reset room when room state is ${room.state}`);
+        socket.logger?.debug(
+          `Cannot reset room when room state is ${room.state}`
+        );
       }
     });
 
@@ -720,9 +763,6 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
      * Upon host pressing rematch button
      */
     socket.on(SOCKET_CLIENT.REMATCH_ROOM, async () => {
-      console.log(
-        `User ${socket.user?.userInfo.id} is trying to rematch room ${socket.roomId}.`
-      );
       const room = await getSocketRoom();
       if (!room) return;
 
@@ -732,7 +772,9 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         await stores.rooms.setRoom(room);
         io.to(room.id).emit(SOCKET_SERVER.ROOM_RESET);
       } else {
-        console.log(`Cannot rematch room when room state is ${room.state}`);
+        socket.logger?.debug(
+          `Cannot rematch room when room state is ${room.state}`
+        );
       }
     });
 
@@ -748,12 +790,8 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
           const currentUserStatus: SolveStatus =
             room.users[socket.user?.userInfo.id].solveStatus;
-          if (newUserStatus == currentUserStatus) {
-            console.log(
-              `User ${socket.user?.userInfo.id} submitted new user status ${newUserStatus} to room ${socket.roomId} which is the same as old user status.`
-            );
-          } else {
-            console.log(
+          if (newUserStatus !== currentUserStatus) {
+            socket.logger?.info(
               `User ${socket.user?.userInfo.userName} submitted new user status ${newUserStatus} to room ${socket.roomId}`
             );
             room.users[socket.user?.userInfo.id].solveStatus = newUserStatus;
@@ -763,12 +801,6 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
               userId,
               newUserStatus
             );
-
-            // if (newUserStatus === "FINISHED") {
-            //   if (checkRoomSolveFinished(room)) {
-            //     await handleSolveFinished(room);
-            //   }
-            // }
 
             await stores.rooms.setRoom(room);
           }
@@ -815,22 +847,18 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           if (!room) return;
 
           if (room.state !== "STARTED") {
-            console.log(
+            socket.logger?.debug(
               `User ${socket.user?.userInfo.id} tried to submit a result to ${socket.roomId} in the wrong room state. Ignoring message.`
             );
             return;
           }
           const currentSolve = getLatestSolve(room);
           if (!currentSolve) {
-            console.log(
+            socket.logger?.debug(
               `User ${socket.user?.userInfo.id} tried to submit a result to ${socket.roomId} when there are no solves in the room.`
             );
             return;
           }
-
-          console.log(
-            `User ${socket.user?.userInfo.userName} submitted new result ${result} to room ${socket.roomId}`
-          );
 
           const updatedTeam = processNewResult(
             room,
@@ -921,7 +949,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         //persist to redis
         await stores.rooms.setRoom(room);
 
-        console.log(
+        socket.logger?.debug(
           `New team(s) created in room ${socket.roomId}: ${teamNames}`
         );
 
@@ -943,8 +971,6 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         !room.settings.teamSettings.teamsEnabled
       )
         return;
-
-      console.log(`Team ${teamId} deleted in room ${socket.roomId}`);
 
       delete room.teams[teamId];
       await stores.rooms.setRoom(room);
@@ -1008,29 +1034,17 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           !room ||
           room.users[socket.user?.userInfo.id].competing == competing
         ) {
-          console.log(
-            `User ${
-              socket.user?.userInfo.id
-            } tried to toggle competing status to the same as it currently is: ${
-              competing ? "competing" : "spectating"
-            } in room ${socket.roomId}`
-          );
           return;
         }
 
         if (room.settings.teamSettings.teamsEnabled) {
           // users should never try to toggle their competing mode when in teams mode
-          console.log(
+          socket.logger?.debug(
             `User ${socket.user?.userInfo.id} tried to toggle competing status while teams is enabled in room ${socket.roomId}`
           );
           return;
         }
 
-        console.log(
-          `User ${socket.user?.userInfo.id} is now ${
-            competing ? "competing" : "spectating"
-          } in room ${socket.roomId}`
-        );
         room.users[socket.user?.userInfo.id].competing = competing;
 
         io.to(socket.roomId).emit(
@@ -1069,10 +1083,6 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
           }
         }
         await stores.rooms.setRoom(room);
-      } else {
-        console.log(
-          `Either roomId or userId not set on socket: ${socket.roomId}, ${socket.user?.userInfo.id}`
-        );
       }
     });
 
@@ -1080,19 +1090,13 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
      * User has left the room. Handle
      */
     socket.on(SOCKET_CLIENT.LEAVE_ROOM, async (roomId: string) => {
-      console.log(
-        `User ${socket.user?.userInfo.userName} (${userId}) left room ${roomId} `
-      );
       await handleRoomDisconnect(userId, roomId);
     });
 
     /**
      * Upon socket disconnection - automatically trigger on client closing all webpages
      */
-    socket.on("disconnect", async (reason) => {
-      console.log(
-        `User ${socket.user?.userInfo.userName} (${userId}) disconnect from socket with reason: ${reason}`
-      );
+    socket.on(SOCKET_CLIENT.DISCONNECT, async () => {
       //handle potential room DC
       if (socket.roomId) {
         await handleRoomDisconnect(userId, socket.roomId);
