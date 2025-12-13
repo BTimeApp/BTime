@@ -7,6 +7,7 @@ import {
 } from "@/types/room";
 import { createRoom } from "@/lib/room";
 import { RedisStores } from "@/server/redis/stores";
+import { RedisLogger } from "@/server/logging/logger";
 
 async function addTestRooms(stores: RedisStores) {
   for (let i = 30; i > 0; i--) {
@@ -33,13 +34,15 @@ async function addTestRooms(stores: RedisStores) {
         teamSettings: (i % 3 == 0
           ? {
               teamsEnabled: true,
-              teamFormatSettings: (i % 6 == 0 ? {
-                teamSolveFormat: "ONE",
-              } : {
-                teamSolveFormat: "ALL",
-                teamReduceFunction: "SUM",
-                teamScrambleFormat: "SAME",
-              }) as TeamFormatSettings,
+              teamFormatSettings: (i % 6 == 0
+                ? {
+                    teamSolveFormat: "ONE",
+                  }
+                : {
+                    teamSolveFormat: "ALL",
+                    teamReduceFunction: "SUM",
+                    teamScrambleFormat: "SAME",
+                  }) as TeamFormatSettings,
             }
           : { teamsEnabled: false }) as TeamSettings,
       },
@@ -54,7 +57,7 @@ export default async function addDevExtras(stores: RedisStores) {
   addTestRooms(stores);
 
   const handleServerClose = async () => {
-    console.log("Cleaning up Redis before exit...");
+    RedisLogger.info("Cleaning up Redis before exit...");
     await stores.pubClient.flushdb(); // deletes all keys in the current DB
     await stores.pubClient.quit();
     process.exit(0);

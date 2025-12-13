@@ -915,7 +915,6 @@ function getNumScramblesToGenerate(room: IRoom) {
 }
 
 export function newRoomSet(room: IRoom): IRoomSet {
-  console.log("Backend creating a new room set");
   const currentSet = getLatestSet(room);
   if (currentSet && !currentSet.finished) {
     //otherwise, since the latest set isn't finished, we will fail.
@@ -943,7 +942,6 @@ export function newRoomSet(room: IRoom): IRoomSet {
  *
  */
 export async function newRoomSolve(room: IRoom) {
-  console.log("Backend creating a new room solve");
   //get current solve Id. Consider storing a currentSolveId field in the room to not need to do this
   const currSolveId = getCurrentSolveId(room);
 

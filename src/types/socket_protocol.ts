@@ -1,117 +1,206 @@
-/**
- * All valid message types sent by the client.
- */
-export enum SOCKET_CLIENT {
-  /**
-   * User tries to join room
-   */
-  JOIN_ROOM = "JOIN_ROOM",
+import { LogLevel } from "@/types/log-levels";
 
+interface SocketClientEventConfig {
+  // value: string;
+  logArgs: boolean;
+  logLevel: LogLevel;
+}
+
+type SocketEventConfigMap = {
+  [key: string]: SocketClientEventConfig;
+};
+
+// Define metadata first
+export const SOCKET_CLIENT_CONFIG: SocketEventConfigMap = {
+  JOIN_ROOM: {
+    logArgs: true,
+    logLevel: "info",
+  },
   /**
    * User creates a room
    */
-  CREATE_ROOM = "CREATE_ROOM",
+  CREATE_ROOM: {
+    logArgs: true,
+    logLevel: "info",
+  },
 
   /**
    * Host submits a room settings update
    */
-  UPDATE_ROOM = "UPDATE_ROOM",
+  UPDATE_ROOM: {
+    logArgs: true,
+    logLevel: "info",
+  },
 
   /**
    * User updates the local solve status
    */
-  UPDATE_SOLVE_STATUS = "UPDATE_SOLVE_STATUS",
+  UPDATE_SOLVE_STATUS: {
+    logArgs: true,
+    logLevel: "debug",
+  },
 
   /**
    * User starts a live timer. A live timer is any timer that the client can access the live state of (keyboard, stackmat, smartcube, etc)
    */
-  START_LIVE_TIMER = "START_LIVE_TIMER",
+  START_LIVE_TIMER: {
+    logArgs: true,
+    logLevel: "debug",
+  },
 
   /**
    * User stops a live timer. A live timer is any timer that the client can access the live state of (keyboard, stackmat, smartcube, etc)
    */
-  STOP_LIVE_TIMER = "STOP_LIVE_TIMER",
+  STOP_LIVE_TIMER: {
+    logArgs: true,
+    logLevel: "debug",
+  },
 
   /**
    * User toggles whether they are competing or spectating
    */
-  TOGGLE_COMPETING = "TOGGLE_COMPETING",
+  TOGGLE_COMPETING: {
+    logArgs: true,
+    logLevel: "debug",
+  },
 
   /**
    * User submits a result to the backend
    */
-  SUBMIT_RESULT = "SUBMIT_RESULT",
+  SUBMIT_RESULT: {
+    logArgs: true,
+    logLevel: "info",
+  },
 
   /**
    * Host creates new teams. We force a batched creation to avoid race condition on server.
    */
-  CREATE_TEAMS = "CREATE_TEAMS",
+  CREATE_TEAMS: {
+    logArgs: true,
+    logLevel: "info",
+  },
 
   /**
    * Host deletes a team
    */
-  DELETE_TEAM = "DELETE_TEAM",
+  DELETE_TEAM: {
+    logArgs: true,
+    logLevel: "info",
+  },
 
   /**
    * User joins a team
    */
-  JOIN_TEAM = "JOIN_TEAM",
+  JOIN_TEAM: {
+    logArgs: true,
+    logLevel: "info",
+  },
 
   /**
    * User leaves a team (explicit action)
    */
-  LEAVE_TEAM = "LEAVE_TEAM",
+  LEAVE_TEAM: {
+    logArgs: true,
+    logLevel: "info",
+  },
 
   /**
    * Host starts the room (bring from WAITING to STARTED)
    */
-  START_ROOM = "START_ROOM",
+  START_ROOM: {
+    logArgs: true,
+    logLevel: "info",
+  },
 
   /**
    * Host triggers a rematch (bring from FINISHED to WAITING)
    */
-  REMATCH_ROOM = "REMATCH_ROOM",
+  REMATCH_ROOM: {
+    logArgs: true,
+    logLevel: "info",
+  },
 
   /**
    * Host triggers a room reset
    */
-  RESET_ROOM = "RESET_ROOM",
+  RESET_ROOM: {
+    logArgs: true,
+    logLevel: "info",
+  },
 
   /**
    * Host wants a new scramble (will reset the current solve)
    */
-  NEW_SCRAMBLE = "NEW_SCRAMBLE",
+  NEW_SCRAMBLE: {
+    logArgs: true,
+    logLevel: "info",
+  },
 
   /**
    * Host is forcing a new solve
    */
-  FORCE_NEXT_SOLVE = "FORCE_NEXT_SOLVE",
+  FORCE_NEXT_SOLVE: {
+    logArgs: true,
+    logLevel: "info",
+  },
 
   /**
    * Kick user from room (host only)
    */
-  KICK_USER = "KICK_USER",
+  KICK_USER: {
+    logArgs: true,
+    logLevel: "info",
+  },
 
   /**
    * Ban user from room (host only)
    */
-  BAN_USER = "BAN_USER",
+  BAN_USER: {
+    logArgs: true,
+    logLevel: "info",
+  },
 
   /**
    * Unban user from room (host only)
    */
-  UNBAN_USER = "UNBAN_USER",
+  UNBAN_USER: {
+    logArgs: true,
+    logLevel: "info",
+  },
 
   /**
    * User is leaving a room
    */
-  LEAVE_ROOM = "LEAVE_ROOM",
+  LEAVE_ROOM: {
+    logArgs: true,
+    logLevel: "info",
+  },
 
   /**
    * Used for debugging.
    */
-  DEBUG_EVENT = "DEBUG_EVENT",
-}
+  DEBUG_EVENT: {
+    logArgs: true,
+    logLevel: "debug",
+  },
+
+  // this is a socket.io event. don't capitalize
+  disconnect: {
+    logArgs: true,
+    logLevel: "info",
+  },
+} as const;
+export const SOCKET_CLIENT = Object.freeze(
+  Object.keys(SOCKET_CLIENT_CONFIG).reduce(
+    (acc, key) => {
+      acc[key as keyof typeof SOCKET_CLIENT_CONFIG] = key;
+      return acc;
+    },
+    {} as {
+      [K in keyof typeof SOCKET_CLIENT_CONFIG]: K;
+    }
+  )
+);
 
 /**
  * All valid message types sent by the server.

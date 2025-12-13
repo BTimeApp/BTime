@@ -1,5 +1,6 @@
 import { Redis } from "ioredis";
 import { REDIS_KEY_REGISTRY } from "@/server/redis/key-registry";
+import { RedisLogger } from "@/server/logging/logger";
 
 /**
  * Defines the Redis store for:
@@ -39,10 +40,14 @@ export function createUserSessionStore(redis: Redis) {
     },
 
     async addUserSession(userId: string, socketId: string): Promise<void> {
+      RedisLogger.debug(`addUserSession: user ${userId}, socket ${socketId}`);
       await redis.sadd(userSessionKey(userId), socketId);
     },
 
     async deleteUserSession(userId: string, socketId: string): Promise<void> {
+      RedisLogger.debug(
+        `deleteUserSession: user ${userId}, socket ${socketId}`
+      );
       await redis.srem(userSessionKey(userId), socketId);
     },
 

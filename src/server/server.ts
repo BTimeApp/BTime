@@ -12,12 +12,13 @@ import { rateLimit } from "express-rate-limit";
 import addDevExtras from "@/server/dev-extras";
 import { connectToRedis } from "@/server/redis/init-redis";
 import { createStores } from "@/server/redis/stores";
+import { isProd } from "@/server/server-objects";
+import { ServerLogger } from "@/server/logging/logger";
 
 export async function startServer(): Promise<void> {
   // handle config with dotenv
   handleConfig();
-  console.log(`Running server with ${process.env.NODE_ENV} settings.`);
-  const isProd = process.env.NODE_ENV === "production";
+  ServerLogger.info(`Running server with ${process.env.NODE_ENV} settings.`);
 
   // connect to the DB
   await connectToDB();
@@ -57,6 +58,54 @@ export async function startServer(): Promise<void> {
     },
   });
 
+  /**
+   * HTTP logger is bloating the logs. Enable it here if we need it in the future
+   */
+  // const httpLogger = pinoHttp({
+  //   logger: HttpLogger,
+
+  //   genReqId: (req) => {
+  //     return req.headers["x-request-id"] ?? randomUUID();
+  //   },
+
+  //   customLogLevel: (req, res, err) => {
+  //     if (err || res.statusCode >= 500) return "error";
+  //     if (res.statusCode >= 400) return "warn";
+
+  //     // websocket
+  //     if (req.headers.upgrade === "websocket") return "info";
+
+  //     // Api requests
+  //     if (req.url?.startsWith("/api")) return "info";
+
+  //     // Everything else is noise by default
+  //     return "debug";
+  //   },
+
+  //   customSuccessMessage: (req, res) =>
+  //     `${req.method} ${req.url} -> ${res.statusCode}`,
+
+  //   customErrorMessage: (req, res, err) =>
+  //     `${req.method} ${req.url} -> ${res.statusCode} (${err.message})`,
+
+  //   serializers: {
+  //     req(req) {
+  //       return {
+  //         id: req.id,
+  //         method: req.method,
+  //         url: req.url,
+  //         remoteAddress: req.remoteAddress,
+  //       };
+  //     },
+  //     res(res) {
+  //       return {
+  //         statusCode: res.statusCode,
+  //       };
+  //     },
+  //   },
+  // });
+
+  // app.use(httpLogger);
   app.use(sessionMiddleware);
 
   // allow passport to use session
@@ -136,7 +185,7 @@ export async function startServer(): Promise<void> {
   // Expose server to outside world
   const PORT = parseInt(process.env.APP_PORT);
   httpServer.listen(PORT, "0.0.0.0", () => {
-    console.log(`> Server listening on http://0.0.0.0:${PORT}`);
+    ServerLogger.info(`Server listening on http://0.0.0.0:${PORT}`);
   });
 
   // Create test rooms

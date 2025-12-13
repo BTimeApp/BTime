@@ -1,6 +1,7 @@
 import { Redis } from "ioredis";
 import { IUserInfo } from "@/types/user";
 import { REDIS_KEY_REGISTRY } from "@/server/redis/key-registry";
+import { RedisLogger } from "@/server/logging/logger";
 
 /**
  * Defines the Redis store for:
@@ -30,6 +31,7 @@ export function createUserStore(redis: Redis) {
 
     // uses the userId field already present as a key
     async setUser(user: IUserInfo): Promise<void> {
+      RedisLogger.info({ user }, "setUser");
       await redis.hset(userKey(user.id), {
         id: user.id,
         userName: user.userName,
@@ -38,6 +40,7 @@ export function createUserStore(redis: Redis) {
     },
 
     async deleteUser(userId: string): Promise<void> {
+      RedisLogger.info({ userId }, "Deleting User");
       await redis.del(userKey(userId));
     },
   };

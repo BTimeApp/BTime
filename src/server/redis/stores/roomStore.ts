@@ -2,6 +2,7 @@ import { IRoom } from "@/types/room";
 import { Redis } from "ioredis";
 import { REDIS_KEY_REGISTRY } from "@/server/redis/key-registry";
 import { IRoomSummary, roomToSummary } from "@/types/room-listing-info";
+import { RedisLogger } from "@/server/logging/logger";
 /**
  * Defines the Redis store for rooms
  *
@@ -30,7 +31,7 @@ export async function createRoomStore(redis: Redis, subClient: Redis) {
       channel === "__keyevent@0__:expired" &&
       key.startsWith(ROOM_KEY_PREFIX)
     ) {
-      console.log(`Room ${key} has expired. Deleting.`);
+      RedisLogger.info({ key }, `Deleting room`);
       await redis.zrem(ROOMS_KEY, key);
     }
   });
@@ -89,11 +90,14 @@ export async function createRoomStore(redis: Redis, subClient: Redis) {
     },
 
     async scheduleRoomForDeletion(roomId: string) {
+      RedisLogger.debug({ roomId }, `Schedule room deletion`);
+
       await redis.expire(roomKey(roomId), ROOM_TIMEOUT_SECONDS);
     },
 
     async persistRoom(roomId: string) {
-      console.log("Persisting room", roomId);
+      RedisLogger.debug({ roomId }, `Persisting room`);
+
       await redis.persist(roomKey(roomId));
     },
 
@@ -144,7 +148,10 @@ export async function createRoomStore(redis: Redis, subClient: Redis) {
 
         return { roomSummaries, totalPages, totalRooms };
       } catch (error) {
-        console.error("Error fetching JSON data with JSON.MGET:", error);
+        RedisLogger.error(
+          { error },
+          "Error fetching JSON data in getRoomsPage"
+        );
         throw error;
       }
     },

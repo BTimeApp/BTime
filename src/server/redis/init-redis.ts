@@ -1,4 +1,5 @@
 import { Redis } from "ioredis";
+import { RedisLogger } from "@/server/logging/logger";
 
 export const connectToRedis = async () => {
   // connect to Redis
@@ -10,7 +11,7 @@ export const connectToRedis = async () => {
 
   //in ioredis, we don't need a connect() call. Redis handles for us
 
-  console.log("Connected to Redis.");
+  RedisLogger.info("Connected to Redis.");
 
   // pubClient, subClient for pub/sub use with socket.io. Use storeClient to read and write to the redis store.
   return { pubClient, subClient, dataClient };
