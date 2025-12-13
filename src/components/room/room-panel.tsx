@@ -77,6 +77,25 @@ type InfoRoomPanelProps = SubRoomPanelBaseProps & {};
 
 type ParticipantListRoomPanelProps = SubRoomPanelBaseProps & {};
 
+function RoomPanelWrapper({
+  className,
+  children,
+}: {
+  className?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col text-center p-2 gap-2 overflow-y-auto",
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
 function UserStatusSection({
   className,
   userId,
@@ -181,7 +200,7 @@ function UserCenterSection({
     match.sets.at(-1)?.solves.at(-1)?.solve.attempts[userId]?.scramble ?? "";
 
   return (
-    <div className={cn("flex flex-row h-full w-full", className)}>
+    <div className={cn("flex flex-row", className)}>
       <div className="flex flex-col grow w-full h-full">
         <div className="flex-0 flex flex-col">
           {solveStatus !== "FINISHED" && (
@@ -260,7 +279,7 @@ function TeamCenterSection({
     if (isLocalTeam) {
       //user is not on a team. show spectating message
       return (
-        <div className={cn("flex flex-row w-full h-full", className)}>
+        <div className={cn("flex flex-row", className)}>
           <div className="flex flex-col grow w-full">
             <div>You are spectating. Join a team to see team view.</div>
           </div>
@@ -280,74 +299,70 @@ function TeamCenterSection({
       const currentTurnUser = teams[teamId].currentMember;
 
       return (
-        <div className={cn("flex flex-row w-full h-full", className)}>
-          <div className="flex flex-col grow w-full items-center">
-            {currentTurnUser && (
-              <>
-                <div className="flex-0 text-lg font-bold">
-                  {"Current Solver: " + users[currentTurnUser].user.userName}
+        <div className={cn("flex flex-col w-full", className)}>
+          {currentTurnUser && (
+            <>
+              <div className="flex-0 text-lg font-bold">
+                {"Current Solver: " + users[currentTurnUser].user.userName}
+              </div>
+              <UserCenterSection
+                userId={currentTurnUser}
+                isLocalUser={currentTurnUser === localUser?.userInfo.id}
+                className="flex-0"
+              />
+            </>
+          )}
+          <div className="flex-0 text-lg font-bold text-center">
+            Team Members
+          </div>
+          <div className="flex-1 overflow-y-auto max-h-[25vh] text-center">
+            {allTeamUserIds.map((teamUserId, idx) => {
+              return (
+                <div
+                  key={idx}
+                  className={currentTurnUser === teamUserId ? "font-bold" : ""}
+                >
+                  {users[teamUserId].user.userName}
                 </div>
-                <UserCenterSection
-                  userId={currentTurnUser}
-                  isLocalUser={currentTurnUser === localUser?.userInfo.id}
-                  className="flex-0"
-                />
-              </>
-            )}
-            <div className="flex-0 text-lg font-bold w-fit">Team Members</div>
-            <div className="flex-1 overflow-y-auto max-h-[25vh] w-fit">
-              {allTeamUserIds.map((teamUserId, idx) => {
-                return (
-                  <div
-                    key={idx}
-                    className={
-                      currentTurnUser === teamUserId ? "font-bold" : ""
-                    }
-                  >
-                    {users[teamUserId].user.userName}
-                  </div>
-                );
-              })}
-            </div>
+              );
+            })}
           </div>
         </div>
       );
 
     case "ALL":
       return (
-        <div className={cn("flex flex-row w-full h-full", className)}>
-          <div className="flex flex-col w-full h-full">
-            {isLocalTeam && localUser && (
-              <>
-                <div className="flex-0 text-lg font-bold">
-                  {localUser.userInfo.userName}
-                </div>
-                <UserCenterSection
-                  userId={localUser.userInfo.id}
-                  isLocalUser={true}
-                  className="flex-0"
-                />
-              </>
-            )}
-            <div className="flex flex-0 text-lg font-bold">
-              {isLocalTeam ? "Your Teammates" : "Team Members"}
-            </div>
-            <div className="flex-1 min-h-0 overflow-y-auto">
-              {teamUserIds.map((teamUserId, idx) => {
-                return (
-                  <div key={idx} className="grid grid-cols-4">
-                    <div className="col-span-3">
-                      {users[teamUserId].user.userName}
-                    </div>
-                    <div>
-                      {currentSolve !== undefined && (
-                        <UserStatusSection userId={teamUserId} />
-                      )}
-                    </div>
+        <div className={cn("flex flex-col w-full", className)}>
+          {isLocalTeam && localUser && (
+            <>
+              <div className="shrink-0 text-lg font-bold">
+                {localUser.userInfo.userName}
+              </div>
+              <UserCenterSection
+                userId={localUser.userInfo.id}
+                isLocalUser={true}
+                className="shrink-0"
+              />
+            </>
+          )}
+          <div className="flex-0 text-center text-lg font-bold">
+            {isLocalTeam ? "Your Teammates" : "Team Members"}
+          </div>
+          <div className="flex-1 overflow-y-auto max-h-[25vh] text-center">
+            {teamUserIds.map((teamUserId, idx) => {
+              return (
+                <div key={idx} className="grid grid-cols-4">
+                  <div className="col-span-3">
+                    {users[teamUserId].user.userName}
                   </div>
-                );
-              })}
-            </div>
+                  <div>
+                    {currentSolve !== undefined && (
+                      <UserStatusSection userId={teamUserId} />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       );
@@ -365,12 +380,7 @@ function UserRoomPanel({ className, userId }: UserRoomPanelProps) {
   }, [userId, localUser]);
 
   return (
-    <div
-      className={cn([
-        "flex flex-col text-center h-full w-full p-2 gap-2",
-        className,
-      ])}
-    >
+    <RoomPanelWrapper className={className}>
       <div className="flex flex-row w-full relative">
         <div className="grow">
           <p className="text-2xl font-bold">{users[userId]?.user.userName}</p>
@@ -391,16 +401,15 @@ function UserRoomPanel({ className, userId }: UserRoomPanelProps) {
         )}
       </div>
 
-      <div className="flex flex-col flex-1 min-h-0">
-        {/* <div className="flex flex-col flex-1 min-h-0 justify-center"> */}
-        <UserCenterSection
-          className={className}
-          userId={userId}
-          isLocalUser={isLocalUser}
-        />
-      </div>
+      {/* <div className="flex flex-col flex-1"> */}
+      <UserCenterSection
+        className="flex-1"
+        userId={userId}
+        isLocalUser={isLocalUser}
+      />
+      {/* </div> */}
       <div className="flex flex-row justify-end"></div>
-    </div>
+    </RoomPanelWrapper>
   );
 }
 
@@ -422,12 +431,7 @@ function TeamRoomPanel({ className, teamId }: TeamRoomPanelProps) {
   }
 
   return (
-    <div
-      className={cn([
-        "flex flex-col text-center h-full w-full p-2 gap-2",
-        className,
-      ])}
-    >
+    <RoomPanelWrapper className={className}>
       <div className="flex flex-row flex-0 w-full relative">
         {teamId && (
           <div className="absolute top-0 left-0">
@@ -462,15 +466,13 @@ function TeamRoomPanel({ className, teamId }: TeamRoomPanelProps) {
         )}
       </div>
 
-      <div className="flex flex-col flex-1 min-h-0 justify-center">
-        <TeamCenterSection
-          className={className}
-          teamId={teamId}
-          isLocalTeam={isLocalTeam}
-        />
-      </div>
+      <TeamCenterSection
+        className="flex-1"
+        teamId={teamId}
+        isLocalTeam={isLocalTeam}
+      />
       <div className="flex flex-row justify-end"></div>
-    </div>
+    </RoomPanelWrapper>
   );
 }
 
@@ -526,9 +528,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
   }, [activeParticipants, participantSortKeyCallback]);
 
   return (
-    <div
-      className={cn(["flex flex-col text-center h-full w-full p-2", className])}
-    >
+    <RoomPanelWrapper className={className}>
       <ResizablePanelGroup direction="vertical">
         <ResizablePanel defaultSize={50}>
           <div className="grid grid-cols-12">
@@ -617,7 +617,7 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
           <GlobalTimeList className="min-h-50 max-h-full w-full bg-container-1" />
         </ResizablePanel>
       </ResizablePanelGroup>
-    </div>
+    </RoomPanelWrapper>
   );
 }
 
@@ -632,9 +632,7 @@ function InfoRoomPanel({ className }: InfoRoomPanelProps) {
     getVerboseTeamFormatTextLines(teamSettings);
 
   return (
-    <div
-      className={cn(["flex flex-col text-center h-full w-full p-2", className])}
-    >
+    <RoomPanelWrapper className={className}>
       <div>
         <h2 className="text-2xl md-1 break-all">Room: {roomName}</h2>
       </div>
@@ -661,7 +659,7 @@ function InfoRoomPanel({ className }: InfoRoomPanelProps) {
           </div>
         </>
       )}
-    </div>
+    </RoomPanelWrapper>
   );
 }
 
@@ -683,9 +681,7 @@ function ParticipantListRoomPanel({
   }, [teamSettings, match, teams, users]);
 
   return (
-    <div
-      className={cn(["flex flex-col text-center h-full w-full p-2", className])}
-    >
+    <RoomPanelWrapper className={className}>
       {roomState === "FINISHED" && (
         <div className="flex-1 text-center">
           <h2 className="text-xl font-bold">
@@ -697,7 +693,7 @@ function ParticipantListRoomPanel({
         <>
           {/* Teams Enabled - users are either on a team or not on a team (allow backend to process this info) */}
           <div className="flex flex-col flex-1 align-center">
-            <div className="flex flex-row justify-center items-center gap-2">
+            <div className="flex-0 flex flex-row justify-center items-center gap-2">
               <h2 className="text-xl font-bold">
                 Teams{" "}
                 {teamSettings.maxNumTeams
@@ -717,94 +713,102 @@ function ParticipantListRoomPanel({
                 )}
             </div>
 
-            {Object.values(teams).map((team, idx) => {
-              return (
-                <React.Fragment key={idx}>
-                  <div className="flex flex-row gap-2 justify-center items-center">
-                    <RoomTeamDialog team={team}>
-                      <div className="text-lg hover:scale-105 hover:font-bold hover:underline">
-                        {team.team.name}{" "}
-                        {teamSettings.maxTeamCapacity
-                          ? `(${Object.values(team.team.members).length}/${
-                              teamSettings.maxTeamCapacity
-                            })`
-                          : ""}
-                      </div>
-                    </RoomTeamDialog>
-
-                    {
-                      // allow user to join if not on another team AND team capacity is satisfied
-                      localUser &&
-                        !users[localUser.userInfo.id].currentTeam &&
-                        (!teamSettings.maxTeamCapacity ||
-                          Object.values(team.team.members).length <
-                            teamSettings.maxTeamCapacity) && (
-                          <JoinTeamButton teamId={team.team.id} />
-                        )
-                    }
-                    {
-                      // allow user to join if not on another team AND team capacity is satisfied
-                      localUser &&
-                        users[localUser.userInfo.id].currentTeam ===
-                          team.team.id && (
-                          <LeaveTeamButton teamId={team.team.id} />
-                        )
-                    }
-                  </div>
-                  {team.team.members.map((userId, uIdx) => {
-                    return (
-                      <p className="text-md" key={uIdx}>
-                        {users[userId]?.user.userName}
-                      </p>
-                    );
-                  })}
-                </React.Fragment>
-              );
-            })}
-          </div>
-          <div className="flex flex-col flex-1 align-center">
-            <h2 className="text-xl font-bold">Spectators</h2>
-            {Object.values(users)
-              .filter((roomUser) => !roomUser.competing)
-              .map((roomUser, idx) => {
+            <div className="flex-1 max-h-[40vh] overflow-y-auto">
+              {Object.values(teams).map((team, idx) => {
                 return (
-                  <p className="text-md" key={idx}>
-                    {roomUser.user.userName}
-                  </p>
+                  <React.Fragment key={idx}>
+                    <div className="flex flex-row gap-2 justify-center items-center">
+                      <RoomTeamDialog team={team}>
+                        <div className="text-lg hover:scale-105 hover:font-bold hover:underline">
+                          {team.team.name}{" "}
+                          {teamSettings.maxTeamCapacity
+                            ? `(${Object.values(team.team.members).length}/${
+                                teamSettings.maxTeamCapacity
+                              })`
+                            : ""}
+                        </div>
+                      </RoomTeamDialog>
+
+                      {
+                        // allow user to join if not on another team AND team capacity is satisfied
+                        localUser &&
+                          !users[localUser.userInfo.id].currentTeam &&
+                          (!teamSettings.maxTeamCapacity ||
+                            Object.values(team.team.members).length <
+                              teamSettings.maxTeamCapacity) && (
+                            <JoinTeamButton teamId={team.team.id} />
+                          )
+                      }
+                      {
+                        // allow user to join if not on another team AND team capacity is satisfied
+                        localUser &&
+                          users[localUser.userInfo.id].currentTeam ===
+                            team.team.id && (
+                            <LeaveTeamButton teamId={team.team.id} />
+                          )
+                      }
+                    </div>
+                    {team.team.members.map((userId, uIdx) => {
+                      return (
+                        <p className="text-md" key={uIdx}>
+                          {users[userId]?.user.userName}
+                        </p>
+                      );
+                    })}
+                  </React.Fragment>
                 );
               })}
+            </div>
+          </div>
+          <div className="flex-1 flex flex-col align-center">
+            <h2 className="flex-0 text-xl font-bold">Spectators</h2>
+            <div className="flex-1 max-h-[40vh] overflow-y-auto">
+              {Object.values(users)
+                .filter((roomUser) => !roomUser.competing)
+                .map((roomUser, idx) => {
+                  return (
+                    <p className="text-md" key={idx}>
+                      {roomUser.user.userName}
+                    </p>
+                  );
+                })}
+            </div>
           </div>
         </>
       ) : (
         <>
           {/* Teams Disabled - users are either competing or spectating */}
           <div className="flex flex-col flex-1 align-center">
-            <h2 className="text-xl font-bold">Competitors</h2>
-            {Object.values(users)
-              .filter((roomUser) => roomUser.competing)
-              .map((roomUser, idx) => {
-                return (
-                  <p className="text-md" key={idx}>
-                    {roomUser.user.userName}
-                  </p>
-                );
-              })}
+            <h2 className="flex-0 text-xl font-bold">Competitors</h2>
+            <div className="flex-1 max-h-[40vh] overflow-y-auto">
+              {Object.values(users)
+                .filter((roomUser) => roomUser.competing)
+                .map((roomUser, idx) => {
+                  return (
+                    <p className="text-md" key={idx}>
+                      {roomUser.user.userName}
+                    </p>
+                  );
+                })}
+            </div>
           </div>
-          <div className="flex flex-col flex-1 align-center">
-            <h2 className="text-xl font-bold">Spectators</h2>
-            {Object.values(users)
-              .filter((roomUser) => !roomUser.competing)
-              .map((roomUser, idx) => {
-                return (
-                  <p className="text-md" key={idx}>
-                    {roomUser.user.userName}
-                  </p>
-                );
-              })}
+          <div className="flex-1 flex flex-col align-center">
+            <h2 className="flex-0 text-xl font-bold">Spectators</h2>
+            <div className="flex-1 max-h-[40vh] overflow-y-auto">
+              {Object.values(users)
+                .filter((roomUser) => !roomUser.competing)
+                .map((roomUser, idx) => {
+                  return (
+                    <p className="text-md" key={idx}>
+                      {roomUser.user.userName}
+                    </p>
+                  );
+                })}
+            </div>
           </div>
         </>
       )}
-    </div>
+    </RoomPanelWrapper>
   );
 }
 

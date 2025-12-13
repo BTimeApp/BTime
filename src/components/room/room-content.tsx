@@ -182,7 +182,7 @@ function ParticipantRoomPanelCarousel({
             type="summary"
             side={screenSize >= ScreenSize.MD ? "left" : undefined}
             inCarousel={true}
-            className="bg-container-1"
+            className="bg-container-1 h-full"
           />
         </CarouselItem>
         {participantIds.map((pid, idx) => (
@@ -193,7 +193,7 @@ function ParticipantRoomPanelCarousel({
                 side={screenSize >= ScreenSize.MD ? "right" : undefined}
                 teamId={pid}
                 inCarousel={true}
-                className="bg-container-1"
+                className="bg-container-1 h-full"
               />
             )}
             {type === "user" && (
@@ -202,7 +202,7 @@ function ParticipantRoomPanelCarousel({
                 side={screenSize >= ScreenSize.MD ? "right" : undefined}
                 userId={pid}
                 inCarousel={true}
-                className="bg-container-1"
+                className="bg-container-1 h-full"
               />
             )}
           </CarouselItem>
