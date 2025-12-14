@@ -260,7 +260,9 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
     if ((room.state as RoomState) !== "FINISHED") {
       const newSolve = await newRoomSolve(room);
-      io.to(room.id).emit(SOCKET_SERVER.TEAMS_UPDATE, room.teams);
+      if (room.settings.teamSettings.teamsEnabled) {
+        io.to(room.id).emit(SOCKET_SERVER.TEAMS_UPDATE, room.teams);
+      }
       io.to(room.id).emit(SOCKET_SERVER.NEW_SOLVE, newSolve);
     }
   }
@@ -729,7 +731,9 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
         await stores.rooms.setRoom(room);
         io.to(room.id).emit(SOCKET_SERVER.ROOM_STARTED);
-        io.to(room.id).emit(SOCKET_SERVER.TEAMS_UPDATE, room.teams);
+        if (room.settings.teamSettings.teamsEnabled) {
+          io.to(room.id).emit(SOCKET_SERVER.TEAMS_UPDATE, room.teams);
+        }
         //manually remove the solve since we're sending it over the wire right after this - avoids duplicating
         io.to(room.id).emit(SOCKET_SERVER.NEW_SET, { ...newSet, solves: [] });
         io.to(room.id).emit(SOCKET_SERVER.NEW_SOLVE, newSolve);
