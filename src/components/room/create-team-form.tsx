@@ -26,7 +26,7 @@ type CreateTeamFormProps = {
   onSubmit: () => void;
 };
 export function CreateTeamForm({ onSubmit }: CreateTeamFormProps) {
-  const { socket } = useSocket();
+  const socket = useSocket();
   const teams = useRoomStore((s) => s.teams);
   const teamSettings = useRoomStore((s) => s.teamSettings);
 

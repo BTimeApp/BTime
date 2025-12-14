@@ -14,7 +14,7 @@ export function BanUserButton({
   className,
   onClick,
 }: UserActionButtonProps) {
-  const { socket } = useSocket();
+  const socket = useSocket();
 
   const banUser = useCallback(() => {
     socket.emit(SOCKET_CLIENT.BAN_USER, userId);
@@ -33,7 +33,7 @@ export function KickUserButton({
   className,
   onClick,
 }: UserActionButtonProps) {
-  const { socket } = useSocket();
+  const socket = useSocket();
 
   const kickUser = useCallback(() => {
     console.log(`Kicking user ${userId}`);
@@ -53,7 +53,7 @@ export function UnbanUserButton({
   className,
   onClick,
 }: UserActionButtonProps) {
-  const { socket } = useSocket();
+  const socket = useSocket();
 
   const unbanUser = useCallback(() => {
     socket.emit(SOCKET_CLIENT.UNBAN_USER, userId);

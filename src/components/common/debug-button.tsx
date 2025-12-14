@@ -6,7 +6,7 @@ import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
 
 export default function DebugButton() {
-  const { socket } = useSocket();
+  const socket = useSocket();
   const debugCallback = useCallback(() => {
     socket.emit(SOCKET_CLIENT.DEBUG_EVENT);
   }, [socket]);

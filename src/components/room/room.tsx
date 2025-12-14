@@ -22,7 +22,7 @@ export default function Room() {
   const roomId = params.roomId;
 
   // generate socket, fetch local user from session
-  const { socket, socketConnected } = useSocket();
+  const socket = useSocket();
   const user = useSession();
 
   // required state variables for this component
@@ -96,6 +96,10 @@ export default function Room() {
     if (!user) {
       return;
     }
+    const onDisconnect = () => {
+      console.log("Socket disconnected. Routing to home page...");
+      router.push("/");
+    };
 
     // Connect socket to room
     if (socket.connected) {
@@ -107,6 +111,8 @@ export default function Room() {
         console.log("Socket connected. ");
       });
     }
+    socket.on("disconnect", onDisconnect);
+
     // only join room upon login
     socket.emit(
       SOCKET_CLIENT.JOIN_ROOM,
@@ -119,11 +125,13 @@ export default function Room() {
       if (socket && socket.connected) {
         socket.emit(SOCKET_CLIENT.LEAVE_ROOM, roomId);
       }
+
+      socket.off("disconnect", onDisconnect);
     };
 
     // ignore socket missing - we don't want to always rerun this on socket change
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId, user, socketConnected, joinRoomCallback]);
+  }, [roomId, user, joinRoomCallback]);
 
   useEffect(() => {
     if (isRoomValid === false) {

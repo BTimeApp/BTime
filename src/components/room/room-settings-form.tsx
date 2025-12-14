@@ -173,7 +173,7 @@ export default function RoomSettingsForm({
   className,
 }: RoomSettingsFormProps) {
   const user = useSession();
-  const { socket, socketConnected } = useSocket();
+  const socket = useSocket();
 
   // form schema
   const form = useForm<z.infer<typeof formSchema>>({
@@ -192,12 +192,11 @@ export default function RoomSettingsForm({
   const [formErrorText, setFormErrorText] = useState<string>("");
 
   useEffect(() => {
-    if (!user || !socket || !socketConnected) {
+    if (!user || !socket || !socket.connected) {
       setFormError(true);
       if (!user) {
         setFormErrorText("User is not logged in.");
-      } else if (!socket || !socketConnected) {
-        // console.log(socket, socketConnected);
+      } else if (!socket || !socket.connected) {
         setFormErrorText(
           "Websocket is not connected. Try refreshing the page."
         );
@@ -206,7 +205,7 @@ export default function RoomSettingsForm({
       setFormError(false);
       setFormErrorText("");
     }
-  }, [user, socket, socketConnected]);
+  }, [user, socket]);
 
   const onSubmit = useCallback(
     (values: z.infer<typeof formSchema>) => {

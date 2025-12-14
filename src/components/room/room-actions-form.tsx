@@ -17,7 +17,7 @@ export default function RoomActionsForm({
   const isUserHost = useRoomStore((s) => s.isUserHost);
 
   const user = useSession();
-  const { socket } = useSocket();
+  const socket = useSocket();
 
   const resetRoom = useCallback(() => {
     if (socket) {

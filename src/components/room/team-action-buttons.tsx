@@ -11,7 +11,7 @@ interface TeamButtonProps {
 }
 
 export function JoinTeamButton({ teamId, className }: TeamButtonProps) {
-  const { socket } = useSocket();
+  const socket = useSocket();
   const joinTeamCallback = useCallback((response: SocketResponse<void>) => {
     if (!response.success) {
       toast.error(response.reason);
@@ -31,7 +31,7 @@ export function JoinTeamButton({ teamId, className }: TeamButtonProps) {
 }
 
 export function LeaveTeamButton({ teamId, className }: TeamButtonProps) {
-  const { socket } = useSocket();
+  const socket = useSocket();
   const leaveTeamCallback = useCallback((response: SocketResponse<void>) => {
     if (!response.success) {
       toast.error(response.reason);
@@ -51,7 +51,7 @@ export function LeaveTeamButton({ teamId, className }: TeamButtonProps) {
 }
 
 export function DeleteTeamButton({ teamId, className }: TeamButtonProps) {
-  const { socket } = useSocket();
+  const socket = useSocket();
   return (
     <Button
       variant="destructive"
