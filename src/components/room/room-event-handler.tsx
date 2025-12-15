@@ -22,7 +22,7 @@ export default function RoomEventHandler() {
   const roomId = params.roomId;
 
   const user = useSession();
-  const { socket } = useSocket();
+  const socket = useSocket();
 
   const localPenalty = useRoomStore((s) => s.localPenalty);
   const localResult = useRoomStore((s) => s.localResult);

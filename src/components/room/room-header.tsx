@@ -24,7 +24,7 @@ export function RoomHeader() {
   const isUserHost = useRoomStore((s) => s.isUserHost);
 
   const user = useSession();
-  const { socket } = useSocket();
+  const socket = useSocket();
 
   const getNextScramble = useCallback(() => {
     if (user && isUserHost(user.userInfo.id)) {

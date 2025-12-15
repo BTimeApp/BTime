@@ -11,7 +11,7 @@ function RoomSubmittingButtons() {
   const resetLocalSolveStatus = useRoomStore((s) => s.resetLocalSolveStatus);
   const setLocalPenalty = useRoomStore((s) => s.setLocalPenalty);
   const updateLocalSolveStatus = useRoomStore((s) => s.updateLocalSolveStatus);
-  const { socket } = useSocket();
+  const socket = useSocket();
 
   const submitButtonRef = useRef<HTMLButtonElement>(null);
 
