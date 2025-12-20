@@ -722,11 +722,11 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
      */
     socket.on(SOCKET_CLIENT.START_ROOM, async () => {
       const room = await getSocketRoom();
-      if (!room) return;
+      if (room == null) return;
 
       if (room.state == "WAITING" || room.state == "FINISHED") {
         room.state = "STARTED";
-        const newSet = await newRoomSet(room);
+        const newSet = newRoomSet(room);
         const newSolve = await newRoomSolve(room);
 
         await stores.rooms.setRoom(room);
@@ -952,10 +952,6 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
         //persist to redis
         await stores.rooms.setRoom(room);
-
-        socket.logger?.debug(
-          `New team(s) created in room ${socket.roomId}: ${teamNames}`
-        );
 
         //broadcast new team event
         io.to(room.id).emit(SOCKET_SERVER.TEAMS_CREATED, newTeams);
