@@ -8,6 +8,7 @@ import bcrypt from "bcrypt";
 import { IUserInfo } from "@/types/user";
 import { IRoomTeam, IRoomUser } from "@/types/room-participant";
 import { SocketResponse } from "@/types/socket_protocol";
+import { RoomLogger } from "@/server/logging/logger";
 
 export async function createRoom(
   roomSettings: IRoomSettings,
@@ -38,6 +39,10 @@ export async function createRoom(
   }
   room.host = initialHost;
 
+  RoomLogger.info(
+    { ...room.settings, roomId: room.id },
+    `Created new room ${room.id}`
+  );
   return room;
 }
 
@@ -54,6 +59,11 @@ export async function updateRoom(
       : "";
     room.settings.access = access;
   }
+
+  RoomLogger.info(
+    { ...room.settings, roomId: room.id },
+    `Update room ${room.id}`
+  );
 }
 
 export function getLatestSet(room: IRoom): IRoomSet | undefined {
@@ -430,6 +440,8 @@ export function finishTeamSolve(room: IRoom, teamId: string) {
     return undefined;
   }
 
+  let teamResult: IResult | undefined = undefined;
+
   switch (room.settings.teamSettings.teamFormatSettings.teamSolveFormat) {
     case "ALL":
       const teamMembers = room.teams[teamId].team.members;
@@ -449,45 +461,68 @@ export function finishTeamSolve(room: IRoom, teamId: string) {
         room.settings.teamSettings.teamFormatSettings.teamReduceFunction
       )!;
 
-      const teamResult: IResult = new Result(
-        reduceFunc(teamMemberResults),
-        "OK"
-      ).toIResult();
+      teamResult = new Result(reduceFunc(teamMemberResults), "OK").toIResult();
 
       currentSolve.solve.results[teamId] = teamResult;
       room.teams[teamId].currentResult = teamResult;
       room.teams[teamId].solveStatus = "FINISHED";
 
-      return teamResult;
+      break;
 
     case "ONE":
       const currUid = room.teams[teamId].currentMember;
       if (!currUid) {
-        return undefined;
+        break;
       }
       if (
         !currentSolve.solve.attempts[currUid] ||
         !currentSolve.solve.attempts[currUid].finished
       ) {
-        console.warn(
-          "Tried to finish team solve when team representative not finished..."
+        RoomLogger.warn(
+          {
+            roomId: room.id,
+            roomName: room.settings.roomName,
+            setIndex: room.currentSet,
+            solveIndex: room.currentSolve,
+          },
+          "Team solve finish when team representative not finished (ONE mode)"
         );
-        return undefined;
+        break;
       }
 
-      const result = currentSolve.solve.attempts[currUid].result;
+      teamResult = currentSolve.solve.attempts[currUid].result;
 
-      currentSolve.solve.results[teamId] = result;
-      room.teams[teamId].currentResult = result;
+      currentSolve.solve.results[teamId] = teamResult;
+      room.teams[teamId].currentResult = teamResult;
       room.teams[teamId].solveStatus = "FINISHED";
 
-      return result;
+      break;
 
     default:
-      console.warn(
-        `Unimplemented team solve format: ${room.settings.teamSettings.teamFormatSettings}`
+      RoomLogger.warn(
+        {
+          roomId: room.id,
+          roomName: room.settings.roomName,
+          setIndex: room.currentSet,
+          solveIndex: room.currentSolve,
+          teamSettings: room.settings.teamSettings,
+        },
+        "Unimplemented team solve format"
       );
   }
+
+  RoomLogger.info(
+    {
+      roomId: room.id,
+      roomName: room.settings.roomName,
+      setIndex: room.currentSet,
+      solveIndex: room.currentSolve,
+      teamResult: teamResult,
+      teamId: teamId,
+    },
+    "New team result"
+  );
+  return teamResult;
 }
 
 /**
@@ -510,12 +545,34 @@ export function processNewResult(
   };
   room.users[userId].currentResult = result;
 
+  RoomLogger.info(
+    {
+      roomId: room.id,
+      roomName: room.settings.roomName,
+      userId: userId,
+      userName: room.users[userId].user.userName,
+      setIndex: room.currentSet,
+      solveIndex: room.currentSolve,
+      result: result,
+    },
+    "New user result"
+  );
+
   // update solve results if applicable
   if (room.settings.teamSettings.teamsEnabled) {
     const teamId = room.users[userId].currentTeam;
     if (!teamId) {
-      console.log(
-        `User ${userId} tried to submit a result for their team when they do not have a team assigned.`
+      RoomLogger.warn(
+        {
+          roomId: room.id,
+          roomName: room.settings.roomName,
+          userId: userId,
+          userName: room.users[userId].user.userName,
+          setIndex: room.currentSet,
+          solveIndex: room.currentSolve,
+          result: result,
+        },
+        "User tried to submit a result for their team without a team assigned"
       );
       return;
     }
@@ -678,6 +735,17 @@ export function finishRoomSolve(room: IRoom) {
     }
   }
 
+  RoomLogger.info(
+    {
+      roomId: room.id,
+      roomName: room.settings.roomName,
+      setIndex: room.currentSet,
+      solveIndex: room.currentSolve,
+      solveWinners: currentSolve.winners,
+    },
+    `Room solve finished`
+  );
+
   // Mark solve as finished
   currentSolve.finished = true;
 }
@@ -703,6 +771,16 @@ export function createTeam(room: IRoom, teamName: string) {
       members: [],
     },
   };
+
+  RoomLogger.info(
+    {
+      roomId: room.id,
+      roomName: room.settings.roomName,
+      teamId: teamId,
+      teamName: teamName,
+    },
+    `New team created`
+  );
 
   return newTeam;
 }
@@ -918,8 +996,13 @@ export function newRoomSet(room: IRoom): IRoomSet {
   const currentSet = getLatestSet(room);
   if (currentSet && !currentSet.finished) {
     //otherwise, since the latest set isn't finished, we will fail.
-    console.warn(
-      `Tried to start a new set in room ${room.id} without finishing the latest set`
+    RoomLogger.warn(
+      {
+        roomId: room.id,
+        roomName: room.settings.roomName,
+        setIndex: room.currentSet,
+      },
+      "Tried to start a new set without finishing latest set"
     );
   }
 
@@ -986,6 +1069,17 @@ export async function newRoomSolve(room: IRoom) {
 
   // generates scrambles + properly sets attempts, results
   await resetSolve(room);
+
+  RoomLogger.info(
+    {
+      roomId: room.id,
+      roomName: room.settings.roomName,
+      setIndex: room.currentSet,
+      solveIndex: room.currentSolve,
+      solve: newRoomSolve,
+    },
+    "New room solve"
+  );
 
   return newRoomSolve;
 }

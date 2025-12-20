@@ -80,6 +80,9 @@ export const AuthLogger = BTIME_LOGGER.child({ module: "auth" });
 // for http
 export const HttpLogger = BTIME_LOGGER.child({ module: "http" });
 
+// for room - since we don't store each room instance in memory, best we can do is singleton
+export const RoomLogger = BTIME_LOGGER.child({ module: "room" });
+
 /**
  * Factories for dynamic context loggers
  */
