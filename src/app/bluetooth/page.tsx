@@ -3,7 +3,7 @@ import { Header, HeaderTitle } from "@/components/common/header";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { TimerEvent, TimerState } from "@btime/bluetooth-cubing";
-import { useSmartTimer } from "@btime/bluetooth-cubing-react";
+import { useBluetoothTimer } from "@btime/bluetooth-cubing-react";
 import { Result } from "@/types/result";
 import { useCallback, useState } from "react";
 import PageWrapper from "@/components/common/page-wrapper";
@@ -34,7 +34,7 @@ export default function Page() {
     connected: timerConnected,
     connect: connectTimer,
     disconnect: disconnectTimer,
-  } = useSmartTimer(handleTimerEvent);
+  } = useBluetoothTimer(handleTimerEvent);
 
   const [timerTextClassName, setTimerTextClassName] = useState<string>("");
 

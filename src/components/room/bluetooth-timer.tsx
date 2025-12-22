@@ -6,20 +6,20 @@ import InspectionCountdown from "@/components/room/inspection-countdown";
 import StopwatchTimer from "@/components/room/stopwatch-timer";
 import { Penalty } from "@/types/result";
 import { cn } from "@/lib/utils";
-import { useSmartTimerStore } from "@/stores/smart-timer-store";
+import { useBluetoothTimerStore } from "@/stores/bluetooth-timer-store";
 import { TimerEvent, TimerState } from "@btime/bluetooth-cubing";
 
-type SmartTimerProps = {
+type BluetoothTimerProps = {
   onFinishInspection?: (penalty: Penalty) => void;
   onFinishTimer: (timerValue: number) => void;
 };
 
-export function SmartTimer({
+export function BluetoothTimer({
   onFinishInspection,
   onFinishTimer,
-}: SmartTimerProps) {
+}: BluetoothTimerProps) {
   const [connected, timer, currentDisplayTimeMS, eventCallbackRef, connect] =
-    useSmartTimerStore((s) => [
+    useBluetoothTimerStore((s) => [
       s.connected,
       s.timer,
       s.currentDisplayTimeMS,

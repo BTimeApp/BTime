@@ -6,7 +6,7 @@ import { CallbackInput } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import InspectionCountdown from "@/components/room/inspection-countdown";
 import { useRoomStore } from "@/context/room-context";
-import { SmartTimer } from "@/components/room/smart-timer";
+import { BluetoothTimer } from "@/components/room/bluetooth-timer";
 
 function TimerSection() {
   const [spacebarDown, setSpacebarDown] = useState<boolean>(false);
@@ -160,7 +160,7 @@ function TimerSection() {
       break;
     case "BLUETOOTH":
       return (
-        <SmartTimer
+        <BluetoothTimer
           onFinishInspection={endInspectionCallback}
           onFinishTimer={endNumberTimerCallback}
         />

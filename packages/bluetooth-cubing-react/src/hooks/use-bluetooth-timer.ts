@@ -1,16 +1,14 @@
 import { useCallback, useRef, useState } from "react";
 import {
-  SmartTimer,
+  BluetoothTimer,
   TimerEvent,
   TimerState,
   connectTimer,
 } from "@btime/bluetooth-cubing";
 
-export function useSmartTimer(onTimerEvent?: (event: TimerEvent) => void) {
-  const timerRef = useRef<SmartTimer>(null);
-  const [timerState, setTimerState] = useState<TimerState>(
-    TimerState.IDLE
-  );
+export function useBluetoothTimer(onTimerEvent?: (event: TimerEvent) => void) {
+  const timerRef = useRef<BluetoothTimer>(null);
+  const [timerState, setTimerState] = useState<TimerState>(TimerState.IDLE);
   const [recordedTime, setRecordedTime] = useState<number>(0);
   const [connected, setConnected] = useState<boolean>(false);
 

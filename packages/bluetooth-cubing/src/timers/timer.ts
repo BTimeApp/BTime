@@ -1,3 +1,5 @@
+export const TIMER_STATE_EVENT = "TIMER_STATE_CHANGE";
+
 /**
  * Generic timer state. Directly from GanTimerState in the gan-web-bluetooth package (by afedotov)
  */
@@ -32,15 +34,14 @@ export type TimerEvent = {
 
 export type TimerStateEventListener = (event: TimerEvent) => void;
 
-export abstract class SmartTimer {
+export abstract class BluetoothTimer extends EventTarget {
   protected device!: BluetoothDevice;
   protected server!: BluetoothRemoteGATTServer;
   protected time: number = 0;
   protected state: TimerState = TimerState.IDLE;
-  protected stateChangeListeners: Set<TimerStateEventListener> =
-    new Set<TimerStateEventListener>();
 
   constructor(device: BluetoothDevice) {
+    super();
     this.device = device;
     this.disconnect = this.disconnect.bind(this);
   }
@@ -72,17 +73,26 @@ export abstract class SmartTimer {
     if (this.server.connected) {
       this.server.disconnect();
     }
-    this.stateChangeListeners.forEach((cb) =>
-      cb({ state: TimerState.DISCONNECT })
+
+    this.dispatchEvent(
+      new CustomEvent(TIMER_STATE_EVENT, {
+        detail: {
+          state: TimerState.DISCONNECT,
+        },
+      })
     );
-    this.stateChangeListeners.clear();
   }
 
   /** For subclasses to safely emit */
   protected updateStateEvent(event: TimerEvent) {
     this.state = event.state;
     if (event.recordedTime) this.time = event.recordedTime;
-    for (const cb of this.stateChangeListeners) cb(event);
+
+    this.dispatchEvent(
+      new CustomEvent(TIMER_STATE_EVENT, {
+        detail: event,
+      })
+    );
   }
 
   /**
@@ -90,8 +100,12 @@ export abstract class SmartTimer {
    * Returns a cleanup callback.
    */
   onTimerEvent(cb: TimerStateEventListener): () => void {
-    this.stateChangeListeners.add(cb);
-    return () => this.stateChangeListeners.delete(cb);
+    const handler = (e: Event) => {
+      cb((e as CustomEvent<TimerEvent>).detail);
+    };
+
+    this.addEventListener(TIMER_STATE_EVENT, handler);
+    return () => this.removeEventListener(TIMER_STATE_EVENT, handler);
   }
 
   /**

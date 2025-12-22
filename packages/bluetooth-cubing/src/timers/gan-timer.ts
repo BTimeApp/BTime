@@ -1,5 +1,5 @@
 import { crc16ccit } from "../utils";
-import { SmartTimer, TimeMS, TimerEvent, TimerState } from "./timer";
+import { BluetoothTimer, TimeMS, TimerEvent, TimerState } from "./timer";
 import { TimerRegistry } from "./timer-registry";
 
 /**
@@ -13,7 +13,7 @@ const GAN_TIMER_TIME_CHARACTERISTIC: string =
 const GAN_TIMER_STATE_CHARACTERISTIC: string =
   "0000fff5-0000-1000-8000-00805f9b34fb";
 
-class GanTimer extends SmartTimer {
+class GanTimer extends BluetoothTimer {
   private timeCharacteristic!: BluetoothRemoteGATTCharacteristic;
   private stateCharacteristic!: BluetoothRemoteGATTCharacteristic;
 
