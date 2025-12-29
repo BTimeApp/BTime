@@ -38,6 +38,7 @@ import {
   SOCKET_CLIENT_CONFIG,
   SOCKET_SERVER,
   SocketCallback,
+  SocketClientEventArgs,
   SocketResponse,
 } from "@/types/socket_protocol";
 import Redis from "ioredis";
@@ -45,8 +46,9 @@ import { createAdapter } from "@socket.io/redis-adapter";
 import { RedisStores } from "@/server/redis/stores";
 import { IAttempt } from "@/types/solve";
 import { LogFn, Logger } from "pino";
-import { createSocketLogger } from "@/server/logging/logger";
+import { createSocketLogger, ServerLogger } from "@/server/logging/logger";
 import { isPinoLogLevel } from "@/types/log-levels";
+import { RoomRedisEvent } from "@/types/room-redis-event";
 
 //defines useful state variables we want to maintain over the lifestyle of a socket connection (only visible server-side)
 interface CustomSocket extends Socket {
@@ -356,8 +358,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         // mark user as inactive
         room.users[userId].active = false;
 
-        //TODO - this might not be safe in the future if a timer is supposed to default to something other than IDLE and we persist timertype
-        //unless the user already submitted a time, reset their solve status too
+        // canonically, the default solve status should be IDLE. If the user reconnects later, it is the responsibility of the client to make their solve status correct.
         if (room.users[userId].solveStatus !== "FINISHED") {
           room.users[userId].solveStatus = "IDLE";
         }
@@ -434,6 +435,102 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
     socket.use(createLoggingMiddleware(socket));
 
+    /**
+     * TODO - change these to only handle events that trigger post room-joining
+     */
+    for (const clientEvent in SOCKET_CLIENT_CONFIG) {
+      const key = clientEvent as keyof typeof SOCKET_CLIENT_CONFIG;
+      const config = SOCKET_CLIENT_CONFIG[key];
+
+      if (config.roomEventConfig.isRoomEvent === true) {
+        const roomEventConfig = config.roomEventConfig as Extract<
+          typeof config.roomEventConfig,
+          { isRoomEvent: true }
+        >;
+        socket.on(
+          clientEvent,
+          async (args: SocketClientEventArgs[typeof key]) => {
+            const roomId = (args?.roomId as string) || socket.roomId || null;
+            const userId =
+              (args?.userId as string) || socket.user?.userInfo.id || null;
+
+            // TODO - consider sending invalid argument events to the frontend?
+            if (!roomId) {
+              ServerLogger.warn({ clientEvent }, "Null roomId on socket");
+              return;
+            }
+            if (!userId) {
+              ServerLogger.warn({ clientEvent }, "Null userId on socket");
+              return;
+            }
+
+            for (const validation of roomEventConfig.validations) {
+              switch (validation) {
+                case "ROOM_EXISTS": {
+                  const room = await stores.rooms.getRoom(roomId);
+                  if (!room) {
+                    ServerLogger.warn({ clientEvent }, "Room does not exist");
+                    return;
+                  }
+                  break;
+                }
+                case "ROOMUSER_EXISTS": {
+                  const room = await stores.rooms.getRoom(roomId);
+                  if (!room) {
+                    ServerLogger.warn({ clientEvent }, "Room does not exist");
+
+                    return;
+                  }
+                  if (!room.users[userId]) {
+                    ServerLogger.warn(
+                      { clientEvent },
+                      "Room user does not exist"
+                    );
+
+                    return;
+                  }
+                  break;
+                }
+                case "USER_IS_HOST": {
+                  const room = await stores.rooms.getRoom(roomId);
+                  if (!room) {
+                    ServerLogger.warn({ clientEvent }, "Room does not exist");
+
+                    return;
+                  }
+                  if (room.host != null && room.host.id !== userId) {
+                    ServerLogger.warn({ clientEvent }, "Room user is not host");
+
+                    return;
+                  }
+
+                  break;
+                }
+                default:
+                  ServerLogger.error(
+                    {
+                      validation,
+                    },
+                    "Invalid room event validation detected. Fix this in dev."
+                  );
+                  break;
+              }
+            }
+            await stores.rooms.enqueueRoomEvent({
+              roomId,
+              userId,
+              event: clientEvent,
+              args,
+            } as RoomRedisEvent);
+          }
+        );
+      }
+    }
+
+    /**
+     * CREATE_ROOM is a special event that doesn't get counted as a room event.
+     * Since it's definitively the first event for any room, it shouldn't be processed with the room queue.
+     */
     socket.on(
       SOCKET_CLIENT.CREATE_ROOM,
       async (
