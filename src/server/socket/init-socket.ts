@@ -1,6 +1,6 @@
 import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
-import { IRoom, RoomState, IRoomSettings } from "@/types/room";
+import { IRoom, RoomState, IRoomSettings, RoomRedisEvent } from "@/types/room";
 import {
   newRoomSolve,
   resetRoom,
@@ -48,7 +48,7 @@ import { IAttempt } from "@/types/solve";
 import { LogFn, Logger } from "pino";
 import { createSocketLogger, ServerLogger } from "@/server/logging/logger";
 import { isPinoLogLevel } from "@/types/log-levels";
-import { RoomRedisEvent } from "@/types/room-redis-event";
+import { RoomWorker } from "@/server/rooms/room-worker";
 
 //defines useful state variables we want to maintain over the lifestyle of a socket connection (only visible server-side)
 interface CustomSocket extends Socket {
@@ -63,14 +63,12 @@ export type SocketMiddleware = (
   next: NextFunction
 ) => void;
 
-export const initSocket = (
+export const createSocket = (
   httpServer: HttpServer,
-  sessionMiddleware: SocketMiddleware,
   pubClient: Redis,
-  subClient: Redis,
-  dataStores: RedisStores
+  subClient: Redis
 ) => {
-  const io = new Server(httpServer, {
+  return new Server(httpServer, {
     adapter: createAdapter(pubClient, subClient),
     cors: {
       credentials: true,
@@ -78,10 +76,12 @@ export const initSocket = (
     pingInterval: 5000,
     pingTimeout: 20000,
   });
+};
 
-  // middleware should be taken care of in the main server script
-
-  //https://socket.io/how-to/use-with-passport
+export const setUpSocketMiddleware = (
+  io: Server,
+  sessionMiddleware: SocketMiddleware
+) => {
   function socketHandshakeMiddleware(
     middleware: SocketMiddleware
   ): SocketMiddleware {
@@ -107,12 +107,13 @@ export const initSocket = (
       }
     })
   );
-
-  // TODO: move socket events to their own namespaces
-  listenSocketEvents(io, dataStores);
 };
 
-const listenSocketEvents = (io: Server, stores: RedisStores) => {
+export const startSocketListener = (
+  io: Server,
+  stores: RedisStores,
+  roomWorker: RoomWorker
+) => {
   async function onConnect(socket: CustomSocket) {
     //check for user. DC if no user
     socket.user = socket.request.user;
@@ -450,9 +451,10 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         socket.on(
           clientEvent,
           async (args: SocketClientEventArgs[typeof key]) => {
-            const roomId = (args?.roomId as string) || socket.roomId || null;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const roomId = (args as any)?.roomId || socket.roomId || null;
             const userId =
-              (args?.userId as string) || socket.user?.userInfo.id || null;
+              (args as any)?.userId || socket.user?.userInfo.id || null; // eslint-disable-line @typescript-eslint/no-explicit-any
 
             // TODO - consider sending invalid argument events to the frontend?
             if (!roomId) {
@@ -548,6 +550,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         );
 
         await stores.rooms.setRoom(room);
+        roomWorker.startRoomProcessor(roomId);
         callback(roomId);
       }
     );
@@ -1124,64 +1127,67 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
     /**
      * Upon user pressing compete/spectate button
      */
-    socket.on(SOCKET_CLIENT.TOGGLE_COMPETING, async (competing: boolean) => {
-      if (socket.roomId && socket.user) {
-        const room = await stores.rooms.getRoom(socket.roomId);
-        if (
-          !room ||
-          room.users[socket.user?.userInfo.id].competing == competing
-        ) {
-          return;
-        }
+    socket.on(
+      SOCKET_CLIENT.TOGGLE_COMPETING,
+      async ({ competing }: { competing: boolean }) => {
+        if (socket.roomId && socket.user) {
+          const room = await stores.rooms.getRoom(socket.roomId);
+          if (
+            !room ||
+            room.users[socket.user?.userInfo.id].competing == competing
+          ) {
+            return;
+          }
 
-        if (room.settings.teamSettings.teamsEnabled) {
-          // users should never try to toggle their competing mode when in teams mode
-          socket.logger?.debug(
-            `User ${socket.user?.userInfo.id} tried to toggle competing status while teams is enabled in room ${socket.roomId}`
+          if (room.settings.teamSettings.teamsEnabled) {
+            // users should never try to toggle their competing mode when in teams mode
+            socket.logger?.debug(
+              `User ${socket.user?.userInfo.id} tried to toggle competing status while teams is enabled in room ${socket.roomId}`
+            );
+            return;
+          }
+
+          room.users[socket.user?.userInfo.id].competing = competing;
+
+          io.to(socket.roomId).emit(
+            SOCKET_SERVER.USER_TOGGLE_COMPETING,
+            userId,
+            competing
           );
-          return;
-        }
 
-        room.users[socket.user?.userInfo.id].competing = competing;
+          // when user spectates, need to check if all competing users are done, then advance room
+          if (room.state === "STARTED") {
+            if (competing) {
+              //if user is now competing, we need to add an attempt for them if none exists yet. TODO
+              // right now, the only way the TOGGLE_COMPETING event is triggered is through the button on UI that only shows up in SOLO.
+              const currentSolve = getLatestSolve(room);
 
-        io.to(socket.roomId).emit(
-          SOCKET_SERVER.USER_TOGGLE_COMPETING,
-          userId,
-          competing
-        );
-
-        // when user spectates, need to check if all competing users are done, then advance room
-        if (room.state === "STARTED") {
-          if (competing) {
-            //if user is now competing, we need to add an attempt for them if none exists yet. TODO
-            // right now, the only way the TOGGLE_COMPETING event is triggered is through the button on UI that only shows up in SOLO.
-            const currentSolve = getLatestSolve(room);
-
-            if (currentSolve && !currentSolve.solve.attempts[userId]) {
-              const attempt = newAttempt(
-                room,
-                currentSolve.solve.scrambles[0],
-                userId
-              );
-
-              if (attempt) {
-                io.to(socket.roomId).emit(
-                  SOCKET_SERVER.CREATE_ATTEMPT,
-                  userId,
-                  attempt
+              if (currentSolve && !currentSolve.solve.attempts[userId]) {
+                const attempt = newAttempt(
+                  room,
+                  currentSolve.solve.scrambles[0],
+                  userId
                 );
+
+                if (attempt) {
+                  io.to(socket.roomId).emit(
+                    SOCKET_SERVER.CREATE_ATTEMPT,
+                    userId,
+                    attempt
+                  );
+                }
+              }
+            } else {
+              // if user is now spectating, we need to check if the room solve is finished and handle
+              if (checkRoomSolveFinished(room)) {
+                await handleSolveFinished(room);
               }
             }
-          } else {
-            // if user is now spectating, we need to check if the room solve is finished and handle
-            if (checkRoomSolveFinished(room)) {
-              await handleSolveFinished(room);
-            }
           }
+          await stores.rooms.setRoom(room);
         }
-        await stores.rooms.setRoom(room);
       }
-    });
+    );
 
     /**
      * User has left the room. Handle
@@ -1193,7 +1199,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
     /**
      * Upon socket disconnection - automatically trigger on client closing all webpages
      */
-    socket.on(SOCKET_CLIENT.DISCONNECT, async () => {
+    socket.on("disconnect", async () => {
       //handle potential room DC
       if (socket.roomId) {
         await handleRoomDisconnect(userId, socket.roomId);

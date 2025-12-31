@@ -1,9 +1,8 @@
-import { IRoom } from "@/types/room";
+import { IRoom, RoomRedisEvent } from "@/types/room";
 import { Redis } from "ioredis";
 import { REDIS_KEY_REGISTRY } from "@/server/redis/key-registry";
 import { IRoomSummary, roomToSummary } from "@/types/room-listing-info";
 import { RedisLogger } from "@/server/logging/logger";
-import { RoomRedisEvent } from "@/types/room-redis-event";
 /**
  * Defines the Redis store for rooms
  *
@@ -90,6 +89,7 @@ export async function createRoomStore(redis: Redis, subClient: Redis) {
     async deleteRoom(roomId: string) {
       const transaction = redis.multi();
       transaction.del(roomKey(roomId));
+      transaction.del(roomEventKey(roomId));
       transaction.zrem(ROOMS_KEY, roomId);
 
       await transaction.exec();
@@ -99,12 +99,14 @@ export async function createRoomStore(redis: Redis, subClient: Redis) {
       RedisLogger.debug({ roomId }, `Schedule room deletion`);
 
       await redis.expire(roomKey(roomId), ROOM_TIMEOUT_SECONDS);
+      await redis.expire(roomEventKey(roomId), ROOM_TIMEOUT_SECONDS);
     },
 
     async persistRoom(roomId: string) {
       RedisLogger.debug({ roomId }, `Persisting room`);
 
       await redis.persist(roomKey(roomId));
+      await redis.persist(roomEventKey(roomId));
     },
 
     async getRoomsPage(pageNumber: number, pageSize: number) {

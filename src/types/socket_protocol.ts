@@ -1,4 +1,6 @@
+import { RedisStores } from "@/server/redis/stores";
 import { LogLevel } from "@/types/log-levels";
+import { Server } from "socket.io";
 
 /**
  * TODO - find a way to move the validation functions in here so we can just run .apply() on each or something
@@ -10,6 +12,13 @@ import { LogLevel } from "@/types/log-levels";
  * consider adding USER_EXISTS - the user has an active session logged in redis
  */
 type RoomEventValidation = "USER_IS_HOST" | "ROOM_EXISTS" | "ROOMUSER_EXISTS";
+type RoomEventHandlerFunction<TArgs> = (
+  io: Server,
+  stores: RedisStores,
+  roomId: string,
+  userId: string,
+  args: TArgs
+) => Promise<void>;
 
 type RoomEventConfig =
   | {
@@ -20,10 +29,10 @@ type RoomEventConfig =
       validations: RoomEventValidation[];
     };
 
-interface SocketClientEventConfig {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+interface SocketClientEventConfig<TArgs = any> {
   // value: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  args: any;
+  args: TArgs;
   logArgs: boolean;
   logLevel: LogLevel;
   roomEventConfig: RoomEventConfig;
@@ -33,8 +42,13 @@ export type SocketClientEventConfigMap = {
   [key: string]: SocketClientEventConfig;
 };
 
-// Define metadata first
-export const SOCKET_CLIENT_CONFIG: SocketClientEventConfigMap = {
+/**
+ * Our API for available client->server socket events.
+ *
+ *
+ * Note: Every room event added here has to be filled out in room-event-handlers.tsx
+ */
+export const SOCKET_CLIENT_CONFIG = {
   JOIN_ROOM: {
     args: {} as { roomId: string; password?: string },
     logArgs: true,
@@ -45,15 +59,15 @@ export const SOCKET_CLIENT_CONFIG: SocketClientEventConfigMap = {
     },
   },
   /**
-   * User creates a room
+   * User creates a room.
+   * In terms of room events, this is a special case. Do not count it as a room event.
    */
   CREATE_ROOM: {
     args: {} as Record<string, never>,
     logArgs: true,
     logLevel: "info",
     roomEventConfig: {
-      isRoomEvent: true,
-      validations: [], //specifically for create room, the room won't exist yet.
+      isRoomEvent: false,
     },
   },
 
@@ -113,7 +127,7 @@ export const SOCKET_CLIENT_CONFIG: SocketClientEventConfigMap = {
    * User toggles whether they are competing or spectating
    */
   TOGGLE_COMPETING: {
-    args: {} as Record<string, never>,
+    args: {} as { competing: boolean },
     logArgs: true,
     logLevel: "debug",
     roomEventConfig: {
@@ -325,23 +339,31 @@ export const SOCKET_CLIENT_CONFIG: SocketClientEventConfigMap = {
       isRoomEvent: false,
     },
   },
-} as const satisfies Record<string, SocketClientEventConfig>;
+} as const satisfies SocketClientEventConfigMap;
 
 export type SocketClientEventArgs = {
   [K in keyof typeof SOCKET_CLIENT_CONFIG]: (typeof SOCKET_CLIENT_CONFIG)[K]["args"];
 };
 
 export const SOCKET_CLIENT = Object.freeze(
-  Object.keys(SOCKET_CLIENT_CONFIG).reduce(
-    (acc, key) => {
-      acc[key as keyof typeof SOCKET_CLIENT_CONFIG] = key;
-      return acc;
-    },
-    {} as {
-      [K in keyof typeof SOCKET_CLIENT_CONFIG]: K;
-    }
-  )
-);
+  Object.fromEntries(Object.keys(SOCKET_CLIENT_CONFIG).map((key) => [key, key]))
+) as { readonly [K in SocketClientEvent]: K };
+
+type ExtractArgs<T> = T extends { args: infer A } ? A : never;
+export type SocketClientEvent = keyof typeof SOCKET_CLIENT_CONFIG;
+
+type RoomEventKeys = {
+  [K in keyof typeof SOCKET_CLIENT_CONFIG]: (typeof SOCKET_CLIENT_CONFIG)[K]["roomEventConfig"] extends {
+    isRoomEvent: true;
+  }
+    ? K
+    : never;
+}[keyof typeof SOCKET_CLIENT_CONFIG];
+export type RoomEventHandlers = {
+  [K in RoomEventKeys]: RoomEventHandlerFunction<
+    ExtractArgs<(typeof SOCKET_CLIENT_CONFIG)[K]>
+  >;
+};
 
 interface SocketServerEventConfig {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

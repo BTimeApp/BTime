@@ -10,6 +10,10 @@ import { IRoomTeam, IRoomUser } from "@/types/room-participant";
 import { SocketResponse } from "@/types/socket_protocol";
 import { RoomLogger } from "@/server/logging/logger";
 
+/**
+ * This file has all the functions related to manipulating Room objects.
+ */
+
 export async function createRoom(
   roomSettings: IRoomSettings,
   roomId?: string,

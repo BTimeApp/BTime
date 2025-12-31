@@ -8,8 +8,9 @@ import {
 import { createRoom } from "@/lib/room";
 import { RedisStores } from "@/server/redis/stores";
 import { RedisLogger } from "@/server/logging/logger";
+import { RoomWorker } from "@/server/rooms/room-worker";
 
-async function addTestRooms(stores: RedisStores) {
+async function addTestRooms(stores: RedisStores, roomWorker: RoomWorker) {
   for (let i = 30; i > 0; i--) {
     const room: IRoom = await createRoom(
       {
@@ -50,11 +51,15 @@ async function addTestRooms(stores: RedisStores) {
     );
 
     await stores.rooms.setRoom(room);
+    roomWorker.startRoomProcessor(i.toString());
   }
 }
 
-export default async function addDevExtras(stores: RedisStores) {
-  addTestRooms(stores);
+export default async function addDevExtras(
+  stores: RedisStores,
+  roomWorker: RoomWorker
+) {
+  addTestRooms(stores, roomWorker);
 
   const handleServerClose = async () => {
     RedisLogger.info("Cleaning up Redis before exit...");

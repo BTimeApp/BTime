@@ -465,3 +465,14 @@ export interface IRoomSettings {
   teamSettings: TeamSettings;
   maxUsers?: number; //the maximum number of users we can have in the room
 }
+
+/**
+ * Defines a room event that will be managed on the redis queue.
+ * Needs to be JSON-serializable.
+ */
+export type RoomRedisEvent = {
+  roomId: string;
+  userId: string;
+  event: string;
+  args: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+};
