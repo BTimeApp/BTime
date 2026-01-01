@@ -471,7 +471,7 @@ export interface IRoomSettings {
  * Needs to be JSON-serializable.
  */
 export type RoomRedisEvent = {
-  roomId: string;
+  roomId: string; // although we don't need the roomId upon reading the event, we need it when writing to perform validation
   userId: string;
   event: string;
   args: any; // eslint-disable-line @typescript-eslint/no-explicit-any

@@ -183,9 +183,9 @@ export async function createRoomStore(redis: Redis, subClient: Redis) {
       } else {
         try {
           const eventData = JSON.stringify({
-            event,
-            userId,
-            args,
+            userId: userId,
+            event: event,
+            args: args,
           });
           redis.lpush(roomEventKey(roomId), eventData);
         } catch (e) {

@@ -22,7 +22,6 @@ import {
   getLatestSolve,
   getLatestSet,
   newRoomSet,
-  newAttempt,
 } from "@/lib/room";
 import { IUser, IUserInfo } from "@/types/user";
 import { IRoomTeam, IRoomUser } from "@/types/room-participant";
@@ -437,7 +436,7 @@ export const startSocketListener = (
     socket.use(createLoggingMiddleware(socket));
 
     /**
-     * TODO - change these to only handle events that trigger post room-joining
+     * Handle all room events
      */
     for (const clientEvent in SOCKET_CLIENT_CONFIG) {
       const key = clientEvent as keyof typeof SOCKET_CLIENT_CONFIG;
@@ -519,10 +518,10 @@ export const startSocketListener = (
               }
             }
             await stores.rooms.enqueueRoomEvent({
-              roomId,
-              userId,
+              roomId: roomId,
+              userId: userId,
               event: clientEvent,
-              args,
+              args: args,
             } as RoomRedisEvent);
           }
         );
@@ -1124,70 +1123,6 @@ export const startSocketListener = (
 
       await handleUserLeaveTeam(room, user.userInfo.id, teamId);
     });
-    /**
-     * Upon user pressing compete/spectate button
-     */
-    socket.on(
-      SOCKET_CLIENT.TOGGLE_COMPETING,
-      async ({ competing }: { competing: boolean }) => {
-        if (socket.roomId && socket.user) {
-          const room = await stores.rooms.getRoom(socket.roomId);
-          if (
-            !room ||
-            room.users[socket.user?.userInfo.id].competing == competing
-          ) {
-            return;
-          }
-
-          if (room.settings.teamSettings.teamsEnabled) {
-            // users should never try to toggle their competing mode when in teams mode
-            socket.logger?.debug(
-              `User ${socket.user?.userInfo.id} tried to toggle competing status while teams is enabled in room ${socket.roomId}`
-            );
-            return;
-          }
-
-          room.users[socket.user?.userInfo.id].competing = competing;
-
-          io.to(socket.roomId).emit(
-            SOCKET_SERVER.USER_TOGGLE_COMPETING,
-            userId,
-            competing
-          );
-
-          // when user spectates, need to check if all competing users are done, then advance room
-          if (room.state === "STARTED") {
-            if (competing) {
-              //if user is now competing, we need to add an attempt for them if none exists yet. TODO
-              // right now, the only way the TOGGLE_COMPETING event is triggered is through the button on UI that only shows up in SOLO.
-              const currentSolve = getLatestSolve(room);
-
-              if (currentSolve && !currentSolve.solve.attempts[userId]) {
-                const attempt = newAttempt(
-                  room,
-                  currentSolve.solve.scrambles[0],
-                  userId
-                );
-
-                if (attempt) {
-                  io.to(socket.roomId).emit(
-                    SOCKET_SERVER.CREATE_ATTEMPT,
-                    userId,
-                    attempt
-                  );
-                }
-              }
-            } else {
-              // if user is now spectating, we need to check if the room solve is finished and handle
-              if (checkRoomSolveFinished(room)) {
-                await handleSolveFinished(room);
-              }
-            }
-          }
-          await stores.rooms.setRoom(room);
-        }
-      }
-    );
 
     /**
      * User has left the room. Handle
