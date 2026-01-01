@@ -1,6 +1,7 @@
 import { RedisStores } from "@/server/redis/stores";
 import { LogLevel } from "@/types/log-levels";
 import { Server } from "socket.io";
+import { SolveStatus } from "./status";
 
 /**
  * TODO - find a way to move the validation functions in here so we can just run .apply() on each or something
@@ -88,7 +89,7 @@ export const SOCKET_CLIENT_CONFIG = {
    * User broadcasts an update to their local solve status
    */
   UPDATE_SOLVE_STATUS: {
-    args: {} as Record<string, never>,
+    args: {} as { newUserStatus: SolveStatus },
     logArgs: true,
     logLevel: "debug",
     roomEventConfig: {
@@ -166,7 +167,7 @@ export const SOCKET_CLIENT_CONFIG = {
    * Host deletes a team
    */
   DELETE_TEAM: {
-    args: {} as Record<string, never>,
+    args: {} as { teamId: string },
     logArgs: true,
     logLevel: "info",
     roomEventConfig: {
@@ -192,7 +193,7 @@ export const SOCKET_CLIENT_CONFIG = {
    * User leaves a team (explicit action)
    */
   LEAVE_TEAM: {
-    args: {} as Record<string, never>,
+    args: {} as { teamId: string },
     logArgs: true,
     logLevel: "info",
     roomEventConfig: {
@@ -270,7 +271,7 @@ export const SOCKET_CLIENT_CONFIG = {
    * Kick user from room (host only)
    */
   KICK_USER: {
-    args: {} as Record<string, never>,
+    args: {} as { userId: string },
     logArgs: true,
     logLevel: "info",
     roomEventConfig: {
@@ -283,7 +284,7 @@ export const SOCKET_CLIENT_CONFIG = {
    * Ban user from room (host only)
    */
   BAN_USER: {
-    args: {} as Record<string, never>,
+    args: {} as { userId: string },
     logArgs: true,
     logLevel: "info",
     roomEventConfig: {
@@ -296,7 +297,7 @@ export const SOCKET_CLIENT_CONFIG = {
    * Unban user from room (host only)
    */
   UNBAN_USER: {
-    args: {} as Record<string, never>,
+    args: {} as { userId: string },
     logArgs: true,
     logLevel: "info",
     roomEventConfig: {

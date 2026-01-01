@@ -85,7 +85,9 @@ export default function RoomEventHandler() {
    */
   useEffect(() => {
     // console.log(`New local solve status ${localSolveStatus}`);
-    socket.emit(SOCKET_CLIENT.UPDATE_SOLVE_STATUS, localSolveStatus);
+    socket.emit(SOCKET_CLIENT.UPDATE_SOLVE_STATUS, {
+      newUserStatus: localSolveStatus,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localSolveStatus]);
 

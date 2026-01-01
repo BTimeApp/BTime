@@ -32,17 +32,12 @@ export function JoinTeamButton({ teamId, className }: TeamButtonProps) {
 
 export function LeaveTeamButton({ teamId, className }: TeamButtonProps) {
   const socket = useSocket();
-  const leaveTeamCallback = useCallback((response: SocketResponse<void>) => {
-    if (!response.success) {
-      toast.error(response.reason);
-    }
-  }, []);
   return (
     <Button
       variant="destructive"
       className={cn("h-6 font-bold", className)}
       onClick={() => {
-        socket.emit(SOCKET_CLIENT.LEAVE_TEAM, teamId, leaveTeamCallback);
+        socket.emit(SOCKET_CLIENT.LEAVE_TEAM, { teamId });
       }}
     >
       Leave
@@ -57,7 +52,7 @@ export function DeleteTeamButton({ teamId, className }: TeamButtonProps) {
       variant="destructive"
       className={cn("h-6 font-bold", className)}
       onClick={() => {
-        socket.emit(SOCKET_CLIENT.DELETE_TEAM, teamId);
+        socket.emit(SOCKET_CLIENT.DELETE_TEAM, { teamId });
       }}
     >
       Delete Team
