@@ -47,13 +47,6 @@ import { createSocketLogger, ServerLogger } from "@/server/logging/logger";
 import { isPinoLogLevel } from "@/types/log-levels";
 import { RoomWorker } from "@/server/rooms/room-worker";
 
-//defines useful state variables we want to maintain over the lifestyle of a socket connection (only visible server-side)
-interface CustomSocket extends Socket {
-  roomId?: string;
-  user?: IUser;
-  logger?: Logger;
-}
-
 export type SocketMiddleware = (
   req: any, // eslint-disable-line @typescript-eslint/no-explicit-any
   res: ServerResponse,
@@ -111,31 +104,31 @@ export const startSocketListener = (
   stores: RedisStores,
   roomWorker: RoomWorker
 ) => {
-  async function onConnect(socket: CustomSocket) {
+  async function onConnect(socket: Socket) {
     //check for user. DC if no user
-    socket.user = socket.request.user;
-    if (!socket.user) {
+    socket.data.user = socket.request.user;
+    if (!socket.data.user) {
       socket.disconnect(true);
       return;
     }
 
-    const SocketLogger = createSocketLogger(socket.id, socket.user);
-    socket.logger = SocketLogger;
+    const SocketLogger = createSocketLogger(socket.id, socket.data.user);
+    socket.data.logger = SocketLogger;
 
-    socket.logger.info(
-      `User ${socket.user?.userInfo.userName} (${socket.user?.userInfo.id}) connected via websocket.`
+    socket.data.logger.info(
+      `User ${socket.data.user?.userInfo.userName} (${socket.data.user?.userInfo.id}) connected via websocket.`
     );
 
-    const userId = socket.user!.userInfo.id;
+    const userId = socket.data.user!.userInfo.id;
 
     // user joins "their" room by default
     socket.join(userId);
 
-    await stores.users.setUser(socket.user.userInfo);
+    await stores.users.setUser(socket.data.user.userInfo);
     await stores.userSessions.addUserSession(userId, socket.id);
   }
 
-  function createLoggingMiddleware(socket: CustomSocket) {
+  function createLoggingMiddleware(socket: Socket) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (packet: any[], next: (err?: Error) => void) => {
       const [eventName, ...args] = packet;
@@ -145,7 +138,7 @@ export const startSocketListener = (
 
       // Warn if event not registered
       if (!eventConfig) {
-        socket.logger?.warn(
+        socket.data.logger?.warn(
           { event: eventName },
           `Unknown socket client event: ${eventName}`
         );
@@ -162,14 +155,14 @@ export const startSocketListener = (
         /**
          * Room ID is dynamically changed within the socket's lifetime. Log it here.
          */
-        roomId: socket.roomId,
+        roomId: socket.data.roomId,
         ...(eventConfig.logArgs && { args }),
       };
 
-      if (socket.logger) {
-        const logMethod = socket.logger?.[eventConfig.logLevel] as LogFn;
+      if (socket.data.logger) {
+        const logMethod = socket.data.logger?.[eventConfig.logLevel] as LogFn;
         logMethod.call(
-          socket.logger,
+          socket.data.logger,
           logData,
           `Received socket event: ${eventName}`
         );
@@ -267,13 +260,13 @@ export const startSocketListener = (
     }
   }
 
-  io.on("connection", async (socket: CustomSocket) => {
+  io.on("connection", async (socket: Socket) => {
     //since we require a user to log in, access and set first.
     await onConnect(socket);
     if (!socket.connected) {
       return;
     }
-    const userId = socket.user!.userInfo.id;
+    const userId = socket.data.user!.userInfo.id;
 
     async function handleUserLeaveTeam(
       room: IRoom,
@@ -329,7 +322,9 @@ export const startSocketListener = (
 
     async function handleRoomDisconnect(userId: string, roomId: string) {
       if (!userId || !roomId) return;
-      socket.logger?.info(`User ${userId} disconnected from room ${roomId}`);
+      socket.data.logger?.info(
+        `User ${userId} disconnected from room ${roomId}`
+      );
       const room = await stores.rooms.getRoom(roomId);
       if (!room || !room.users[userId]) return;
 
@@ -349,7 +344,7 @@ export const startSocketListener = (
 
         io.to(roomId).emit(SOCKET_SERVER.USER_UPDATE, room.users[userId]);
       } else {
-        socket.logger?.warn(
+        socket.data.logger?.warn(
           `User ${userId} does not exist in room ${roomId}'s users but is trying to leave room.`
         );
       }
@@ -380,7 +375,7 @@ export const startSocketListener = (
         }
         if (earliestUser) {
           room.host = earliestUser.user;
-          socket.logger?.debug(
+          socket.data.logger?.debug(
             `Room ${roomId} promoted a new host: ${room.host.userName}`
           );
           io.to(roomId).emit(SOCKET_SERVER.NEW_HOST, earliestUser.user.id);
@@ -397,19 +392,21 @@ export const startSocketListener = (
 
       // remove the room from this socket.
       socket.leave(roomId);
-      socket.roomId = undefined;
+      socket.data.roomId = undefined;
     }
 
     async function getSocketRoom(): Promise<IRoom | null> {
-      if (!socket.roomId) return null;
-      return stores.rooms.getRoom(socket.roomId);
+      if (!socket.data.roomId) return null;
+      return stores.rooms.getRoom(socket.data.roomId);
     }
 
     async function userIsHost(): Promise<boolean> {
       const room = await getSocketRoom();
-      if (!room || !socket.user) return false;
+      if (!room || !socket.data.user) return false;
 
-      return room.host != null && room.host.id === socket.user?.userInfo.id;
+      return (
+        room.host != null && room.host.id === socket.data.user?.userInfo.id
+      );
     }
 
     socket.use(createLoggingMiddleware(socket));
@@ -429,8 +426,8 @@ export const startSocketListener = (
         socket.on(
           clientEvent,
           async (args: SocketClientEventArgs[typeof key]) => {
-            const roomId = socket.roomId;
-            const userId = socket.user?.userInfo.id;
+            const roomId = socket.data.roomId;
+            const userId = socket.data.user?.userInfo.id;
 
             // TODO - consider sending invalid argument events to the frontend?
             if (!roomId) {
@@ -522,7 +519,7 @@ export const startSocketListener = (
         const room: IRoom = await createRoom(
           roomSettings,
           roomId,
-          socket.user?.userInfo
+          socket.data.user?.userInfo
         );
 
         await stores.rooms.setRoom(room);
@@ -587,7 +584,7 @@ export const startSocketListener = (
         //validate real user
         const user: IUserInfo | null = await stores.users.getUser(userId);
         if (!user) {
-          socket.logger?.debug(
+          socket.data.logger?.debug(
             `Nonexistent user with id ${userId} attempting to join room ${roomId}.`
           );
           return;
@@ -596,7 +593,7 @@ export const startSocketListener = (
         //validate real room
         const room = await stores.rooms.getRoom(roomId);
         if (!room) {
-          socket.logger?.debug(
+          socket.data.logger?.debug(
             `User ${userId} trying to join nonexistent room ${roomId}`
           );
           joinRoomCallback(false, undefined, { INVALID_ROOM: "" });
@@ -608,7 +605,7 @@ export const startSocketListener = (
           Object.keys(room.users).includes(userId) &&
           room.users[userId].banned
         ) {
-          socket.logger?.debug(
+          socket.data.logger?.debug(
             `Banned user ${userId} trying to join room ${roomId}.`
           );
 
@@ -623,7 +620,9 @@ export const startSocketListener = (
           Object.keys(room.users).includes(userId) &&
           room.users[userId].active
         ) {
-          socket.logger?.debug(`User ${userId} double join in room ${roomId}.`);
+          socket.data.logger?.debug(
+            `User ${userId} double join in room ${roomId}.`
+          );
 
           // precautionary persist - there is currently a race condition
           await stores.rooms.persistRoom(room.id);
@@ -640,7 +639,7 @@ export const startSocketListener = (
           room.settings.maxUsers &&
           Object.keys(room.users).length >= room.settings.maxUsers
         ) {
-          socket.logger?.debug(
+          socket.data.logger?.debug(
             `User ${userId} tried to join a full room ${roomId}.`
           );
 
@@ -662,7 +661,7 @@ export const startSocketListener = (
             room.settings.access.password
           );
           if (!correctPassword) {
-            socket.logger?.info(
+            socket.data.logger?.info(
               `User ${userId} submitted the wrong password to room ${roomId}.`
             );
             joinRoomCallback(true, undefined, { WRONG_PASSWORD: "" });
@@ -677,7 +676,9 @@ export const startSocketListener = (
         await stores.rooms.persistRoom(roomId);
 
         //add user to room
-        socket.logger?.info(`User ${user.userName} joining room ${roomId}.`);
+        socket.data.logger?.info(
+          `User ${user.userName} joining room ${roomId}.`
+        );
 
         const extraData: Record<string, string> = {};
 
@@ -692,7 +693,7 @@ export const startSocketListener = (
         // formally add this socket connection to the room and call the join callback.
         // this callback (for now) should have all of the room data the user needs, so they are excluded from the following broadcast event.
         socket.join(roomId);
-        socket.roomId = roomId;
+        socket.data.roomId = roomId;
         joinRoomCallback(true, room, extraData);
 
         // broadcast update to all other users
@@ -719,46 +720,53 @@ export const startSocketListener = (
     socket.on(
       SOCKET_CLIENT.SUBMIT_RESULT,
       async (result: IResult, onSuccessCallback?: () => void) => {
-        if (socket.roomId && socket.user) {
-          const room = await stores.rooms.getRoom(socket.roomId);
+        if (socket.data.roomId && socket.data.user) {
+          const room = await stores.rooms.getRoom(socket.data.roomId);
           if (!room) return;
 
           if (room.state !== "STARTED") {
-            socket.logger?.debug(
-              `User ${socket.user?.userInfo.id} tried to submit a result to ${socket.roomId} in the wrong room state. Ignoring message.`
+            socket.data.logger?.debug(
+              `User ${socket.data.user?.userInfo.id} tried to submit a result to ${socket.data.roomId} in the wrong room state. Ignoring message.`
             );
             return;
           }
           const currentSolve = getLatestSolve(room);
           if (!currentSolve) {
-            socket.logger?.debug(
-              `User ${socket.user?.userInfo.id} tried to submit a result to ${socket.roomId} when there are no solves in the room.`
+            socket.data.logger?.debug(
+              `User ${socket.data.user?.userInfo.id} tried to submit a result to ${socket.data.roomId} when there are no solves in the room.`
             );
             return;
           }
 
           const updatedTeam = processNewResult(
             room,
-            socket.user.userInfo.id,
+            socket.data.user.userInfo.id,
             result
           );
 
-          io.to(socket.roomId).emit(
+          io.to(socket.data.roomId).emit(
             SOCKET_SERVER.NEW_USER_RESULT,
             userId,
             result
           );
 
           if (updatedTeam !== undefined) {
-            io.to(socket.roomId).emit(SOCKET_SERVER.TEAM_UPDATE, updatedTeam);
+            io.to(socket.data.roomId).emit(
+              SOCKET_SERVER.TEAM_UPDATE,
+              updatedTeam
+            );
             // this is the wrong result!
-            io.to(socket.roomId).emit(
+            io.to(socket.data.roomId).emit(
               SOCKET_SERVER.NEW_RESULT,
               updatedTeam.team.id,
               currentSolve.solve.results[updatedTeam.team.id]
             );
           } else {
-            io.to(socket.roomId).emit(SOCKET_SERVER.NEW_RESULT, userId, result);
+            io.to(socket.data.roomId).emit(
+              SOCKET_SERVER.NEW_RESULT,
+              userId,
+              result
+            );
           }
 
           onSuccessCallback?.();
@@ -839,7 +847,7 @@ export const startSocketListener = (
     socket.on(
       SOCKET_CLIENT.JOIN_TEAM,
       async (teamId: string, joinTeamCallback: SocketCallback<undefined>) => {
-        const user = socket.user;
+        const user = socket.data.user;
         const room = await getSocketRoom();
         if (!room || !user || !room.settings.teamSettings.teamsEnabled) return;
 
@@ -864,19 +872,12 @@ export const startSocketListener = (
     );
 
     /**
-     * User has left the room. Handle
-     */
-    socket.on(SOCKET_CLIENT.LEAVE_ROOM, async (roomId: string) => {
-      await handleRoomDisconnect(userId, roomId);
-    });
-
-    /**
      * Upon socket disconnection - automatically trigger on client closing all webpages
      */
     socket.on("disconnect", async () => {
       //handle potential room DC
-      if (socket.roomId) {
-        await handleRoomDisconnect(userId, socket.roomId);
+      if (socket.data.roomId) {
+        await handleRoomDisconnect(userId, socket.data.roomId);
       }
 
       //handle user DC
