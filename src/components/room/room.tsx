@@ -123,7 +123,7 @@ export default function Room() {
     return () => {
       // emit leave room
       if (socket && socket.connected) {
-        socket.emit(SOCKET_CLIENT.LEAVE_ROOM, roomId);
+        socket.emit(SOCKET_CLIENT.LEAVE_ROOM, { roomId });
       }
 
       socket.off("disconnect", onDisconnect);

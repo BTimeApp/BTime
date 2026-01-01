@@ -20,6 +20,7 @@ import { IRoom, RoomState } from "@/types/room";
 import { Server } from "socket.io";
 import { SolveStatus } from "@/types/status";
 import { RedisStores } from "../redis/stores";
+import { IRoomUser } from "@/types/room-participant";
 
 /**
  * A static list of handler functions for all possible room events.
@@ -297,7 +298,9 @@ export const ROOM_EVENT_HANDLERS = {
     io.to(room.id).emit(SOCKET_SERVER.USER_UNBANNED, args.userId);
   },
 
-  LEAVE_ROOM: async () => {},
+  LEAVE_ROOM: async (io, stores, roomId, userId, args) => {
+    await handleRoomDisconnect(io, stores, args.roomId, userId);
+  },
 } satisfies RoomEventHandlers;
 
 type RoomEventKey = keyof typeof ROOM_EVENT_HANDLERS;
@@ -445,6 +448,94 @@ async function handleUserLeaveTeam(
     }
   }
   await stores.rooms.setRoom(room);
+}
+
+/**
+ * Helperfunctio nfor handling the event that user disconnects from a room
+ */
+async function handleRoomDisconnect(
+  io: Server,
+  stores: RedisStores,
+  roomId: string,
+  userId: string
+) {
+  RoomLogger.info(
+    { roomId: roomId, userId: userId },
+    `User disconnected from room`
+  );
+  const room = await stores.rooms.getRoom(roomId);
+  if (!room || !room.users[userId]) return;
+
+  if (room.users[userId]) {
+    // mark user as inactive
+    room.users[userId].active = false;
+
+    // canonically, the default solve status should be IDLE. If the user reconnects later, it is the responsibility of the client to make their solve status correct.
+    if (room.users[userId].solveStatus !== "FINISHED") {
+      room.users[userId].solveStatus = "IDLE";
+    }
+    // if teams is enabled and this user is on a team, force leave team
+    const teamId = room.users[userId].currentTeam;
+    if (room.settings.teamSettings.teamsEnabled && teamId !== undefined) {
+      await handleUserLeaveTeam(io, stores, room, userId, teamId);
+    }
+
+    io.to(roomId).emit(SOCKET_SERVER.USER_UPDATE, room.users[userId]);
+  } else {
+    RoomLogger.warn(
+      { roomId: roomId, userId: userId },
+      `Nonexistent user is trying to leave room.`
+    );
+  }
+
+  //check if no more users, if so, schedule room deletion.
+  if (
+    Object.values(room.users).filter((roomUser) => roomUser.active).length == 0
+  ) {
+    stores.rooms.scheduleRoomForDeletion(roomId);
+    return;
+  }
+
+  //check if user is host OR there is somehow no host.
+  if ((room.host && room.host.id == userId) || !room.host) {
+    room.host = undefined;
+
+    let earliestUser: IRoomUser | null = null;
+
+    const hostEligibleUsers = Object.values(room.users).filter(
+      (roomUser) => roomUser.active
+    );
+
+    for (const roomUser of hostEligibleUsers) {
+      if (!earliestUser || roomUser.joinedAt < earliestUser.joinedAt) {
+        earliestUser = roomUser;
+      }
+    }
+    if (earliestUser) {
+      room.host = earliestUser.user;
+      RoomLogger.debug(
+        { roomId: roomId, newHost: room.host },
+        "Room promoted a new host"
+      );
+      io.to(roomId).emit(SOCKET_SERVER.NEW_HOST, earliestUser.user.id);
+    }
+  }
+
+  // handle case that this user was the last one to submit a time/compete
+  if (checkRoomSolveFinished(room)) {
+    await handleSolveFinished(io, room);
+  }
+
+  // write room to room store
+  await stores.rooms.setRoom(room);
+
+  const sockets = await io.in(roomId).fetchSockets();
+  const userSockets = sockets.filter(
+    (x) => x.data.user?.userInfo.id === userId
+  );
+  for (const socket of userSockets) {
+    socket.leave(roomId);
+  }
 }
 
 /**

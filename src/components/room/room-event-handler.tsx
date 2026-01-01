@@ -261,7 +261,7 @@ export default function RoomEventHandler() {
   useEffect(() => {
     const leaveRoom = () => {
       // clearInterval(interval);
-      socket.emit(SOCKET_CLIENT.LEAVE_ROOM, roomId);
+      socket.emit(SOCKET_CLIENT.LEAVE_ROOM, { roomId });
     };
 
     window.addEventListener("beforeunload", leaveRoom);

@@ -32,7 +32,13 @@ export function useSocketEvent(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const eventHandler = (...args: any[]) => {
       if (process.env.NODE_ENV === "development") {
-        console.debug(`Handling event ${event} with args ${args}`);
+        console.debug(
+          `Handling event ${event} with args ${JSON.stringify(
+            args,
+            undefined,
+            2
+          )}`
+        );
       }
       handlerRef.current(...args);
     };
