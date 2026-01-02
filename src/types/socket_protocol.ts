@@ -3,6 +3,7 @@ import { LogLevel } from "@/types/log-levels";
 import { Server } from "socket.io";
 import { SolveStatus } from "./status";
 import { IResult } from "./result";
+import { IRoomSettings } from "./room";
 
 /**
  * TODO - find a way to move the validation functions in here so we can just run .apply() on each or something
@@ -78,12 +79,12 @@ export const SOCKET_CLIENT_CONFIG = {
    * Host submits a room settings update
    */
   UPDATE_ROOM: {
-    args: {} as Record<string, never>,
+    args: {} as { roomSettings: IRoomSettings },
     logArgs: true,
     logLevel: "info",
     roomEventConfig: {
       isRoomEvent: true,
-      validations: ["ROOM_EXISTS", "ROOMUSER_EXISTS"],
+      validations: ["ROOM_EXISTS", "ROOMUSER_EXISTS", "USER_IS_HOST"],
     },
   },
 
@@ -431,6 +432,11 @@ export enum SOCKET_SERVER {
    * Used for all state updates to the room object (state tied to the Zustand room store)
    */
   ROOM_UPDATE = "ROOM_UPDATE",
+
+  /**
+   * Send to user upon successful UPDATE_ROOM execution
+   */
+  UPDATE_ROOM_USER_SUCCESS = "UPDATE_ROOM_USER_SUCCESS",
 
   /**
    * Host creates new team(s)

@@ -3,12 +3,9 @@ import { Server, Socket } from "socket.io";
 import { IRoom, RoomState, IRoomSettings, RoomRedisEvent } from "@/types/room";
 import {
   newRoomSolve,
-  resetRoom,
   finishRoomSolve,
   checkRoomSolveFinished,
   createRoom,
-  updateRoom,
-  checkRoomUpdateRequireReset,
   checkSetFinished,
   findSetWinners,
   checkMatchFinished,
@@ -467,7 +464,7 @@ export const startSocketListener = (
                 case "USER_IS_HOST": {
                   const room = await stores.rooms.getRoom(roomId);
                   if (!room) {
-                    ServerLogger.warn({ clientEvent }, "Room does not exist");
+                    ServerLogger.warn({ clientEvent }, "User is not host");
 
                     return;
                   }
@@ -524,41 +521,6 @@ export const startSocketListener = (
         await stores.rooms.setRoom(room);
         roomWorker.startRoomProcessor(roomId);
         callback(roomId);
-      }
-    );
-
-    socket.on(
-      SOCKET_CLIENT.UPDATE_ROOM,
-      async (
-        roomSettings: IRoomSettings,
-        roomId: string,
-        userId: string,
-        onSuccessCallback?: () => void
-      ) => {
-        const room = await stores.rooms.getRoom(roomId);
-        if (!room || userId !== room.host?.id) {
-          return;
-        }
-
-        // check if the room needs to be reset
-        const needsReset = checkRoomUpdateRequireReset(room, roomSettings);
-
-        // update room object
-        await updateRoom(room, roomSettings);
-
-        // reset room object if needed
-        if (needsReset) {
-          resetRoom(room);
-        }
-
-        // update room store
-        await stores.rooms.setRoom(room);
-
-        // broadcast room update
-        io.to(roomId).emit(SOCKET_SERVER.ROOM_UPDATE, room);
-
-        // upon successful update, call success callback
-        onSuccessCallback?.();
       }
     );
 

@@ -7,6 +7,7 @@ import { RoomLogger } from "@/server/logging/logger";
 import {
   checkMatchFinished,
   checkRoomSolveFinished,
+  checkRoomUpdateRequireReset,
   checkSetFinished,
   findMatchWinners,
   findSetWinners,
@@ -19,6 +20,7 @@ import {
   processNewResult,
   resetRoom,
   resetSolve,
+  updateRoom,
   userJoinRoom,
   userJoinTeam,
   userLeaveTeam,
@@ -184,7 +186,40 @@ export const ROOM_EVENT_HANDLERS = {
         .emit(SOCKET_SERVER.SOLVE_UPDATE, currentSolve);
     }
   },
-  UPDATE_ROOM: async () => {},
+  UPDATE_ROOM: async (io, stores, roomId, userId, socketId, args) => {
+    const socket = io.sockets.sockets.get(socketId);
+    if (!socket) {
+      RoomLogger.warn(
+        { roomId: roomId, userId: userId, socketId: socketId },
+        "Socket doesn't exist in update room"
+      );
+    }
+    const room = await stores.rooms.getRoom(roomId);
+
+    if (!room || !userIsHost(room, userId)) {
+      return;
+    }
+
+    // check if the room needs to be reset
+    const needsReset = checkRoomUpdateRequireReset(room, args.roomSettings);
+
+    // update room object
+    await updateRoom(room, args.roomSettings);
+
+    // reset room object if needed
+    if (needsReset) {
+      resetRoom(room);
+    }
+
+    // update room store
+    await stores.rooms.setRoom(room);
+
+    // broadcast room update
+    io.to(roomId).emit(SOCKET_SERVER.ROOM_UPDATE, room);
+
+    // upon successful update, call success callback
+    socket?.emit(SOCKET_SERVER.UPDATE_ROOM_USER_SUCCESS);
+  },
   UPDATE_SOLVE_STATUS: async (io, stores, roomId, userId, socketId, args) => {
     const room = await stores.rooms.getRoom(roomId);
     if (!room) return;
