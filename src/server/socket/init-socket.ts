@@ -1,21 +1,7 @@
 import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
-import { IRoom, RoomState, IRoomSettings, RoomRedisEvent } from "@/types/room";
-import {
-  newRoomSolve,
-  finishRoomSolve,
-  checkRoomSolveFinished,
-  createRoom,
-  checkSetFinished,
-  findSetWinners,
-  checkMatchFinished,
-  findMatchWinners,
-  userLeaveTeam,
-  getLatestSolve,
-  getLatestSet,
-  newRoomSet,
-} from "@/lib/room";
-import { IRoomUser } from "@/types/room-participant";
+import { IRoom, IRoomSettings, RoomRedisEvent } from "@/types/room";
+import { createRoom } from "@/lib/room";
 import { ServerResponse } from "http";
 import { NextFunction } from "express";
 import { ObjectId } from "bson";
@@ -159,94 +145,6 @@ export const startSocketListener = (
     };
   }
 
-  //TODO: abstract this function away to room lib
-  async function handleSolveFinished(room: IRoom) {
-    finishRoomSolve(room);
-    const currentSolve = getLatestSolve(room);
-    const currentSet = getLatestSet(room);
-    if (!currentSolve || !currentSet) return;
-    const participants = room.settings.teamSettings.teamsEnabled
-      ? room.teams
-      : room.users;
-
-    // only check set and match wins if not a casual room
-    if (room.settings.raceSettings.roomFormat !== "CASUAL") {
-      //check set finished.
-      const setFinished = checkSetFinished(room);
-      if (setFinished) {
-        // find set winners.
-        const setWinners: string[] = findSetWinners(room);
-        currentSet.winners = setWinners;
-        currentSet.finished = true;
-
-        // update set wins for set winners
-        setWinners.map((pid) => (participants[pid].setWins += 1));
-
-        // reset all users' points
-        Object.values(participants).map((participant) => {
-          participant.points = 0;
-        });
-
-        // check match finished. right now a match can only be finished if the set is finished.
-        const matchFinished = checkMatchFinished(room);
-        if (matchFinished) {
-          const matchWinners: string[] = findMatchWinners(room);
-          //handle match finished
-          room.match.winners = matchWinners;
-          room.match.finished = true;
-          room.state = "FINISHED";
-
-          //publish solve finished after updating match winners, but before sending match finished
-          io.to(room.id).emit(
-            SOCKET_SERVER.SOLVE_FINISHED_EVENT,
-            currentSolve,
-            participants
-          );
-
-          //publish set finished event with winners
-          io.to(room.id).emit(SOCKET_SERVER.SET_FINISHED_EVENT, setWinners);
-
-          //publish match finished event with winners
-          io.to(room.id).emit(SOCKET_SERVER.MATCH_FINISHED_EVENT, matchWinners);
-        } else {
-          //publish solve finished after updating set winners, but before creating a new set
-          io.to(room.id).emit(
-            SOCKET_SERVER.SOLVE_FINISHED_EVENT,
-            currentSolve,
-            participants
-          );
-
-          //publish set finished event with winners
-          io.to(room.id).emit(SOCKET_SERVER.SET_FINISHED_EVENT, setWinners);
-
-          const newSet = newRoomSet(room);
-          io.to(room.id).emit(SOCKET_SERVER.NEW_SET, newSet);
-        }
-      } else {
-        io.to(room.id).emit(
-          SOCKET_SERVER.SOLVE_FINISHED_EVENT,
-          currentSolve,
-          participants
-        );
-      }
-    } else {
-      //publish solve finished event (casual case)
-      io.to(room.id).emit(
-        SOCKET_SERVER.SOLVE_FINISHED_EVENT,
-        currentSolve,
-        participants
-      );
-    }
-
-    if ((room.state as RoomState) !== "FINISHED") {
-      const newSolve = await newRoomSolve(room);
-      if (room.settings.teamSettings.teamsEnabled) {
-        io.to(room.id).emit(SOCKET_SERVER.TEAMS_UPDATE, room.teams);
-      }
-      io.to(room.id).emit(SOCKET_SERVER.NEW_SOLVE, newSolve);
-    }
-  }
-
   io.on("connection", async (socket: Socket) => {
     //since we require a user to log in, access and set first.
     await onConnect(socket);
@@ -255,131 +153,12 @@ export const startSocketListener = (
     }
     const userId = socket.data.user!.userInfo.id;
 
-    async function handleUserLeaveTeam(
-      room: IRoom,
-      userId: string,
-      teamId: string
-    ) {
-      const response = await userLeaveTeam(room, userId, teamId);
-
-      if (response.success) {
-        // leave team will both remove user from team AND
-        // remove user attempt + team result (when it exists). This needs to go first.
-        io.to(room.id).emit(
-          SOCKET_SERVER.USER_LEAVE_TEAM,
-          room.users[userId],
-          room.teams[teamId]
-        );
-
-        // tell the user that left to reset their local solve. Doesn't matter if they actually had a solve to begin with.
-        io.to(userId).emit(SOCKET_SERVER.RESET_LOCAL_SOLVE);
-
-        if (response.data) {
-          if (response.data.newAttempt) {
-            io.to(room.id).emit(
-              SOCKET_SERVER.CREATE_ATTEMPT,
-              response.data.newAttempt.userId,
-              response.data.newAttempt.attempt
-            );
-          }
-
-          if (response.data.refreshedTeamResult) {
-            io.to(room.id).emit(
-              SOCKET_SERVER.NEW_RESULT,
-              response.data.refreshedTeamResult.teamId,
-              response.data.refreshedTeamResult.result
-            );
-          }
-        }
-
-        if (checkRoomSolveFinished(room)) {
-          await handleSolveFinished(room);
-        }
-      }
-      await stores.rooms.setRoom(room);
-    }
-
     async function handleUserDisconnect(userId: string) {
       await stores.userSessions.deleteUserSession(userId, socket.id);
 
       stores.userSessions.numUserSessions(userId).then(async (numSessions) => {
         if (numSessions === 0) await stores.users.deleteUser(userId);
       });
-    }
-
-    async function handleRoomDisconnect(userId: string, roomId: string) {
-      if (!userId || !roomId) return;
-      socket.data.logger?.info(
-        `User ${userId} disconnected from room ${roomId}`
-      );
-      const room = await stores.rooms.getRoom(roomId);
-      if (!room || !room.users[userId]) return;
-
-      if (room.users[userId]) {
-        // mark user as inactive
-        room.users[userId].active = false;
-
-        // canonically, the default solve status should be IDLE. If the user reconnects later, it is the responsibility of the client to make their solve status correct.
-        if (room.users[userId].solveStatus !== "FINISHED") {
-          room.users[userId].solveStatus = "IDLE";
-        }
-        // if teams is enabled and this user is on a team, force leave team
-        const teamId = room.users[userId].currentTeam;
-        if (room.settings.teamSettings.teamsEnabled && teamId !== undefined) {
-          await handleUserLeaveTeam(room, userId, teamId);
-        }
-
-        io.to(roomId).emit(SOCKET_SERVER.USER_UPDATE, room.users[userId]);
-      } else {
-        socket.data.logger?.warn(
-          `User ${userId} does not exist in room ${roomId}'s users but is trying to leave room.`
-        );
-      }
-
-      //check if no more users, if so, schedule room deletion.
-      if (
-        Object.values(room.users).filter((roomUser) => roomUser.active)
-          .length == 0
-      ) {
-        stores.rooms.scheduleRoomForDeletion(roomId);
-        return;
-      }
-
-      //check if user is host OR there is somehow no host.
-      if ((room.host && room.host.id == userId) || !room.host) {
-        room.host = undefined;
-
-        let earliestUser: IRoomUser | null = null;
-
-        const hostEligibleUsers = Object.values(room.users).filter(
-          (roomUser) => roomUser.active
-        );
-
-        for (const roomUser of hostEligibleUsers) {
-          if (!earliestUser || roomUser.joinedAt < earliestUser.joinedAt) {
-            earliestUser = roomUser;
-          }
-        }
-        if (earliestUser) {
-          room.host = earliestUser.user;
-          socket.data.logger?.debug(
-            `Room ${roomId} promoted a new host: ${room.host.userName}`
-          );
-          io.to(roomId).emit(SOCKET_SERVER.NEW_HOST, earliestUser.user.id);
-        }
-      }
-
-      // handle case that this user was the last one to submit a time/compete
-      if (checkRoomSolveFinished(room)) {
-        await handleSolveFinished(room);
-      }
-
-      // write room to room store
-      await stores.rooms.setRoom(room);
-
-      // remove the room from this socket.
-      socket.leave(roomId);
-      socket.data.roomId = undefined;
     }
 
     socket.use(createLoggingMiddleware(socket));
@@ -510,12 +289,20 @@ export const startSocketListener = (
 
     /**
      * Upon socket disconnection - automatically trigger on client closing all webpages
+     *
+     * Since this is a special event, we don't want to move this to the event queue handler directly. It's worth manually queueing up LEAVE_ROOM here.
      */
     socket.on("disconnect", async () => {
-      ServerLogger.info({ socketData: socket.data }, "Socket disconnect event");
       //handle potential room DC
       if (socket.data.roomId) {
-        await handleRoomDisconnect(userId, socket.data.roomId);
+        // manually enqueue LEAVE ROOM event!
+        await stores.rooms.enqueueRoomEvent({
+          roomId: socket.data.roomId,
+          userId: userId,
+          socketId: socket.id,
+          event: "LEAVE_ROOM",
+          args: undefined,
+        } as RoomRedisEvent);
       }
 
       //handle user DC
