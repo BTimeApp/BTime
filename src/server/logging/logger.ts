@@ -52,12 +52,17 @@ const DEV_PINO_TRANSPORT_OPTIONS = {
   ],
 };
 
+const customLevels = {
+  dev: 70,
+};
+
 /**
  * The main logger instance. Never use this directly in other files!
  * Should always use a child, either one of the singletons exported below
  * or created through a factory function (when context isn't static)
  */
 const BTIME_LOGGER = pino({
+  customLevels: customLevels,
   level: LOG_LEVEL,
   transport: isProd ? PROD_PINO_TRANSPORT_OPTIONS : DEV_PINO_TRANSPORT_OPTIONS,
 });

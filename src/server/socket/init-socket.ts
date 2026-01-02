@@ -301,7 +301,7 @@ export const startSocketListener = (
           userId: userId,
           socketId: socket.id,
           event: "LEAVE_ROOM",
-          args: undefined,
+          args: { roomId: socket.data.roomId },
         } as RoomRedisEvent);
       }
 
