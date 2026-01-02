@@ -68,7 +68,7 @@ export const ROOM_EVENT_HANDLERS = {
         { roomId: args.roomId, userId: userId },
         "User trying to join nonexistent room"
       );
-      io.to(userId).emit(SOCKET_SERVER.INVALID_ROOM);
+      socket.emit(SOCKET_SERVER.INVALID_ROOM);
       return;
     }
 
@@ -79,7 +79,7 @@ export const ROOM_EVENT_HANDLERS = {
         `Banned user trying to join room.`
       );
 
-      io.to(roomId).emit(SOCKET_SERVER.USER_JOIN_ROOM_USER_FAIL, {
+      socket.emit(SOCKET_SERVER.USER_JOIN_ROOM_USER_FAIL, {
         reason: USER_JOIN_FAILURE_REASON.USER_BANNED,
       });
       return;
@@ -95,7 +95,7 @@ export const ROOM_EVENT_HANDLERS = {
       // precautionary persist
       await stores.rooms.persistRoom(room.id);
 
-      io.to(userId).emit(SOCKET_SERVER.USER_JOIN_ROOM_USER_SUCCESS, {
+      socket.emit(SOCKET_SERVER.USER_JOIN_ROOM_USER_SUCCESS, {
         room: room,
         userId: userId,
       });
@@ -114,7 +114,7 @@ export const ROOM_EVENT_HANDLERS = {
         "User tried to join a full room."
       );
 
-      io.to(roomId).emit(SOCKET_SERVER.USER_JOIN_ROOM_USER_FAIL, {
+      socket.emit(SOCKET_SERVER.USER_JOIN_ROOM_USER_FAIL, {
         reason: USER_JOIN_FAILURE_REASON.ROOM_FULL,
       });
       return;
@@ -123,9 +123,15 @@ export const ROOM_EVENT_HANDLERS = {
     //validate password if room is private AND user isn't host
     if (
       room.settings.access.visibility === "PRIVATE" &&
-      userId !== room.host?.id &&
-      args.password
+      userId !== room.host?.id
     ) {
+      // always treat undefined password as fail
+      if (!args.password) {
+        socket.emit(SOCKET_SERVER.USER_JOIN_ROOM_USER_FAIL, {
+          reason: USER_JOIN_FAILURE_REASON.UNDEFINED_PASSWORD,
+        });
+        return;
+      }
       //room password should never be undefined, but just in case, cast to empty string
       const correctPassword = await bcrypt.compare(
         args.password,
@@ -136,7 +142,7 @@ export const ROOM_EVENT_HANDLERS = {
           { roomId: roomId, userId: userId },
           "User submitted wrong password to room"
         );
-        io.to(roomId).emit(SOCKET_SERVER.USER_JOIN_ROOM_USER_FAIL, {
+        socket.emit(SOCKET_SERVER.USER_JOIN_ROOM_USER_FAIL, {
           reason: USER_JOIN_FAILURE_REASON.WRONG_PASSWORD,
         });
         return;

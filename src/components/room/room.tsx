@@ -108,8 +108,13 @@ export default function Room() {
           toast.error("You are banned from this room. Routing to home page");
           router.push("/");
           break;
+        case USER_JOIN_FAILURE_REASON.UNDEFINED_PASSWORD:
+          console.log("undefined password");
+          setUserJoined(false);
+          break;
         case USER_JOIN_FAILURE_REASON.WRONG_PASSWORD:
           toast.error("Wrong password entered. Try again.");
+          console.log("wrong password");
           setUserJoined(false);
           break;
         default:

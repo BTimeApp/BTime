@@ -483,6 +483,7 @@ export type RoomRedisEvent = {
  */
 export enum USER_JOIN_FAILURE_REASON {
   WRONG_PASSWORD,
+  UNDEFINED_PASSWORD,
   USER_BANNED,
   ROOM_FULL,
 }
