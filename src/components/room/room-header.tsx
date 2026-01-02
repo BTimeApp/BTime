@@ -48,10 +48,9 @@ export function RoomHeader() {
   const toggleCompeting = useCallback(() => {
     if (user) {
       //submit the NEW competing boolean - true if currently spectating
-      socket.emit(
-        SOCKET_CLIENT.TOGGLE_COMPETING,
-        !users[user.userInfo.id].competing
-      );
+      socket.emit(SOCKET_CLIENT.TOGGLE_COMPETING, {
+        competing: !users[user.userInfo.id].competing,
+      });
     }
   }, [user, users, socket]);
 

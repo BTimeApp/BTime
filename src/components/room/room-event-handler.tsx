@@ -47,6 +47,7 @@ export default function RoomEventHandler() {
     deleteAttempt,
     addNewSolve,
     updateLatestSolve,
+    updateLocalSolveStatus,
     addNewSet,
     finishSolve,
     finishSet,
@@ -85,7 +86,9 @@ export default function RoomEventHandler() {
    */
   useEffect(() => {
     // console.log(`New local solve status ${localSolveStatus}`);
-    socket.emit(SOCKET_CLIENT.UPDATE_SOLVE_STATUS, localSolveStatus);
+    socket.emit(SOCKET_CLIENT.UPDATE_SOLVE_STATUS, {
+      newUserStatus: localSolveStatus,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localSolveStatus]);
 
@@ -117,6 +120,10 @@ export default function RoomEventHandler() {
   /**
    * Callbacks for socket events
    */
+
+  const handleUserSubmitResultSuccess = useCallback(() => {
+    updateLocalSolveStatus("SUBMIT_TIME");
+  }, [updateLocalSolveStatus]);
 
   const handleUserStartLiveTimer = useCallback(
     (userId: string) => {
@@ -176,6 +183,10 @@ export default function RoomEventHandler() {
     [user, handleLocalUserBanned, userBanned]
   );
 
+  const handleEventFail = useCallback(({ reason }: { reason: string }) => {
+    toast.error(reason);
+  }, []);
+
   const handleSocketDisconnect = useCallback(() => {
     toast.error("Socket disconnected...");
     window.location.href = "/";
@@ -198,7 +209,7 @@ export default function RoomEventHandler() {
   /**
    * Trigger callbacks on socket events coming from server
    */
-  useSocketEvent(socket, SOCKET_SERVER.USER_JOINED, userJoin);
+  useSocketEvent(socket, SOCKET_SERVER.USER_JOIN_ROOM, userJoin);
   useSocketEvent(socket, SOCKET_SERVER.USER_UPDATE, userUpdate);
   useSocketEvent(
     socket,
@@ -237,6 +248,12 @@ export default function RoomEventHandler() {
   useSocketEvent(socket, SOCKET_SERVER.ROOM_UPDATE, handleRoomUpdate);
   useSocketEvent(socket, SOCKET_SERVER.ROOM_RESET, resetRoom);
 
+  useSocketEvent(
+    socket,
+    SOCKET_SERVER.USER_SUBMIT_RESULT_USER_SUCCESS,
+    handleUserSubmitResultSuccess
+  );
+
   useSocketEvent(socket, SOCKET_SERVER.RESET_LOCAL_SOLVE, resetLocalSolve);
 
   useSocketEvent(socket, SOCKET_SERVER.TEAMS_CREATED, createTeams);
@@ -251,6 +268,7 @@ export default function RoomEventHandler() {
   useSocketEvent(socket, SOCKET_SERVER.USER_BANNED, handleUserBanned);
   useSocketEvent(socket, SOCKET_SERVER.USER_UNBANNED, userUnbanned);
   useSocketEvent(socket, SOCKET_SERVER.NEW_HOST, setHostId);
+  useSocketEvent(socket, SOCKET_SERVER.USER_EVENT_FAIL, handleEventFail);
   useSocketEvent(socket, SOCKET_SERVER.DISCONNECT, handleSocketDisconnect);
 
   /**
@@ -259,7 +277,7 @@ export default function RoomEventHandler() {
   useEffect(() => {
     const leaveRoom = () => {
       // clearInterval(interval);
-      socket.emit(SOCKET_CLIENT.LEAVE_ROOM, roomId);
+      socket.emit(SOCKET_CLIENT.LEAVE_ROOM, { roomId });
     };
 
     window.addEventListener("beforeunload", leaveRoom);

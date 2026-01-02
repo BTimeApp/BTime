@@ -5,6 +5,13 @@ export const connectToRedis = async () => {
   // connect to Redis
   if (!process.env.REDIS_URI)
     throw new Error("No Redis URI defined in environment variables.");
+
+  /**
+   * Use:
+   *  - pubClient for publishing to events
+   *  - subClient for subscribing to events
+   *  - dataClient for doing general read/write work
+   */
   const pubClient = new Redis(process.env.REDIS_URI);
   const subClient = pubClient.duplicate();
   const dataClient = pubClient.duplicate();

@@ -1,203 +1,400 @@
+import { RedisStores } from "@/server/redis/stores";
 import { LogLevel } from "@/types/log-levels";
+import { Server } from "socket.io";
+import { SolveStatus } from "./status";
+import { IResult } from "./result";
+import { IRoomSettings } from "./room";
 
-interface SocketClientEventConfig {
+/**
+ * TODO - find a way to move the validation functions in here so we can just run .apply() on each or something
+ *
+ *
+ * ROOM_EXISTS - room exists (room:[roomid] key in redis has data)
+ * ROOMUSER_EXISTS - room exists AND the user is listed as a user in the room
+ * USER_IS_HOST - room exists AND the user is the room's host
+ * consider adding USER_EXISTS - the user has an active session logged in redis
+ */
+type RoomEventValidation = "USER_IS_HOST" | "ROOM_EXISTS" | "ROOMUSER_EXISTS";
+type RoomEventHandlerFunction<TArgs> = (
+  io: Server,
+  stores: RedisStores,
+  roomId: string,
+  userId: string,
+  socketId: string,
+  args: TArgs
+) => Promise<void>;
+
+type RoomEventConfig =
+  | {
+      isRoomEvent: false;
+    }
+  | {
+      isRoomEvent: true;
+      validations: RoomEventValidation[];
+    };
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+interface SocketClientEventConfig<TArgs = any> {
   // value: string;
+  args: TArgs;
   logArgs: boolean;
   logLevel: LogLevel;
+  roomEventConfig: RoomEventConfig;
 }
 
-type SocketEventConfigMap = {
+export type SocketClientEventConfigMap = {
   [key: string]: SocketClientEventConfig;
 };
 
-// Define metadata first
-export const SOCKET_CLIENT_CONFIG: SocketEventConfigMap = {
+/**
+ * Our API for available client->server socket events.
+ *
+ *
+ * Note: Every room event added here has to be filled out in room-event-handlers.tsx
+ */
+export const SOCKET_CLIENT_CONFIG = {
   JOIN_ROOM: {
+    args: {} as { roomId: string; password?: string },
     logArgs: true,
     logLevel: "info",
+    roomEventConfig: {
+      isRoomEvent: true,
+      validations: ["ROOM_EXISTS"],
+    },
   },
   /**
-   * User creates a room
+   * User creates a room.
+   * In terms of room events, this is a special case. Do not count it as a room event.
    */
   CREATE_ROOM: {
+    args: {} as Record<string, never>,
     logArgs: true,
     logLevel: "info",
+    roomEventConfig: {
+      isRoomEvent: false,
+    },
   },
 
   /**
    * Host submits a room settings update
    */
   UPDATE_ROOM: {
+    args: {} as { roomSettings: IRoomSettings },
     logArgs: true,
     logLevel: "info",
+    roomEventConfig: {
+      isRoomEvent: true,
+      validations: ["ROOM_EXISTS", "ROOMUSER_EXISTS", "USER_IS_HOST"],
+    },
   },
 
   /**
-   * User updates the local solve status
+   * User broadcasts an update to their local solve status
    */
   UPDATE_SOLVE_STATUS: {
+    args: {} as { newUserStatus: SolveStatus },
     logArgs: true,
     logLevel: "debug",
+    roomEventConfig: {
+      isRoomEvent: true,
+      validations: ["ROOM_EXISTS", "ROOMUSER_EXISTS"],
+    },
   },
 
   /**
    * User starts a live timer. A live timer is any timer that the client can access the live state of (keyboard, stackmat, smartcube, etc)
    */
   START_LIVE_TIMER: {
+    args: {} as Record<string, never>,
     logArgs: true,
     logLevel: "debug",
+    roomEventConfig: {
+      isRoomEvent: true,
+      validations: ["ROOM_EXISTS", "ROOMUSER_EXISTS"],
+    },
   },
 
   /**
    * User stops a live timer. A live timer is any timer that the client can access the live state of (keyboard, stackmat, smartcube, etc)
    */
   STOP_LIVE_TIMER: {
+    args: {} as Record<string, never>,
     logArgs: true,
     logLevel: "debug",
+    roomEventConfig: {
+      isRoomEvent: true,
+      validations: ["ROOM_EXISTS", "ROOMUSER_EXISTS"],
+    },
   },
 
   /**
    * User toggles whether they are competing or spectating
    */
   TOGGLE_COMPETING: {
+    args: {} as { competing: boolean },
     logArgs: true,
     logLevel: "debug",
+    roomEventConfig: {
+      isRoomEvent: true,
+      validations: ["ROOM_EXISTS", "ROOMUSER_EXISTS"],
+    },
   },
 
   /**
    * User submits a result to the backend
    */
   SUBMIT_RESULT: {
+    args: {} as { result: IResult },
     logArgs: true,
     logLevel: "info",
+    roomEventConfig: {
+      isRoomEvent: true,
+      validations: ["ROOM_EXISTS", "ROOMUSER_EXISTS"],
+    },
   },
 
   /**
    * Host creates new teams. We force a batched creation to avoid race condition on server.
    */
   CREATE_TEAMS: {
+    args: {} as { teamNames: string[] },
     logArgs: true,
     logLevel: "info",
+    roomEventConfig: {
+      isRoomEvent: true,
+      validations: ["ROOM_EXISTS", "ROOMUSER_EXISTS", "USER_IS_HOST"],
+    },
   },
 
   /**
    * Host deletes a team
    */
   DELETE_TEAM: {
+    args: {} as { teamId: string },
     logArgs: true,
     logLevel: "info",
+    roomEventConfig: {
+      isRoomEvent: true,
+      validations: ["ROOM_EXISTS", "ROOMUSER_EXISTS", "USER_IS_HOST"],
+    },
   },
 
   /**
    * User joins a team
    */
   JOIN_TEAM: {
+    args: {} as { teamId: string },
     logArgs: true,
     logLevel: "info",
+    roomEventConfig: {
+      isRoomEvent: true,
+      validations: ["ROOM_EXISTS", "ROOMUSER_EXISTS"],
+    },
   },
 
   /**
    * User leaves a team (explicit action)
    */
   LEAVE_TEAM: {
+    args: {} as { teamId: string },
     logArgs: true,
     logLevel: "info",
+    roomEventConfig: {
+      isRoomEvent: true,
+      validations: ["ROOM_EXISTS", "ROOMUSER_EXISTS"],
+    },
   },
 
   /**
    * Host starts the room (bring from WAITING to STARTED)
    */
   START_ROOM: {
+    args: {} as Record<string, never>,
     logArgs: true,
     logLevel: "info",
+    roomEventConfig: {
+      isRoomEvent: true,
+      validations: ["ROOM_EXISTS", "ROOMUSER_EXISTS", "USER_IS_HOST"],
+    },
   },
 
   /**
    * Host triggers a rematch (bring from FINISHED to WAITING)
    */
   REMATCH_ROOM: {
+    args: {} as Record<string, never>,
     logArgs: true,
     logLevel: "info",
+    roomEventConfig: {
+      isRoomEvent: true,
+      validations: ["ROOM_EXISTS", "ROOMUSER_EXISTS", "USER_IS_HOST"],
+    },
   },
 
   /**
    * Host triggers a room reset
    */
   RESET_ROOM: {
+    args: {} as Record<string, never>,
     logArgs: true,
     logLevel: "info",
+    roomEventConfig: {
+      isRoomEvent: true,
+      validations: ["ROOM_EXISTS", "ROOMUSER_EXISTS", "USER_IS_HOST"],
+    },
   },
 
   /**
    * Host wants a new scramble (will reset the current solve)
    */
   NEW_SCRAMBLE: {
+    args: {} as Record<string, never>,
     logArgs: true,
     logLevel: "info",
+    roomEventConfig: {
+      isRoomEvent: true,
+      validations: ["ROOM_EXISTS", "ROOMUSER_EXISTS", "USER_IS_HOST"],
+    },
   },
 
   /**
    * Host is forcing a new solve
    */
   FORCE_NEXT_SOLVE: {
+    args: {} as Record<string, never>,
     logArgs: true,
     logLevel: "info",
+    roomEventConfig: {
+      isRoomEvent: true,
+      validations: ["ROOM_EXISTS", "ROOMUSER_EXISTS", "USER_IS_HOST"],
+    },
   },
 
   /**
    * Kick user from room (host only)
    */
   KICK_USER: {
+    args: {} as { userId: string },
     logArgs: true,
     logLevel: "info",
+    roomEventConfig: {
+      isRoomEvent: true,
+      validations: ["ROOM_EXISTS", "ROOMUSER_EXISTS", "USER_IS_HOST"],
+    },
   },
 
   /**
    * Ban user from room (host only)
    */
   BAN_USER: {
+    args: {} as { userId: string },
     logArgs: true,
     logLevel: "info",
+    roomEventConfig: {
+      isRoomEvent: true,
+      validations: ["ROOM_EXISTS", "ROOMUSER_EXISTS", "USER_IS_HOST"],
+    },
   },
 
   /**
    * Unban user from room (host only)
    */
   UNBAN_USER: {
+    args: {} as { userId: string },
     logArgs: true,
     logLevel: "info",
+    roomEventConfig: {
+      isRoomEvent: true,
+      validations: ["ROOM_EXISTS", "ROOMUSER_EXISTS", "USER_IS_HOST"],
+    },
   },
 
   /**
    * User is leaving a room
    */
   LEAVE_ROOM: {
+    args: {} as Record<string, never>,
     logArgs: true,
     logLevel: "info",
+    roomEventConfig: {
+      isRoomEvent: true,
+      validations: ["ROOM_EXISTS", "ROOMUSER_EXISTS"],
+    },
   },
 
   /**
    * Used for debugging.
    */
   DEBUG_EVENT: {
+    args: {} as Record<string, never>,
     logArgs: true,
     logLevel: "debug",
+    roomEventConfig: {
+      isRoomEvent: false,
+    },
   },
 
   // this is a socket.io event. don't capitalize
   disconnect: {
+    args: {} as Record<string, never>,
     logArgs: true,
     logLevel: "info",
+    roomEventConfig: {
+      isRoomEvent: false,
+    },
   },
-} as const;
+} as const satisfies SocketClientEventConfigMap;
+
+export type SocketClientEventArgs = {
+  [K in keyof typeof SOCKET_CLIENT_CONFIG]: (typeof SOCKET_CLIENT_CONFIG)[K]["args"];
+};
+
 export const SOCKET_CLIENT = Object.freeze(
-  Object.keys(SOCKET_CLIENT_CONFIG).reduce(
+  Object.fromEntries(Object.keys(SOCKET_CLIENT_CONFIG).map((key) => [key, key]))
+) as { readonly [K in SocketClientEvent]: K };
+
+type ExtractArgs<T> = T extends { args: infer A } ? A : never;
+export type SocketClientEvent = keyof typeof SOCKET_CLIENT_CONFIG;
+
+type RoomEventKeys = {
+  [K in keyof typeof SOCKET_CLIENT_CONFIG]: (typeof SOCKET_CLIENT_CONFIG)[K]["roomEventConfig"] extends {
+    isRoomEvent: true;
+  }
+    ? K
+    : never;
+}[keyof typeof SOCKET_CLIENT_CONFIG];
+export type RoomEventHandlers = {
+  [K in RoomEventKeys]: RoomEventHandlerFunction<
+    ExtractArgs<(typeof SOCKET_CLIENT_CONFIG)[K]>
+  >;
+};
+
+interface SocketServerEventConfig {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  args: any;
+}
+
+type SocketServerEventConfigMap = {
+  [key: string]: SocketServerEventConfig;
+};
+
+export const SOCKET_SERVER_CONFIG: SocketServerEventConfigMap = {
+  /**
+   * Response given when
+   */
+  CREATE_ROOM_SUCCESS: {
+    args: {} as { roomId: string },
+  },
+};
+
+export const SOCKET_SERVER_TEMP = Object.freeze(
+  Object.keys(SOCKET_SERVER_CONFIG).reduce(
     (acc, key) => {
-      acc[key as keyof typeof SOCKET_CLIENT_CONFIG] = key;
+      acc[key as keyof typeof SOCKET_SERVER_CONFIG] = key;
       return acc;
     },
     {} as {
-      [K in keyof typeof SOCKET_CLIENT_CONFIG]: K;
+      [K in keyof typeof SOCKET_SERVER_CONFIG]: K;
     }
   )
 );
@@ -235,6 +432,11 @@ export enum SOCKET_SERVER {
    * Used for all state updates to the room object (state tied to the Zustand room store)
    */
   ROOM_UPDATE = "ROOM_UPDATE",
+
+  /**
+   * Send to user upon successful UPDATE_ROOM execution
+   */
+  UPDATE_ROOM_USER_SUCCESS = "UPDATE_ROOM_USER_SUCCESS",
 
   /**
    * Host creates new team(s)
@@ -322,9 +524,24 @@ export enum SOCKET_SERVER {
   NEW_SET = "NEW_SET",
 
   /**
-   * Broadcast that a user joined the room (not necessarily for the first time)
+   * Send to a specific user to notify that the room they are in/trying to join doesn't exist/is invalid
    */
-  USER_JOINED = "USER_JOINED",
+  INVALID_ROOM = "INVALID_ROOM",
+
+  /**
+   * Send only to specific user's socket to notify that they have succesfully joined room.
+   */
+  USER_JOIN_ROOM_USER_SUCCESS = "USER_JOIN_ROOM_USER_SUCCESS",
+
+  /**
+   * Send only to specific user's socket to notify that they cannot join the room (for some reason).
+   */
+  USER_JOIN_ROOM_USER_FAIL = "USER_JOIN_ROOM_USER_FAIL",
+
+  /**
+   * Broadcast that a new user has joined this room
+   */
+  USER_JOIN_ROOM = "USER_JOIN_ROOM",
 
   /**
    * This user is kicked. When a user receives this, they are kicked.
@@ -357,9 +574,19 @@ export enum SOCKET_SERVER {
   NEW_RESULT = "NEW_RESULT",
 
   /**
+   * Event used as a response to specific user telling them that their submit result succeeded.
+   */
+  USER_SUBMIT_RESULT_USER_SUCCESS = "USER_SUBMIT_RESULT_USER_SUCCESS",
+
+  /**
    * A new host is assigned.
    */
   NEW_HOST = "NEW_HOST",
+
+  /**
+   * A generic event failure event
+   */
+  USER_EVENT_FAIL = "USER_EVENT_FAIL",
 
   /**
    * Disconnect the socket

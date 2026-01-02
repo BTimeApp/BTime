@@ -18,7 +18,7 @@ import { useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { useSocket } from "@/context/socket-context";
-import { SOCKET_CLIENT, SocketResponse } from "@/types/socket_protocol";
+import { SOCKET_CLIENT } from "@/types/socket_protocol";
 import { Button } from "@/components/ui/button";
 import { useRoomStore } from "@/context/room-context";
 
@@ -76,15 +76,9 @@ export function CreateTeamForm({ onSubmit }: CreateTeamFormProps) {
     name: "teamNames",
   });
 
-  const socketCallback = useCallback((response: SocketResponse<undefined>) => {
-    if (!response.success) {
-      toast.error(response.reason);
-    }
-  }, []);
-
   const handleSubmit = (data: CreateTeamFormValues) => {
     const teamNames = data.teamNames.map((t) => t.teamName);
-    socket.emit(SOCKET_CLIENT.CREATE_TEAMS, teamNames, socketCallback);
+    socket.emit(SOCKET_CLIENT.CREATE_TEAMS, { teamNames: teamNames });
     onSubmit();
   };
 

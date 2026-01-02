@@ -782,7 +782,7 @@ function ParticipantListRoomPanel({
             <h2 className="flex-0 text-xl font-bold">Competitors</h2>
             <div className="flex-1 max-h-[40vh] overflow-y-auto">
               {Object.values(users)
-                .filter((roomUser) => roomUser.competing)
+                .filter((roomUser) => roomUser.active && roomUser.competing)
                 .map((roomUser, idx) => {
                   return (
                     <p className="text-md" key={idx}>
@@ -796,7 +796,7 @@ function ParticipantListRoomPanel({
             <h2 className="flex-0 text-xl font-bold">Spectators</h2>
             <div className="flex-1 max-h-[40vh] overflow-y-auto">
               {Object.values(users)
-                .filter((roomUser) => !roomUser.competing)
+                .filter((roomUser) => roomUser.active && !roomUser.competing)
                 .map((roomUser, idx) => {
                   return (
                     <p className="text-md" key={idx}>

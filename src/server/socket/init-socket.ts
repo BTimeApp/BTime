@@ -1,59 +1,24 @@
 import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
-import { IRoom, RoomState, IRoomSettings } from "@/types/room";
-import {
-  newRoomSolve,
-  resetRoom,
-  finishRoomSolve,
-  checkRoomSolveFinished,
-  createRoom,
-  updateRoom,
-  checkRoomUpdateRequireReset,
-  checkSetFinished,
-  findSetWinners,
-  checkMatchFinished,
-  findMatchWinners,
-  resetSolve,
-  createTeam,
-  userJoinTeam,
-  userLeaveTeam,
-  processNewResult,
-  userJoinRoom,
-  getLatestSolve,
-  getLatestSet,
-  newRoomSet,
-  newAttempt,
-} from "@/lib/room";
-import { IUser, IUserInfo } from "@/types/user";
-import { IRoomTeam, IRoomUser } from "@/types/room-participant";
-import { IResult } from "@/types/result";
-import { SolveStatus } from "@/types/status";
+import { IRoom, IRoomSettings, RoomRedisEvent } from "@/types/room";
+import { createRoom } from "@/lib/room";
 import { ServerResponse } from "http";
 import { NextFunction } from "express";
 import { ObjectId } from "bson";
 import passport from "passport";
-import bcrypt from "bcrypt";
 import {
   SOCKET_CLIENT,
   SOCKET_CLIENT_CONFIG,
   SOCKET_SERVER,
-  SocketCallback,
-  SocketResponse,
+  SocketClientEventArgs,
 } from "@/types/socket_protocol";
 import Redis from "ioredis";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { RedisStores } from "@/server/redis/stores";
-import { IAttempt } from "@/types/solve";
-import { LogFn, Logger } from "pino";
-import { createSocketLogger } from "@/server/logging/logger";
+import { LogFn } from "pino";
+import { createSocketLogger, ServerLogger } from "@/server/logging/logger";
 import { isPinoLogLevel } from "@/types/log-levels";
-
-//defines useful state variables we want to maintain over the lifestyle of a socket connection (only visible server-side)
-interface CustomSocket extends Socket {
-  roomId?: string;
-  user?: IUser;
-  logger?: Logger;
-}
+import { RoomWorker } from "@/server/rooms/room-worker";
 
 export type SocketMiddleware = (
   req: any, // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -61,14 +26,12 @@ export type SocketMiddleware = (
   next: NextFunction
 ) => void;
 
-export const initSocket = (
+export const createSocket = (
   httpServer: HttpServer,
-  sessionMiddleware: SocketMiddleware,
   pubClient: Redis,
-  subClient: Redis,
-  dataStores: RedisStores
+  subClient: Redis
 ) => {
-  const io = new Server(httpServer, {
+  return new Server(httpServer, {
     adapter: createAdapter(pubClient, subClient),
     cors: {
       credentials: true,
@@ -76,10 +39,12 @@ export const initSocket = (
     pingInterval: 5000,
     pingTimeout: 20000,
   });
+};
 
-  // middleware should be taken care of in the main server script
-
-  //https://socket.io/how-to/use-with-passport
+export const setUpSocketMiddleware = (
+  io: Server,
+  sessionMiddleware: SocketMiddleware
+) => {
   function socketHandshakeMiddleware(
     middleware: SocketMiddleware
   ): SocketMiddleware {
@@ -105,37 +70,38 @@ export const initSocket = (
       }
     })
   );
-
-  // TODO: move socket events to their own namespaces
-  listenSocketEvents(io, dataStores);
 };
 
-const listenSocketEvents = (io: Server, stores: RedisStores) => {
-  async function onConnect(socket: CustomSocket) {
+export const startSocketListener = (
+  io: Server,
+  stores: RedisStores,
+  roomWorker: RoomWorker
+) => {
+  async function onConnect(socket: Socket) {
     //check for user. DC if no user
-    socket.user = socket.request.user;
-    if (!socket.user) {
+    socket.data.user = socket.request.user;
+    if (!socket.data.user) {
       socket.disconnect(true);
       return;
     }
 
-    const SocketLogger = createSocketLogger(socket.id, socket.user);
-    socket.logger = SocketLogger;
+    const SocketLogger = createSocketLogger(socket.id, socket.data.user);
+    socket.data.logger = SocketLogger;
 
-    socket.logger.info(
-      `User ${socket.user?.userInfo.userName} (${socket.user?.userInfo.id}) connected via websocket.`
+    socket.data.logger.info(
+      `User ${socket.data.user?.userInfo.userName} (${socket.data.user?.userInfo.id}) connected via websocket.`
     );
 
-    const userId = socket.user!.userInfo.id;
+    const userId = socket.data.user!.userInfo.id;
 
     // user joins "their" room by default
     socket.join(userId);
 
-    await stores.users.setUser(socket.user.userInfo);
+    await stores.users.setUser(socket.data.user.userInfo);
     await stores.userSessions.addUserSession(userId, socket.id);
   }
 
-  function createLoggingMiddleware(socket: CustomSocket) {
+  function createLoggingMiddleware(socket: Socket) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (packet: any[], next: (err?: Error) => void) => {
       const [eventName, ...args] = packet;
@@ -145,7 +111,7 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
 
       // Warn if event not registered
       if (!eventConfig) {
-        socket.logger?.warn(
+        socket.data.logger?.warn(
           { event: eventName },
           `Unknown socket client event: ${eventName}`
         );
@@ -162,14 +128,14 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         /**
          * Room ID is dynamically changed within the socket's lifetime. Log it here.
          */
-        roomId: socket.roomId,
+        roomId: socket.data.roomId,
         ...(eventConfig.logArgs && { args }),
       };
 
-      if (socket.logger) {
-        const logMethod = socket.logger?.[eventConfig.logLevel] as LogFn;
+      if (socket.data.logger) {
+        const logMethod = socket.data.logger?.[eventConfig.logLevel] as LogFn;
         logMethod.call(
-          socket.logger,
+          socket.data.logger,
           logData,
           `Received socket event: ${eventName}`
         );
@@ -179,164 +145,13 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
     };
   }
 
-  //TODO: abstract this function away to room lib
-  async function handleSolveFinished(room: IRoom) {
-    finishRoomSolve(room);
-    const currentSolve = getLatestSolve(room);
-    const currentSet = getLatestSet(room);
-    if (!currentSolve || !currentSet) return;
-    const participants = room.settings.teamSettings.teamsEnabled
-      ? room.teams
-      : room.users;
-
-    // only check set and match wins if not a casual room
-    if (room.settings.raceSettings.roomFormat !== "CASUAL") {
-      //check set finished.
-      const setFinished = checkSetFinished(room);
-      if (setFinished) {
-        // find set winners.
-        const setWinners: string[] = findSetWinners(room);
-        currentSet.winners = setWinners;
-        currentSet.finished = true;
-
-        // update set wins for set winners
-        setWinners.map((pid) => (participants[pid].setWins += 1));
-
-        // reset all users' points
-        Object.values(participants).map((participant) => {
-          participant.points = 0;
-        });
-
-        // check match finished. right now a match can only be finished if the set is finished.
-        const matchFinished = checkMatchFinished(room);
-        if (matchFinished) {
-          const matchWinners: string[] = findMatchWinners(room);
-          //handle match finished
-          room.match.winners = matchWinners;
-          room.match.finished = true;
-          room.state = "FINISHED";
-
-          //publish solve finished after updating match winners, but before sending match finished
-          io.to(room.id).emit(
-            SOCKET_SERVER.SOLVE_FINISHED_EVENT,
-            currentSolve,
-            participants
-          );
-
-          //publish set finished event with winners
-          io.to(room.id).emit(SOCKET_SERVER.SET_FINISHED_EVENT, setWinners);
-
-          //publish match finished event with winners
-          io.to(room.id).emit(SOCKET_SERVER.MATCH_FINISHED_EVENT, matchWinners);
-        } else {
-          //publish solve finished after updating set winners, but before creating a new set
-          io.to(room.id).emit(
-            SOCKET_SERVER.SOLVE_FINISHED_EVENT,
-            currentSolve,
-            participants
-          );
-
-          //publish set finished event with winners
-          io.to(room.id).emit(SOCKET_SERVER.SET_FINISHED_EVENT, setWinners);
-
-          const newSet = newRoomSet(room);
-          io.to(room.id).emit(SOCKET_SERVER.NEW_SET, newSet);
-        }
-      } else {
-        io.to(room.id).emit(
-          SOCKET_SERVER.SOLVE_FINISHED_EVENT,
-          currentSolve,
-          participants
-        );
-      }
-    } else {
-      //publish solve finished event (casual case)
-      io.to(room.id).emit(
-        SOCKET_SERVER.SOLVE_FINISHED_EVENT,
-        currentSolve,
-        participants
-      );
-    }
-
-    if ((room.state as RoomState) !== "FINISHED") {
-      const newSolve = await newRoomSolve(room);
-      if (room.settings.teamSettings.teamsEnabled) {
-        io.to(room.id).emit(SOCKET_SERVER.TEAMS_UPDATE, room.teams);
-      }
-      io.to(room.id).emit(SOCKET_SERVER.NEW_SOLVE, newSolve);
-    }
-  }
-
-  function socketIntersection(roomA: string, roomB: string) {
-    /**
-     * As of v4, socket.io does not support intersection logic, only union logic.
-     * We implement the intersection with set intersect, which is O(min(|A|, |B|))
-     */
-    const setA = io.sockets.adapter.rooms.get(roomA);
-    const setB = io.sockets.adapter.rooms.get(roomB);
-
-    // Handle edge cases
-    if (!setA || !setB) return [];
-
-    // Always iterate over the smaller set for efficiency
-    const [smaller, larger] =
-      setA.size <= setB.size ? [setA, setB] : [setB, setA];
-
-    // Find intersection by filtering the smaller set
-    return [...smaller].filter((socketId) => larger.has(socketId));
-  }
-
-  io.on("connection", async (socket: CustomSocket) => {
+  io.on("connection", async (socket: Socket) => {
     //since we require a user to log in, access and set first.
     await onConnect(socket);
     if (!socket.connected) {
       return;
     }
-    const userId = socket.user!.userInfo.id;
-
-    async function handleUserLeaveTeam(
-      room: IRoom,
-      userId: string,
-      teamId: string
-    ) {
-      const response = await userLeaveTeam(room, userId, teamId);
-
-      if (response.success) {
-        // leave team will both remove user from team AND
-        // remove user attempt + team result (when it exists). This needs to go first.
-        io.to(room.id).emit(
-          SOCKET_SERVER.USER_LEAVE_TEAM,
-          room.users[userId],
-          room.teams[teamId]
-        );
-
-        // tell the user that left to reset their local solve. Doesn't matter if they actually had a solve to begin with.
-        io.to(userId).emit(SOCKET_SERVER.RESET_LOCAL_SOLVE);
-
-        if (response.data) {
-          if (response.data.newAttempt) {
-            io.to(room.id).emit(
-              SOCKET_SERVER.CREATE_ATTEMPT,
-              response.data.newAttempt.userId,
-              response.data.newAttempt.attempt
-            );
-          }
-
-          if (response.data.refreshedTeamResult) {
-            io.to(room.id).emit(
-              SOCKET_SERVER.NEW_RESULT,
-              response.data.refreshedTeamResult.teamId,
-              response.data.refreshedTeamResult.result
-            );
-          }
-        }
-
-        if (checkRoomSolveFinished(room)) {
-          await handleSolveFinished(room);
-        }
-      }
-      await stores.rooms.setRoom(room);
-    }
+    const userId = socket.data.user!.userInfo.id;
 
     async function handleUserDisconnect(userId: string) {
       await stores.userSessions.deleteUserSession(userId, socket.id);
@@ -346,94 +161,110 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
       });
     }
 
-    async function handleRoomDisconnect(userId: string, roomId: string) {
-      if (!userId || !roomId) return;
-      socket.logger?.info(`User ${userId} disconnected from room ${roomId}`);
-      const room = await stores.rooms.getRoom(roomId);
-      if (!room || !room.users[userId]) return;
-
-      if (room.users[userId]) {
-        // mark user as inactive
-        room.users[userId].active = false;
-
-        //TODO - this might not be safe in the future if a timer is supposed to default to something other than IDLE and we persist timertype
-        //unless the user already submitted a time, reset their solve status too
-        if (room.users[userId].solveStatus !== "FINISHED") {
-          room.users[userId].solveStatus = "IDLE";
-        }
-        // if teams is enabled and this user is on a team, force leave team
-        const teamId = room.users[userId].currentTeam;
-        if (room.settings.teamSettings.teamsEnabled && teamId !== undefined) {
-          await handleUserLeaveTeam(room, userId, teamId);
-        }
-
-        io.to(roomId).emit(SOCKET_SERVER.USER_UPDATE, room.users[userId]);
-      } else {
-        socket.logger?.warn(
-          `User ${userId} does not exist in room ${roomId}'s users but is trying to leave room.`
-        );
-      }
-
-      //check if no more users, if so, schedule room deletion.
-      if (
-        Object.values(room.users).filter((roomUser) => roomUser.active)
-          .length == 0
-      ) {
-        stores.rooms.scheduleRoomForDeletion(roomId);
-        return;
-      }
-
-      //check if user is host OR there is somehow no host.
-      if ((room.host && room.host.id == userId) || !room.host) {
-        room.host = undefined;
-
-        let earliestUser: IRoomUser | null = null;
-
-        const hostEligibleUsers = Object.values(room.users).filter(
-          (roomUser) => roomUser.active
-        );
-
-        for (const roomUser of hostEligibleUsers) {
-          if (!earliestUser || roomUser.joinedAt < earliestUser.joinedAt) {
-            earliestUser = roomUser;
-          }
-        }
-        if (earliestUser) {
-          room.host = earliestUser.user;
-          socket.logger?.debug(
-            `Room ${roomId} promoted a new host: ${room.host.userName}`
-          );
-          io.to(roomId).emit(SOCKET_SERVER.NEW_HOST, earliestUser.user.id);
-        }
-      }
-
-      // handle case that this user was the last one to submit a time/compete
-      if (checkRoomSolveFinished(room)) {
-        await handleSolveFinished(room);
-      }
-
-      // write room to room store
-      await stores.rooms.setRoom(room);
-
-      // remove the room from this socket.
-      socket.leave(roomId);
-      socket.roomId = undefined;
-    }
-
-    async function getSocketRoom(): Promise<IRoom | null> {
-      if (!socket.roomId) return null;
-      return stores.rooms.getRoom(socket.roomId);
-    }
-
-    async function userIsHost(): Promise<boolean> {
-      const room = await getSocketRoom();
-      if (!room || !socket.user) return false;
-
-      return room.host != null && room.host.id === socket.user?.userInfo.id;
-    }
-
     socket.use(createLoggingMiddleware(socket));
 
+    /**
+     * Handle all room events
+     */
+    for (const clientEvent in SOCKET_CLIENT_CONFIG) {
+      const key = clientEvent as keyof typeof SOCKET_CLIENT_CONFIG;
+      const config = SOCKET_CLIENT_CONFIG[key];
+
+      if (config.roomEventConfig.isRoomEvent === true) {
+        const roomEventConfig = config.roomEventConfig as Extract<
+          typeof config.roomEventConfig,
+          { isRoomEvent: true }
+        >;
+        socket.on(
+          clientEvent,
+          async (args: SocketClientEventArgs[typeof key]) => {
+            const roomId =
+              socket.data.roomId ||
+              (args as { roomId?: string } | null)?.roomId;
+            const userId = socket.data.user?.userInfo.id;
+
+            // TODO - consider sending invalid argument events to the frontend?
+            if (!roomId) {
+              ServerLogger.warn({ clientEvent }, "Null roomId on socket");
+              return;
+            }
+            if (!userId) {
+              ServerLogger.warn({ clientEvent }, "Null userId on socket");
+              return;
+            }
+
+            for (const validation of roomEventConfig.validations) {
+              switch (validation) {
+                case "ROOM_EXISTS": {
+                  const room = await stores.rooms.getRoom(roomId);
+                  if (!room) {
+                    ServerLogger.warn({ clientEvent }, "Room does not exist");
+                    socket.emit(SOCKET_SERVER.INVALID_ROOM);
+                    return;
+                  }
+                  break;
+                }
+                case "ROOMUSER_EXISTS": {
+                  const room = await stores.rooms.getRoom(roomId);
+                  if (!room) {
+                    ServerLogger.warn(
+                      { clientEvent },
+                      "Roomuser does not exist"
+                    );
+
+                    return;
+                  }
+                  if (!room.users[userId]) {
+                    ServerLogger.warn(
+                      { clientEvent },
+                      "Room user does not exist"
+                    );
+
+                    return;
+                  }
+                  break;
+                }
+                case "USER_IS_HOST": {
+                  const room = await stores.rooms.getRoom(roomId);
+                  if (!room) {
+                    ServerLogger.warn({ clientEvent }, "User is not host");
+
+                    return;
+                  }
+                  if (room.host != null && room.host.id !== userId) {
+                    ServerLogger.warn({ clientEvent }, "Room user is not host");
+
+                    return;
+                  }
+
+                  break;
+                }
+                default:
+                  ServerLogger.error(
+                    {
+                      validation,
+                    },
+                    "Invalid room event validation detected. Fix this in dev."
+                  );
+                  break;
+              }
+            }
+            await stores.rooms.enqueueRoomEvent({
+              roomId: roomId,
+              userId: userId,
+              socketId: socket.id,
+              event: clientEvent,
+              args: args,
+            } as RoomRedisEvent);
+          }
+        );
+      }
+    }
+
+    /**
+     * CREATE_ROOM is a special event that doesn't get counted as a room event.
+     * Since it's definitively the first event for any room, it shouldn't be processed with the room queue.
+     */
     socket.on(
       SOCKET_CLIENT.CREATE_ROOM,
       async (
@@ -447,659 +278,31 @@ const listenSocketEvents = (io: Server, stores: RedisStores) => {
         const room: IRoom = await createRoom(
           roomSettings,
           roomId,
-          socket.user?.userInfo
+          socket.data.user?.userInfo
         );
 
         await stores.rooms.setRoom(room);
+        roomWorker.startRoomProcessor(roomId);
         callback(roomId);
       }
     );
 
-    socket.on(
-      SOCKET_CLIENT.UPDATE_ROOM,
-      async (
-        roomSettings: IRoomSettings,
-        roomId: string,
-        userId: string,
-        onSuccessCallback?: () => void
-      ) => {
-        const room = await stores.rooms.getRoom(roomId);
-        if (!room || userId !== room.host?.id) {
-          return;
-        }
-
-        // check if the room needs to be reset
-        const needsReset = checkRoomUpdateRequireReset(room, roomSettings);
-
-        // update room object
-        await updateRoom(room, roomSettings);
-
-        // reset room object if needed
-        if (needsReset) {
-          resetRoom(room);
-        }
-
-        // update room store
-        await stores.rooms.setRoom(room);
-
-        // broadcast room update
-        io.to(roomId).emit(SOCKET_SERVER.ROOM_UPDATE, room);
-
-        // upon successful update, call success callback
-        onSuccessCallback?.();
-      }
-    );
-
-    socket.on(
-      SOCKET_CLIENT.JOIN_ROOM,
-      async (
-        {
-          roomId,
-          userId,
-          password,
-        }: {
-          roomId: string;
-          userId: string;
-          password?: string;
-        },
-        joinRoomCallback: (
-          roomValid: boolean,
-          room?: IRoom,
-          extraData?: Record<string, string>
-        ) => void
-      ) => {
-        //validate real user
-        const user: IUserInfo | null = await stores.users.getUser(userId);
-        if (!user) {
-          socket.logger?.debug(
-            `Nonexistent user with id ${userId} attempting to join room ${roomId}.`
-          );
-          return;
-        }
-
-        //validate real room
-        const room = await stores.rooms.getRoom(roomId);
-        if (!room) {
-          socket.logger?.debug(
-            `User ${userId} trying to join nonexistent room ${roomId}`
-          );
-          joinRoomCallback(false, undefined, { INVALID_ROOM: "" });
-          return;
-        }
-
-        //validate user isn't banned
-        if (
-          Object.keys(room.users).includes(userId) &&
-          room.users[userId].banned
-        ) {
-          socket.logger?.debug(
-            `Banned user ${userId} trying to join room ${roomId}.`
-          );
-
-          joinRoomCallback(true, undefined, {
-            USER_BANNED: "",
-          });
-          return;
-        }
-
-        //validate user is not already (active) in this room
-        if (
-          Object.keys(room.users).includes(userId) &&
-          room.users[userId].active
-        ) {
-          socket.logger?.debug(`User ${userId} double join in room ${roomId}.`);
-
-          // precautionary persist - there is currently a race condition
-          await stores.rooms.persistRoom(room.id);
-
-          joinRoomCallback(true, room, {
-            DUPLICATE_JOIN: "",
-            EXISTING_USER_INFO: userId,
-          });
-          return;
-        }
-
-        //validate the room still has capacity
-        if (
-          room.settings.maxUsers &&
-          Object.keys(room.users).length >= room.settings.maxUsers
-        ) {
-          socket.logger?.debug(
-            `User ${userId} tried to join a full room ${roomId}.`
-          );
-
-          joinRoomCallback(true, undefined, {
-            ROOM_FULL: "",
-          });
-          return;
-        }
-
-        //validate password if room is private AND user isn't host
-        if (
-          room.settings.access.visibility === "PRIVATE" &&
-          userId !== room.host?.id &&
-          password
-        ) {
-          //room password should never be undefined, but just in case, cast to empty string
-          const correctPassword = await bcrypt.compare(
-            password,
-            room.settings.access.password
-          );
-          if (!correctPassword) {
-            socket.logger?.info(
-              `User ${userId} submitted the wrong password to room ${roomId}.`
-            );
-            joinRoomCallback(true, undefined, { WRONG_PASSWORD: "" });
-            return;
-          }
-        }
-        /**
-         * User is successfully joining the room at this point.
-         */
-
-        // if this room is scheduled for deletion, don't delete it
-        await stores.rooms.persistRoom(roomId);
-
-        //add user to room
-        socket.logger?.info(`User ${user.userName} joining room ${roomId}.`);
-
-        const extraData: Record<string, string> = {};
-
-        const newUser: boolean = userJoinRoom(room, user);
-        if (!newUser) {
-          extraData["EXISTING_USER_INFO"] = userId;
-        }
-
-        //write room to room store
-        await stores.rooms.setRoom(room);
-
-        // formally add this socket connection to the room and call the join callback.
-        // this callback (for now) should have all of the room data the user needs, so they are excluded from the following broadcast event.
-        socket.join(roomId);
-        socket.roomId = roomId;
-        joinRoomCallback(true, room, extraData);
-
-        // broadcast update to all other users
-        io.to(roomId)
-          .except(userId)
-          .emit(SOCKET_SERVER.USER_JOINED, room.users[userId]);
-        // if room is started, need to update solves object
-        const currentSolve = getLatestSolve(room);
-        if (
-          room.state === "STARTED" &&
-          !room.settings.teamSettings.teamsEnabled &&
-          currentSolve
-        ) {
-          io.to(roomId)
-            .except(userId)
-            .emit(SOCKET_SERVER.SOLVE_UPDATE, currentSolve);
-        }
-      }
-    );
-
-    /**
-     * Upon host pressing skip scramble button
-     */
-    socket.on(SOCKET_CLIENT.NEW_SCRAMBLE, async () => {
-      const room = await getSocketRoom();
-      if (!room) return;
-
-      const currentSolve = getLatestSolve(room);
-      if (room.state != "STARTED") {
-        socket.logger?.debug(
-          `Cannot skip scramble when room state is ${room.state}`
-        );
-      } else if (!currentSolve) {
-        socket.logger?.debug(
-          `Cannot skip scramble when there is no current solve.`
-        );
-      } else {
-        await resetSolve(room);
-        await stores.rooms.setRoom(room);
-        io.to(room.id).emit(SOCKET_SERVER.SOLVE_RESET, currentSolve);
-      }
-    });
-
-    socket.on(SOCKET_CLIENT.FORCE_NEXT_SOLVE, async () => {
-      const room = await getSocketRoom();
-      if (!room) return;
-
-      if (room.state == "STARTED") {
-        await handleSolveFinished(room);
-        await stores.rooms.setRoom(room);
-      } else {
-        socket.logger?.info(
-          `Cannot force next solve when room state is ${room.state}`
-        );
-      }
-    });
-
-    socket.on(SOCKET_CLIENT.BAN_USER, async (userId: string) => {
-      const room = await getSocketRoom();
-      if (!room || !(await userIsHost())) return;
-
-      const banUser = room?.users[userId];
-      if (!banUser) return;
-      banUser.banned = true;
-
-      await stores.rooms.setRoom(room);
-      //broadcast user update to the rest of the room
-      io.to(room.id).emit(SOCKET_SERVER.USER_BANNED, userId);
-    });
-
-    socket.on(SOCKET_CLIENT.UNBAN_USER, async (userId: string) => {
-      const room = await getSocketRoom();
-      if (!room || !(await userIsHost())) return;
-
-      const unbanUser = room?.users[userId];
-      if (!unbanUser) return;
-      unbanUser.banned = false;
-
-      await stores.rooms.setRoom(room);
-      //broadcast user update to the rest of the room
-      io.to(room.id).emit(SOCKET_SERVER.USER_UNBANNED, userId);
-    });
-
-    socket.on(SOCKET_CLIENT.KICK_USER, async (userId: string) => {
-      const room = await getSocketRoom();
-      if (!room || !(await userIsHost())) return;
-
-      const kickUser = room?.users[userId];
-      if (!kickUser) return;
-
-      const kickUserSockets = socketIntersection(userId, room.id);
-
-      // Emit to each socket in the intersection
-      kickUserSockets.forEach((kickUserSocketId: string) => {
-        io.to(kickUserSocketId).emit(SOCKET_SERVER.USER_KICKED);
-      });
-
-      //we do not have to send anything to others - the kicked user will room DC, and that will broadcast to all users immediatley.
-    });
-
-    /**
-     * Upon host starting the room
-     */
-    socket.on(SOCKET_CLIENT.START_ROOM, async () => {
-      const room = await getSocketRoom();
-      if (room == null) return;
-
-      if (room.state == "WAITING" || room.state == "FINISHED") {
-        room.state = "STARTED";
-        const newSet = newRoomSet(room);
-        const newSolve = await newRoomSolve(room);
-
-        await stores.rooms.setRoom(room);
-        io.to(room.id).emit(SOCKET_SERVER.ROOM_STARTED);
-        if (room.settings.teamSettings.teamsEnabled) {
-          io.to(room.id).emit(SOCKET_SERVER.TEAMS_UPDATE, room.teams);
-        }
-        //manually remove the solve since we're sending it over the wire right after this - avoids duplicating
-        io.to(room.id).emit(SOCKET_SERVER.NEW_SET, { ...newSet, solves: [] });
-        io.to(room.id).emit(SOCKET_SERVER.NEW_SOLVE, newSolve);
-      } else {
-        socket.logger?.debug(
-          `Cannot start room when room state is ${room.state}`
-        );
-      }
-    });
-
-    /**
-     * Upon host pressing reset button
-     */
-    socket.on(SOCKET_CLIENT.RESET_ROOM, async () => {
-      const room = await getSocketRoom();
-      if (!room) return;
-
-      if (room.state == "STARTED" || room.state == "FINISHED") {
-        resetRoom(room);
-
-        await stores.rooms.setRoom(room);
-        io.to(room.id).emit(SOCKET_SERVER.ROOM_RESET);
-      } else {
-        socket.logger?.debug(
-          `Cannot reset room when room state is ${room.state}`
-        );
-      }
-    });
-
-    /**
-     * Upon host pressing rematch button
-     */
-    socket.on(SOCKET_CLIENT.REMATCH_ROOM, async () => {
-      const room = await getSocketRoom();
-      if (!room) return;
-
-      if (room.state == "FINISHED") {
-        resetRoom(room);
-
-        await stores.rooms.setRoom(room);
-        io.to(room.id).emit(SOCKET_SERVER.ROOM_RESET);
-      } else {
-        socket.logger?.debug(
-          `Cannot rematch room when room state is ${room.state}`
-        );
-      }
-    });
-
-    /**
-     * Upon user updating their status
-     */
-    socket.on(
-      SOCKET_CLIENT.UPDATE_SOLVE_STATUS,
-      async (newUserStatus: SolveStatus) => {
-        if (socket.roomId && socket.user) {
-          const room = await stores.rooms.getRoom(socket.roomId);
-          if (!room) return;
-
-          const currentUserStatus: SolveStatus =
-            room.users[socket.user?.userInfo.id].solveStatus;
-          if (newUserStatus !== currentUserStatus) {
-            socket.logger?.info(
-              `User ${socket.user?.userInfo.userName} submitted new user status ${newUserStatus} to room ${socket.roomId}`
-            );
-            room.users[socket.user?.userInfo.id].solveStatus = newUserStatus;
-
-            io.to(socket.roomId).emit(
-              SOCKET_SERVER.USER_STATUS_UPDATE,
-              userId,
-              newUserStatus
-            );
-
-            await stores.rooms.setRoom(room);
-          }
-        }
-      }
-    );
-
-    /**
-     * Upon user starting any live timer option (only keyboard as of now)
-     */
-    socket.on(SOCKET_CLIENT.START_LIVE_TIMER, async () => {
-      if (socket.roomId && socket.user) {
-        const room = await stores.rooms.getRoom(socket.roomId);
-        if (!room) return;
-
-        io.to(socket.roomId)
-          .except(userId)
-          .emit(SOCKET_SERVER.USER_START_LIVE_TIMER, userId);
-      }
-    });
-
-    /**
-     * Upon user stopping any live timer option (only keyboard as of now)
-     */
-    socket.on(SOCKET_CLIENT.STOP_LIVE_TIMER, async () => {
-      if (socket.roomId && socket.user) {
-        const room = await stores.rooms.getRoom(socket.roomId);
-        if (!room) return;
-
-        io.to(socket.roomId)
-          .except(userId)
-          .emit(SOCKET_SERVER.USER_STOP_LIVE_TIMER, userId);
-      }
-    });
-
-    /**
-     * Upon user submitting a new result
-     */
-    socket.on(
-      SOCKET_CLIENT.SUBMIT_RESULT,
-      async (result: IResult, onSuccessCallback?: () => void) => {
-        if (socket.roomId && socket.user) {
-          const room = await stores.rooms.getRoom(socket.roomId);
-          if (!room) return;
-
-          if (room.state !== "STARTED") {
-            socket.logger?.debug(
-              `User ${socket.user?.userInfo.id} tried to submit a result to ${socket.roomId} in the wrong room state. Ignoring message.`
-            );
-            return;
-          }
-          const currentSolve = getLatestSolve(room);
-          if (!currentSolve) {
-            socket.logger?.debug(
-              `User ${socket.user?.userInfo.id} tried to submit a result to ${socket.roomId} when there are no solves in the room.`
-            );
-            return;
-          }
-
-          const updatedTeam = processNewResult(
-            room,
-            socket.user.userInfo.id,
-            result
-          );
-
-          io.to(socket.roomId).emit(
-            SOCKET_SERVER.NEW_USER_RESULT,
-            userId,
-            result
-          );
-
-          if (updatedTeam !== undefined) {
-            io.to(socket.roomId).emit(SOCKET_SERVER.TEAM_UPDATE, updatedTeam);
-            // this is the wrong result!
-            io.to(socket.roomId).emit(
-              SOCKET_SERVER.NEW_RESULT,
-              updatedTeam.team.id,
-              currentSolve.solve.results[updatedTeam.team.id]
-            );
-          } else {
-            io.to(socket.roomId).emit(SOCKET_SERVER.NEW_RESULT, userId, result);
-          }
-
-          onSuccessCallback?.();
-
-          if (checkRoomSolveFinished(room)) {
-            await handleSolveFinished(room);
-          }
-          await stores.rooms.setRoom(room);
-        }
-      }
-    );
-
-    /**
-     * Upon host requesting a new team created
-     */
-    socket.on(
-      SOCKET_CLIENT.CREATE_TEAMS,
-      async (
-        teamNames: string[],
-        createTeamCallback: SocketCallback<undefined>
-      ) => {
-        const room = await getSocketRoom();
-        if (!room) {
-          createTeamCallback({ success: false, reason: "Room does not exist" });
-          return;
-        } else if (!(await userIsHost())) {
-          createTeamCallback({
-            success: false,
-            reason: "User is not host user",
-          });
-          return;
-        } else if (!room.settings.teamSettings.teamsEnabled) {
-          createTeamCallback({
-            success: false,
-            reason: "Teams mode is not enabled in this room",
-          });
-          return;
-        } else if (
-          room.settings.teamSettings.maxNumTeams &&
-          Object.keys(room.teams).length >=
-            room.settings.teamSettings.maxNumTeams
-        ) {
-          createTeamCallback({
-            success: false,
-            reason: "Maximum amount of teams already created",
-          });
-          return;
-        }
-
-        const newTeams = [] as IRoomTeam[];
-
-        for (const teamName of teamNames) {
-          if (
-            room.settings.teamSettings.maxNumTeams &&
-            Object.keys(room.teams).length >=
-              room.settings.teamSettings.maxNumTeams
-          ) {
-            break;
-          }
-          const newTeam = createTeam(room, teamName);
-          room.teams[newTeam.team.id] = newTeam;
-          newTeams.push(newTeam);
-        }
-
-        //persist to redis
-        await stores.rooms.setRoom(room);
-
-        //broadcast new team event
-        io.to(room.id).emit(SOCKET_SERVER.TEAMS_CREATED, newTeams);
-
-        createTeamCallback({ success: true, data: undefined });
-      }
-    );
-
-    /**
-     * Upon host requesting a team deleted
-     */
-    socket.on(SOCKET_CLIENT.DELETE_TEAM, async (teamId: string) => {
-      const room = await getSocketRoom();
-      if (
-        !room ||
-        !(await userIsHost()) ||
-        !room.settings.teamSettings.teamsEnabled
-      )
-        return;
-
-      delete room.teams[teamId];
-      await stores.rooms.setRoom(room);
-
-      io.to(room.id).emit(SOCKET_SERVER.TEAM_DELETED, teamId);
-    });
-
-    /**
-     * Upon user trying to join team
-     */
-    socket.on(
-      SOCKET_CLIENT.JOIN_TEAM,
-      async (teamId: string, joinTeamCallback: SocketCallback<undefined>) => {
-        const user = socket.user;
-        const room = await getSocketRoom();
-        if (!room || !user || !room.settings.teamSettings.teamsEnabled) return;
-
-        const response: SocketResponse<{
-          resetTeamResult: boolean;
-          attempt: IAttempt | undefined;
-        }> = await userJoinTeam(room, user.userInfo.id, teamId);
-
-        if (response.success) {
-          await stores.rooms.setRoom(room);
-
-          io.to(room.id).emit(
-            SOCKET_SERVER.USER_JOIN_TEAM,
-            room.users[user.userInfo.id],
-            room.teams[teamId],
-            response.data
-          );
-        }
-
-        joinTeamCallback({ ...response, data: undefined });
-      }
-    );
-
-    /**
-     * Upon user trying to leave team
-     */
-    socket.on(SOCKET_CLIENT.LEAVE_TEAM, async (teamId: string) => {
-      const user = socket.user;
-      const room = await getSocketRoom();
-      if (
-        !room ||
-        !user ||
-        !room.settings.teamSettings.teamsEnabled ||
-        !room.teams[teamId]
-      )
-        return;
-
-      await handleUserLeaveTeam(room, user.userInfo.id, teamId);
-    });
-    /**
-     * Upon user pressing compete/spectate button
-     */
-    socket.on(SOCKET_CLIENT.TOGGLE_COMPETING, async (competing: boolean) => {
-      if (socket.roomId && socket.user) {
-        const room = await stores.rooms.getRoom(socket.roomId);
-        if (
-          !room ||
-          room.users[socket.user?.userInfo.id].competing == competing
-        ) {
-          return;
-        }
-
-        if (room.settings.teamSettings.teamsEnabled) {
-          // users should never try to toggle their competing mode when in teams mode
-          socket.logger?.debug(
-            `User ${socket.user?.userInfo.id} tried to toggle competing status while teams is enabled in room ${socket.roomId}`
-          );
-          return;
-        }
-
-        room.users[socket.user?.userInfo.id].competing = competing;
-
-        io.to(socket.roomId).emit(
-          SOCKET_SERVER.USER_TOGGLE_COMPETING,
-          userId,
-          competing
-        );
-
-        // when user spectates, need to check if all competing users are done, then advance room
-        if (room.state === "STARTED") {
-          if (competing) {
-            //if user is now competing, we need to add an attempt for them if none exists yet. TODO
-            // right now, the only way the TOGGLE_COMPETING event is triggered is through the button on UI that only shows up in SOLO.
-            const currentSolve = getLatestSolve(room);
-
-            if (currentSolve && !currentSolve.solve.attempts[userId]) {
-              const attempt = newAttempt(
-                room,
-                currentSolve.solve.scrambles[0],
-                userId
-              );
-
-              if (attempt) {
-                io.to(socket.roomId).emit(
-                  SOCKET_SERVER.CREATE_ATTEMPT,
-                  userId,
-                  attempt
-                );
-              }
-            }
-          } else {
-            // if user is now spectating, we need to check if the room solve is finished and handle
-            if (checkRoomSolveFinished(room)) {
-              await handleSolveFinished(room);
-            }
-          }
-        }
-        await stores.rooms.setRoom(room);
-      }
-    });
-
-    /**
-     * User has left the room. Handle
-     */
-    socket.on(SOCKET_CLIENT.LEAVE_ROOM, async (roomId: string) => {
-      await handleRoomDisconnect(userId, roomId);
-    });
-
     /**
      * Upon socket disconnection - automatically trigger on client closing all webpages
+     *
+     * Since this is a special event, we don't want to move this to the event queue handler directly. It's worth manually queueing up LEAVE_ROOM here.
      */
-    socket.on(SOCKET_CLIENT.DISCONNECT, async () => {
+    socket.on("disconnect", async () => {
       //handle potential room DC
-      if (socket.roomId) {
-        await handleRoomDisconnect(userId, socket.roomId);
+      if (socket.data.roomId) {
+        // manually enqueue LEAVE ROOM event!
+        await stores.rooms.enqueueRoomEvent({
+          roomId: socket.data.roomId,
+          userId: userId,
+          socketId: socket.id,
+          event: "LEAVE_ROOM",
+          args: undefined,
+        } as RoomRedisEvent);
       }
 
       //handle user DC

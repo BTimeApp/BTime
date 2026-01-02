@@ -1,4 +1,4 @@
-import { IRoom } from "@/types/room";
+import { IRoom, RoomRedisEvent } from "@/types/room";
 import { Redis } from "ioredis";
 import { REDIS_KEY_REGISTRY } from "@/server/redis/key-registry";
 import { IRoomSummary, roomToSummary } from "@/types/room-listing-info";
@@ -9,11 +9,16 @@ import { RedisLogger } from "@/server/logging/logger";
  *
  * Keys used:
  *  - room:[roomId] -> JSON. JSON for rooms to stay simple and support modifying and querying small parts
+ *  - room:[roomId]:events -> Redis list (used as a queue). List of serialized (event name, ...args)
  *  - rooms -> a sorted set of all available rooms by creation/insertion time into redis. members are room IDs.
  */
 
 function roomKey(roomId: string) {
   return ROOM_KEY_PREFIX + roomId;
+}
+
+function roomEventKey(roomId: string) {
+  return ROOM_KEY_PREFIX + roomId + ":events";
 }
 
 const ROOMS_KEY = "rooms";
@@ -84,6 +89,7 @@ export async function createRoomStore(redis: Redis, subClient: Redis) {
     async deleteRoom(roomId: string) {
       const transaction = redis.multi();
       transaction.del(roomKey(roomId));
+      transaction.del(roomEventKey(roomId));
       transaction.zrem(ROOMS_KEY, roomId);
 
       await transaction.exec();
@@ -93,12 +99,14 @@ export async function createRoomStore(redis: Redis, subClient: Redis) {
       RedisLogger.debug({ roomId }, `Schedule room deletion`);
 
       await redis.expire(roomKey(roomId), ROOM_TIMEOUT_SECONDS);
+      await redis.expire(roomEventKey(roomId), ROOM_TIMEOUT_SECONDS);
     },
 
     async persistRoom(roomId: string) {
       RedisLogger.debug({ roomId }, `Persisting room`);
 
       await redis.persist(roomKey(roomId));
+      await redis.persist(roomEventKey(roomId));
     },
 
     async getRoomsPage(pageNumber: number, pageSize: number) {
@@ -153,6 +161,41 @@ export async function createRoomStore(redis: Redis, subClient: Redis) {
           "Error fetching JSON data in getRoomsPage"
         );
         throw error;
+      }
+    },
+
+    /**
+     * Pushes an event onto a room's queue.
+     * Noop if the room doesn't exist.
+     */
+    async enqueueRoomEvent(roomEvent: RoomRedisEvent) {
+      const { roomId, userId, socketId, event, args } = roomEvent;
+
+      const room = await this.getRoom(roomId);
+      if (!room) {
+        RedisLogger.warn(
+          {
+            roomId,
+          },
+          "Tried to push an event to non-existent room redis queue."
+        );
+        return;
+      } else {
+        try {
+          const eventData = JSON.stringify({
+            userId: userId,
+            socketId: socketId,
+            event: event,
+            args: args,
+          });
+          redis.lpush(roomEventKey(roomId), eventData);
+        } catch (e) {
+          const error = e as Error;
+          RedisLogger.error(
+            { roomEvent, error: error.message },
+            "Error when pushing event data onto room queue"
+          );
+        }
       }
     },
   };
