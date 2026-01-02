@@ -292,7 +292,7 @@ export const startSocketListener = (
      *
      * Since this is a special event, we don't want to move this to the event queue handler directly. It's worth manually queueing up LEAVE_ROOM here.
      */
-    socket.on("disconnect", async (reason: string) => {
+    socket.on("disconnect", async () => {
       //handle potential room DC
       if (socket.data.roomId) {
         // manually enqueue LEAVE ROOM event!
