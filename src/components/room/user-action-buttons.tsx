@@ -17,7 +17,7 @@ export function BanUserButton({
   const socket = useSocket();
 
   const banUser = useCallback(() => {
-    socket.emit(SOCKET_CLIENT.BAN_USER, userId);
+    socket.emit(SOCKET_CLIENT.BAN_USER, { userId });
     onClick?.();
   }, [socket, userId, onClick]);
 
@@ -37,7 +37,7 @@ export function KickUserButton({
 
   const kickUser = useCallback(() => {
     console.log(`Kicking user ${userId}`);
-    socket.emit(SOCKET_CLIENT.KICK_USER, userId);
+    socket.emit(SOCKET_CLIENT.KICK_USER, { userId });
     onClick?.();
   }, [socket, userId, onClick]);
 
@@ -56,7 +56,7 @@ export function UnbanUserButton({
   const socket = useSocket();
 
   const unbanUser = useCallback(() => {
-    socket.emit(SOCKET_CLIENT.UNBAN_USER, userId);
+    socket.emit(SOCKET_CLIENT.UNBAN_USER, { userId });
     onClick?.();
   }, [socket, userId, onClick]);
 

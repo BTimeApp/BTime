@@ -29,5 +29,8 @@
     "cac": "^6.7.14",
     "tsup": "^8.0.0",
     "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "cubing": "^0.58.0"
   }
 }

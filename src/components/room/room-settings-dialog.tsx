@@ -4,13 +4,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import RoomSettingsForm from "@/components/room/room-settings-form";
 import { useRoomStore } from "@/context/room-context";
-import { useParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RoomActionsForm from "@/components/room/room-actions-form";
 import { useSession } from "@/context/session-context";
+import { useSocket } from "@/context/socket-context";
+import { SOCKET_SERVER } from "@/types/socket_protocol";
 
 type RoomSettingsDialogProps = {
   children: React.ReactNode;
@@ -27,13 +28,26 @@ export default function RoomSettingsDialog({
   const maxUsers = useRoomStore((s) => s.maxUsers);
   const isUserHost = useRoomStore((s) => s.isUserHost);
 
-  const params = useParams<{ roomId: string }>();
-  const roomId = params.roomId;
-
   const [open, setOpen] = useState<boolean>(false);
+  const socket = useSocket();
+
   const closeDialogCallback = useCallback(() => {
     setOpen(false);
   }, []);
+
+  /**
+   * Closes the dialog when we recieve success event.
+   * Since setting the dialog as open or closed happens here, we have to put the listener here.
+   * Cannot use a callback b/c room event.
+   */
+  useEffect(() => {
+    if (!socket) return;
+    socket.on(SOCKET_SERVER.UPDATE_ROOM_USER_SUCCESS, closeDialogCallback);
+
+    return () => {
+      socket.off(SOCKET_SERVER.UPDATE_ROOM_USER_SUCCESS, closeDialogCallback);
+    };
+  }, [socket, closeDialogCallback]);
 
   const user = useSession();
 
@@ -64,9 +78,7 @@ export default function RoomSettingsDialog({
               raceSettings={raceSettings}
               teamSettings={teamSettings}
               maxUsers={maxUsers}
-              roomId={roomId}
               createNewRoom={false}
-              onUpdateCallback={closeDialogCallback}
               className="max-h-[60vh] overflow-y-auto"
             />
           </TabsContent>

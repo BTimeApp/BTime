@@ -1,9 +1,9 @@
-import { SmartTimer } from "./timer";
+import { BluetoothTimer } from "./timer";
 import { TimerRegistry } from "./timer-registry";
 import "./register-timers"; //register all timers
 export * from "./timer";
 
-export async function connectTimer(): Promise<SmartTimer> {
+export async function connectTimer(): Promise<BluetoothTimer> {
   const device = await navigator.bluetooth.requestDevice({
     filters: TimerRegistry.filters,
     optionalServices: TimerRegistry.services,

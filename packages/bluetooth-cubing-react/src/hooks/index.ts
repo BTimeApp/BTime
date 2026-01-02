@@ -1,1 +1,1 @@
-export * from "./use-smart-timer";
+export * from "./use-bluetooth-timer";

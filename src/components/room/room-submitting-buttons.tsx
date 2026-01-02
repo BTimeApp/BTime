@@ -10,16 +10,15 @@ function RoomSubmittingButtons() {
   const localResult = useRoomStore((s) => s.localResult);
   const resetLocalSolveStatus = useRoomStore((s) => s.resetLocalSolveStatus);
   const setLocalPenalty = useRoomStore((s) => s.setLocalPenalty);
-  const updateLocalSolveStatus = useRoomStore((s) => s.updateLocalSolveStatus);
   const socket = useSocket();
 
   const submitButtonRef = useRef<HTMLButtonElement>(null);
 
   const submitLocalResult = useCallback(() => {
-    socket.emit(SOCKET_CLIENT.SUBMIT_RESULT, localResult.toIResult(), () => {
-      updateLocalSolveStatus("SUBMIT_TIME");
+    socket.emit(SOCKET_CLIENT.SUBMIT_RESULT, {
+      result: localResult.toIResult(),
     });
-  }, [socket, localResult, updateLocalSolveStatus]);
+  }, [socket, localResult]);
 
   useEffect(() => {
     if (submitButtonRef.current) submitButtonRef.current.focus();

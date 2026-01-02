@@ -1,4 +1,4 @@
-import { SmartTimer } from "./timer";
+import { BluetoothTimer } from "./timer";
 
 interface TimerRegistryEntry {
   // all prefix this kind of timer can have
@@ -7,7 +7,7 @@ interface TimerRegistryEntry {
   primaryServices: BluetoothServiceUUID[];
 
   // provided connect, disconnect callbacks that the timer will automatically register
-  factory: (device: BluetoothDevice) => SmartTimer;
+  factory: (device: BluetoothDevice) => BluetoothTimer;
 }
 
 export const TimerRegistry = {
@@ -35,7 +35,9 @@ export const TimerRegistry = {
     this.services.push(...entry.primaryServices);
   },
 
-  findTimer(device: BluetoothDevice): ((device: BluetoothDevice) => SmartTimer) | null {
+  findTimer(
+    device: BluetoothDevice
+  ): ((device: BluetoothDevice) => BluetoothTimer) | null {
     //check for device existence and connect?
 
     for (const [namePrefix, registryEntry] of Object.entries(this.timerInfo)) {

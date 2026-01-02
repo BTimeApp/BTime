@@ -2,7 +2,12 @@ import express, { Request, Response } from "express";
 import { createServer } from "http";
 import next from "next";
 import { connectToDB } from "@/server/database/database";
-import { initSocket, SocketMiddleware } from "@/server/socket/init-socket";
+import {
+  createSocket,
+  setUpSocketMiddleware,
+  SocketMiddleware,
+  startSocketListener,
+} from "@/server/socket/init-socket";
 import { handleConfig } from "@/server/load-config";
 import { createAuthRouter } from "@/server/auth";
 import { api } from "@/server/api";
@@ -14,6 +19,7 @@ import { connectToRedis } from "@/server/redis/init-redis";
 import { createStores } from "@/server/redis/stores";
 import { isProd } from "@/server/server-objects";
 import { ServerLogger } from "@/server/logging/logger";
+import { RoomWorker } from "@/server/rooms/room-worker";
 
 export async function startServer(): Promise<void> {
   // handle config with dotenv
@@ -168,14 +174,17 @@ export async function startServer(): Promise<void> {
   // Set up api routes
   app.use("/api", api(dataStores));
 
-  // set up socket.io server listener
-  initSocket(
-    httpServer,
-    sessionMiddleware as SocketMiddleware,
-    pubClient,
-    subClient,
-    dataStores
-  );
+  /**
+   * Create socket.io server instance and the Room Worker (for managing Room Processors to handle room event queues).
+   * Circular dependency requires this order of operations
+   */
+  const io = createSocket(httpServer, pubClient, subClient);
+
+  setUpSocketMiddleware(io, sessionMiddleware as SocketMiddleware);
+
+  const roomWorker = new RoomWorker(dataClient, dataStores, io);
+
+  startSocketListener(io, dataStores, roomWorker);
 
   // Let Next.js handle all other requests
   app.use((req: Request, res: Response) => {
@@ -190,6 +199,6 @@ export async function startServer(): Promise<void> {
 
   // Create test rooms
   if (!isProd) {
-    await addDevExtras(dataStores);
+    await addDevExtras(dataStores, roomWorker);
   }
 }

@@ -1,7 +1,6 @@
 import { Socket } from "socket.io-client";
 import { Button } from "@/components/ui/button";
 import { useCallback } from "react";
-import { IRoom } from "@/types/room";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   Form,
@@ -24,20 +23,9 @@ const formSchema = z.object({
 type PasswordPromptProps = {
   socket: Socket;
   roomId: string;
-  userId: string; //require authenticated user
-  passwordValidationCallback: (
-    roomValid: boolean,
-    room?: IRoom,
-    extraData?: Record<string, string>
-  ) => void;
 };
 
-function PasswordPrompt({
-  socket,
-  roomId,
-  userId,
-  passwordValidationCallback,
-}: PasswordPromptProps) {
+function PasswordPrompt({ socket, roomId }: PasswordPromptProps) {
   // form schema
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -52,13 +40,12 @@ function PasswordPrompt({
     (values: z.infer<typeof formSchema>) => {
       if (!socket) return;
       //emit a socket event with roomId, userId, password, and onPasswordValid callback.
-      socket.emit(
-        SOCKET_CLIENT.JOIN_ROOM,
-        { roomId: roomId, userId: userId, password: values.password },
-        passwordValidationCallback
-      );
+      socket.emit(SOCKET_CLIENT.JOIN_ROOM, {
+        roomId: roomId,
+        password: values.password,
+      });
     },
-    [socket, roomId, userId, passwordValidationCallback]
+    [socket, roomId]
   );
 
   if (!socket.connected) {

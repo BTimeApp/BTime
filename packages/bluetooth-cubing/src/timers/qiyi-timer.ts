@@ -1,4 +1,4 @@
-import { SmartTimer, TimerState } from "./timer";
+import { BluetoothTimer, TimerState } from "./timer";
 
 /**
  * From cstimer (cs0x7f)
@@ -9,19 +9,19 @@ const QIYI_CHRCT_WRITE = "00000001-0000-1001-8001-00805f9b07d0";
 const QIYI_CHRCT_READ = "00000002-0000-1001-8001-00805f9b07d0";
 
 const QIYI_TIMER_STATE_ORDER = [
-    TimerState.IDLE,
-    TimerState.INSPECTION,
-    TimerState.GET_SET,
-    TimerState.RUNNING,
-    TimerState.FINISHED,
-    TimerState.STOPPED,
-    TimerState.DISCONNECT
-]
+  TimerState.IDLE,
+  TimerState.INSPECTION,
+  TimerState.GET_SET,
+  TimerState.RUNNING,
+  TimerState.FINISHED,
+  TimerState.STOPPED,
+  TimerState.DISCONNECT,
+];
 
 /**
  * TODO - implement QiyiTimer and add to registry
  */
-class QiyiTimer extends SmartTimer {
+class QiyiTimer extends BluetoothTimer {
   private readCharacteristic!: BluetoothRemoteGATTCharacteristic;
   private writeCharacteristic!: BluetoothRemoteGATTCharacteristic;
 

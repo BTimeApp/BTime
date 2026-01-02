@@ -1,6 +1,6 @@
 import {
   connectTimer,
-  SmartTimer,
+  BluetoothTimer,
   TimerEvent,
   TimerState,
 } from "@btime/bluetooth-cubing";
@@ -13,9 +13,9 @@ export type TimerEventCallback = (evt: TimerEvent) => void;
  * A zustand store to persistently keep track of a smart timer and use helpful related state.
  * This is essentially a re-write of the useSmartTimer() hook from the bluetooth lib, but as a zustand store.
  */
-export interface SmartTimerStore {
+export interface BluetoothTimerStore {
   connected: boolean;
-  timer: SmartTimer | null;
+  timer: BluetoothTimer | null;
   timerState: TimerState;
   currentDisplayTimeMS: number;
 
@@ -36,7 +36,7 @@ export interface SmartTimerStore {
  * If we need multiple concurrent bluetooth connections in the future,
  * we can expand this to the StoreApi pattern in room store.
  */
-const SmartTimerStore = createStore<SmartTimerStore>((set, get) => ({
+const BluetoothTimerStore = createStore<BluetoothTimerStore>((set, get) => ({
   // connection: null,
   connected: false,
   timer: null,
@@ -62,8 +62,10 @@ const SmartTimerStore = createStore<SmartTimerStore>((set, get) => ({
 
         if (event.state === TimerState.IDLE) set({ currentDisplayTimeMS: 0 });
 
-        if (event.state === TimerState.DISCONNECT)
+        if (event.state === TimerState.DISCONNECT) {
+          console.log("BLUETOOTH TIMER DISCONNECT EVENT");
           set({ timer: null, connected: false, currentDisplayTimeMS: 0 });
+        }
 
         get().eventCallbackRef.current?.(event);
       });
@@ -94,8 +96,8 @@ const SmartTimerStore = createStore<SmartTimerStore>((set, get) => ({
 }));
 
 // hook for piecewise access + free useShallow
-export function useSmartTimerStore<T>(
-  selector: (state: SmartTimerStore) => T
+export function useBluetoothTimerStore<T>(
+  selector: (state: BluetoothTimerStore) => T
 ): T {
-  return useStore(SmartTimerStore, useShallow(selector));
+  return useStore(BluetoothTimerStore, useShallow(selector));
 }

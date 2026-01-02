@@ -149,12 +149,10 @@ type RoomSettingsFormProps = {
   access: Access;
   raceSettings: RaceSettings;
   teamSettings: TeamSettings;
-  roomId?: string;
   maxUsers?: number;
   createNewRoom: boolean;
   submitButtonRef?: React.RefObject<HTMLButtonElement>;
   onCreateCallback?: (roomId: string) => void;
-  onUpdateCallback?: () => void;
   className?: string;
 };
 
@@ -164,12 +162,10 @@ export default function RoomSettingsForm({
   access,
   raceSettings,
   teamSettings,
-  roomId,
   maxUsers,
   createNewRoom,
   submitButtonRef,
   onCreateCallback,
-  onUpdateCallback,
   className,
 }: RoomSettingsFormProps) {
   const user = useSession();
@@ -227,16 +223,10 @@ export default function RoomSettingsForm({
           onCreateCallback
         );
       } else {
-        socket.emit(
-          SOCKET_CLIENT.UPDATE_ROOM,
-          roomSettings,
-          roomId,
-          user.userInfo.id,
-          onUpdateCallback
-        );
+        socket.emit(SOCKET_CLIENT.UPDATE_ROOM, { roomSettings });
       }
     },
-    [socket, user, createNewRoom, onCreateCallback, onUpdateCallback, roomId]
+    [socket, user, createNewRoom, onCreateCallback]
   );
 
   const onError = useCallback((errors: FieldErrors<FieldValues>) => {

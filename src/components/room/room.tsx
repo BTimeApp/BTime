@@ -4,7 +4,7 @@ import { RoomHeader } from "@/components/room/room-header";
 import { useRoomActions } from "@/context/room-context";
 import { useSession } from "@/context/session-context";
 import { useSocket } from "@/context/socket-context";
-import { IRoom } from "@/types/room";
+import { IRoom, USER_JOIN_FAILURE_REASON } from "@/types/room";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import RoomContent from "@/components/room/room-content";
@@ -12,9 +12,10 @@ import RoomEventHandler from "@/components/room/room-event-handler";
 import PasswordPrompt from "@/components/room/password-prompt";
 import LoginButton from "@/components/common/login-button";
 import { toast } from "sonner";
-import { SOCKET_CLIENT } from "@/types/socket_protocol";
+import { SOCKET_CLIENT, SOCKET_SERVER } from "@/types/socket_protocol";
 import PageWrapper from "@/components/common/page-wrapper";
 import LoadingSpinner from "@/components/common/loading-spinner";
+import { useSocketEvent } from "@/hooks/use-socket-event";
 
 export default function Room() {
   // grab the roomId from the URL (from "params")
@@ -29,65 +30,9 @@ export default function Room() {
   const { handleRoomUpdate, setUpLocalUserState, resetLocalSolveStatus } =
     useRoomActions();
 
-  const [isRoomValid, setIsRoomValid] = useState<boolean | null>(null);
-  const [isPasswordAuthenticated, setIsPasswordAuthenticated] = useState<
-    boolean | null
-  >(null);
+  const [userJoined, setUserJoined] = useState<boolean | null>(null);
 
   const router = useRouter();
-
-  /**
-   * We will send this callback to the websocket to call upon requested to join room.
-   */
-  const joinRoomCallback = useCallback(
-    (roomValid: boolean, room?: IRoom, extraData?: Record<string, string>) => {
-      if (!roomValid) {
-        setIsRoomValid(false);
-        toast.error("Room does not exist. Returning to home page.");
-        return;
-      } else {
-        setIsRoomValid(true);
-      }
-
-      if (room) {
-        // as long as a room object is returned, we consider the join attempt successful.
-        setIsPasswordAuthenticated(true);
-        handleRoomUpdate(room);
-        resetLocalSolveStatus();
-      }
-
-      // use extraData in case of failure
-      if (extraData) {
-        if (Object.keys(extraData).includes("WRONG_PASSWORD")) {
-          setIsPasswordAuthenticated(false);
-          toast.error("Wrong password entered. Try again.");
-        }
-
-        if (Object.keys(extraData).includes("USER_BANNED")) {
-          router.push("/");
-          toast.error("You are banned from this room.");
-        }
-
-        if (Object.keys(extraData).includes("EXISTING_USER_INFO")) {
-          //special process user info
-          setUpLocalUserState(room!.users[extraData["EXISTING_USER_INFO"]]);
-        }
-
-        if (Object.keys(extraData).includes("ROOM_FULL")) {
-          setIsRoomValid(false);
-          toast.error("The room is already full!");
-        }
-      }
-    },
-    [
-      handleRoomUpdate,
-      setUpLocalUserState,
-      resetLocalSolveStatus,
-      setIsPasswordAuthenticated,
-      setIsRoomValid,
-      router,
-    ]
-  );
 
   /**
    * Emit the join_room websocket event upon user login or room load.
@@ -114,16 +59,15 @@ export default function Room() {
     socket.on("disconnect", onDisconnect);
 
     // only join room upon login
-    socket.emit(
-      SOCKET_CLIENT.JOIN_ROOM,
-      { userId: user.userInfo.id, roomId: roomId, password: undefined },
-      joinRoomCallback
-    );
+    socket.emit(SOCKET_CLIENT.JOIN_ROOM, {
+      roomId: roomId,
+      password: undefined,
+    });
 
     return () => {
       // emit leave room
       if (socket && socket.connected) {
-        socket.emit(SOCKET_CLIENT.LEAVE_ROOM, roomId);
+        socket.emit(SOCKET_CLIENT.LEAVE_ROOM, { roomId });
       }
 
       socket.off("disconnect", onDisconnect);
@@ -131,13 +75,72 @@ export default function Room() {
 
     // ignore socket missing - we don't want to always rerun this on socket change
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId, user, joinRoomCallback]);
+  }, [roomId, user]);
 
-  useEffect(() => {
-    if (isRoomValid === false) {
-      router.push("/");
-    }
-  }, [router, isRoomValid]);
+  const handleInvalidRoom = useCallback(() => {
+    toast.error("Room does not exist. Returning to home page.");
+    router.push("/");
+  }, [router]);
+
+  const handleJoinRoomSuccess = useCallback(
+    ({ room, userId }: { room: IRoom; userId?: string }) => {
+      handleRoomUpdate(room);
+      resetLocalSolveStatus();
+
+      // is true when roomuser already exists (duplicate join or not first join)
+      if (userId) {
+        setUpLocalUserState(room.users[userId]);
+      }
+
+      setUserJoined(true);
+    },
+    [handleRoomUpdate, resetLocalSolveStatus, setUpLocalUserState]
+  );
+
+  const handleJoinRoomFail = useCallback(
+    ({ reason }: { reason: USER_JOIN_FAILURE_REASON }) => {
+      switch (reason) {
+        case USER_JOIN_FAILURE_REASON.ROOM_FULL:
+          toast.error("Room full. Routing to home page");
+          router.push("/");
+          break;
+        case USER_JOIN_FAILURE_REASON.USER_BANNED:
+          toast.error("You are banned from this room. Routing to home page");
+          router.push("/");
+          break;
+        case USER_JOIN_FAILURE_REASON.UNDEFINED_PASSWORD:
+          console.log("undefined password");
+          setUserJoined(false);
+          break;
+        case USER_JOIN_FAILURE_REASON.WRONG_PASSWORD:
+          toast.error("Wrong password entered. Try again.");
+          console.log("wrong password");
+          setUserJoined(false);
+          break;
+        default:
+          console.warn(
+            `Invalid reason for failing to join room: ${reason}. Routing to home page.`
+          );
+          router.push("/");
+      }
+    },
+    [router]
+  );
+
+  /**
+   * handle these room events in this component rather than in event handler (which should be after successful join)
+   */
+  useSocketEvent(socket, SOCKET_SERVER.INVALID_ROOM, handleInvalidRoom);
+  useSocketEvent(
+    socket,
+    SOCKET_SERVER.USER_JOIN_ROOM_USER_SUCCESS,
+    handleJoinRoomSuccess
+  );
+  useSocketEvent(
+    socket,
+    SOCKET_SERVER.USER_JOIN_ROOM_USER_FAIL,
+    handleJoinRoomFail
+  );
 
   // if not logged in, make the user log in first.
   if (!user) {
@@ -154,7 +157,7 @@ export default function Room() {
     );
   }
 
-  if (isPasswordAuthenticated === null && isRoomValid === null) {
+  if (userJoined == null) {
     return (
       <PageWrapper>
         <div className="flex flex-row h-full w-full items-center justify-center">
@@ -165,15 +168,10 @@ export default function Room() {
   }
 
   // if not password authenticated, render blank screen with dialog
-  if (!isPasswordAuthenticated) {
+  if (userJoined == false) {
     return (
       <PageWrapper>
-        <PasswordPrompt
-          socket={socket}
-          roomId={roomId}
-          userId={user.userInfo.id}
-          passwordValidationCallback={joinRoomCallback}
-        />
+        <PasswordPrompt socket={socket} roomId={roomId} />
       </PageWrapper>
     );
   }
