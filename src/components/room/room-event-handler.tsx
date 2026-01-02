@@ -183,6 +183,10 @@ export default function RoomEventHandler() {
     [user, handleLocalUserBanned, userBanned]
   );
 
+  const handleEventFail = useCallback(({ reason }: { reason: string }) => {
+    toast.error(reason);
+  }, []);
+
   const handleSocketDisconnect = useCallback(() => {
     toast.error("Socket disconnected...");
     window.location.href = "/";
@@ -264,6 +268,7 @@ export default function RoomEventHandler() {
   useSocketEvent(socket, SOCKET_SERVER.USER_BANNED, handleUserBanned);
   useSocketEvent(socket, SOCKET_SERVER.USER_UNBANNED, userUnbanned);
   useSocketEvent(socket, SOCKET_SERVER.NEW_HOST, setHostId);
+  useSocketEvent(socket, SOCKET_SERVER.USER_EVENT_FAIL, handleEventFail);
   useSocketEvent(socket, SOCKET_SERVER.DISCONNECT, handleSocketDisconnect);
 
   /**

@@ -182,7 +182,7 @@ export const SOCKET_CLIENT_CONFIG = {
    * User joins a team
    */
   JOIN_TEAM: {
-    args: {} as Record<string, never>,
+    args: {} as { teamId: string },
     logArgs: true,
     logLevel: "info",
     roomEventConfig: {
@@ -576,6 +576,11 @@ export enum SOCKET_SERVER {
    * A new host is assigned.
    */
   NEW_HOST = "NEW_HOST",
+
+  /**
+   * A generic event failure event
+   */
+  USER_EVENT_FAIL = "USER_EVENT_FAIL",
 
   /**
    * Disconnect the socket

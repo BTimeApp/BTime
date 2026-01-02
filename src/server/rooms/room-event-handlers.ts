@@ -1,4 +1,8 @@
-import { RoomEventHandlers, SOCKET_SERVER } from "@/types/socket_protocol";
+import {
+  RoomEventHandlers,
+  SOCKET_SERVER,
+  SocketResponse,
+} from "@/types/socket_protocol";
 import { RoomLogger } from "@/server/logging/logger";
 import {
   checkMatchFinished,
@@ -16,6 +20,7 @@ import {
   resetRoom,
   resetSolve,
   userJoinRoom,
+  userJoinTeam,
   userLeaveTeam,
 } from "@/lib/room";
 import { IRoom, RoomState, USER_JOIN_FAILURE_REASON } from "@/types/room";
@@ -25,6 +30,7 @@ import { RedisStores } from "../redis/stores";
 import { IRoomUser } from "@/types/room-participant";
 import { IUserInfo } from "@/types/user";
 import bcrypt from "bcrypt";
+import { IAttempt } from "@/types/solve";
 
 /**
  * A static list of handler functions for all possible room events.
@@ -348,7 +354,41 @@ export const ROOM_EVENT_HANDLERS = {
 
     io.to(room.id).emit(SOCKET_SERVER.TEAM_DELETED, args.teamId);
   },
-  JOIN_TEAM: async () => {},
+  JOIN_TEAM: async (io, stores, roomId, userId, socketId, args) => {
+    const socket = io.sockets.sockets.get(socketId);
+    if (!socket) {
+      RoomLogger.warn(
+        { roomId: roomId, userId: userId, socketId: socketId },
+        "Socket doesn't exist in submit result event"
+      );
+    }
+
+    const room = await stores.rooms.getRoom(roomId);
+    if (
+      !room ||
+      !room.users[userId] ||
+      !room.settings.teamSettings.teamsEnabled
+    )
+      return;
+
+    const response: SocketResponse<{
+      resetTeamResult: boolean;
+      attempt: IAttempt | undefined;
+    }> = await userJoinTeam(room, userId, args.teamId);
+
+    if (response.success) {
+      await stores.rooms.setRoom(room);
+
+      io.to(room.id).emit(
+        SOCKET_SERVER.USER_JOIN_TEAM,
+        room.users[userId],
+        room.teams[args.teamId],
+        response.data
+      );
+    } else {
+      socket?.emit(SOCKET_SERVER.USER_EVENT_FAIL, { reason: response.reason });
+    }
+  },
   LEAVE_TEAM: async (io, stores, roomId, userId, socketId, args) => {
     const room = await stores.rooms.getRoom(roomId);
     if (

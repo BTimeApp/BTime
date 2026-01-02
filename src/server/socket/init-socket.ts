@@ -14,7 +14,6 @@ import {
   checkMatchFinished,
   findMatchWinners,
   createTeam,
-  userJoinTeam,
   userLeaveTeam,
   getLatestSolve,
   getLatestSet,
@@ -31,12 +30,10 @@ import {
   SOCKET_SERVER,
   SocketCallback,
   SocketClientEventArgs,
-  SocketResponse,
 } from "@/types/socket_protocol";
 import Redis from "ioredis";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { RedisStores } from "@/server/redis/stores";
-import { IAttempt } from "@/types/solve";
 import { LogFn } from "pino";
 import { createSocketLogger, ServerLogger } from "@/server/logging/logger";
 import { isPinoLogLevel } from "@/types/log-levels";
@@ -624,36 +621,6 @@ export const startSocketListener = (
         io.to(room.id).emit(SOCKET_SERVER.TEAMS_CREATED, newTeams);
 
         createTeamCallback({ success: true, data: undefined });
-      }
-    );
-
-    /**
-     * Upon user trying to join team
-     */
-    socket.on(
-      SOCKET_CLIENT.JOIN_TEAM,
-      async (teamId: string, joinTeamCallback: SocketCallback<undefined>) => {
-        const user = socket.data.user;
-        const room = await getSocketRoom();
-        if (!room || !user || !room.settings.teamSettings.teamsEnabled) return;
-
-        const response: SocketResponse<{
-          resetTeamResult: boolean;
-          attempt: IAttempt | undefined;
-        }> = await userJoinTeam(room, user.userInfo.id, teamId);
-
-        if (response.success) {
-          await stores.rooms.setRoom(room);
-
-          io.to(room.id).emit(
-            SOCKET_SERVER.USER_JOIN_TEAM,
-            room.users[user.userInfo.id],
-            room.teams[teamId],
-            response.data
-          );
-        }
-
-        joinTeamCallback({ ...response, data: undefined });
       }
     );
 
