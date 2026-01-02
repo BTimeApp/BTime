@@ -18,6 +18,7 @@ type RoomEventHandlerFunction<TArgs> = (
   stores: RedisStores,
   roomId: string,
   userId: string,
+  socketId: string,
   args: TArgs
 ) => Promise<void>;
 
@@ -516,9 +517,24 @@ export enum SOCKET_SERVER {
   NEW_SET = "NEW_SET",
 
   /**
-   * Broadcast that a user joined the room (not necessarily for the first time)
+   * Send to a specific user to notify that the room they are in/trying to join doesn't exist/is invalid
    */
-  USER_JOINED = "USER_JOINED",
+  INVALID_ROOM = "INVALID_ROOM",
+
+  /**
+   * Send only to specific user's socket to notify that they have succesfully joined room.
+   */
+  USER_JOIN_ROOM_USER_SUCCESS = "USER_JOIN_ROOM_USER_SUCCESS",
+
+  /**
+   * Send only to specific user's socket to notify that they cannot join the room (for some reason).
+   */
+  USER_JOIN_ROOM_USER_FAIL = "USER_JOIN_ROOM_USER_FAIL",
+
+  /**
+   * Broadcast that a new user has joined this room
+   */
+  USER_JOIN_ROOM = "USER_JOIN_ROOM",
 
   /**
    * This user is kicked. When a user receives this, they are kicked.

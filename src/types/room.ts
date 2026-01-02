@@ -473,6 +473,16 @@ export interface IRoomSettings {
 export type RoomRedisEvent = {
   roomId: string; // although we don't need the roomId upon reading the event, we need it when writing to perform validation
   userId: string;
+  socketId: string; // required for events where we need the exact socket connection (protect against users logged in on multiple tabs)
   event: string;
   args: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 };
+
+/**
+ * Defines all possible reasons that a user could fail to join the room
+ */
+export enum USER_JOIN_FAILURE_REASON {
+  WRONG_PASSWORD,
+  USER_BANNED,
+  ROOM_FULL,
+}

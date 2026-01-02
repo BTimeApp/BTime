@@ -88,7 +88,14 @@ export class RoomProcessor {
 
     const handler = ROOM_EVENT_HANDLERS[event.event];
 
-    await handler(this.io, this.stores, this.roomId, event.userId, event.args);
+    await handler(
+      this.io,
+      this.stores,
+      this.roomId,
+      event.userId,
+      event.socketId,
+      event.args
+    );
   }
 
   stop() {

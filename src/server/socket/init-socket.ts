@@ -17,19 +17,16 @@ import {
   userJoinTeam,
   userLeaveTeam,
   processNewResult,
-  userJoinRoom,
   getLatestSolve,
   getLatestSet,
   newRoomSet,
 } from "@/lib/room";
-import { IUser, IUserInfo } from "@/types/user";
 import { IRoomTeam, IRoomUser } from "@/types/room-participant";
 import { IResult } from "@/types/result";
 import { ServerResponse } from "http";
 import { NextFunction } from "express";
 import { ObjectId } from "bson";
 import passport from "passport";
-import bcrypt from "bcrypt";
 import {
   SOCKET_CLIENT,
   SOCKET_CLIENT_CONFIG,
@@ -42,7 +39,7 @@ import Redis from "ioredis";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { RedisStores } from "@/server/redis/stores";
 import { IAttempt } from "@/types/solve";
-import { LogFn, Logger } from "pino";
+import { LogFn } from "pino";
 import { createSocketLogger, ServerLogger } from "@/server/logging/logger";
 import { isPinoLogLevel } from "@/types/log-levels";
 import { RoomWorker } from "@/server/rooms/room-worker";
@@ -426,7 +423,9 @@ export const startSocketListener = (
         socket.on(
           clientEvent,
           async (args: SocketClientEventArgs[typeof key]) => {
-            const roomId = socket.data.roomId;
+            const roomId =
+              socket.data.roomId ||
+              (args as { roomId?: string } | null)?.roomId;
             const userId = socket.data.user?.userInfo.id;
 
             // TODO - consider sending invalid argument events to the frontend?
@@ -445,6 +444,7 @@ export const startSocketListener = (
                   const room = await stores.rooms.getRoom(roomId);
                   if (!room) {
                     ServerLogger.warn({ clientEvent }, "Room does not exist");
+                    socket.emit(SOCKET_SERVER.INVALID_ROOM);
                     return;
                   }
                   break;
@@ -452,7 +452,10 @@ export const startSocketListener = (
                 case "ROOMUSER_EXISTS": {
                   const room = await stores.rooms.getRoom(roomId);
                   if (!room) {
-                    ServerLogger.warn({ clientEvent }, "Room does not exist");
+                    ServerLogger.warn(
+                      { clientEvent },
+                      "Roomuser does not exist"
+                    );
 
                     return;
                   }
@@ -494,6 +497,7 @@ export const startSocketListener = (
             await stores.rooms.enqueueRoomEvent({
               roomId: roomId,
               userId: userId,
+              socketId: socket.id,
               event: clientEvent,
               args: args,
             } as RoomRedisEvent);
@@ -560,157 +564,6 @@ export const startSocketListener = (
 
         // upon successful update, call success callback
         onSuccessCallback?.();
-      }
-    );
-
-    socket.on(
-      SOCKET_CLIENT.JOIN_ROOM,
-      async (
-        {
-          roomId,
-          userId,
-          password,
-        }: {
-          roomId: string;
-          userId: string;
-          password?: string;
-        },
-        joinRoomCallback: (
-          roomValid: boolean,
-          room?: IRoom,
-          extraData?: Record<string, string>
-        ) => void
-      ) => {
-        //validate real user
-        const user: IUserInfo | null = await stores.users.getUser(userId);
-        if (!user) {
-          socket.data.logger?.debug(
-            `Nonexistent user with id ${userId} attempting to join room ${roomId}.`
-          );
-          return;
-        }
-
-        //validate real room
-        const room = await stores.rooms.getRoom(roomId);
-        if (!room) {
-          socket.data.logger?.debug(
-            `User ${userId} trying to join nonexistent room ${roomId}`
-          );
-          joinRoomCallback(false, undefined, { INVALID_ROOM: "" });
-          return;
-        }
-
-        //validate user isn't banned
-        if (
-          Object.keys(room.users).includes(userId) &&
-          room.users[userId].banned
-        ) {
-          socket.data.logger?.debug(
-            `Banned user ${userId} trying to join room ${roomId}.`
-          );
-
-          joinRoomCallback(true, undefined, {
-            USER_BANNED: "",
-          });
-          return;
-        }
-
-        //validate user is not already (active) in this room
-        if (
-          Object.keys(room.users).includes(userId) &&
-          room.users[userId].active
-        ) {
-          socket.data.logger?.debug(
-            `User ${userId} double join in room ${roomId}.`
-          );
-
-          // precautionary persist - there is currently a race condition
-          await stores.rooms.persistRoom(room.id);
-
-          joinRoomCallback(true, room, {
-            DUPLICATE_JOIN: "",
-            EXISTING_USER_INFO: userId,
-          });
-          return;
-        }
-
-        //validate the room still has capacity
-        if (
-          room.settings.maxUsers &&
-          Object.keys(room.users).length >= room.settings.maxUsers
-        ) {
-          socket.data.logger?.debug(
-            `User ${userId} tried to join a full room ${roomId}.`
-          );
-
-          joinRoomCallback(true, undefined, {
-            ROOM_FULL: "",
-          });
-          return;
-        }
-
-        //validate password if room is private AND user isn't host
-        if (
-          room.settings.access.visibility === "PRIVATE" &&
-          userId !== room.host?.id &&
-          password
-        ) {
-          //room password should never be undefined, but just in case, cast to empty string
-          const correctPassword = await bcrypt.compare(
-            password,
-            room.settings.access.password
-          );
-          if (!correctPassword) {
-            socket.data.logger?.info(
-              `User ${userId} submitted the wrong password to room ${roomId}.`
-            );
-            joinRoomCallback(true, undefined, { WRONG_PASSWORD: "" });
-            return;
-          }
-        }
-        /**
-         * User is successfully joining the room at this point.
-         */
-
-        // if this room is scheduled for deletion, don't delete it
-        await stores.rooms.persistRoom(roomId);
-
-        //add user to room
-        socket.data.logger?.info(
-          `User ${user.userName} joining room ${roomId}.`
-        );
-
-        const extraData: Record<string, string> = {};
-
-        const newUser: boolean = userJoinRoom(room, user);
-        if (!newUser) {
-          extraData["EXISTING_USER_INFO"] = userId;
-        }
-
-        //write room to room store
-        await stores.rooms.setRoom(room);
-
-        // formally add this socket connection to the room and call the join callback.
-        // this callback (for now) should have all of the room data the user needs, so they are excluded from the following broadcast event.
-        socket.join(roomId);
-        socket.data.roomId = roomId;
-        joinRoomCallback(true, room, extraData);
-
-        // broadcast update to all other users
-        io.to(roomId)
-          .except(userId)
-          .emit(SOCKET_SERVER.USER_JOINED, room.users[userId]);
-        // if room is started, need to update solves object
-        const currentSolve = getLatestSolve(room);
-        if (
-          room.state === "STARTED" &&
-          !room.settings.teamSettings.teamsEnabled &&
-          currentSolve
-        ) {
-          io.to(roomId)
-            .except(userId)
-            .emit(SOCKET_SERVER.SOLVE_UPDATE, currentSolve);
-        }
       }
     );
 
@@ -875,6 +728,7 @@ export const startSocketListener = (
      * Upon socket disconnection - automatically trigger on client closing all webpages
      */
     socket.on("disconnect", async () => {
+      ServerLogger.info({ socketData: socket.data }, "Socket disconnect event");
       //handle potential room DC
       if (socket.data.roomId) {
         await handleRoomDisconnect(userId, socket.data.roomId);

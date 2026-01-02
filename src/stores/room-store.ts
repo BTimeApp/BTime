@@ -114,7 +114,7 @@ export type RoomStore = {
 
   userToggleCompeting: (userId: string, newCompeting: boolean) => void;
 
-  userJoin: (user: IRoomUser) => void;
+  userJoin: ({ user }: { user: IRoomUser }) => void;
 
   userUpdate: (user: IRoomUser) => void;
 
@@ -495,7 +495,7 @@ export function createRoomStore() {
               }
               state.users[userId].competing = newCompeting;
             }),
-          userJoin: (user: IRoomUser) =>
+          userJoin: ({ user }: { user: IRoomUser }) =>
             set((state) => {
               if (state.users[user.user.id]) {
                 // user rejoining - just set active to true

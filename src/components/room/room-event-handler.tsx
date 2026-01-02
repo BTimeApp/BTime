@@ -200,7 +200,7 @@ export default function RoomEventHandler() {
   /**
    * Trigger callbacks on socket events coming from server
    */
-  useSocketEvent(socket, SOCKET_SERVER.USER_JOINED, userJoin);
+  useSocketEvent(socket, SOCKET_SERVER.USER_JOIN_ROOM, userJoin);
   useSocketEvent(socket, SOCKET_SERVER.USER_UPDATE, userUpdate);
   useSocketEvent(
     socket,

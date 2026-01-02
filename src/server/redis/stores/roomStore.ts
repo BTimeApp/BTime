@@ -169,7 +169,7 @@ export async function createRoomStore(redis: Redis, subClient: Redis) {
      * Noop if the room doesn't exist.
      */
     async enqueueRoomEvent(roomEvent: RoomRedisEvent) {
-      const { roomId, userId, event, args } = roomEvent;
+      const { roomId, userId, socketId, event, args } = roomEvent;
 
       const room = await this.getRoom(roomId);
       if (!room) {
@@ -184,6 +184,7 @@ export async function createRoomStore(redis: Redis, subClient: Redis) {
         try {
           const eventData = JSON.stringify({
             userId: userId,
+            socketId: socketId,
             event: event,
             args: args,
           });

@@ -14,13 +14,16 @@ import {
   newRoomSolve,
   resetRoom,
   resetSolve,
+  userJoinRoom,
   userLeaveTeam,
 } from "@/lib/room";
-import { IRoom, RoomState } from "@/types/room";
+import { IRoom, RoomState, USER_JOIN_FAILURE_REASON } from "@/types/room";
 import { Server } from "socket.io";
 import { SolveStatus } from "@/types/status";
 import { RedisStores } from "../redis/stores";
 import { IRoomUser } from "@/types/room-participant";
+import { IUserInfo } from "@/types/user";
+import bcrypt from "bcrypt";
 
 /**
  * A static list of handler functions for all possible room events.
@@ -28,9 +31,154 @@ import { IRoomUser } from "@/types/room-participant";
  * This file should raise development-time errors if not synced properly with that list.
  */
 export const ROOM_EVENT_HANDLERS = {
-  JOIN_ROOM: async () => {},
+  JOIN_ROOM: async (io, stores, roomId, userId, socketId, args) => {
+    const socket = io.sockets.sockets.get(socketId);
+    if (!socket) {
+      RoomLogger.warn(
+        { roomId: roomId, userId: userId, socketId: socketId },
+        "Socket missing"
+      );
+      return;
+    }
+
+    const user: IUserInfo | null = await stores.users.getUser(userId);
+    if (!user) {
+      // Do not send any failures over socket in this case. It's possible for the user to just not be logged in yet
+      RoomLogger.debug(
+        { roomId: args.roomId, userId: userId },
+        "Nonexistent user attempting to join room."
+      );
+      return;
+    }
+
+    //validate real room
+    const room = await stores.rooms.getRoom(roomId);
+    if (!room) {
+      RoomLogger.debug(
+        { roomId: args.roomId, userId: userId },
+        "User trying to join nonexistent room"
+      );
+      io.to(userId).emit(SOCKET_SERVER.INVALID_ROOM);
+      return;
+    }
+
+    //validate user isn't banned
+    if (Object.keys(room.users).includes(userId) && room.users[userId].banned) {
+      RoomLogger.debug(
+        { roomId: args.roomId, userId: userId },
+        `Banned user trying to join room.`
+      );
+
+      io.to(roomId).emit(SOCKET_SERVER.USER_JOIN_ROOM_USER_FAIL, {
+        reason: USER_JOIN_FAILURE_REASON.USER_BANNED,
+      });
+      return;
+    }
+
+    //validate user is not already (active) in this room
+    if (Object.keys(room.users).includes(userId) && room.users[userId].active) {
+      RoomLogger.debug(
+        { roomId: roomId, userId: userId },
+        "User double join in room."
+      );
+
+      // precautionary persist
+      await stores.rooms.persistRoom(room.id);
+
+      io.to(userId).emit(SOCKET_SERVER.USER_JOIN_ROOM_USER_SUCCESS, {
+        room: room,
+        userId: userId,
+      });
+      socket.join(room.id);
+      socket.data.roomId = room.id;
+      return;
+    }
+
+    //validate the room still has capacity
+    if (
+      room.settings.maxUsers &&
+      Object.keys(room.users).length >= room.settings.maxUsers
+    ) {
+      RoomLogger.debug(
+        { roomId: roomId, userId: userId },
+        "User tried to join a full room."
+      );
+
+      io.to(roomId).emit(SOCKET_SERVER.USER_JOIN_ROOM_USER_FAIL, {
+        reason: USER_JOIN_FAILURE_REASON.ROOM_FULL,
+      });
+      return;
+    }
+
+    //validate password if room is private AND user isn't host
+    if (
+      room.settings.access.visibility === "PRIVATE" &&
+      userId !== room.host?.id &&
+      args.password
+    ) {
+      //room password should never be undefined, but just in case, cast to empty string
+      const correctPassword = await bcrypt.compare(
+        args.password,
+        room.settings.access.password
+      );
+      if (!correctPassword) {
+        RoomLogger.debug(
+          { roomId: roomId, userId: userId },
+          "User submitted wrong password to room"
+        );
+        io.to(roomId).emit(SOCKET_SERVER.USER_JOIN_ROOM_USER_FAIL, {
+          reason: USER_JOIN_FAILURE_REASON.WRONG_PASSWORD,
+        });
+        return;
+      }
+    }
+    /**
+     * User is successfully joining the room at this point.
+     */
+
+    // if this room is scheduled for deletion, don't delete it
+    await stores.rooms.persistRoom(roomId);
+
+    //add user to room
+    RoomLogger.info(
+      { roomId: roomId, userId: userId, userName: user.userName },
+      "User joining room."
+    );
+
+    // const extraData: Record<string, string> = {};
+
+    const newUser: boolean = userJoinRoom(room, user);
+
+    // write room to room store
+    await stores.rooms.setRoom(room);
+
+    // make socket connection join room, set room on socket
+    socket.join(room.id);
+    socket.data.roomId = room.id;
+
+    io.to(userId).emit(SOCKET_SERVER.USER_JOIN_ROOM_USER_SUCCESS, {
+      room: room,
+      userId: newUser ? undefined : userId,
+    });
+
+    // broadcast update to all other users
+    io.to(roomId)
+      .except(userId)
+      .emit(SOCKET_SERVER.USER_JOIN_ROOM, { user: room.users[userId] });
+    // if room is started, need to update solves object
+    const currentSolve = getLatestSolve(room);
+    if (
+      room.state === "STARTED" &&
+      !room.settings.teamSettings.teamsEnabled &&
+      currentSolve
+    ) {
+      io.to(roomId)
+        .except(userId)
+        .emit(SOCKET_SERVER.SOLVE_UPDATE, currentSolve);
+    }
+  },
   UPDATE_ROOM: async () => {},
-  UPDATE_SOLVE_STATUS: async (io, stores, roomId, userId, args) => {
+  UPDATE_SOLVE_STATUS: async (io, stores, roomId, userId, socketId, args) => {
     const room = await stores.rooms.getRoom(roomId);
     if (!room) return;
 
@@ -75,7 +223,7 @@ export const ROOM_EVENT_HANDLERS = {
       .emit(SOCKET_SERVER.USER_STOP_LIVE_TIMER, userId);
   },
 
-  TOGGLE_COMPETING: async (io, stores, roomId, userId, args) => {
+  TOGGLE_COMPETING: async (io, stores, roomId, userId, socketId, args) => {
     const room = await stores.rooms.getRoom(roomId);
 
     if (
@@ -133,7 +281,7 @@ export const ROOM_EVENT_HANDLERS = {
   SUBMIT_RESULT: async () => {},
 
   CREATE_TEAMS: async () => {},
-  DELETE_TEAM: async (io, stores, roomId, userId, args) => {
+  DELETE_TEAM: async (io, stores, roomId, userId, socketId, args) => {
     const room = await stores.rooms.getRoom(roomId);
     if (
       !room ||
@@ -148,7 +296,7 @@ export const ROOM_EVENT_HANDLERS = {
     io.to(room.id).emit(SOCKET_SERVER.TEAM_DELETED, args.teamId);
   },
   JOIN_TEAM: async () => {},
-  LEAVE_TEAM: async (io, stores, roomId, userId, args) => {
+  LEAVE_TEAM: async (io, stores, roomId, userId, socketId, args) => {
     const room = await stores.rooms.getRoom(roomId);
     if (
       !room ||
@@ -254,7 +402,7 @@ export const ROOM_EVENT_HANDLERS = {
     }
   },
 
-  KICK_USER: async (io, stores, roomId, userId, args) => {
+  KICK_USER: async (io, stores, roomId, userId, socketId, args) => {
     const room = await stores.rooms.getRoom(roomId);
     if (!room || !userIsHost(room, userId)) return;
 
@@ -273,7 +421,7 @@ export const ROOM_EVENT_HANDLERS = {
 
     // We do not have to send anything to others - the kicked user will room DC, and that will broadcast to all users immediatley.
   },
-  BAN_USER: async (io, stores, roomId, userId, args) => {
+  BAN_USER: async (io, stores, roomId, userId, socketId, args) => {
     const room = await stores.rooms.getRoom(roomId);
     if (!room || !(await userIsHost(room, userId))) return;
 
@@ -285,7 +433,7 @@ export const ROOM_EVENT_HANDLERS = {
     //broadcast user update to the rest of the room
     io.to(room.id).emit(SOCKET_SERVER.USER_BANNED, args.userId);
   },
-  UNBAN_USER: async (io, stores, roomId, userId, args) => {
+  UNBAN_USER: async (io, stores, roomId, userId, socketId, args) => {
     const room = await stores.rooms.getRoom(roomId);
     if (!room || !(await userIsHost(room, userId))) return;
 
@@ -298,8 +446,8 @@ export const ROOM_EVENT_HANDLERS = {
     io.to(room.id).emit(SOCKET_SERVER.USER_UNBANNED, args.userId);
   },
 
-  LEAVE_ROOM: async (io, stores, roomId, userId, args) => {
-    await handleRoomDisconnect(io, stores, args.roomId, userId);
+  LEAVE_ROOM: async (io, stores, roomId, userId, socketId, args) => {
+    await handleRoomDisconnect(io, stores, args.roomId, userId, socketId);
   },
 } satisfies RoomEventHandlers;
 
@@ -457,8 +605,17 @@ async function handleRoomDisconnect(
   io: Server,
   stores: RedisStores,
   roomId: string,
-  userId: string
+  userId: string,
+  socketId: string
 ) {
+  const socket = io.sockets.sockets.get(socketId);
+  if (!socket) {
+    RoomLogger.warn(
+      { roomId: roomId, userId: userId, socketId: socketId },
+      "Invalid socket in handle room disconnect"
+    );
+    return;
+  }
   RoomLogger.info(
     { roomId: roomId, userId: userId },
     `User disconnected from room`
@@ -529,13 +686,8 @@ async function handleRoomDisconnect(
   // write room to room store
   await stores.rooms.setRoom(room);
 
-  const sockets = await io.in(roomId).fetchSockets();
-  const userSockets = sockets.filter(
-    (x) => x.data.user?.userInfo.id === userId
-  );
-  for (const socket of userSockets) {
-    socket.leave(roomId);
-  }
+  socket.leave(roomId);
+  socket.data.roomId = undefined;
 }
 
 /**
