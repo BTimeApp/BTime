@@ -9,6 +9,7 @@ import { createRoom } from "@/lib/room";
 import { RedisStores } from "@/server/redis/stores";
 import { RedisLogger } from "@/server/logging/logger";
 import { RoomWorker } from "@/server/rooms/room-worker";
+import { setSearchDebug } from "cubing/search";
 
 async function addTestRooms(stores: RedisStores, roomWorker: RoomWorker) {
   for (let i = 30; i > 0; i--) {
@@ -55,11 +56,19 @@ async function addTestRooms(stores: RedisStores, roomWorker: RoomWorker) {
   }
 }
 
+function disableCubingSearchPrintout() {
+  // https://js.cubing.net/cubing/scramble/
+  setSearchDebug({
+    logPerf: false, // Disable console info like scramble generation durations.
+  });
+}
+
 export default async function addDevExtras(
   stores: RedisStores,
   roomWorker: RoomWorker
 ) {
   addTestRooms(stores, roomWorker);
+  disableCubingSearchPrintout();
 
   const handleServerClose = async () => {
     RedisLogger.info("Cleaning up Redis before exit...");
