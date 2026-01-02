@@ -79,7 +79,8 @@ export default function Room() {
 
   const handleInvalidRoom = useCallback(() => {
     toast.error("Room does not exist. Returning to home page.");
-  }, []);
+    router.push("/");
+  }, [router]);
 
   const handleJoinRoomSuccess = useCallback(
     ({ room, userId }: { room: IRoom; userId?: string }) => {
