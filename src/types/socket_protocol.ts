@@ -2,6 +2,7 @@ import { RedisStores } from "@/server/redis/stores";
 import { LogLevel } from "@/types/log-levels";
 import { Server } from "socket.io";
 import { SolveStatus } from "./status";
+import { IResult } from "./result";
 
 /**
  * TODO - find a way to move the validation functions in here so we can just run .apply() on each or something
@@ -142,7 +143,7 @@ export const SOCKET_CLIENT_CONFIG = {
    * User submits a result to the backend
    */
   SUBMIT_RESULT: {
-    args: {} as Record<string, never>,
+    args: {} as { result: IResult },
     logArgs: true,
     logLevel: "info",
     roomEventConfig: {
@@ -565,6 +566,11 @@ export enum SOCKET_SERVER {
    * Broadcast a new result
    */
   NEW_RESULT = "NEW_RESULT",
+
+  /**
+   * Event used as a response to specific user telling them that their submit result succeeded.
+   */
+  USER_SUBMIT_RESULT_USER_SUCCESS = "USER_SUBMIT_RESULT_USER_SUCCESS",
 
   /**
    * A new host is assigned.

@@ -47,6 +47,7 @@ export default function RoomEventHandler() {
     deleteAttempt,
     addNewSolve,
     updateLatestSolve,
+    updateLocalSolveStatus,
     addNewSet,
     finishSolve,
     finishSet,
@@ -119,6 +120,10 @@ export default function RoomEventHandler() {
   /**
    * Callbacks for socket events
    */
+
+  const handleUserSubmitResultSuccess = useCallback(() => {
+    updateLocalSolveStatus("SUBMIT_TIME");
+  }, [updateLocalSolveStatus]);
 
   const handleUserStartLiveTimer = useCallback(
     (userId: string) => {
@@ -238,6 +243,12 @@ export default function RoomEventHandler() {
   useSocketEvent(socket, SOCKET_SERVER.ROOM_STARTED, startRoom);
   useSocketEvent(socket, SOCKET_SERVER.ROOM_UPDATE, handleRoomUpdate);
   useSocketEvent(socket, SOCKET_SERVER.ROOM_RESET, resetRoom);
+
+  useSocketEvent(
+    socket,
+    SOCKET_SERVER.USER_SUBMIT_RESULT_USER_SUCCESS,
+    handleUserSubmitResultSuccess
+  );
 
   useSocketEvent(socket, SOCKET_SERVER.RESET_LOCAL_SOLVE, resetLocalSolve);
 

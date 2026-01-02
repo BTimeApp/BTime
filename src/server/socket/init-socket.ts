@@ -16,13 +16,11 @@ import {
   createTeam,
   userJoinTeam,
   userLeaveTeam,
-  processNewResult,
   getLatestSolve,
   getLatestSet,
   newRoomSet,
 } from "@/lib/room";
 import { IRoomTeam, IRoomUser } from "@/types/room-participant";
-import { IResult } from "@/types/result";
 import { ServerResponse } from "http";
 import { NextFunction } from "express";
 import { ObjectId } from "bson";
@@ -564,71 +562,6 @@ export const startSocketListener = (
 
         // upon successful update, call success callback
         onSuccessCallback?.();
-      }
-    );
-
-    /**
-     * Upon user submitting a new result
-     */
-    socket.on(
-      SOCKET_CLIENT.SUBMIT_RESULT,
-      async (result: IResult, onSuccessCallback?: () => void) => {
-        if (socket.data.roomId && socket.data.user) {
-          const room = await stores.rooms.getRoom(socket.data.roomId);
-          if (!room) return;
-
-          if (room.state !== "STARTED") {
-            socket.data.logger?.debug(
-              `User ${socket.data.user?.userInfo.id} tried to submit a result to ${socket.data.roomId} in the wrong room state. Ignoring message.`
-            );
-            return;
-          }
-          const currentSolve = getLatestSolve(room);
-          if (!currentSolve) {
-            socket.data.logger?.debug(
-              `User ${socket.data.user?.userInfo.id} tried to submit a result to ${socket.data.roomId} when there are no solves in the room.`
-            );
-            return;
-          }
-
-          const updatedTeam = processNewResult(
-            room,
-            socket.data.user.userInfo.id,
-            result
-          );
-
-          io.to(socket.data.roomId).emit(
-            SOCKET_SERVER.NEW_USER_RESULT,
-            userId,
-            result
-          );
-
-          if (updatedTeam !== undefined) {
-            io.to(socket.data.roomId).emit(
-              SOCKET_SERVER.TEAM_UPDATE,
-              updatedTeam
-            );
-            // this is the wrong result!
-            io.to(socket.data.roomId).emit(
-              SOCKET_SERVER.NEW_RESULT,
-              updatedTeam.team.id,
-              currentSolve.solve.results[updatedTeam.team.id]
-            );
-          } else {
-            io.to(socket.data.roomId).emit(
-              SOCKET_SERVER.NEW_RESULT,
-              userId,
-              result
-            );
-          }
-
-          onSuccessCallback?.();
-
-          if (checkRoomSolveFinished(room)) {
-            await handleSolveFinished(room);
-          }
-          await stores.rooms.setRoom(room);
-        }
       }
     );
 

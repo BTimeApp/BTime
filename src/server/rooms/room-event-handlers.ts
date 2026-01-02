@@ -12,6 +12,7 @@ import {
   newAttempt,
   newRoomSet,
   newRoomSolve,
+  processNewResult,
   resetRoom,
   resetSolve,
   userJoinRoom,
@@ -278,7 +279,59 @@ export const ROOM_EVENT_HANDLERS = {
     await stores.rooms.setRoom(room);
   },
 
-  SUBMIT_RESULT: async () => {},
+  SUBMIT_RESULT: async (io, stores, roomId, userId, socketId, args) => {
+    const socket = io.sockets.sockets.get(socketId);
+    if (!socket) {
+      RoomLogger.warn(
+        { roomId: roomId, userId: userId, socketId: socketId },
+        "Socket doesn't exist in submit result event"
+      );
+    }
+
+    const room = await stores.rooms.getRoom(roomId);
+    if (!room) return;
+
+    if (room.state !== "STARTED") {
+      RoomLogger.warn(
+        { roomId: roomId, userId: userId, roomState: room.state },
+        "Illegal room state to submit a result."
+      );
+      return;
+    }
+    const currentSolve = getLatestSolve(room);
+    if (!currentSolve) {
+      RoomLogger.warn(
+        { roomId: roomId, userId: userId },
+        "User tried to submit a result when there are no solves in room."
+      );
+      return;
+    }
+
+    const updatedTeam = processNewResult(room, userId, args.result);
+
+    // broadcast new user result (user result map)
+    io.to(roomId).emit(SOCKET_SERVER.NEW_USER_RESULT, userId, args.result);
+
+    // broadcast result as needed to actual results
+    if (updatedTeam !== undefined) {
+      io.to(roomId).emit(SOCKET_SERVER.TEAM_UPDATE, updatedTeam);
+
+      io.to(roomId).emit(
+        SOCKET_SERVER.NEW_RESULT,
+        updatedTeam.team.id,
+        currentSolve.solve.results[updatedTeam.team.id]
+      );
+    } else {
+      io.to(roomId).emit(SOCKET_SERVER.NEW_RESULT, userId, args.result);
+    }
+
+    socket?.emit(SOCKET_SERVER.USER_SUBMIT_RESULT_USER_SUCCESS);
+
+    if (checkRoomSolveFinished(room)) {
+      await handleSolveFinished(io, room);
+    }
+    await stores.rooms.setRoom(room);
+  },
 
   CREATE_TEAMS: async () => {},
   DELETE_TEAM: async (io, stores, roomId, userId, socketId, args) => {
