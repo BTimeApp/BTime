@@ -67,7 +67,11 @@ export class RoomProcessor {
         }
       } catch (error) {
         RoomLogger.error(
-          { roomId: this.roomId, error: (error as Error).message },
+          {
+            roomId: this.roomId,
+            error: (error as Error).message,
+            stackTrace: (error as Error).stack,
+          },
           "Room processor encountered error"
         );
       }

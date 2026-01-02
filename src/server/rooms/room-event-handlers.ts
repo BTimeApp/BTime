@@ -805,7 +805,6 @@ async function handleRoomDisconnect(
       { roomId: roomId, userId: userId, socketId: socketId },
       "Invalid socket in handle room disconnect"
     );
-    return;
   }
   RoomLogger.info(
     { roomId: roomId, userId: userId },
@@ -877,8 +876,10 @@ async function handleRoomDisconnect(
   // write room to room store
   await stores.rooms.setRoom(room);
 
-  socket.leave(roomId);
-  socket.data.roomId = undefined;
+  if (socket) {
+    socket?.leave(roomId);
+    socket.data.roomId = undefined;
+  }
 }
 
 /**

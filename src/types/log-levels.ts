@@ -8,7 +8,8 @@ export type LogLevel =
   | "info"
   | "warn"
   | "error"
-  | "fatal";
+  | "fatal"
+  | "dev"; // used only in dev. Don't ship any dev logs to prod
 
 export function isPinoLogLevel(
   level: LogLevel
