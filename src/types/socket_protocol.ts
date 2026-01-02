@@ -157,7 +157,7 @@ export const SOCKET_CLIENT_CONFIG = {
    * Host creates new teams. We force a batched creation to avoid race condition on server.
    */
   CREATE_TEAMS: {
-    args: {} as Record<string, never>,
+    args: {} as { teamNames: string[] },
     logArgs: true,
     logLevel: "info",
     roomEventConfig: {

@@ -9,6 +9,7 @@ import {
   checkRoomSolveFinished,
   checkRoomUpdateRequireReset,
   checkSetFinished,
+  createTeam,
   findMatchWinners,
   findSetWinners,
   finishRoomSolve,
@@ -29,7 +30,7 @@ import { IRoom, RoomState, USER_JOIN_FAILURE_REASON } from "@/types/room";
 import { Server } from "socket.io";
 import { SolveStatus } from "@/types/status";
 import { RedisStores } from "../redis/stores";
-import { IRoomUser } from "@/types/room-participant";
+import { IRoomTeam, IRoomUser } from "@/types/room-participant";
 import { IUserInfo } from "@/types/user";
 import bcrypt from "bcrypt";
 import { IAttempt } from "@/types/solve";
@@ -374,7 +375,61 @@ export const ROOM_EVENT_HANDLERS = {
     await stores.rooms.setRoom(room);
   },
 
-  CREATE_TEAMS: async () => {},
+  CREATE_TEAMS: async (io, stores, roomId, userId, socketId, args) => {
+    const socket = io.sockets.sockets.get(socketId);
+    if (!socket) {
+      RoomLogger.warn(
+        { roomId: roomId, userId: userId, socketId: socketId },
+        "Socket doesn't exist in create teams event"
+      );
+    }
+
+    const room = await stores.rooms.getRoom(roomId);
+    if (!room) {
+      socket?.emit(SOCKET_SERVER.INVALID_ROOM);
+      return;
+    } else if (!userIsHost(room, userId)) {
+      socket?.emit(SOCKET_SERVER.USER_EVENT_FAIL, "User is not host user.");
+      return;
+    } else if (!room.settings.teamSettings.teamsEnabled) {
+      socket?.emit(
+        SOCKET_SERVER.USER_EVENT_FAIL,
+        "Teams mode is not enabled in this room."
+      );
+
+      return;
+    } else if (
+      room.settings.teamSettings.maxNumTeams &&
+      Object.keys(room.teams).length >= room.settings.teamSettings.maxNumTeams
+    ) {
+      socket?.emit(
+        SOCKET_SERVER.USER_EVENT_FAIL,
+        "Maximum number of rooms already created."
+      );
+
+      return;
+    }
+
+    const newTeams = [] as IRoomTeam[];
+
+    for (const teamName of args.teamNames) {
+      if (
+        room.settings.teamSettings.maxNumTeams &&
+        Object.keys(room.teams).length >= room.settings.teamSettings.maxNumTeams
+      ) {
+        break;
+      }
+      const newTeam = createTeam(room, teamName);
+      room.teams[newTeam.team.id] = newTeam;
+      newTeams.push(newTeam);
+    }
+
+    //persist to redis
+    await stores.rooms.setRoom(room);
+
+    //broadcast new team event
+    io.to(room.id).emit(SOCKET_SERVER.TEAMS_CREATED, newTeams);
+  },
   DELETE_TEAM: async (io, stores, roomId, userId, socketId, args) => {
     const room = await stores.rooms.getRoom(roomId);
     if (
@@ -421,7 +476,9 @@ export const ROOM_EVENT_HANDLERS = {
         response.data
       );
     } else {
-      socket?.emit(SOCKET_SERVER.USER_EVENT_FAIL, { reason: response.reason });
+      socket?.emit(SOCKET_SERVER.USER_EVENT_FAIL, {
+        reason: `Failed to join team: \n${response.reason}`,
+      });
     }
   },
   LEAVE_TEAM: async (io, stores, roomId, userId, socketId, args) => {

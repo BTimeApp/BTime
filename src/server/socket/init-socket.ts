@@ -10,13 +10,12 @@ import {
   findSetWinners,
   checkMatchFinished,
   findMatchWinners,
-  createTeam,
   userLeaveTeam,
   getLatestSolve,
   getLatestSet,
   newRoomSet,
 } from "@/lib/room";
-import { IRoomTeam, IRoomUser } from "@/types/room-participant";
+import { IRoomUser } from "@/types/room-participant";
 import { ServerResponse } from "http";
 import { NextFunction } from "express";
 import { ObjectId } from "bson";
@@ -25,7 +24,6 @@ import {
   SOCKET_CLIENT,
   SOCKET_CLIENT_CONFIG,
   SOCKET_SERVER,
-  SocketCallback,
   SocketClientEventArgs,
 } from "@/types/socket_protocol";
 import Redis from "ioredis";
@@ -384,20 +382,6 @@ export const startSocketListener = (
       socket.data.roomId = undefined;
     }
 
-    async function getSocketRoom(): Promise<IRoom | null> {
-      if (!socket.data.roomId) return null;
-      return stores.rooms.getRoom(socket.data.roomId);
-    }
-
-    async function userIsHost(): Promise<boolean> {
-      const room = await getSocketRoom();
-      if (!room || !socket.data.user) return false;
-
-      return (
-        room.host != null && room.host.id === socket.data.user?.userInfo.id
-      );
-    }
-
     socket.use(createLoggingMiddleware(socket));
 
     /**
@@ -521,68 +505,6 @@ export const startSocketListener = (
         await stores.rooms.setRoom(room);
         roomWorker.startRoomProcessor(roomId);
         callback(roomId);
-      }
-    );
-
-    /**
-     * Upon host requesting a new team created
-     */
-    socket.on(
-      SOCKET_CLIENT.CREATE_TEAMS,
-      async (
-        teamNames: string[],
-        createTeamCallback: SocketCallback<undefined>
-      ) => {
-        const room = await getSocketRoom();
-        if (!room) {
-          createTeamCallback({ success: false, reason: "Room does not exist" });
-          return;
-        } else if (!(await userIsHost())) {
-          createTeamCallback({
-            success: false,
-            reason: "User is not host user",
-          });
-          return;
-        } else if (!room.settings.teamSettings.teamsEnabled) {
-          createTeamCallback({
-            success: false,
-            reason: "Teams mode is not enabled in this room",
-          });
-          return;
-        } else if (
-          room.settings.teamSettings.maxNumTeams &&
-          Object.keys(room.teams).length >=
-            room.settings.teamSettings.maxNumTeams
-        ) {
-          createTeamCallback({
-            success: false,
-            reason: "Maximum amount of teams already created",
-          });
-          return;
-        }
-
-        const newTeams = [] as IRoomTeam[];
-
-        for (const teamName of teamNames) {
-          if (
-            room.settings.teamSettings.maxNumTeams &&
-            Object.keys(room.teams).length >=
-              room.settings.teamSettings.maxNumTeams
-          ) {
-            break;
-          }
-          const newTeam = createTeam(room, teamName);
-          room.teams[newTeam.team.id] = newTeam;
-          newTeams.push(newTeam);
-        }
-
-        //persist to redis
-        await stores.rooms.setRoom(room);
-
-        //broadcast new team event
-        io.to(room.id).emit(SOCKET_SERVER.TEAMS_CREATED, newTeams);
-
-        createTeamCallback({ success: true, data: undefined });
       }
     );
 
