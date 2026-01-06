@@ -1,0 +1,23 @@
+{
+  "name": "@btime/website-backend",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@btime/lib": "workspace:*",
+    "@btime/types": "workspace:*",
+    "@types/bcrypt": "^6.0.0",
+    "bcrypt": "^6.0.0",
+    "bson": "^7.0.0",
+    "cubing": "^0.58.2",
+    "express": "^4.x",
+    "socket.io": "^4.x"
+  },
+  "devDependencies": {
+    "tsx": "^4.x",
+    "typescript": "^5.x"
+  },
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "build": "tsc"
+  }
+}

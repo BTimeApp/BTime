@@ -1,11 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "outDir": "./dist",
     "allowJs": true,
     "skipLibCheck": true,
@@ -22,36 +18,24 @@
         "name": "next"
       }
     ],
-    "paths": {
-      "@/*": [
-        "./src/*"
-      ]
-    },
-    "noEmit": false
+    "noEmit": false,
+    "preserveSymlinks": false
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
-    "next-env.d.ts",
-    "src/types/custom-elements.d.ts",
-    ".next/types/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules",
+    "old/next-env.d.ts",
+    "website/frontend/src/types/custom-elements.d.ts",
     ".next/types/**/*.ts",
-    "dist"
+    "website/frontend/eslint.config.mjs"
   ],
+  "exclude": ["node_modules", ".next/types/**/*.ts", "dist"],
   "tsc-alias": {
     "verbose": false,
     "resolveFullPaths": true,
     "fileExtensions": {
       "inputGlob": "{js,jsx,mjs}",
-      "outputCheck": [
-        "js",
-        "json",
-        "jsx",
-        "mjs"
-      ]
+      "outputCheck": ["js", "json", "jsx", "mjs"]
     }
   }
 }

@@ -1,0 +1,28 @@
+import type { VariantProps } from "class-variance-authority";
+
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+export default function LoginButton({
+  className,
+  variant = "primary",
+  size,
+  asChild = false,
+}: React.ComponentProps<"button"> &
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean;
+  }) {
+  return (
+    <Button
+      className={cn(className)}
+      variant={variant}
+      size={size}
+      asChild={asChild}
+      onClick={() => {
+        window.location.href = `/auth/wca?redirect=${window.location.pathname}`;
+      }}
+    >
+      Log In (WCA)
+    </Button>
+  );
+}

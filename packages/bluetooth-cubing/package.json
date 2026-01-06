@@ -26,6 +26,7 @@
   ],
   "license": "GPL-3.0-only",
   "devDependencies": {
+    "@types/web-bluetooth": "^0.0.21",
     "cac": "^6.7.14",
     "tsup": "^8.0.0",
     "typescript": "^5.0.0"

@@ -17,10 +17,6 @@
 # testing
 /coverage
 
-# next.js
-/.next/
-/out/
-
 # compiled TypeScript
 /dist
 **/dist
@@ -42,12 +38,12 @@ yarn-error.log*
 .env.production
 .env.*.local
 
-# vercel
-.vercel
-
 # VScode
 **/.VScode
 **/.vscode
+
+# Tanstack
+**/.tanstack
 
 # typescript
 *.tsbuildinfo

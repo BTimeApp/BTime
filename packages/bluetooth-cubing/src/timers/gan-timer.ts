@@ -1,5 +1,7 @@
-import { crc16ccit } from "../utils";
-import { BluetoothTimer, TimeMS, TimerEvent, TimerState } from "./timer";
+import type { TimeMS, TimerEvent } from "./timer";
+
+import { crc16ccit } from "../utils/utils";
+import { BluetoothTimer, TimerState } from "./timer";
 import { TimerRegistry } from "./timer-registry";
 
 /**

@@ -1,10 +1,7 @@
 import { useCallback, useRef, useState } from "react";
-import {
-  BluetoothTimer,
-  TimerEvent,
-  TimerState,
-  connectTimer,
-} from "@btime/bluetooth-cubing";
+import type { BluetoothTimer, TimerEvent } from "@btime/bluetooth-cubing";
+
+import { TimerState, connectTimer } from "@btime/bluetooth-cubing";
 
 export function useBluetoothTimer(onTimerEvent?: (event: TimerEvent) => void) {
   const timerRef = useRef<BluetoothTimer>(null);
