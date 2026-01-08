@@ -1,11 +1,12 @@
 {
   "name": "btime",
-  "version": "0.2.1",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev:website": "pnpm --filter './website/* dev'",
+    "dev:website": "pnpm --filter ./website dev",
     "build:packages": "pnpm --filter './packages/**' build",
-    "build:website": "pnpm --filter ./website/* build"
+    "build:website": "pnpm --filter ./website/* build",
+    "start:website": "pnpm --filter ./website start"
   }
 }

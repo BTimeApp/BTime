@@ -4,11 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm -r --filter './frontend' --filter './backend' dev",
-    "dev:frontend": "pnpm -r --filter './frontend'",
-    "dev:backend": "pnpm -r --filter './backend'",
-    "build": "pnpm -r build",
-    "build:frontend": "npm run build --workspace=frontend",
-    "build:backend": "npm run build --workspace=backend"
+    "dev": "concurrently -k -n \"backend,frontend\" -c \"blue,green\" \"pnpm --filter ./backend dev\" \"pnpm --filter ./frontend dev\"",
+    "dev:frontend": "pnpm --filter './frontend' dev",
+    "dev:backend": "pnpm --filter './backend' dev",
+    "build": "pnpm --filter './frontend' build && pnpm --filter './backend' build",
+    "build:frontend": "pnpm --filter './frontend' build",
+    "build:backend": "pnpm --filter './backend' build",
+    "start": "pnpm --filter './backend' start"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }
