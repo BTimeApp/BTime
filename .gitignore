@@ -12,7 +12,7 @@
 !.yarn/versions
 
 #logs 
-/logs 
+**/logs
 
 # testing
 /coverage
@@ -23,6 +23,7 @@
 
 # production
 /build
+**/build
 
 # misc
 .DS_Store

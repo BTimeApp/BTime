@@ -10,10 +10,20 @@
     "moduleDetection": "force",
     "isolatedModules": true,
     "skipLibCheck": true,
-    "outDir": "./dist",
     "paths": {
       "@/*": ["./src/*"]
     },
-    "lib": ["ES2022"]
+    "outDir": "dist",
+    "lib": ["ES2022", "DOM"]
+  },
+  "include": ["**/*.ts", "**/*.d.ts"],
+  "exclude": ["node-modules", "dist"],
+  "tsc-alias": {
+    "verbose": false,
+    "resolveFullPaths": true,
+    "fileExtensions": {
+      "inputGlob": "{js,jsx,mjs}",
+      "outputCheck": ["js", "json", "jsx", "mjs"]
+    }
   }
 }
