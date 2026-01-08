@@ -1,11 +1,18 @@
 "use client";
 
-import { useSession } from "../../context/session-context";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar";
+import { useNavigate, useRouter } from "@tanstack/react-router";
 
 export function NavUser() {
-  const user = useSession();
+  const router = useRouter();
+  const { authStore } = router.options.context;
+  const user = authStore((s) => s.user);
+  const navigate = useNavigate();
 
   function handleUserLogin() {
     if (!user) {
@@ -13,7 +20,9 @@ export function NavUser() {
       window.location.href = `/auth/wca?redirect=${window.location.pathname}`;
     } else {
       // user logged in. go to profile
-      window.location.href = `/profile`;
+      navigate({
+        to: "/profile",
+      });
     }
   }
 

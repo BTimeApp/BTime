@@ -1,8 +1,7 @@
 "use client";
 
-
-import { NavMain } from "./nav-main";
-// import { NavUser } from "./nav-user";
+import { NavMain } from "@/components/sidebar/nav-main";
+import { NavUser } from "@/components/sidebar/nav-user";
 import ThemeToggle from "@/components/sidebar/theme-toggle";
 import {
   Sidebar,
@@ -69,7 +68,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarFooter>
         <ThemeToggle />
 
-        {/* <NavUser /> */}
+        <NavUser />
       </SidebarFooter>
     </Sidebar>
   );

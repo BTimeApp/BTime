@@ -44,7 +44,7 @@ function RootComponent() {
         </SidebarInset>
       </SidebarProvider>
 
-      <TanStackRouterDevtools position="bottom-right" />
+      <TanStackRouterDevtools position="bottom-left" />
     </>
   );
 }
