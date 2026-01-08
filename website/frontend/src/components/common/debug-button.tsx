@@ -1,9 +1,9 @@
 "use client";
 
-import { SOCKET_CLIENT } from "@btime/types";
-import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { SOCKET_CLIENT } from "@btime/types";
 import { useRouter } from "@tanstack/react-router";
+import { useCallback } from "react";
 
 export default function DebugButton() {
   const router = useRouter();

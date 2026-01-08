@@ -1,7 +1,14 @@
-import { Button } from "../ui/button";
-import { z } from "zod";
-import { FieldErrors, FieldValues, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import type {
+  Access,
+  IRoomSettings,
+  RaceSettings,
+  RoomEvent,
+  RoomFormat,
+  TeamSettings,
+} from "@btime/types";
+import type { FieldErrors, FieldValues, Path } from "react-hook-form";
+
+import { Button } from "@/components/ui/button";
 import {
   Form,
   FormField,
@@ -9,43 +16,34 @@ import {
   FormLabel,
   FormControl,
   FormMessage,
-} from "../ui/form";
-import { Input } from "../ui/input";
-import { useSocket } from "../../context/socket-context";
-import { useCallback, useEffect, useState } from "react";
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../ui/select";
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { cn, displayText, literalKeys } from "@/lib/utils";
 import {
-  Access,
-  IRoomSettings,
   MATCH_FORMATS,
-  RaceSettings,
   ROOM_EVENTS,
   ROOM_EVENTS_INFO,
   ROOM_FORMATS,
-  RoomEvent,
-  RoomFormat,
   SET_FORMATS,
+  SOCKET_CLIENT,
   TEAM_REDUCE_FUNCTIONS,
   TEAM_SCRAMBLE_FORMATS,
   TEAM_SOLVE_FORMATS,
-  TeamSettings,
-} from "../../../../packages/types/src/room";
-import { Switch } from "../ui/switch";
-import { useSession } from "../../context/session-context";
+} from "@btime/types";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "@tanstack/react-router";
+import { useCallback, useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { SOCKET_CLIENT } from "../../../../packages/types/src/socket_protocol";
-import {
-  cn,
-  displayText,
-  literalKeys,
-} from "../../../../packages/lib/src/utils";
-import { Path } from "react-hook-form";
+import { z } from "zod";
 
 const ROOM_TEMPLATE_INFO = {
   // TODO - figure out how to allow Select to be blank. Until then, workaround
@@ -172,8 +170,9 @@ export default function RoomSettingsForm({
   onCreateCallback,
   className,
 }: RoomSettingsFormProps) {
-  const user = useSession();
-  const socket = useSocket();
+  const router = useRouter();
+  const { authStore, socket } = router.options.context;
+  const user = authStore((s) => s.user);
 
   // form schema
   const form = useForm<z.infer<typeof formSchema>>({
@@ -259,17 +258,20 @@ export default function RoomSettingsForm({
   const handleRoomFormatChange = useCallback(
     (roomFormat: RoomFormat) => {
       switch (roomFormat) {
-        case "CASUAL":
+        case "CASUAL": {
           break;
-        case "RACING":
+        }
+        case "RACING": {
           form.setValue("raceSettings.matchFormat", "BEST_OF");
           form.setValue("raceSettings.setFormat", "BEST_OF");
           form.setValue("raceSettings.nSets", 3);
           form.setValue("raceSettings.nSolves", 7);
           break;
-        default:
+        }
+        default: {
           const illegalRoomFormat: never = roomFormat;
           console.warn(`Illegal Room Format encountered: ${illegalRoomFormat}`);
+        }
       }
     },
     [form]

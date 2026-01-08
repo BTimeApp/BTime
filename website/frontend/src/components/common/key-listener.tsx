@@ -1,4 +1,6 @@
-import React, { useEffect, useRef } from "react";
+import type React from "react";
+
+import { useEffect, useRef } from "react";
 
 type KeyListenerProps = {
   keyName?: string; //the name of the key to listen to. For example, "Space" for the space bar
