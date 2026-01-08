@@ -1,4 +1,4 @@
-import { Button } from "../ui/button";
+import { Button } from "@/components/ui/button";
 import { useEffect, useRef } from "react";
 
 type KeybindButtonProps = React.ComponentProps<typeof Button> & {
