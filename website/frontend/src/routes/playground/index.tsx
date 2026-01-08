@@ -3,7 +3,7 @@ import PageWrapper from "@/components/common/page-wrapper";
 import { createFileRoute, notFound } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/playground/")({
-  component: RouteComponent,
+  component: PlaygroundPage,
   loader: () => {
     if (import.meta.env.PROD) {
       throw notFound({ routeId: "__root__" });
@@ -11,7 +11,7 @@ export const Route = createFileRoute("/playground/")({
   },
 });
 
-function RouteComponent() {
+function PlaygroundPage() {
   return (
     <PageWrapper>
       <Header>

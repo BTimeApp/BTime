@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from "./routes/index"
 import { Route as ProfileIndexRouteImport } from "./routes/profile/index"
 import { Route as PlaygroundIndexRouteImport } from "./routes/playground/index"
 import { Route as CreateIndexRouteImport } from "./routes/create/index"
+import { Route as BluetoothIndexRouteImport } from "./routes/bluetooth/index"
 import { Route as RoomRoomIdRouteImport } from "./routes/room/$roomId"
 
 const IndexRoute = IndexRouteImport.update({
@@ -35,6 +36,11 @@ const CreateIndexRoute = CreateIndexRouteImport.update({
   path: "/create/",
   getParentRoute: () => rootRouteImport,
 } as any)
+const BluetoothIndexRoute = BluetoothIndexRouteImport.update({
+  id: "/bluetooth/",
+  path: "/bluetooth/",
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RoomRoomIdRoute = RoomRoomIdRouteImport.update({
   id: "/room/$roomId",
   path: "/room/$roomId",
@@ -44,6 +50,7 @@ const RoomRoomIdRoute = RoomRoomIdRouteImport.update({
 export interface FileRoutesByFullPath {
   "/": typeof IndexRoute
   "/room/$roomId": typeof RoomRoomIdRoute
+  "/bluetooth": typeof BluetoothIndexRoute
   "/create": typeof CreateIndexRoute
   "/playground": typeof PlaygroundIndexRoute
   "/profile": typeof ProfileIndexRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   "/": typeof IndexRoute
   "/room/$roomId": typeof RoomRoomIdRoute
+  "/bluetooth": typeof BluetoothIndexRoute
   "/create": typeof CreateIndexRoute
   "/playground": typeof PlaygroundIndexRoute
   "/profile": typeof ProfileIndexRoute
@@ -59,19 +67,33 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   "/": typeof IndexRoute
   "/room/$roomId": typeof RoomRoomIdRoute
+  "/bluetooth/": typeof BluetoothIndexRoute
   "/create/": typeof CreateIndexRoute
   "/playground/": typeof PlaygroundIndexRoute
   "/profile/": typeof ProfileIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: "/" | "/room/$roomId" | "/create" | "/playground" | "/profile"
+  fullPaths:
+    | "/"
+    | "/room/$roomId"
+    | "/bluetooth"
+    | "/create"
+    | "/playground"
+    | "/profile"
   fileRoutesByTo: FileRoutesByTo
-  to: "/" | "/room/$roomId" | "/create" | "/playground" | "/profile"
+  to:
+    | "/"
+    | "/room/$roomId"
+    | "/bluetooth"
+    | "/create"
+    | "/playground"
+    | "/profile"
   id:
     | "__root__"
     | "/"
     | "/room/$roomId"
+    | "/bluetooth/"
     | "/create/"
     | "/playground/"
     | "/profile/"
@@ -80,6 +102,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   RoomRoomIdRoute: typeof RoomRoomIdRoute
+  BluetoothIndexRoute: typeof BluetoothIndexRoute
   CreateIndexRoute: typeof CreateIndexRoute
   PlaygroundIndexRoute: typeof PlaygroundIndexRoute
   ProfileIndexRoute: typeof ProfileIndexRoute
@@ -115,6 +138,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof CreateIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    "/bluetooth/": {
+      id: "/bluetooth/"
+      path: "/bluetooth"
+      fullPath: "/bluetooth"
+      preLoaderRoute: typeof BluetoothIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     "/room/$roomId": {
       id: "/room/$roomId"
       path: "/room/$roomId"
@@ -128,6 +158,7 @@ declare module "@tanstack/react-router" {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   RoomRoomIdRoute: RoomRoomIdRoute,
+  BluetoothIndexRoute: BluetoothIndexRoute,
   CreateIndexRoute: CreateIndexRoute,
   PlaygroundIndexRoute: PlaygroundIndexRoute,
   ProfileIndexRoute: ProfileIndexRoute,

@@ -1,17 +1,18 @@
-"use client";
-import {
-  Header,
-  HeaderTitle,
-} from "../../../../website/frontend/src/components/common/header";
-import { Button } from "../../components/ui/button";
-import { toast } from "sonner";
-import { TimerEvent, TimerState } from "@btime/bluetooth-cubing";
+import { Header, HeaderTitle } from "@/components/common/header";
+import PageWrapper from "@/components/common/page-wrapper";
+import { Button } from "@/components/ui/button";
+import { TimerState, type TimerEvent } from "@btime/bluetooth-cubing";
 import { useBluetoothTimer } from "@btime/bluetooth-cubing-react";
-import { Result } from "../../../../packages/types/src/result";
+import { Result } from "@btime/lib";
+import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
-import PageWrapper from "../../../../website/frontend/src/components/common/page-wrapper";
+import { toast } from "sonner";
 
-export default function Page() {
+export const Route = createFileRoute("/bluetooth/")({
+  component: BluetoothPage,
+});
+
+function BluetoothPage() {
   const handleTimerEvent = useCallback((event: TimerEvent) => {
     switch (event.state) {
       case TimerState.HANDS_ON:
