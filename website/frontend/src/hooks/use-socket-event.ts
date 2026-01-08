@@ -1,5 +1,6 @@
+import type { Socket } from "socket.io-client";
+
 import { useEffect, useRef } from "react";
-import { Socket } from "socket.io-client";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type GenericFunc = (...args: any[]) => void;
 

@@ -4,6 +4,7 @@ import { Header, HeaderTitle } from "@/components/common/header";
 import PageWrapper from "@/components/common/page-wrapper";
 import CreateRoomButton from "@/components/index/create-room-button";
 import ProfileView from "@/components/index/profile-view";
+import RoomListing from "@/components/index/room-listing";
 import { cn } from "@/lib/utils";
 import { createFileRoute } from "@tanstack/react-router";
 
@@ -23,9 +24,9 @@ function HomeComponent() {
       <div
         className={cn("py-2 px-4", "flex flex-1 flex-col gap-2 md:flex-row")}
       >
-        {/* <div className="basis-0 grow md:grow-[2] min-w-0 px-2">
+        <div className="basis-0 grow md:grow-[2] min-w-0 px-2">
           <RoomListing />
-        </div> */}
+        </div>
         <div className="basis-0 md:grow min-w-0 px-2">
           <ProfileView />
         </div>

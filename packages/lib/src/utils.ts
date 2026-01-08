@@ -17,34 +17,6 @@ export function zip<T extends any[]>( //eslint-disable-line @typescript-eslint/n
   });
 }
 
-/**
- * Transforms constant names into abbreviations
- *
- * ex. MY_CONSTANT -> mc
- *
- */
-export function abbreviate(name: string) {
-  return name
-    .split("_")
-    .map((_) => _[0])
-    .join("")
-    .toLowerCase();
-}
-
-/**
- * Transforms constant names into display text names
- *
- * ex. MY_CONSTANT -> My constant
- *
- */
-export function displayText(name?: string) {
-  if (!name) return "";
-  const result = name.split("_").map((_) => _.toLowerCase());
-  if (result.length > 0)
-    result[0] = result[0].charAt(0)?.toUpperCase() + result[0].slice(1);
-  return result.join(" ");
-}
-
 export function filterRecord<K extends string | number | symbol, V>(
   record: Record<K, V>,
   predicate: (value: V, key: K) => boolean

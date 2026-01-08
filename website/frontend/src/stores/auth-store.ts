@@ -1,5 +1,6 @@
 import type { IUser } from "@btime/types";
-import { create, createStore } from "zustand";
+
+import { create } from "zustand";
 
 export type AuthState = {
   user: IUser | null;

@@ -1,13 +1,14 @@
+import type { RouterContext } from "@/types/router-context";
+
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { getSession } from "@/lib/get-session";
 import { Outlet, createRootRouteWithContext } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { getSession } from "@/lib/get-session";
-import type { RouterContext } from "@/types/router-context";
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   component: RootComponent,

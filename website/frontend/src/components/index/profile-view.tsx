@@ -1,9 +1,8 @@
 "use client";
 
-import { Image } from "@unpic/react";
+import LoadingSpinner from "../common/loading-spinner";
 import LoginButton from "@/components/common/login-button";
 import LogoutButton from "@/components/common/logout-button";
-import { Link } from "@tanstack/react-router";
 import {
   Card,
   CardContent,
@@ -12,7 +11,8 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { AuthStore } from "@/stores/auth-store";
-import LoadingSpinner from "../common/loading-spinner";
+import { Link } from "@tanstack/react-router";
+import { Image } from "@unpic/react";
 
 /**
  * This component serves as a card-like summary of a user profile.

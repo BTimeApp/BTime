@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "../ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogHeader,
@@ -8,10 +8,10 @@ import {
   DialogContent,
   DialogTitle,
   DialogFooter,
-} from "../ui/dialog";
-import { Label } from "../ui/label";
-import { Input } from "../ui/input";
-import Link from "next/link";
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useNavigate } from "@tanstack/react-router";
 
 type JoinPrivateRoomDialogProps = {
   roomId: string;
@@ -27,6 +27,7 @@ export default function JoinPrivateRoomDialog({
   roomId,
   roomName,
 }: JoinPrivateRoomDialogProps) {
+  const navigate = useNavigate();
   return (
     <Dialog>
       <form>
@@ -47,9 +48,17 @@ export default function JoinPrivateRoomDialog({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" type="submit">
+            <Button
+              variant="outline"
+              type="submit"
+              onClick={() => {
+                navigate({
+                  to: "/room/$roomId",
+                  params: { roomId },
+                });
+              }}
+            >
               Join Room
-              <Link href={`/room/${roomId}`}></Link>
             </Button>
           </DialogFooter>
         </DialogContent>

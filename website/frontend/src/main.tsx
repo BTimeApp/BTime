@@ -1,12 +1,12 @@
 import { ThemeProvider } from "@/context/theme-context";
 import { getSocket } from "@/lib/socket";
 import { routeTree } from "@/routeTree.gen";
+import { AuthStore } from "@/stores/auth-store";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
 import "./styles.css";
 import { Toaster } from "sonner";
-import { AuthStore } from "@/stores/auth-store";
 
 const socket = getSocket();
 

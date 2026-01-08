@@ -1,10 +1,11 @@
-import { createContext, useContext } from "react";
-import { useShallow } from "zustand/react/shallow";
 import type {
   RoomStore,
   RoomStoreActions,
   RoomStoreUse,
-} from "../stores/room-store";
+} from "@/stores/room-store";
+
+import { createContext, useContext } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 export const RoomStoreContext = createContext<RoomStoreUse | null>(null);
 

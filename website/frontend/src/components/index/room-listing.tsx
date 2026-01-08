@@ -1,25 +1,30 @@
-"use client";
-import { useCallback, useEffect, useState, useTransition } from "react";
-import { IRoomSummary } from "../../../../packages/types/src/room-listing-info";
-import { ROOM_EVENTS_INFO } from "../../../../packages/types/src/room";
-import JoinRoomButton from "./join-room-button";
-import { Button } from "../ui/button";
-import { RefreshCw, User, Globe, GlobeLock } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
-import { ScrollArea, ScrollBar } from "../ui/scroll-area";
-import { Card, CardContent, CardFooter, CardHeader } from "../ui/card";
+import type { IRoomSummary } from "@btime/types";
+
+import LoadingSpinner from "@/components/common/loading-spinner";
+import JoinRoomButton from "@/components/index/join-room-button";
+import { Button } from "@/components/ui/button";
 import {
-  Pagination,
-  PaginationNextButton,
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from "@/components/ui/card";
+import { Pagination } from "@/components/ui/pagination";
+import {
   PaginationPreviousButton,
-} from "../ui/pagination";
-import { toast } from "sonner";
+  PaginationNextButton,
+} from "@/components/ui/pagination-extra";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
-  abbreviate,
-  cn,
-  displayText,
-} from "../../../../packages/lib/src/utils";
-import LoadingSpinner from "../../../../website/frontend/src/components/common/loading-spinner";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { abbreviate, cn, displayText } from "@/lib/utils";
+import { ROOM_EVENTS_INFO } from "@btime/types";
+import { RefreshCw, User, Globe, GlobeLock } from "lucide-react";
+import { useCallback, useEffect, useState, useTransition } from "react";
+import { toast } from "sonner";
 
 // # of rooms to fetch at once with pagination
 const ROOM_WINDOW_SIZE = 20;
