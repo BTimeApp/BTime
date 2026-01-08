@@ -52,7 +52,7 @@ function RootComponent() {
 function NotFoundComponent() {
   return (
     <div className="flex-1 flex flex-col text-center justify-center font-bold text-2xl">
-      <span className="flex-0">Page Not Found</span>
+      <span className="flex-0">(404) Page Not Found</span>
     </div>
   );
 }
