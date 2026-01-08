@@ -169,6 +169,14 @@ export async function startServer(): Promise<void> {
     standardHeaders: "draft-8", // draft-6: `RateLimit-*` headers; draft-7 & draft-8: combined `RateLimit` header
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers.
     // store: ... , // Redis, Memcached, etc.
+    keyGenerator: (req) => {
+      return String(
+        req.ip ||
+          req.headers["x-forwarded-for"] ||
+          req.socket?.remoteAddress ||
+          "unknown"
+      );
+    },
   });
 
   // Apply the rate limiting middleware to all requests.
