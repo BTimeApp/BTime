@@ -14,7 +14,7 @@ import { createAuthRouter } from "@/auth/index.js";
 import { api } from "@/api/index.js";
 import passport from "passport";
 import session from "express-session";
-import { rateLimit } from "express-rate-limit";
+import { ipKeyGenerator, rateLimit } from "express-rate-limit";
 import addDevExtras from "@/server/dev-extras.js";
 import { connectToRedis } from "@/redis/init-redis.js";
 import { createStores } from "@/redis/stores.js";
@@ -170,12 +170,24 @@ export async function startServer(): Promise<void> {
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers.
     // store: ... , // Redis, Memcached, etc.
     keyGenerator: (req) => {
-      return String(
-        req.ip ||
-          req.headers["x-forwarded-for"] ||
-          req.socket?.remoteAddress ||
-          "unknown"
-      );
+      if (req.user) {
+        return `user:${req.user.userInfo.id}`;
+      }
+
+      if (req.ip) {
+        return ipKeyGenerator(req.ip);
+      }
+
+      const forwarded = req.headers["x-forwarded-for"];
+      if (typeof forwarded === "string") {
+        const first = forwarded.split(",")[0].trim();
+        if (first) return first;
+      }
+
+      if (req.socket?.remoteAddress) {
+        return req.socket.remoteAddress;
+      }
+      return "unknown";
     },
   });
 
