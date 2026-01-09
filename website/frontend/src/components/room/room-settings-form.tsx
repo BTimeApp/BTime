@@ -383,26 +383,29 @@ export default function RoomSettingsForm({
                   </FormItem>
                 )}
               />
-              {form.watch("access.visibility") === "PRIVATE" && (
-                <FormField
-                  control={form.control}
-                  name="access.password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="Password:"
-                          {...field}
-                          value={field.value ?? ""}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
+              {
+                // eslint-disable-next-line react-hooks/incompatible-library
+                form.watch("access.visibility") === "PRIVATE" && (
+                  <FormField
+                    control={form.control}
+                    name="access.password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            placeholder="Password:"
+                            {...field}
+                            value={field.value ?? ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )
+              }
               <FormField
                 control={form.control}
                 name="teamSettings.teamsEnabled"

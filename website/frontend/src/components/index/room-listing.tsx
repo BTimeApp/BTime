@@ -20,81 +20,69 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { fetchRooms } from "@/lib/fetch-rooms";
 import { abbreviate, cn, displayText } from "@/lib/utils";
+import { Route } from "@/routes"; //index route
 import { ROOM_EVENTS_INFO } from "@btime/types";
 import { RefreshCw, User, Globe, GlobeLock } from "lucide-react";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 import { toast } from "sonner";
 
-// # of rooms to fetch at once with pagination
-const ROOM_WINDOW_SIZE = 20;
-
 export default function RoomListing({ className }: { className?: string }) {
+  // pull in initial rooms data from root route's loader
+  const { roomsData: initialRoomsData } = Route.useLoaderData();
+
   // the page number we are currently on. 1-indexed
-  const [pageNumber, setPageNumber] = useState<number>(1);
-  const [totalPages, setTotalPages] = useState<number>(1);
   const [rooms, setRooms] = useState<Map<string, IRoomSummary>>(
-    new Map<string, IRoomSummary>()
+    new Map(initialRoomsData.rooms.map((r: IRoomSummary) => [r.id, r]))
   );
+  const [pageNumber, setPageNumber] = useState<number>(
+    initialRoomsData.pageNumber
+  );
+  const [totalPages, setTotalPages] = useState<number>(
+    initialRoomsData.totalPages
+  );
+
   const [refreshPending, startRefreshTransition] = useTransition();
   const [previousPending, startPreviousTransition] = useTransition();
   const [nextPending, startNextTransition] = useTransition();
 
-  const fetchRooms = useCallback(async (page: number) => {
-    const res = await fetch(
-      `/api/v0/rooms?page=${page}&limit=${ROOM_WINDOW_SIZE}`,
-      {
-        method: "GET",
-      }
-    );
-    if (!res.ok) {
-      toast.error("Couldn't load rooms.");
-      return undefined;
-    }
-    return res.json();
-  }, []);
-
   /**
    * Updates the rooms local state
    */
-  const updateRooms = useCallback(
-    async (pageNumber: number) => {
-      const res = await fetchRooms(pageNumber);
-      if (!res) return;
+  const updateRooms = useCallback(async (pageNumber: number) => {
+    const res = await fetchRooms(pageNumber);
+    if (!res) {
+      toast.error("Could not fetch rooms");
+      return;
+    }
 
-      setTotalPages(res.totalPages);
+    setTotalPages(res.totalPages);
 
-      if (pageNumber > res.totalPages) {
-        setPageNumber(res.totalPages);
-      } else {
-        if (res.rooms != null) {
-          setRooms(
-            new Map(
-              res.rooms.map((roomSummary: IRoomSummary) => [
-                roomSummary.id,
-                roomSummary,
-              ])
-            )
-          );
-        }
-        setPageNumber(pageNumber);
+    if (pageNumber > res.totalPages) {
+      setPageNumber(res.totalPages);
+    } else {
+      if (res.rooms != null) {
+        setRooms(
+          new Map(
+            res.rooms.map((roomSummary: IRoomSummary) => [
+              roomSummary.id,
+              roomSummary,
+            ])
+          )
+        );
       }
-    },
-    [fetchRooms]
-  );
+      setPageNumber(pageNumber);
+    }
+  }, []);
 
   const goToPreviousPage = useCallback(() => {
     updateRooms(Math.max(pageNumber - 1, 1));
-  }, [pageNumber, updateRooms]);
+  }, [updateRooms, pageNumber]);
 
   const goToNextPage = useCallback(() => {
     updateRooms(pageNumber + 1);
-  }, [pageNumber, updateRooms]);
-
-  useEffect(() => {
-    // update current rooms
-    updateRooms(1);
-  }, [updateRooms]);
+  }, [updateRooms, pageNumber]);
 
   return (
     <Card

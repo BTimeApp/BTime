@@ -5,10 +5,21 @@ import PageWrapper from "@/components/common/page-wrapper";
 import CreateRoomButton from "@/components/index/create-room-button";
 import ProfileView from "@/components/index/profile-view";
 import RoomListing from "@/components/index/room-listing";
+import { fetchRooms } from "@/lib/fetch-rooms";
 import { cn } from "@/lib/utils";
 import { createFileRoute } from "@tanstack/react-router";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
+  loader: async () => {
+    const roomsData = await fetchRooms(1);
+    if (!roomsData) {
+      toast.error("Couldn't load rooms.");
+    }
+    return roomsData
+      ? { roomsData }
+      : { roomsData: { rooms: [], totalPages: 1, pageNumber: 1 } };
+  },
   component: HomeComponent,
 });
 

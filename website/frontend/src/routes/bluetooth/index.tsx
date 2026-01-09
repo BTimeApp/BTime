@@ -13,22 +13,29 @@ export const Route = createFileRoute("/bluetooth/")({
 });
 
 function BluetoothPage() {
+  const [timerTextClassName, setTimerTextClassName] = useState<string>("");
+
   const handleTimerEvent = useCallback((event: TimerEvent) => {
     switch (event.state) {
-      case TimerState.HANDS_ON:
+      case TimerState.HANDS_ON: {
         setTimerTextClassName("text-timer-notready");
         break;
-      case TimerState.GET_SET:
+      }
+      case TimerState.GET_SET: {
         setTimerTextClassName("text-timer-ready");
         break;
-      case TimerState.STOPPED:
+      }
+      case TimerState.STOPPED: {
         setTimerTextClassName("text-timer-not-ready");
         break;
-      case TimerState.DISCONNECT:
+      }
+      case TimerState.DISCONNECT: {
         toast.info("Bluetooth Timer disconnected");
         break;
-      default:
+      }
+      default: {
         setTimerTextClassName("");
+      }
     }
   }, []);
 
@@ -39,8 +46,6 @@ function BluetoothPage() {
     connect: connectTimer,
     disconnect: disconnectTimer,
   } = useBluetoothTimer(handleTimerEvent);
-
-  const [timerTextClassName, setTimerTextClassName] = useState<string>("");
 
   return (
     <PageWrapper>

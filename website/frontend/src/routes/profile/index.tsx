@@ -65,7 +65,7 @@ function ProfilePage() {
 
     //reset fillable fields
     setUsername("");
-  }, [username]);
+  }, [setUser, username]);
 
   let body = <></>;
   if (localUser) {

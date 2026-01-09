@@ -1,0 +1,57 @@
+import { CreateTeamForm } from "./create-team-form";
+import { useRoomStore } from "../../context/room-context";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from "../ui/dialog";
+import React, { useCallback, useMemo, useState } from "react";
+
+type RoomSettingsDialogProps = {
+  children: React.ReactNode;
+};
+
+export default function CreateTeamDialog({
+  children,
+}: RoomSettingsDialogProps) {
+  const teams = useRoomStore((s) => s.teams);
+  const teamSettings = useRoomStore((s) => s.teamSettings);
+
+  const currTeamsLength = useMemo(() => {
+    return Object.values(teams).length;
+  }, [teams]);
+
+  const [open, setOpen] = useState<boolean>(false);
+  const closeDialogCallback = useCallback(() => {
+    setOpen(false);
+  }, []);
+
+  if (!teamSettings.teamsEnabled) {
+    return <></>;
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent className="flex flex-col">
+        <DialogTitle>
+          Create Team(s){" "}
+          {teamSettings.teamsEnabled && teamSettings.maxNumTeams
+            ? `(${currTeamsLength} / ${teamSettings.maxNumTeams})`
+            : ""}{" "}
+        </DialogTitle>
+        {teamSettings.teamsEnabled &&
+        teamSettings.maxNumTeams &&
+        currTeamsLength >= teamSettings.maxNumTeams ? (
+          <div className="text-lg">Already at max teams length.</div>
+        ) : (
+          <CreateTeamForm onSubmit={closeDialogCallback} />
+        )}
+
+        <DialogClose />
+      </DialogContent>
+    </Dialog>
+  );
+}
