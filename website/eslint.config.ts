@@ -1,22 +1,17 @@
-import eslint from "@eslint/js";
-import tseslint from "typescript-eslint";
+import js from "@eslint/js";
+import ts from "typescript-eslint";
 import importPlugin from "eslint-plugin-import";
-import path from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 export default [
   {
-    ignores: ["node_modules", "dist", "logs"],
+    ignores: ["node_modules", "dist", "eslint.config.ts"],
   },
-  eslint.configs.recommended,
-  ...tseslint.configs.recommended,
+  js.configs.recommended,
+  ...ts.configs.recommended,
   {
-    files: ["./src/**/*.ts", "./src/**/*.tsx"],
     plugins: {
       import: importPlugin,
+      "@typescript-eslint": ts.plugin,
     },
     rules: {
       // 2 groups: Types and everything else, newline in between. Alphabetize imports
@@ -40,12 +35,6 @@ export default [
           fixStyle: "separate-type-imports",
         },
       ],
-    },
-    languageOptions: {
-      parserOptions: {
-        tsconfigRootDir: path.resolve(__dirname),
-        project: "./tsconfig.json",
-      },
     },
   },
 ];

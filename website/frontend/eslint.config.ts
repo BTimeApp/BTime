@@ -1,10 +1,8 @@
-import eslint from "@eslint/js";
-import tseslint from "typescript-eslint";
-import importPlugin from "eslint-plugin-import";
 import reactPlugin from "eslint-plugin-react";
 import reactHooksPlugin from "eslint-plugin-react-hooks";
 import path from "path";
 import { fileURLToPath } from "url";
+import baseConfig from "../eslint.config";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,38 +11,14 @@ export default [
   {
     ignores: ["node_modules", "dist", "eslint.config.ts"],
   },
-  eslint.configs.recommended,
-  ...tseslint.configs.recommended,
+  ...baseConfig,
   {
     files: ["./src/**/*.ts", "./src/**/*.tsx"],
     plugins: {
-      import: importPlugin,
       react: reactPlugin,
       "react-hooks": reactHooksPlugin,
     },
     rules: {
-      // 2 groups: Types and everything else, newline in between. Alphabetize imports
-      "import/order": [
-        "error",
-        {
-          groups: ["type", "object"],
-          "newlines-between": "always",
-          alphabetize: {
-            order: "asc",
-            caseInsensitive: true,
-          },
-        },
-      ],
-
-      // --- consistent type imports rules ---
-      "@typescript-eslint/consistent-type-imports": [
-        "error",
-        {
-          prefer: "type-imports",
-          fixStyle: "separate-type-imports",
-        },
-      ],
-
       // --- react plugin rules ---
       ...reactPlugin.configs.recommended.rules,
 
@@ -64,7 +38,7 @@ export default [
     languageOptions: {
       parserOptions: {
         ecmaFeatures: { jsx: true },
-        tsconfigRootDir: path.resolve(__dirname),
+        tsconfigRootDir: __dirname,
         project: "./tsconfig.json",
       },
     },
