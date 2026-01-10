@@ -27,7 +27,8 @@
     "pino-roll": "^4.0.0",
     "socket.io": "^4.x",
     "ts-node": "^10.9.2",
-    "tsc-alias": "^1.8.16"
+    "tsc-alias": "^1.8.16",
+    "url": "^0.11.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",

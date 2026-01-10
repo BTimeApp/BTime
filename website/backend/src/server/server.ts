@@ -24,6 +24,7 @@ import { createServer } from "http";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import passport from "passport";
 import path from "path";
+import { fileURLToPath } from "url";
 
 export async function startServer(): Promise<void> {
   // handle config with dotenv
@@ -219,13 +220,24 @@ export async function startServer(): Promise<void> {
     );
   } else {
     // Prod: serve prebuilt SPA from frontend/dist
-    const frontendDist = path.join(__dirname, "..", "frontend", "dist");
+
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    // from /backend/dist/server/server.ts to /frontend/dist/[file]
+    const frontendDist = path.join(
+      __dirname,
+      "..",
+      "..",
+      "..",
+      "frontend",
+      "dist"
+    );
 
     // Serve static files
     app.use(express.static(frontendDist));
 
     // Catch-all for SPA routing
-    app.get("*", (_req: Request, res: Response) => {
+    app.use((_req: Request, res: Response) => {
       res.sendFile(path.join(frontendDist, "index.html"));
     });
   }

@@ -6,6 +6,7 @@
   "scripts": {
     "build": "pnpm --filter ./packages build && pnpm --filter ./website build",
     "lint": "pnpm --filter ./packages lint && pnpm --filter ./website lint",
+    "start": "pnpm --filter ./website start",
     "lint:fix": "pnpm --filter ./packages lint:fix && pnpm --filter ./website lint:fix",
     "build-packages": "pnpm --filter ./packages build",
     "lint-packages": "pnpm --filter ./packages lint",
