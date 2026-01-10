@@ -21,7 +21,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { fetchRooms } from "@/lib/fetch-rooms";
-import { abbreviate, cn, displayText } from "@/lib/utils";
+import { abbreviate, cn } from "@/lib/utils";
+import { displayText } from "@btime/lib";
 import { Route } from "@/routes"; //index route
 import { ROOM_EVENTS_INFO } from "@btime/types";
 import { RefreshCw, User, Globe, GlobeLock } from "lucide-react";

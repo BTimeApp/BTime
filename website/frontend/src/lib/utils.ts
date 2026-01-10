@@ -20,20 +20,6 @@ export function abbreviate(name: string) {
     .toLowerCase();
 }
 
-/**
- * Transforms constant names into display text names
- *
- * ex. MY_CONSTANT -> My constant
- *
- */
-export function displayText(name?: string) {
-  if (!name) return "";
-  const result = name.split("_").map((_) => _.toLowerCase());
-  if (result.length > 0)
-    result[0] = result[0].charAt(0)?.toUpperCase() + result[0].slice(1);
-  return result.join(" ");
-}
-
 // copied from @btime/types internal
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function literalKeys<T extends Record<string, any>>(obj: T) {
