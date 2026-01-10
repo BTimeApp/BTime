@@ -149,12 +149,21 @@ importers:
         specifier: ^1.8.16
         version: 1.8.16
     devDependencies:
+      '@eslint/js':
+        specifier: ^9.39.2
+        version: 9.39.2
       '@types/express':
         specifier: ^5.0.6
         version: 5.0.6
       '@types/express-session':
         specifier: ^1.18.2
         version: 1.18.2
+      eslint:
+        specifier: ^9.39.2
+        version: 9.39.2(jiti@2.6.1)
+      eslint-plugin-import:
+        specifier: ^2.32.0
+        version: 2.32.0(@typescript-eslint/parser@8.51.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.2(jiti@2.6.1))
       tsconfig-paths:
         specifier: ^4.2.0
         version: 4.2.0
@@ -164,6 +173,9 @@ importers:
       typescript:
         specifier: ^5.x
         version: 5.9.3
+      typescript-eslint:
+        specifier: ^8.51.0
+        version: 8.51.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
 
   website/frontend:
     dependencies:
@@ -336,6 +348,9 @@ importers:
       eslint-plugin-react-hooks:
         specifier: ^7.0.1
         version: 7.0.1(eslint@9.39.2(jiti@2.6.1))
+      path:
+        specifier: ^0.12.7
+        version: 0.12.7
       typescript:
         specifier: ^5.7.2
         version: 5.9.3

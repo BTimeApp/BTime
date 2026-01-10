@@ -1,14 +1,15 @@
-import {
+import type { RedisStores } from "@/redis/stores.js";
+import type { RoomWorker } from "@/rooms/room-worker.js";
+import type {
   Access,
   IRoom,
   RaceSettings,
   TeamFormatSettings,
   TeamSettings,
 } from "@btime/types";
+
 import { createRoom } from "@/lib/room.js";
-import { RedisStores } from "@/redis/stores.js";
 import { RedisLogger } from "@/logging/logger.js";
-import { RoomWorker } from "@/rooms/room-worker.js";
 import { setSearchDebug } from "cubing/search";
 
 async function addTestRooms(stores: RedisStores, roomWorker: RoomWorker) {

@@ -1,6 +1,7 @@
-import { Redis } from "ioredis";
-import { REDIS_KEY_REGISTRY } from "@/redis/key-registry.js";
+import type { Redis } from "ioredis";
+
 import { RedisLogger } from "@/logging/logger.js";
+import { REDIS_KEY_REGISTRY } from "@/redis/key-registry.js";
 
 /**
  * Defines the Redis store for:

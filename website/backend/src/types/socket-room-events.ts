@@ -1,7 +1,8 @@
-import { Server } from "socket.io";
-import { SOCKET_CLIENT_CONFIG } from "@btime/types";
-import { RedisStores } from "@/redis/stores.js";
+import type { RedisStores } from "@/redis/stores.js";
 import type { ExtractArgs } from "@btime/types";
+import type { SOCKET_CLIENT_CONFIG } from "@btime/types";
+import type { Server } from "socket.io";
+
 
 type RoomEventHandlerFunction<TArgs> = (
   io: Server,

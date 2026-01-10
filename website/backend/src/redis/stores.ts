@@ -1,7 +1,8 @@
 import type { Redis } from "ioredis";
-import { createUserStore } from "@/redis/stores/userStore.js";
-import { createUserSessionStore } from "@/redis/stores/userSessionStore.js";
+
 import { createRoomStore } from "@/redis/stores/roomStore.js";
+import { createUserSessionStore } from "@/redis/stores/userSessionStore.js";
+import { createUserStore } from "@/redis/stores/userStore.js";
 
 export async function createStores(redis: Redis) {
   const pubClient = redis;

@@ -1,9 +1,10 @@
+import type { UserDocument} from "@/models/user.js";
 import type { IUser } from "@btime/types";
 
-import { Router } from "express";
 import { authMiddleware } from "@/auth/index.js";
-import { toIUser, UserDocument, UserModel } from "@/models/user.js";
+import { toIUser, UserModel } from "@/models/user.js";
 import { type RedisStores } from "@/redis/stores.js";
+import { Router } from "express";
 
 /** Adds sub-API routes (v0) to an application. Meant to be used from within the /api route. ([btime]/api/v0/...)
  *

@@ -1,5 +1,5 @@
-import mongoose from "mongoose";
 import { DBLogger } from "@/logging/logger.js";
+import mongoose from "mongoose";
 
 export const connectToDB = async () => {
   if (!process.env.DB_URI) {

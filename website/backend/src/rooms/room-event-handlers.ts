@@ -1,3 +1,5 @@
+import type { RedisStores } from "@/redis/stores.js";
+import type { RoomEventHandlers } from "@/types/socket-room-events.js";
 import type {
   SocketResponse,
   IRoom,
@@ -8,10 +10,8 @@ import type {
   IRoomTeam,
   IRoomUser,
 } from "@btime/types";
-import type { RoomEventHandlers } from "@/types/socket-room-events.js";
+import type { Server } from "socket.io";
 
-import { SOCKET_SERVER, USER_JOIN_FAILURE_REASON } from "@btime/types";
-import { RoomLogger } from "@/logging/logger.js";
 import {
   checkMatchFinished,
   checkRoomSolveFinished,
@@ -34,8 +34,8 @@ import {
   userJoinTeam,
   userLeaveTeam,
 } from "@/lib/room.js";
-import { Server } from "socket.io";
-import { RedisStores } from "@/redis/stores.js";
+import { RoomLogger } from "@/logging/logger.js";
+import { SOCKET_SERVER, USER_JOIN_FAILURE_REASON } from "@btime/types";
 import bcrypt from "bcrypt";
 
 /**

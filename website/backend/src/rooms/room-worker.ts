@@ -1,8 +1,10 @@
-import { Server as SocketIOServer } from "socket.io";
+import type { RedisStores } from "@/redis/stores.js";
+import type { Redis } from "ioredis";
+import type { Server as SocketIOServer } from "socket.io";
+
 import { ServerLogger } from "@/logging/logger.js";
 import { RoomProcessor } from "@/rooms/room-processor.js";
-import { RedisStores } from "@/redis/stores.js";
-import type { Redis } from "ioredis";
+
 
 export class RoomWorker {
   private redis: Redis;

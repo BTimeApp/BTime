@@ -1,30 +1,29 @@
+import type { SocketMiddleware } from "@/socket/init-socket.js";
+import type { IUser } from "@btime/types";
 import type { Request, Response } from "express";
 
-import express from "express";
-import { createServer } from "http";
+import { api } from "@/api/index.js";
+import { createAuthRouter } from "@/auth/index.js";
 import { connectToDB } from "@/database/database.js";
+import { ServerLogger } from "@/logging/logger.js";
+import { connectToRedis } from "@/redis/init-redis.js";
+import { createStores } from "@/redis/stores.js";
+import { RoomWorker } from "@/rooms/room-worker.js";
+import addDevExtras from "@/server/dev-extras.js";
+import { handleConfig } from "@/server/load-config.js";
+import { isProd } from "@/server/server-objects.js";
 import {
   createSocket,
   setUpSocketMiddleware,
-  SocketMiddleware,
   startSocketListener,
 } from "@/socket/init-socket.js";
-import { handleConfig } from "@/server/load-config.js";
-import { createAuthRouter } from "@/auth/index.js";
-import { api } from "@/api/index.js";
-import passport from "passport";
-import session from "express-session";
+import express from "express";
 import { ipKeyGenerator, rateLimit } from "express-rate-limit";
-import addDevExtras from "@/server/dev-extras.js";
-import { connectToRedis } from "@/redis/init-redis.js";
-import { createStores } from "@/redis/stores.js";
-import { isProd } from "@/server/server-objects.js";
-import { ServerLogger } from "@/logging/logger.js";
-import { RoomWorker } from "@/rooms/room-worker.js";
-import path from "path";
-
+import session from "express-session";
+import { createServer } from "http";
 import { createProxyMiddleware } from "http-proxy-middleware";
-import { IUser } from "@btime/types";
+import passport from "passport";
+import path from "path";
 
 export async function startServer(): Promise<void> {
   // handle config with dotenv

@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
-import { join } from "path";
 import fs from "fs";
+import { join } from "path";
 
 export const handleConfig = (): void => {
   const env = process.env.NODE_ENV; // "production", "development", or "test"

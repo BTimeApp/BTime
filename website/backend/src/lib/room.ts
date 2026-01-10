@@ -1,16 +1,21 @@
-import { Access, IRoom, IRoomSettings, TeamReduceFunction } from "@btime/types";
-import { IAttempt, ISolve } from "@btime/types";
-import { IRoomSet, IRoomSolve } from "@btime/types";
-import { IResult } from "@btime/types";
-import { generateScramble, generateScrambles } from "@/lib/utils.js";
-import { ObjectId } from "bson";
-import bcrypt from "bcrypt";
-import { IUserInfo } from "@btime/types";
-import { IRoomTeam, IRoomUser } from "@btime/types";
-import { SocketResponse } from "@btime/types";
+import type { IUserInfo } from "@btime/types";
+import type { IRoomTeam, IRoomUser } from "@btime/types";
+import type { SocketResponse } from "@btime/types";
+import type {
+  Access,
+  IRoom,
+  IRoomSettings,
+  TeamReduceFunction,
+} from "@btime/types";
+import type { IAttempt, ISolve } from "@btime/types";
+import type { IRoomSet, IRoomSolve } from "@btime/types";
+import type { IResult } from "@btime/types";
 
-import { DNF, Result } from "@btime/lib";
+import { generateScramble, generateScrambles } from "@/lib/utils.js";
 import { RoomLogger } from "@/logging/logger.js";
+import { DNF, Result } from "@btime/lib";
+import bcrypt from "bcrypt";
+import { ObjectId } from "bson";
 
 /**
  * This file has all the functions related to manipulating Room objects.
@@ -166,7 +171,7 @@ export function findSetWinners(room: IRoom): string[] {
   if (!currentSet) return [];
 
   switch (room.settings.raceSettings.setFormat) {
-    case "BEST_OF":
+    case "BEST_OF": {
       //if N solves are done, user with the most wins has won. Ties count.
 
       // prevent 0 points from being considered a max.
@@ -190,11 +195,16 @@ export function findSetWinners(room: IRoom): string[] {
             roomParticipants[participantId].points > nSolves / 2
         );
       }
-    case "FIRST_TO":
+
+      // no winners
+      return [];
+    }
+    case "FIRST_TO": {
       //user has won only when they win n solves.
       return Object.keys(roomParticipants).filter(
         (participantId) => roomParticipants[participantId].points >= nSolves
       );
+    }
     case "AVERAGE_OF": {
       const setSolves = currentSet.solves;
 
@@ -336,7 +346,7 @@ export function findMatchWinners(room: IRoom): string[] {
   const nSets = room.settings.raceSettings.nSets;
 
   switch (room.settings.raceSettings.matchFormat) {
-    case "BEST_OF":
+    case "BEST_OF": {
       //user has won for sure if they have the majority of sets
       const candidateMatchWinners = Object.keys(roomParticipants).filter(
         (participantId) => roomParticipants[participantId].setWins > nSets / 2
@@ -378,13 +388,16 @@ export function findMatchWinners(room: IRoom): string[] {
         }
       }
       return [];
-    case "FIRST_TO":
+    }
+    case "FIRST_TO": {
       //user has won only when they win n sets.
       return Object.keys(roomParticipants).filter(
         (participantId) => roomParticipants[participantId].setWins >= nSets
       );
-    default:
+    }
+    default: {
       return [];
+    }
   }
 }
 
@@ -410,7 +423,7 @@ export function checkTeamFinished(room: IRoom, teamId: string) {
   }
 
   switch (room.settings.teamSettings.teamFormatSettings.teamSolveFormat) {
-    case "ALL":
+    case "ALL": {
       const teamMembers = room.teams[teamId].team.members;
       if (teamMembers.length === 0) {
         return false;
@@ -420,7 +433,8 @@ export function checkTeamFinished(room: IRoom, teamId: string) {
           userId in currentSolve.solve.attempts &&
           currentSolve.solve.attempts[userId].finished
       );
-    case "ONE":
+    }
+    case "ONE": {
       const currUid = room.teams[teamId].currentMember;
       if (!currUid) {
         // TODO - consider if this should be true
@@ -430,8 +444,10 @@ export function checkTeamFinished(room: IRoom, teamId: string) {
         currentSolve.solve.attempts[currUid] &&
         currentSolve.solve.attempts[currUid].finished
       );
-    default:
+    }
+    default: {
       throw new Error("Unimplemented team solve format");
+    }
   }
 }
 
@@ -449,7 +465,7 @@ export function finishTeamSolve(room: IRoom, teamId: string) {
   let teamResult: IResult | undefined = undefined;
 
   switch (room.settings.teamSettings.teamFormatSettings.teamSolveFormat) {
-    case "ALL":
+    case "ALL": {
       const teamMembers = room.teams[teamId].team.members;
 
       const teamMemberResults = teamMembers.map(
@@ -474,8 +490,9 @@ export function finishTeamSolve(room: IRoom, teamId: string) {
       room.teams[teamId].solveStatus = "FINISHED";
 
       break;
+    }
 
-    case "ONE":
+    case "ONE": {
       const currUid = room.teams[teamId].currentMember;
       if (!currUid) {
         break;
@@ -503,8 +520,9 @@ export function finishTeamSolve(room: IRoom, teamId: string) {
       room.teams[teamId].solveStatus = "FINISHED";
 
       break;
+    }
 
-    default:
+    default: {
       RoomLogger.warn(
         {
           roomId: room.id,
@@ -515,6 +533,7 @@ export function finishTeamSolve(room: IRoom, teamId: string) {
         },
         "Unimplemented team solve format"
       );
+    }
   }
 
   RoomLogger.info(

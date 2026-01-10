@@ -1,10 +1,12 @@
 // import OAuth2Strategy from "passport-oauth2";
 
-import { PassportStatic } from "passport";
-import { UserModel, toIUser } from "@/models/user.js";
-import { NextFunction, Request, Response, Router } from "express";
+import type { RedisStores } from "@/redis/stores.js";
+import type { NextFunction, Request, Response} from "express";
+import type { PassportStatic } from "passport";
+
 import { createWCAAuth } from "@/auth/wca.js";
-import { RedisStores } from "@/redis/stores.js";
+import { UserModel, toIUser } from "@/models/user.js";
+import { Router } from "express";
 
 export function createAuthRouter(
   passport: PassportStatic,

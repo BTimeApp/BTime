@@ -1,6 +1,7 @@
-import { Router } from "express";
+import type { RedisStores } from "@/redis/stores.js";
+
 import { v0 } from "@/api/v0.js";
-import { RedisStores } from "@/redis/stores.js";
+import { Router } from "express";
 
 /** Adds API routes to an application. Meant to be used from the main server.ts file. ([btime]/api/...)
  *

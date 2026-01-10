@@ -1,9 +1,9 @@
 import type { IRoom, RoomRedisEvent, IRoomSummary } from "@btime/types";
+import type { Redis } from "ioredis";
 
-import { roomToSummary } from "@btime/lib";
-import { Redis } from "ioredis";
-import { REDIS_KEY_REGISTRY } from "@/redis/key-registry.js";
 import { RedisLogger } from "@/logging/logger.js";
+import { REDIS_KEY_REGISTRY } from "@/redis/key-registry.js";
+import { roomToSummary } from "@btime/lib";
 /**
  * Defines the Redis store for rooms
  *

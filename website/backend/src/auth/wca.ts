@@ -1,9 +1,13 @@
-import { Router } from "express";
-import { PassportStatic } from "passport";
-import { Strategy as CustomStrategy } from "passport-custom";
-import { UserModel, UserDocument, toIUser } from "@/models/user.js";
-import { RedisStores } from "@/redis/stores.js";
+import type { UserDocument} from "@/models/user.js";
+import type { RedisStores } from "@/redis/stores.js";
+import type { PassportStatic } from "passport";
+
 import { AuthLogger } from "@/logging/logger.js";
+import { UserModel, toIUser } from "@/models/user.js";
+import { Router } from "express";
+import { Strategy as CustomStrategy } from "passport-custom";
+
+
 
 export function createWCAAuth(
   passport: PassportStatic,

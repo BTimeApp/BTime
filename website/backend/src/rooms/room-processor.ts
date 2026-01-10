@@ -1,19 +1,18 @@
-import {
-  SOCKET_CLIENT_CONFIG,
-  SOCKET_SERVER,
-  SOCKET_SERVER_CONFIG,
-  type RoomEventConfig,
-  type RoomRedisEvent,
-} from "@btime/types";
+import type { RedisStores } from "@/redis/stores.js";
 import type { Redis } from "ioredis";
+import type { Server as SocketIOServer } from "socket.io";
 
-import { Server as SocketIOServer } from "socket.io";
 import { RoomLogger } from "@/logging/logger.js";
-import { RedisStores } from "@/redis/stores.js";
 import {
   isRoomEventKey,
   ROOM_EVENT_HANDLERS,
 } from "@/rooms/room-event-handlers.js";
+import {
+  SOCKET_CLIENT_CONFIG,
+  SOCKET_SERVER,
+  type RoomEventConfig,
+  type RoomRedisEvent,
+} from "@btime/types";
 
 export class RoomProcessor {
   private roomId: string;

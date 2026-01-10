@@ -1,6 +1,7 @@
-import pino from "pino";
+import type { IUser } from "@btime/types";
+
 import { isProd } from "@/server/server-objects.js";
-import { IUser } from "@btime/types";
+import pino from "pino";
 
 //default to INFO in prod, DEBUG in dev. Override in env var.
 const LOG_LEVEL = process.env.PINO_LOG_LEVEL ?? (isProd ? "info" : "debug");

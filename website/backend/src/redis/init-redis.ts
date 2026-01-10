@@ -1,5 +1,5 @@
-import { Redis, Redis as RedisInterface } from "ioredis";
 import { RedisLogger } from "@/logging/logger.js";
+import { Redis } from "ioredis";
 
 // https://stackoverflow.com/questions/70805943/redis-redis-createclient-in-typescript
 declare module "ioredis" {

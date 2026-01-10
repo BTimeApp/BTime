@@ -1,4 +1,5 @@
 import type { RoomEvent } from "@btime/types";
+
 import { randomScrambleForEvent } from "cubing/scramble";
 
 const EventMapping = new Map<RoomEvent, string>([

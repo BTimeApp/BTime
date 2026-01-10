@@ -1,6 +1,7 @@
 import type { IUser } from "@btime/types";
+import type { Document, Types } from "mongoose";
 
-import { Schema, Document, model, Types } from "mongoose";
+import { Schema, model } from "mongoose";
 
 export interface UserDocument extends Document {
   _id: Types.ObjectId;

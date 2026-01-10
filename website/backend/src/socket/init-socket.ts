@@ -1,26 +1,26 @@
+import type { RedisStores } from "@/redis/stores.js";
+import type { RoomWorker } from "@/rooms/room-worker.js";
+import type { SocketClientEventArgs } from "@btime/types";
+import type { IRoom, IRoomSettings, IUser, RoomRedisEvent } from "@btime/types";
+import type { NextFunction } from "express";
 import type http from "http";
+import type { Server as HttpServer, ServerResponse } from "http";
 import type { Redis } from "ioredis";
+import type { LogFn } from "pino";
+import type { Socket } from "socket.io";
 
-import { Server as HttpServer } from "http";
-import { Server, Socket } from "socket.io";
-import { IRoom, IRoomSettings, IUser, RoomRedisEvent } from "@btime/types";
 import { createRoom } from "@/lib/room.js";
-import { ServerResponse } from "http";
-import { NextFunction } from "express";
-import { ObjectId } from "bson";
-import passport from "passport";
+import { createSocketLogger, ServerLogger } from "@/logging/logger.js";
+import { isPinoLogLevel } from "@btime/types";
 import {
   SOCKET_CLIENT,
   SOCKET_CLIENT_CONFIG,
   SOCKET_SERVER,
-  SocketClientEventArgs,
 } from "@btime/types";
 import { createAdapter } from "@socket.io/redis-adapter";
-import { RedisStores } from "@/redis/stores.js";
-import { LogFn } from "pino";
-import { createSocketLogger, ServerLogger } from "@/logging/logger.js";
-import { isPinoLogLevel } from "@btime/types";
-import { RoomWorker } from "@/rooms/room-worker.js";
+import { ObjectId } from "bson";
+import passport from "passport";
+import { Server } from "socket.io";
 
 export type SocketMiddleware = (
   req: any, // eslint-disable-line @typescript-eslint/no-explicit-any
