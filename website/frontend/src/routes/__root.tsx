@@ -36,7 +36,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 function RootComponent() {
   return (
     <>
-      <SidebarProvider>
+      <SidebarProvider defaultOpen={false}>
         <AppSidebar />
         <SidebarInset>
           <SidebarTrigger className="ml-1 mt-1 p-1 text-foreground fixed hover:bg-white/30 transition rounded-md" />
