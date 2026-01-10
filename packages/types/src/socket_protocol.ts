@@ -308,7 +308,7 @@ export const SOCKET_CLIENT_CONFIG = {
     logLevel: "info",
     roomEventConfig: {
       isRoomEvent: true,
-      validations: ["ROOM_EXISTS", "ROOMUSER_EXISTS"],
+      validations: ["ROOM_EXISTS"],
     },
   },
 

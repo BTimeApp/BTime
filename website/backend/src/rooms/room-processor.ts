@@ -90,6 +90,7 @@ export class RoomProcessor {
       );
       return;
     }
+    //TODO - process any validations
 
     const handler = ROOM_EVENT_HANDLERS[event.event];
 

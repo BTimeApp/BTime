@@ -176,16 +176,12 @@ export const startSocketListener = (
       const config = SOCKET_CLIENT_CONFIG[key];
 
       if (config.roomEventConfig.isRoomEvent === true) {
-        const roomEventConfig = config.roomEventConfig as Extract<
-          typeof config.roomEventConfig,
-          { isRoomEvent: true }
-        >;
         socket.on(
           clientEvent,
           async (args: SocketClientEventArgs[typeof key]) => {
             const roomId =
-              socket.data.roomId ||
-              (args as { roomId?: string } | null)?.roomId;
+              (args as { roomId?: string } | null)?.roomId ||
+              socket.data.roomId;
             const userId = socket.data.user?.userInfo.id;
 
             // TODO - consider sending invalid argument events to the frontend?
@@ -198,69 +194,81 @@ export const startSocketListener = (
               return;
             }
 
-            for (const validation of roomEventConfig.validations) {
-              switch (validation) {
-                case "ROOM_EXISTS": {
-                  const room = await stores.rooms.getRoom(roomId);
-                  if (!room) {
-                    ServerLogger.warn({ clientEvent }, "Room does not exist");
-                    socket.emit(SOCKET_SERVER.INVALID_ROOM);
-                    return;
-                  }
-                  break;
-                }
-                case "ROOMUSER_EXISTS": {
-                  const room = await stores.rooms.getRoom(roomId);
-                  if (!room) {
-                    ServerLogger.warn(
-                      { clientEvent },
-                      "Roomuser does not exist"
-                    );
+            // for (const validation of roomEventConfig.validations) {
+            //   switch (validation) {
+            //     case "ROOM_EXISTS": {
+            //       const room = await stores.rooms.getRoom(roomId);
+            //       if (!room) {
+            //         ServerLogger.warn({ clientEvent }, "Room does not exist");
+            //         socket.emit(SOCKET_SERVER.INVALID_ROOM);
+            //         return;
+            //       }
+            //       break;
+            //     }
+            //     case "ROOMUSER_EXISTS": {
+            //       const room = await stores.rooms.getRoom(roomId);
+            //       if (!room) {
+            //         ServerLogger.warn(
+            //           { clientEvent },
+            //           "Roomuser does not exist"
+            //         );
 
-                    return;
-                  }
-                  if (!room.users[userId]) {
-                    ServerLogger.warn(
-                      { clientEvent },
-                      "Room user does not exist"
-                    );
+            //         return;
+            //       }
+            //       if (!room.users[userId]) {
+            //         ServerLogger.warn(
+            //           { clientEvent },
+            //           "Room user does not exist"
+            //         );
 
-                    return;
-                  }
-                  break;
-                }
-                case "USER_IS_HOST": {
-                  const room = await stores.rooms.getRoom(roomId);
-                  if (!room) {
-                    ServerLogger.warn({ clientEvent }, "User is not host");
+            //         return;
+            //       }
+            //       break;
+            //     }
+            //     case "USER_IS_HOST": {
+            //       const room = await stores.rooms.getRoom(roomId);
+            //       if (!room) {
+            //         ServerLogger.warn({ clientEvent }, "User is not host");
 
-                    return;
-                  }
-                  if (room.host != null && room.host.id !== userId) {
-                    ServerLogger.warn({ clientEvent }, "Room user is not host");
+            //         return;
+            //       }
+            //       if (room.host != null && room.host.id !== userId) {
+            //         ServerLogger.warn({ clientEvent }, "Room user is not host");
 
-                    return;
-                  }
+            //         return;
+            //       }
 
-                  break;
-                }
-                default:
-                  ServerLogger.error(
-                    {
-                      validation,
-                    },
-                    "Invalid room event validation detected. Fix this in dev."
-                  );
-                  break;
-              }
-            }
-            await stores.rooms.enqueueRoomEvent({
+            //       break;
+            //     }
+            //     default:
+            //       ServerLogger.error(
+            //         {
+            //           validation,
+            //         },
+            //         "Invalid room event validation detected. Fix this in dev."
+            //       );
+            //       break;
+            //   }
+            // }
+            ServerLogger.warn(
+              {
+                roomId,
+                event: clientEvent,
+              },
+              "socket enqueue event call"
+            );
+            const enqueueResult = await stores.rooms.enqueueRoomEvent({
               roomId: roomId,
               userId: userId,
               socketId: socket.id,
               event: clientEvent,
               args: args,
             } as RoomRedisEvent);
+
+            if (enqueueResult === 0) {
+              //the room doesn't exist
+              socket.emit(SOCKET_SERVER.INVALID_ROOM);
+            }
           }
         );
       }

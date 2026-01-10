@@ -1,5 +1,23 @@
-import { Redis } from "ioredis";
+import { Redis, Redis as RedisInterface } from "ioredis";
 import { RedisLogger } from "@/logging/logger.js";
+
+// https://stackoverflow.com/questions/70805943/redis-redis-createclient-in-typescript
+declare module "ioredis" {
+  interface Redis {
+    /**
+     * Enqueue a room event if the room exists.
+     * @param roomKey Redis key for the room JSON object
+     * @param queueKey Redis key for the room queue list
+     * @param payload JSON-stringified event data
+     * @returns 1 if enqueued, 0 if room does not exist
+     */
+    enqueueRoomEvent(
+      roomKey: string,
+      queueKey: string,
+      payload: string
+    ): Promise<number>;
+  }
+}
 
 export const connectToRedis = async () => {
   // connect to Redis

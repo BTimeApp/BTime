@@ -30,6 +30,22 @@ const ROOM_TIMEOUT_SECONDS = 5;
 
 export async function createRoomStore(redis: Redis, subClient: Redis) {
   await subClient.subscribe("__keyevent@0__:expired");
+  /** Turns enqueueing room events into a single, atomic event. */
+  redis.defineCommand("enqueueRoomEvent", {
+    numberOfKeys: 2,
+    lua: `
+      -- KEYS[1] = room key
+      -- KEYS[2] = queue key
+      -- ARGV[1] = event payload string
+  
+      if redis.call("EXISTS", KEYS[1]) == 1 then
+        redis.call("LPUSH", KEYS[2], ARGV[1])
+        return 1
+      else
+        return 0
+      end
+    `,
+  });
 
   // attach listener to delete room keys from the rooms set when the actual room object expires
   subClient.on("message", async (channel, key) => {
@@ -167,36 +183,39 @@ export async function createRoomStore(redis: Redis, subClient: Redis) {
 
     /**
      * Pushes an event onto a room's queue.
-     * Noop if the room doesn't exist.
      */
-    async enqueueRoomEvent(roomEvent: RoomRedisEvent) {
+    async enqueueRoomEvent(roomEvent: RoomRedisEvent): Promise<number> {
       const { roomId, userId, socketId, event, args } = roomEvent;
+      const eventData = JSON.stringify({
+        userId: userId,
+        socketId: socketId,
+        event: event,
+        args: args,
+      });
 
-      const room = await this.getRoom(roomId);
-      if (!room) {
-        RedisLogger.warn(
-          {
-            roomId,
-          },
-          "Tried to push an event to non-existent room redis queue."
+      try {
+        const enqueueResult = await redis.enqueueRoomEvent(
+          roomKey(roomId),
+          roomEventKey(roomId),
+          eventData
         );
-        return;
-      } else {
-        try {
-          const eventData = JSON.stringify({
-            userId: userId,
-            socketId: socketId,
-            event: event,
-            args: args,
-          });
-          redis.lpush(roomEventKey(roomId), eventData);
-        } catch (e) {
-          const error = e as Error;
-          RedisLogger.error(
-            { roomEvent, error: error.message },
-            "Error when pushing event data onto room queue"
+        if (enqueueResult === 0) {
+          RedisLogger.warn(
+            {
+              roomId,
+            },
+            "Tried to push an event to non-existent room redis queue."
           );
         }
+
+        return enqueueResult;
+      } catch (err) {
+        const error = err as Error;
+        RedisLogger.error(
+          { roomEvent, error: error.message },
+          "Error when pushing event data onto room queue"
+        );
+        return -1;
       }
     },
   };
