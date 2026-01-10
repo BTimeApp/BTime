@@ -2,8 +2,8 @@ import type { SolveStatus, IRoomSolve, IRoomParticipant } from "@btime/types";
 
 import { useRoomActions, useRoomStore } from "@/context/room-context";
 import { useCallbackOnTransition } from "@/hooks/use-callback-on-transition";
+import { useOnTransition } from "@/hooks/use-on-transition";
 import { useSocketEvent } from "@/hooks/use-socket-event";
-import { useStartTimeOnTransition } from "@/hooks/use-start-time-on-transition";
 import { Result, isLiveTimer } from "@btime/lib";
 import { SOCKET_CLIENT, SOCKET_SERVER } from "@btime/types";
 import { useParams, useRouter } from "@tanstack/react-router";
@@ -68,16 +68,9 @@ export default function RoomEventHandler() {
     addUserResult,
   } = useRoomActions();
 
-  //live update for start time
-  const liveTimerStartTime = useStartTimeOnTransition<SolveStatus>(
-    localSolveStatus,
-    "SOLVING"
-  );
-
-  // set live timer start time in room store upon update
-  useEffect(() => {
-    if (liveTimerStartTime) setLiveTimerStartTime(liveTimerStartTime);
-  }, [liveTimerStartTime, setLiveTimerStartTime]);
+  useOnTransition<SolveStatus>(localSolveStatus, "SOLVING", () => {
+    setLiveTimerStartTime(performance.now());
+  });
 
   /**
    * Update user status on backend whenever client updates.

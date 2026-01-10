@@ -22,6 +22,17 @@ function StopwatchTimer({
   const startRef = useRef<number>(startTime ? startTime : performance.now());
   const animationRef = useRef<number>(0);
 
+  // startTime prop change does not update startRef on its own (we need a ref to use with RAF).
+  // need this useEffect to correctly update startRef value
+  // TODO figure out a cleaner pattern
+  useEffect(() => {
+    // for new startTime, we need to effectively reset the timer.
+    if (startTime != null) {
+      startRef.current = startTime;
+      setElapsed(0);
+    }
+  }, [startTime]);
+
   useEffect(() => {
     const update = () => {
       const now = performance.now();
