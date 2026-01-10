@@ -1,0 +1,11 @@
+{
+  "name": "@btime/packages",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A package set up for development tooling",
+  "scripts": {
+    "build": "pnpm --filter './*/' build",
+    "lint": "pnpm --filter './*/' lint",
+    "lint:fix": "pnpm --filter './*/' lint:fix"
+  }
+}

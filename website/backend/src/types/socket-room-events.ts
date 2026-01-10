@@ -1,0 +1,28 @@
+import type { RedisStores } from "@/redis/stores.js";
+import type { ExtractArgs } from "@btime/types";
+import type { SOCKET_CLIENT_CONFIG } from "@btime/types";
+import type { Server } from "socket.io";
+
+
+type RoomEventHandlerFunction<TArgs> = (
+  io: Server,
+  stores: RedisStores,
+  roomId: string,
+  userId: string,
+  socketId: string,
+  args: TArgs
+) => Promise<void>;
+
+export type RoomEventHandlers = {
+  [K in RoomEventKeys]: RoomEventHandlerFunction<
+    ExtractArgs<(typeof SOCKET_CLIENT_CONFIG)[K]>
+  >;
+};
+
+export type RoomEventKeys = {
+  [K in keyof typeof SOCKET_CLIENT_CONFIG]: (typeof SOCKET_CLIENT_CONFIG)[K]["roomEventConfig"] extends {
+    isRoomEvent: true;
+  }
+    ? K
+    : never;
+}[keyof typeof SOCKET_CLIENT_CONFIG];

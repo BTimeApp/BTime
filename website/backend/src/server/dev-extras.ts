@@ -1,0 +1,84 @@
+import type { RedisStores } from "@/redis/stores.js";
+import type { RoomWorker } from "@/rooms/room-worker.js";
+import type {
+  Access,
+  IRoom,
+  RaceSettings,
+  TeamFormatSettings,
+  TeamSettings,
+} from "@btime/types";
+
+import { createRoom } from "@/lib/room.js";
+import { RedisLogger } from "@/logging/logger.js";
+import { setSearchDebug } from "cubing/search";
+
+async function addTestRooms(stores: RedisStores, roomWorker: RoomWorker) {
+  for (let i = 30; i > 0; i--) {
+    const room: IRoom = await createRoom(
+      {
+        roomName: "test_room_" + i,
+        roomEvent: "333",
+        access: (i % 2 == 0
+          ? {
+              visibility: "PUBLIC",
+            }
+          : { visibility: "PRIVATE", password: "test" }) as Access,
+        raceSettings: (i % 2 == 0
+          ? {
+              roomFormat: "CASUAL",
+            }
+          : {
+              roomFormat: "RACING",
+              matchFormat: "BEST_OF",
+              nSets: 3,
+              setFormat: "BEST_OF",
+              nSolves: 7,
+            }) as RaceSettings,
+        teamSettings: (i % 3 == 0
+          ? {
+              teamsEnabled: true,
+              teamFormatSettings: (i % 6 == 0
+                ? {
+                    teamSolveFormat: "ONE",
+                  }
+                : {
+                    teamSolveFormat: "ALL",
+                    teamReduceFunction: "SUM",
+                    teamScrambleFormat: "SAME",
+                  }) as TeamFormatSettings,
+            }
+          : { teamsEnabled: false }) as TeamSettings,
+      },
+      i.toString()
+    );
+
+    await stores.rooms.setRoom(room);
+    roomWorker.startRoomProcessor(i.toString());
+  }
+}
+
+function disableCubingSearchPrintout() {
+  // https://js.cubing.net/cubing/scramble/
+  setSearchDebug({
+    logPerf: false, // Disable console info like scramble generation durations.
+  });
+}
+
+export default async function addDevExtras(
+  stores: RedisStores,
+  roomWorker: RoomWorker
+) {
+  addTestRooms(stores, roomWorker);
+  disableCubingSearchPrintout();
+
+  const handleServerClose = async () => {
+    RedisLogger.info("Cleaning up Redis before exit...");
+    await stores.pubClient.flushdb(); // deletes all keys in the current DB
+    await stores.pubClient.quit();
+    process.exit(0);
+  };
+
+  // attach redis cleanup upon server close - this should only be done in local dev environments
+  process.on("SIGINT", handleServerClose);
+  process.on("SIGTERM", handleServerClose);
+}

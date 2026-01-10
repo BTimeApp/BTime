@@ -12,14 +12,10 @@
 !.yarn/versions
 
 #logs 
-/logs 
+**/logs
 
 # testing
 /coverage
-
-# next.js
-/.next/
-/out/
 
 # compiled TypeScript
 /dist
@@ -27,6 +23,7 @@
 
 # production
 /build
+**/build
 
 # misc
 .DS_Store
@@ -42,12 +39,12 @@ yarn-error.log*
 .env.production
 .env.*.local
 
-# vercel
-.vercel
-
 # VScode
 **/.VScode
 **/.vscode
+
+# Tanstack
+**/.tanstack
 
 # typescript
 *.tsbuildinfo

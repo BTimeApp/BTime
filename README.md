@@ -20,13 +20,12 @@ BTime is still in active development. New features coming soon!
 
 If you're interested, the following are basic instructions for hosting the BTime webapp locally for development.
 
-#### External Dependency Setup
+#### External Dependencies (install these on your own)
 
-Download and install both `Node.js` and `npm` on your machine. [This link](https://nodejs.org/en/download) should work.
-
-You will need to [install Redis](https://redis.io/) on your machine, as Redis serves as the ephemeral data store for BTime.
-
-You will also need to separately [install MongoDB](https://www.mongodb.com/docs/manual/installation/) on your machine. Make sure the [MongoDB daemon](https://www.mongodb.com/docs/manual/reference/program/mongod/) is active when you want to run the dev server (otherwise `npm run dev` will just hang for about a minute).
+- `pnpm` (package management)
+- `Node.js` (server runtime)
+- `redis` (ephemeral data store)
+- `mongodb` (database)
 
 #### BTime Repo Setup
 
@@ -48,13 +47,14 @@ Then, install node packages:
 
 ```bash
 cd BTime
-npm i
+pnpm install
+pnpm build-packages
 ```
 
 Finally, run
 
 ```bash
-npm run dev
+pnpm dev-website
 ```
 
 on the terminal. If all goes well, you should eventually see something like
@@ -65,7 +65,7 @@ on the terminal. If all goes well, you should eventually see something like
 
 This means the webapp is running on your local machine!
 
-You can view BTime on [http://0.0.0.0:8080](http://0.0.0.0:8080). Note that you will need to set up your env development (read below) before you can do anything fun, though.
+In development, you can view BTime by directly connecting to the express server at [http://0.0.0.0:8080](http://0.0.0.0:8080) or through the vite server at [http://0.0.0.0:5173](http://0.0.0.0:5173). Note that you will need to set up your env development (read below) before you can do anything fun, though.
 
 #### Setting up your env.development file
 

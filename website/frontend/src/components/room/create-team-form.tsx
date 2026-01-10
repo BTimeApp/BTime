@@ -1,0 +1,146 @@
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { useRoomStore } from "@/context/room-context";
+import { SOCKET_CLIENT } from "@btime/types";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "@tanstack/react-router";
+import { useMemo } from "react";
+import { useForm, useFieldArray } from "react-hook-form";
+import { z } from "zod";
+
+type CreateTeamFormProps = {
+  onSubmit: () => void;
+};
+export function CreateTeamForm({ onSubmit }: CreateTeamFormProps) {
+  const router = useRouter();
+  const { socket } = router.options.context;
+  const teams = useRoomStore((s) => s.teams);
+  const teamSettings = useRoomStore((s) => s.teamSettings);
+
+  const currTeamsLength = useMemo(() => {
+    return Object.values(teams).length;
+  }, [teams]);
+
+  // redefine schema within form b/c we need to access s.maxNumTeams potentially
+  const createTeamFormSchema = z.object({
+    teamNames: z
+      .array(
+        //https://www.reddit.com/r/typescript/comments/1cw0nvw/reacthookforms_usefieldarray_type_string_is_not/
+        z.object({
+          teamName: z
+            .string()
+            .min(1, "Team Name cannot be empty")
+            .max(50, "Team name cannot be more than 50 characters"),
+        })
+      )
+      .refine(
+        (arr) =>
+          !teamSettings.teamsEnabled ||
+          !teamSettings.maxNumTeams ||
+          arr.length <= teamSettings.maxNumTeams - currTeamsLength,
+        {
+          message: teamSettings.teamsEnabled
+            ? `Maximum ${teamSettings.maxNumTeams} teams allowed`
+            : `Cannot create teams when teams disabled`,
+        }
+      ),
+  });
+
+  type CreateTeamFormValues = z.infer<typeof createTeamFormSchema>;
+
+  const form = useForm<CreateTeamFormValues>({
+    resolver: zodResolver(createTeamFormSchema),
+    defaultValues: {
+      teamNames: [{ teamName: "" }], // Start with one empty input
+    },
+  });
+
+  const { fields, append, remove } = useFieldArray<
+    CreateTeamFormValues,
+    "teamNames"
+  >({
+    control: form.control,
+    name: "teamNames",
+  });
+
+  const handleSubmit = (data: CreateTeamFormValues) => {
+    const teamNames = data.teamNames.map((t) => t.teamName);
+    socket.emit(SOCKET_CLIENT.CREATE_TEAMS, { teamNames: teamNames });
+    onSubmit();
+  };
+
+  if (!teamSettings.teamsEnabled) {
+    return <></>;
+  }
+
+  return (
+    <div>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="px-3">
+          <div className="overflow-y-auto max-h-[50vh] py-3 space-y-1">
+            {fields.map((field, index) => (
+              <div key={field.id}>
+                <FormField
+                  control={form.control}
+                  name={`teamNames.${index}.teamName`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex flex-row gap-2">
+                        <FormLabel>Team Name {index + 1}</FormLabel>
+                        <Button
+                          size="sm"
+                          className="h-4"
+                          type="button"
+                          variant="destructive"
+                          onClick={() => remove(index)}
+                        >
+                          -
+                        </Button>
+                      </div>
+                      <FormControl>
+                        <Input placeholder={""} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {form.formState.errors.teamNames?.[index] && (
+                  <span>{form.formState.errors.teamNames[index]?.message}</span>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-row justify-between gap-2">
+            {!teamSettings.maxNumTeams ||
+            // eslint-disable-next-line react-hooks/incompatible-library
+            form.watch("teamNames").length + currTeamsLength <
+              teamSettings.maxNumTeams ? (
+              <Button
+                type="button"
+                variant="primary"
+                onClick={() => append({ teamName: "" })}
+              >
+                Add Another Team
+              </Button>
+            ) : (
+              <></>
+            )}
+
+            <Button type="submit" className="ml-auto" variant="primary">
+              Create Team(s)
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </div>
+  );
+}

@@ -1,6 +1,8 @@
-import { crc16ccit } from "../utils";
-import { BluetoothTimer, TimeMS, TimerEvent, TimerState } from "./timer";
+import type { TimeMS, TimerEvent } from "./timer";
+
+import { BluetoothTimer, TimerState } from "./timer";
 import { TimerRegistry } from "./timer-registry";
+import { crc16ccit } from "../utils/utils";
 
 /**
  * From gan-web-bluetooth (afedotov)
@@ -92,7 +94,6 @@ class GanTimer extends BluetoothTimer {
       state: GanTimer.stateFromData(data),
     };
     if (evt.state == TimerState.STOPPED) {
-      //TODO set up the recordedTime
       evt.recordedTime = GanTimer.timeFromData(data, 4);
     }
     return evt;

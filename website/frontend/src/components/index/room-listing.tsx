@@ -1,0 +1,245 @@
+import type { IRoomSummary } from "@btime/types";
+
+import LoadingSpinner from "@/components/common/loading-spinner";
+import JoinRoomButton from "@/components/index/join-room-button";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from "@/components/ui/card";
+import { Pagination } from "@/components/ui/pagination";
+import {
+  PaginationPreviousButton,
+  PaginationNextButton,
+} from "@/components/ui/pagination-extra";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { fetchRooms } from "@/lib/fetch-rooms";
+import { abbreviate, cn } from "@/lib/utils";
+import { Route } from "@/routes"; //index route
+import { displayText } from "@btime/lib";
+import { ROOM_EVENTS_INFO } from "@btime/types";
+import { RefreshCw, User, Globe, GlobeLock } from "lucide-react";
+import { useCallback, useState, useTransition } from "react";
+import { toast } from "sonner";
+
+export default function RoomListing({ className }: { className?: string }) {
+  // pull in initial rooms data from root route's loader
+  const { roomsData: initialRoomsData } = Route.useLoaderData();
+
+  // the page number we are currently on. 1-indexed
+  const [rooms, setRooms] = useState<Map<string, IRoomSummary>>(
+    new Map(initialRoomsData.rooms.map((r: IRoomSummary) => [r.id, r]))
+  );
+  const [pageNumber, setPageNumber] = useState<number>(
+    initialRoomsData.pageNumber
+  );
+  const [totalPages, setTotalPages] = useState<number>(
+    initialRoomsData.totalPages
+  );
+
+  const [refreshPending, startRefreshTransition] = useTransition();
+  const [previousPending, startPreviousTransition] = useTransition();
+  const [nextPending, startNextTransition] = useTransition();
+
+  /**
+   * Updates the rooms local state
+   */
+  const updateRooms = useCallback(async (pageNumber: number) => {
+    const res = await fetchRooms(pageNumber);
+    if (!res) {
+      toast.error("Could not fetch rooms");
+      return;
+    }
+
+    setTotalPages(res.totalPages);
+
+    if (pageNumber > res.totalPages) {
+      setPageNumber(res.totalPages);
+    } else {
+      if (res.rooms != null) {
+        setRooms(
+          new Map(
+            res.rooms.map((roomSummary: IRoomSummary) => [
+              roomSummary.id,
+              roomSummary,
+            ])
+          )
+        );
+      }
+      setPageNumber(pageNumber);
+    }
+  }, []);
+
+  const goToPreviousPage = useCallback(() => {
+    updateRooms(Math.max(pageNumber - 1, 1));
+  }, [updateRooms, pageNumber]);
+
+  const goToNextPage = useCallback(() => {
+    updateRooms(pageNumber + 1);
+  }, [updateRooms, pageNumber]);
+
+  return (
+    <Card
+      className={cn(
+        "h-120 w-full flex flex-col px-3 gap-1 rounded-lg shadow-lg p-1 bg-container-1",
+        className
+      )}
+    >
+      <CardHeader className="shrink overflow-x-hidden">
+        <div className="flex flex-row px-1 min-w-0">
+          <p className="min-w-0 truncate">
+            {pageNumber} of {totalPages}
+          </p>
+          <h2 className="grow font-semibold truncate text-center text-xl">
+            Rooms
+          </h2>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={refreshPending}
+                className="min-w-0 overflow-x-hidden"
+                onClick={() => {
+                  startRefreshTransition(() => {
+                    updateRooms(pageNumber);
+                  });
+                }}
+              >
+                <RefreshCw
+                  className={`${refreshPending ? "animate-spin" : ""}`}
+                />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div>Refresh</div>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      </CardHeader>
+
+      <CardContent className="px-1 flex-1 min-h-0 w-full overflow-hidden">
+        <ScrollArea className="h-full w-full">
+          <div className="w-full min-w-max">
+            <div className="grid grid-cols-9 gap-3 px-1 py-1 text-left shadow-sm rounded-sm sticky top-0 bg-container-1">
+              <div className="col-span-2">Room Name</div>
+              <div className="col-start-4">Users</div>
+              <div>Event</div>
+              <div>Format</div>
+              <div className="col-start-8">Privacy</div>
+            </div>
+            {rooms.size != 0 ? (
+              [...rooms.entries()].map(([roomId, roomSummary]) => (
+                <div
+                  key={roomId}
+                  className="grid grid-cols-9 gap-3 px-1 py-1 text-left items-center shadow-sm rounded-sm"
+                >
+                  <div className="col-span-2">{roomSummary.roomName}</div>
+                  <div>
+                    <JoinRoomButton roomId={roomSummary.id}></JoinRoomButton>
+                  </div>
+                  <div className="flex flex-row">
+                    <User />
+                    <div>
+                      {roomSummary.numUsers}
+                      {roomSummary.maxUsers ? `/${roomSummary.maxUsers}` : ""}
+                    </div>
+                  </div>
+                  <div className="flex flex-row">
+                    <span
+                      className={`cubing-icon ${
+                        ROOM_EVENTS_INFO[roomSummary.roomEvent].iconSrc
+                      }`}
+                    />
+                    <div>
+                      {ROOM_EVENTS_INFO[roomSummary.roomEvent].displayName}
+                    </div>
+                  </div>
+                  <div className="grid grid-rows-2">
+                    <div>
+                      {displayText(roomSummary.raceSettings.roomFormat)}
+                    </div>
+                    <div>
+                      {roomSummary.teamSettings.teamsEnabled ? "Teams" : "Solo"}
+                    </div>
+                  </div>
+                  <div className="grid grid-rows-2">
+                    {roomSummary.raceSettings.roomFormat === "RACING" ? (
+                      <>
+                        <div>
+                          {abbreviate(roomSummary.raceSettings.matchFormat) +
+                            roomSummary.raceSettings.nSets}
+                        </div>
+                        <div>
+                          {abbreviate(roomSummary.raceSettings.setFormat) +
+                            roomSummary.raceSettings.nSolves}
+                        </div>
+                      </>
+                    ) : (
+                      <></>
+                    )}
+                  </div>
+
+                  <div className="col-start-8 flex flex-row">
+                    {roomSummary.visibility === "PRIVATE" ? (
+                      <>
+                        <GlobeLock />
+                        <div>Private</div>
+                      </>
+                    ) : (
+                      <>
+                        <Globe />
+                        <div>Public</div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center">No rooms currently available!</div>
+            )}
+          </div>
+          <ScrollBar orientation="vertical" />
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+      </CardContent>
+      <CardFooter>
+        <Pagination>
+          <div className="grid grid-cols-3 items-center">
+            {pageNumber != 1 &&
+              (previousPending ? (
+                <LoadingSpinner className="size-6" />
+              ) : (
+                <PaginationPreviousButton
+                  onClick={() => {
+                    startPreviousTransition(() => {
+                      goToPreviousPage();
+                    });
+                  }}
+                />
+              ))}
+            <div className="col-start-2 text-center text-lg">{pageNumber}</div>
+            {nextPending ? (
+              <LoadingSpinner className="size-6" />
+            ) : (
+              <PaginationNextButton
+                onClick={() => {
+                  startNextTransition(() => {
+                    goToNextPage();
+                  });
+                }}
+              />
+            )}
+          </div>
+        </Pagination>
+      </CardFooter>
+    </Card>
+  );
+}

@@ -1,0 +1,102 @@
+import type { Socket } from "socket.io-client";
+
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { SOCKET_CLIENT } from "@btime/types";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useCallback } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+
+const formSchema = z.object({
+  password: z.string(),
+});
+
+type PasswordPromptProps = {
+  socket: Socket;
+  roomId: string;
+};
+
+function PasswordPrompt({ socket, roomId }: PasswordPromptProps) {
+  // form schema
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      password: "",
+    },
+  });
+
+  // const [password, setPassword] = useState(""); //local state tracked in input
+
+  const onSubmit = useCallback(
+    (values: z.infer<typeof formSchema>) => {
+      if (!socket) return;
+      //emit a socket event with roomId, userId, password, and onPasswordValid callback.
+      socket.emit(SOCKET_CLIENT.JOIN_ROOM, {
+        roomId: roomId,
+        password: values.password,
+      });
+    },
+    [socket, roomId]
+  );
+
+  if (!socket.connected) {
+    return <div>Socket not connected yet.</div>;
+  }
+
+  return (
+    <Dialog open={true}>
+      <DialogContent
+        onInteractOutside={(e) => {
+          e.preventDefault();
+        }}
+      >
+        <DialogTitle>Enter Password</DialogTitle>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="flex flex-row">
+              <Button variant="primary" type="submit" className="font-bold">
+                Submit
+              </Button>
+
+              <Button
+                variant="primary"
+                className="font-bold ml-auto"
+                onClick={() => {
+                  window.location.href = "/";
+                }}
+              >
+                Back to Home
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export default PasswordPrompt;

@@ -1,0 +1,24 @@
+{
+  "name": "btime-website",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n \"backend,frontend\" -c \"blue,green\" \"pnpm --filter ./backend dev\" \"pnpm --filter ./frontend dev\"",
+    "dev:frontend": "pnpm --filter './frontend' dev",
+    "dev:backend": "pnpm --filter './backend' dev",
+    "build": "pnpm --filter './frontend' build && pnpm --filter './backend' build",
+    "build:frontend": "pnpm --filter './frontend' build",
+    "build:backend": "pnpm --filter './backend' build",
+    "start": "pnpm --filter './backend' start",
+    "lint": "pnpm --filter './frontend' lint && pnpm --filter './backend' lint",
+    "lint:fix": "pnpm --filter './frontend' lint:fix && pnpm --filter './backend' lint:fix"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.39.2",
+    "eslint-plugin-import": "^2.32.0",
+    "typescript-eslint": "^8.51.0"
+  }
+}
