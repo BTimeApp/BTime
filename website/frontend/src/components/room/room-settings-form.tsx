@@ -47,7 +47,6 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 const ROOM_TEMPLATE_INFO = {
-  // TODO - figure out how to allow Select to be blank. Until then, workaround
   NONE: {},
   RELAY: {
     "teamSettings.teamsEnabled": true,

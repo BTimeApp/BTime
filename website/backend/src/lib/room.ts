@@ -401,7 +401,6 @@ export function findMatchWinners(room: IRoom): string[] {
   }
 }
 
-//TODO - move this to the file with type definition and/or merge it
 const teamReduceFunctionToFunction = new Map<
   TeamReduceFunction,
   (results: IResult[]) => number
@@ -437,7 +436,6 @@ export function checkTeamFinished(room: IRoom, teamId: string) {
     case "ONE": {
       const currUid = room.teams[teamId].currentMember;
       if (!currUid) {
-        // TODO - consider if this should be true
         return false;
       }
       return (
@@ -617,7 +615,6 @@ export function processNewResult(
  * To keep consistent with the other parts of the backend, we check if
  * all relevant users have solve status FINISHED.
  *
- * TODO: reimplement/redesign the backend so that solves are really finished once all relevant results are in (check the results array of the solve instead)
  */
 export function checkRoomSolveFinished(room: IRoom): boolean {
   const currentSolve = getLatestSolve(room);

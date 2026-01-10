@@ -502,7 +502,6 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
       if (raceSettings.roomFormat === "CASUAL") {
         return u2.points - u1.points;
       }
-      //TODO - if we ever expand to match formats that don't use this logic, will need to update here.
       const matchPtDiff = u2.setWins - u1.setWins;
       if (matchPtDiff != 0) {
         return matchPtDiff;
@@ -521,6 +520,11 @@ function SummaryRoomPanel({ className }: SummaryRoomPanelProps) {
           case "FASTEST_OF":
             //sort by the LOWER single
             return -u2.points - u1.points;
+          default: {
+            const _exhaustiveCheck: never = raceSettings.setFormat;
+            console.warn(_exhaustiveCheck as never);
+            return 0;
+          }
         }
       }
     },

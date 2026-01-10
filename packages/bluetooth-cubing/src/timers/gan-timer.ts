@@ -94,7 +94,6 @@ class GanTimer extends BluetoothTimer {
       state: GanTimer.stateFromData(data),
     };
     if (evt.state == TimerState.STOPPED) {
-      //TODO set up the recordedTime
       evt.recordedTime = GanTimer.timeFromData(data, 4);
     }
     return evt;

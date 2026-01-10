@@ -305,7 +305,7 @@ export const ROOM_EVENT_HANDLERS = {
     // when user spectates, need to check if all competing users are done, then advance room
     if (room.state === "STARTED") {
       if (args.competing) {
-        //if user is now competing, we need to add an attempt for them if none exists yet. TODO
+        //if user is now competing, we need to add an attempt for them if none exists yet.
         // right now, the only way the TOGGLE_COMPETING event is triggered is through the button on UI that only shows up in SOLO.
         const currentSolve = getLatestSolve(room);
 
@@ -653,7 +653,6 @@ export function isRoomEventKey(event: string): event is RoomEventKey {
 
 /**
  * Helper function to handle events when solve finished.
- * TODO move as much as possible to lib/room
  */
 async function handleSolveFinished(io: Server, room: IRoom) {
   finishRoomSolve(room);
@@ -744,7 +743,6 @@ async function handleSolveFinished(io: Server, room: IRoom) {
 
 /**
  * Helper function to handle the event of a user leaving a team
- * TODO move as much as possibe to lib/room
  */
 async function handleUserLeaveTeam(
   io: Server,

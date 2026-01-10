@@ -24,7 +24,6 @@ function KeyListener({
 }: KeyListenerProps) {
   /** It is not possible to listen to the actual state of the key upon first mounting.
    *  That would require listening some global key state tracking/listeners that aren't necessary yet.
-   *  TODO - implement such trackers/listeners if need arises
    */
   const isPressedRef = useRef(forceInitialValue);
 

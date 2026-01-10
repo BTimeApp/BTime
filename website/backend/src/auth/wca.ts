@@ -1,4 +1,4 @@
-import type { UserDocument} from "@/models/user.js";
+import type { UserDocument } from "@/models/user.js";
 import type { RedisStores } from "@/redis/stores.js";
 import type { PassportStatic } from "passport";
 
@@ -6,8 +6,6 @@ import { AuthLogger } from "@/logging/logger.js";
 import { UserModel, toIUser } from "@/models/user.js";
 import { Router } from "express";
 import { Strategy as CustomStrategy } from "passport-custom";
-
-
 
 export function createWCAAuth(
   passport: PassportStatic,
@@ -141,7 +139,7 @@ export function createWCAAuth(
             AuthLogger.warn({ e }, "WCAAuth received invalid state param");
           }
 
-          // authentication successful - TODO make this redirect to previous page (or other custom logic)
+          // authentication successful
           const user = req.user;
 
           if (!user) {

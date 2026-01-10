@@ -134,7 +134,7 @@ export const SET_FORMATS = [
   "AVERAGE_OF", //average of n format (mean when dropping max and min) - n >= 3
   "MEAN_OF", //mean of n format
   "FASTEST_OF", //fastest of n solves - same as Best of in WCA competitions
-  //TOdO - support other formats like total time differential
+  // in future, support other formats like total time differential
 ] as const;
 
 //all room states

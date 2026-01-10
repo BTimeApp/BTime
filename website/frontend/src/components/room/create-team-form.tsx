@@ -1,5 +1,3 @@
-import type { FieldErrors, FieldValues } from "react-hook-form";
-
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -14,9 +12,8 @@ import { useRoomStore } from "@/context/room-context";
 import { SOCKET_CLIENT } from "@btime/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "@tanstack/react-router";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
-import { toast } from "sonner";
 import { z } from "zod";
 
 type CreateTeamFormProps = {
@@ -80,14 +77,6 @@ export function CreateTeamForm({ onSubmit }: CreateTeamFormProps) {
     onSubmit();
   };
 
-  //TODO - fix. nested nature is messing with error processing
-  const onError = useCallback((errors: FieldErrors<FieldValues>) => {
-    toast.error(
-      "Error(s) in form: " +
-        Object.values(errors).map((err) => err?.message?.toString())
-    );
-  }, []);
-
   if (!teamSettings.teamsEnabled) {
     return <></>;
   }
@@ -95,10 +84,7 @@ export function CreateTeamForm({ onSubmit }: CreateTeamFormProps) {
   return (
     <div>
       <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(handleSubmit, onError)}
-          className="px-3"
-        >
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="px-3">
           <div className="overflow-y-auto max-h-[50vh] py-3 space-y-1">
             {fields.map((field, index) => (
               <div key={field.id}>
