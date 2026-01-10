@@ -2,7 +2,6 @@ import { cn } from "@/lib/utils";
 import { GripVertical } from "lucide-react";
 import * as ResizablePrimitive from "react-resizable-panels";
 
-
 /**
  * TODO once this issue (https://github.com/shadcn-ui/ui/issues/9118) is resolved,
  * upgrade the react-resizable-panels package to latest version.
