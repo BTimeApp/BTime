@@ -22,8 +22,8 @@ import {
 } from "@/components/ui/tooltip";
 import { fetchRooms } from "@/lib/fetch-rooms";
 import { abbreviate, cn } from "@/lib/utils";
-import { displayText } from "@btime/lib";
 import { Route } from "@/routes"; //index route
+import { displayText } from "@btime/lib";
 import { ROOM_EVENTS_INFO } from "@btime/types";
 import { RefreshCw, User, Globe, GlobeLock } from "lucide-react";
 import { useCallback, useState, useTransition } from "react";
