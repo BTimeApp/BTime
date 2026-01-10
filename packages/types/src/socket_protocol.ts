@@ -14,7 +14,7 @@ import type { IRoomSettings } from "./room.js";
  */
 type RoomEventValidation = "USER_IS_HOST" | "ROOM_EXISTS" | "ROOMUSER_EXISTS";
 
-type RoomEventConfig =
+export type RoomEventConfig =
   | {
       isRoomEvent: false;
     }

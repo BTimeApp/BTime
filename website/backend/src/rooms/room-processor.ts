@@ -1,4 +1,10 @@
-import type { RoomRedisEvent } from "@btime/types";
+import {
+  SOCKET_CLIENT_CONFIG,
+  SOCKET_SERVER,
+  SOCKET_SERVER_CONFIG,
+  type RoomEventConfig,
+  type RoomRedisEvent,
+} from "@btime/types";
 import type { Redis } from "ioredis";
 
 import { Server as SocketIOServer } from "socket.io";
@@ -90,7 +96,57 @@ export class RoomProcessor {
       );
       return;
     }
-    //TODO - process any validations
+
+    const roomEventConfig = SOCKET_CLIENT_CONFIG[event.event]
+      .roomEventConfig as Extract<RoomEventConfig, { isRoomEvent: true }>;
+
+    for (const validation of roomEventConfig.validations) {
+      switch (validation) {
+        case "ROOM_EXISTS": {
+          const room = await this.stores.rooms.getRoom(this.roomId);
+          if (!room) {
+            RoomLogger.warn({ event }, "Room does not exist");
+            const socket = this.io.sockets.sockets.get(event.socketId);
+            socket?.emit(SOCKET_SERVER.INVALID_ROOM);
+            return;
+          }
+          break;
+        }
+        case "ROOMUSER_EXISTS": {
+          const room = await this.stores.rooms.getRoom(this.roomId);
+          if (!room) {
+            RoomLogger.warn({ event }, "Roomuser does not exist");
+            return;
+          }
+          if (!room.users[event.userId]) {
+            RoomLogger.warn({ event }, "Room user does not exist");
+            return;
+          }
+          break;
+        }
+        case "USER_IS_HOST": {
+          const room = await this.stores.rooms.getRoom(this.roomId);
+          if (!room) {
+            RoomLogger.warn({ event }, "User is not host");
+            return;
+          }
+          if (room.host != null && room.host.id !== event.userId) {
+            RoomLogger.warn({ event }, "Room user is not host");
+            return;
+          }
+
+          break;
+        }
+        default:
+          RoomLogger.error(
+            {
+              validation,
+            },
+            "Invalid room event validation detected. Fix this in dev."
+          );
+          break;
+      }
+    }
 
     const handler = ROOM_EVENT_HANDLERS[event.event];
 
