@@ -37,7 +37,7 @@ export default function RoomUserDialog({
         <div className="flex flex-row">
           <div className="flex-1">
             <Avatar className="h-40 w-40 rounded-lg">
-              <AvatarImage src={user.user.avatarURL ?? "/images/C_logo.png"} />
+              <AvatarImage src={user.user.avatarURL ?? "/C_logo.png"} />
               <AvatarFallback className="rounded-lg" />
             </Avatar>
           </div>

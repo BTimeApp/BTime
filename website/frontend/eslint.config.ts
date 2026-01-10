@@ -9,7 +9,13 @@ const __dirname = path.dirname(__filename);
 
 export default [
   {
-    ignores: ["node_modules", "dist", "eslint.config.ts"],
+    ignores: [
+      "node_modules",
+      "dist",
+      "eslint.config.ts",
+      "tailwind.config.js",
+      "vite.config.js",
+    ],
   },
   ...baseConfig,
   {

@@ -22,7 +22,7 @@ export default function ProfileView({ className }: { className?: string }) {
   const hydrated = AuthStore((s) => s.hydrated);
 
   const username = user?.userInfo.userName ?? "Profile";
-  const avatarURL = user?.userInfo.avatarURL ?? "/images/C_logo.png";
+  const avatarURL = user?.userInfo.avatarURL ?? "/C_logo.png";
 
   return (
     <Card
@@ -44,7 +44,7 @@ export default function ProfileView({ className }: { className?: string }) {
           {hydrated ? (
             <Image
               src={avatarURL}
-              alt="/images/C_logo.png"
+              alt="/C_logo.png"
               width={120}
               height={120}
               className="rounded-[50%] shadow-lg"

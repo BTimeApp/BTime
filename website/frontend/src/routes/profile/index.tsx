@@ -1,10 +1,11 @@
 import { Header, HeaderTitle } from "@/components/common/header";
 import LoginButton from "@/components/common/login-button";
 import PageWrapper from "@/components/common/page-wrapper";
+import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AvatarFallback, AvatarImage } from "@radix-ui/react-avatar";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { Image } from "@unpic/react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
@@ -71,19 +72,15 @@ function ProfilePage() {
   if (localUser) {
     body = (
       <div className="grid grid-cols-2 gap-2">
-        <div>
-          <Image
-            src={
-              localUser.userInfo.avatarURL
-                ? localUser.userInfo.avatarURL
-                : "/images/C_logo.png"
-            }
-            alt="/images/C_logo.png"
-            width={200}
-            height={200}
-          />
-        </div>
-        <div className="p-3">
+        <div className="flex flex-col gap-2 p-4">
+          <div className="flex flex-row justify-center">
+            <Avatar className="h-40 w-40 rounded-[50%]">
+              <AvatarImage
+                src={localUser.userInfo.avatarURL ?? "/default_user.png"}
+              />
+              <AvatarFallback className="rounded-[50%]" />
+            </Avatar>
+          </div>
           <div className="flex flex-row items-center gap-2">
             <div>Username</div>
             <Input
@@ -115,6 +112,9 @@ function ProfilePage() {
           >
             Submit Changes
           </Button>
+        </div>
+        <div className="flex flex-col h-full">
+          {/* Add future stats, etc here */}
         </div>
       </div>
     );
