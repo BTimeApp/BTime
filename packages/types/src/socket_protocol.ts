@@ -1,7 +1,7 @@
 import type { LogLevel } from "./log-levels.js";
-import type { SolveStatus } from "./status.js";
 import type { IResult } from "./result.js";
 import type { IRoomSettings } from "./room.js";
+import type { SolveStatus } from "./status.js";
 
 /**
  * TODO - find a way to move the validation functions in here so we can just run .apply() on each or something

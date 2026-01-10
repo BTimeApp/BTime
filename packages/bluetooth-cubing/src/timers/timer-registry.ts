@@ -1,4 +1,4 @@
-import { BluetoothTimer } from "./timer";
+import type { BluetoothTimer } from "./timer";
 
 interface TimerRegistryEntry {
   // all prefix this kind of timer can have

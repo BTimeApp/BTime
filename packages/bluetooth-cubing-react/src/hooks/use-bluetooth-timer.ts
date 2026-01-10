@@ -1,7 +1,7 @@
-import { useCallback, useRef, useState } from "react";
 import type { BluetoothTimer, TimerEvent } from "@btime/bluetooth-cubing";
 
 import { TimerState, connectTimer } from "@btime/bluetooth-cubing";
+import { useCallback, useRef, useState } from "react";
 
 export function useBluetoothTimer(onTimerEvent?: (event: TimerEvent) => void) {
   const timerRef = useRef<BluetoothTimer>(null);
@@ -49,7 +49,9 @@ export function useBluetoothTimer(onTimerEvent?: (event: TimerEvent) => void) {
     setConnected(false);
   }, []);
 
+  // eslint-disable-next-line react-hooks/refs
   return {
+    // eslint-disable-next-line react-hooks/refs
     timer: timerRef.current,
     timerState,
     recordedTime,

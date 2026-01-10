@@ -1,7 +1,7 @@
-import type { IUserInfo } from "./user.js";
-import type { SolveStatus } from "./status.js";
 import type { IResult } from "./result.js";
+import type { SolveStatus } from "./status.js";
 import type { ITeam } from "./team.js";
+import type { IUserInfo } from "./user.js";
 
 export interface IRoomParticipant {
   points: number; //this is the variable that holds point value within a set. it can be solves won, average of solves done so far, mean of solves so far

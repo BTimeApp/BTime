@@ -1,4 +1,5 @@
-import { BluetoothTimer } from "./timer";
+import type { BluetoothTimer } from "./timer";
+
 import { TimerRegistry } from "./timer-registry";
 import "./register-timers"; //register all timers
 export * from "./timer";

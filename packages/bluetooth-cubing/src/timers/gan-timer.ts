@@ -1,8 +1,8 @@
 import type { TimeMS, TimerEvent } from "./timer";
 
-import { crc16ccit } from "../utils/utils";
 import { BluetoothTimer, TimerState } from "./timer";
 import { TimerRegistry } from "./timer-registry";
+import { crc16ccit } from "../utils/utils";
 
 /**
  * From gan-web-bluetooth (afedotov)

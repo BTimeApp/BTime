@@ -1,6 +1,7 @@
-import type { IUserInfo } from "./user.js";
 import type { IRoomTeam, IRoomUser } from "./room-participant.js";
 import type { IRoomMatch } from "./room-solve.js";
+import type { IUserInfo } from "./user.js";
+
 import { literalKeys } from "./utils.js";
 
 export interface RoomEventAttributes {

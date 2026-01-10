@@ -1,4 +1,5 @@
 import type { RaceSettings, TeamSettings } from "@btime/types";
+
 import { displayText } from "./utils.js";
 
 export function getRaceFormatText(raceSettings: RaceSettings): string {
@@ -53,108 +54,123 @@ export function getVerboseRaceFormatTextLines(
   } else {
     if (raceSettings.nSets && raceSettings.nSets > 1) {
       switch (raceSettings.matchFormat) {
-        case "BEST_OF":
+        case "BEST_OF": {
           lines.push(
             "Win the match by winning the most of " +
               raceSettings.nSets +
               " sets."
           );
           break;
-        case "FIRST_TO":
+        }
+        case "FIRST_TO": {
           lines.push(
             "Win the match by being the first to win " +
               raceSettings.nSets +
               " sets."
           );
           break;
-        default:
+        }
+        default: {
           const illegalMatchFormat: never = raceSettings.matchFormat;
           console.warn(`Illegal set format: ${illegalMatchFormat}`);
           break;
+        }
       }
 
       switch (raceSettings.setFormat) {
-        case "BEST_OF":
+        case "BEST_OF": {
           lines.push(
             "Win a set by winning the most of " +
               raceSettings.nSolves +
               ` solve${raceSettings.nSolves > 1 ? "s" : ""}.`
           );
           break;
-        case "FIRST_TO":
+        }
+        case "FIRST_TO": {
           lines.push(
             "Win a set by being the first to win " +
               raceSettings.nSolves +
               ` solve${raceSettings.nSolves > 1 ? "s" : ""}.`
           );
           break;
-        case "AVERAGE_OF":
+        }
+        case "AVERAGE_OF": {
           lines.push(
             "Win a set by having the best average of " +
               raceSettings.nSolves +
               " solves (best and worst times dropped)."
           );
           break;
-        case "MEAN_OF":
+        }
+        case "MEAN_OF": {
           lines.push(
             "Win a set by having the best mean of " +
               raceSettings.nSolves +
               ` solve${raceSettings.nSolves > 1 ? "s" : ""}.`
           );
           break;
-        case "FASTEST_OF":
+        }
+        case "FASTEST_OF": {
           lines.push(
             "Win a set by having the best single of " +
               raceSettings.nSolves +
               ` solve${raceSettings.nSolves > 1 ? "s" : ""}.`
           );
           break;
-        default:
+        }
+        default: {
           const illegalSetFormat: never = raceSettings.setFormat;
           console.warn(`Illegal set format: ${illegalSetFormat}`);
           break;
+        }
       }
     } else {
       switch (raceSettings.setFormat) {
-        case "BEST_OF":
+        case "BEST_OF": {
           lines.push(
             "Win the match by winning the most of " +
               raceSettings.nSolves +
               ` solve${raceSettings.nSolves > 1 ? "s" : ""}.`
           );
           break;
-        case "FIRST_TO":
+        }
+        case "FIRST_TO": {
           lines.push(
             "Win the match by being the first to win " +
               raceSettings.nSolves +
               ` solve${raceSettings.nSolves > 1 ? "s" : ""}.`
           );
           break;
-        case "AVERAGE_OF":
+        }
+        case "AVERAGE_OF": {
           lines.push(
             "Win the match by having the best average of " +
               raceSettings.nSolves +
               " solves (best and worst times dropped)."
           );
           break;
-        case "MEAN_OF":
+        }
+        case "MEAN_OF": {
           lines.push(
             "Win the match by having the best mean of " +
               raceSettings.nSolves +
               ` solve${raceSettings.nSolves > 1 ? "s" : ""}.`
           );
           break;
-        case "FASTEST_OF":
+        }
+        case "FASTEST_OF": {
           lines.push(
             "Win the match by having the best single of " +
               raceSettings.nSolves +
               ` solve${raceSettings.nSolves > 1 ? "s" : ""}.`
           );
           break;
-        default:
+        }
+        default: {
           const illegalSetFormat: never = raceSettings.setFormat;
           console.warn(`Illegal set format: ${illegalSetFormat}`);
           break;
+        }
       }
     }
   }
@@ -169,61 +185,72 @@ export function getVerboseTeamFormatTextLines(
   if (teamSettings.teamsEnabled) {
     const teamSolveFormat = teamSettings.teamFormatSettings.teamSolveFormat;
     switch (teamSolveFormat) {
-      case "ONE":
+      case "ONE": {
         lines.push("Each team member will take turns completing solves.");
         lines.push(
           "The current member's result will count for the whole team."
         );
         break;
-      case "ALL":
+      }
+      case "ALL": {
         lines.push("All team members will submit attempt for each solve.");
 
         switch (teamSettings.teamFormatSettings.teamReduceFunction) {
-          case "FASTEST":
+          case "FASTEST": {
             lines.push("The team's result is the fastest individual result.");
             break;
-          case "MEAN":
+          }
+          case "MEAN": {
             lines.push(
               "The team's result is the mean of all individual results."
             );
             break;
-          case "MEDIAN":
+          }
+          case "MEDIAN": {
             lines.push(
               "The team's result is the median of all individual results."
             );
             break;
-          case "SUM":
+          }
+          case "SUM": {
             lines.push(
               "The team's result is the sum of all individual results."
             );
             break;
-          default:
+          }
+          default: {
             const illegalTeamReduceFunction: never =
               teamSettings.teamFormatSettings.teamReduceFunction;
             console.warn(
               `Illegal team scramble format ${illegalTeamReduceFunction}`
             );
             break;
+          }
         }
 
         switch (teamSettings.teamFormatSettings.teamScrambleFormat) {
-          case "SAME":
+          case "SAME": {
             lines.push("Everyone will receive the same scrambles.");
             break;
-          case "DIFFERENT":
+          }
+          case "DIFFERENT": {
             lines.push("Every team member will receive different scrambles.");
             break;
-          default:
+          }
+          default: {
             const badValue: never =
               teamSettings.teamFormatSettings.teamScrambleFormat;
             console.warn(`Illegal team scramble format ${badValue}`);
             break;
+          }
         }
         break;
-      default:
+      }
+      default: {
         const illegalTeamSolveFormat: never = teamSolveFormat;
         console.warn(`Illegal team scramble format ${illegalTeamSolveFormat}`);
         break;
+      }
     }
   }
 
