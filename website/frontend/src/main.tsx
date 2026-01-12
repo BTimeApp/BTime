@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { ThemeProvider } from "@/context/theme-context";
 import { getSocket } from "@/lib/socket";
 import { routeTree } from "@/routeTree.gen";
@@ -31,11 +33,18 @@ const rootElement = document.getElementById("app")!;
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
   root.render(
-    <StrictMode>
+    <ConditionalStrictMode>
       <ThemeProvider>
         <RouterProvider router={router} />
       </ThemeProvider>
       <Toaster position="top-center" richColors closeButton />
-    </StrictMode>
+    </ConditionalStrictMode>
   );
+}
+
+export function ConditionalStrictMode({ children }: { children: ReactNode }) {
+  if (import.meta.env.DEV) {
+    return <StrictMode>{children}</StrictMode>;
+  }
+  return <>{children}</>;
 }
