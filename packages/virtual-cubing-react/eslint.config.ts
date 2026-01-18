@@ -54,6 +54,8 @@ export default [
       // React 19: disable rule that assumes React must be in scope
       "react/react-in-jsx-scope": "off",
       "react/prop-types": "off",
+      // the webcomponents that three.js injects confuse the linter
+      "react/no-unknown-property": "off",
     },
     settings: {
       react: {
