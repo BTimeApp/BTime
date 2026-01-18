@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename);
 
 export default [
   {
-    ignores: ["node_modules", "dist", "eslint.config.ts"],
+    ignores: ["node_modules", "dist", "eslint.config.ts", "tsup.config.ts"],
   },
   js.configs.recommended,
   ...ts.configs.recommended,

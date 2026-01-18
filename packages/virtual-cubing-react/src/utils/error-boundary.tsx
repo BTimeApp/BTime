@@ -3,6 +3,7 @@ import React from "react";
 type ErrorBoundaryProps = {
   fallback: (error: Error) => React.ReactNode;
   resetKey?: unknown;
+  onReset?: () => void;
   children: React.ReactNode;
 };
 
@@ -23,6 +24,7 @@ export class ErrorBoundary extends React.Component<
   componentDidUpdate(prevProps: ErrorBoundaryProps) {
     if (prevProps.resetKey !== this.props.resetKey) {
       this.setState({ error: null });
+      this.props.onReset?.();
     }
   }
 

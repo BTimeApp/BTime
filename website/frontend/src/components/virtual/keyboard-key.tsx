@@ -22,7 +22,7 @@ export const KeyboardKey: React.FC<
     <KeyListener {...keyListenerProps} keyName={keyName}>
       <div
         className={cn(
-          "flex flex-col items-center justify-center text-center h-15 w-15 text-lg",
+          "flex flex-col items-center justify-center text-center h-14 w-14 text-lg",
           className
         )}
       >

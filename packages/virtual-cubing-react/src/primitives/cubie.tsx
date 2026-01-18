@@ -29,11 +29,6 @@ export function Cubie<F extends string>({
 
   const materials = orderedFaces.map(
     (face) =>
-      // new MeshStandardMaterial({
-      //   color: face in colors ? colors[face] : defaultColor,
-      //   roughness: 0.3,
-      //   metalness: 0,
-      // })
       new MeshBasicMaterial({
         color: face in colors ? colors[face] : defaultColor,
       })

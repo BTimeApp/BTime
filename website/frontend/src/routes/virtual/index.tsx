@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { KeyboardListenerKey } from "@/components/virtual/keyboard-key";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ExampleScene } from "@btime/virtual-cubing-react";
+import { cn } from "@/lib/utils";
+import { VirtualCube } from "@btime/virtual-cubing-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { cube3x3x3 } from "cubing/puzzles";
 import { randomScrambleForEvent } from "cubing/scramble";
-import { use, useCallback, useState } from "react";
+import { use, useCallback, useMemo, useRef, useState } from "react";
 
 export const Route = createFileRoute("/virtual/")({
   component: VirtualPage,
@@ -83,11 +84,16 @@ function VirtualPage() {
   const [setupAlg, setSetupAlg] = useState<string>("");
   const [alg, setAlg] = useState<string>("");
 
-  const executeKeyboundMove = useCallback((keyName: string) => {
-    const mappedMove = KEY_TO_MOVE_MAP.get(keyName)?.keyBind;
-    if (!mappedMove) return;
+  const handleKeyboardBoundMove = useCallback((move: string) => {
+    if (
+      algInputRef.current === document.activeElement ||
+      setupAlgInputRef.current === document.activeElement
+    ) {
+      // do not process moves when either input is focused
+      return;
+    }
 
-    setAlg((alg) => alg + " " + mappedMove);
+    setAlg((alg) => alg + " " + move);
   }, []);
 
   const generateScramble = useCallback(async () => {
@@ -95,10 +101,24 @@ function VirtualPage() {
     return scrambleAlg.toString();
   }, []);
 
+  const setupAlgInputRef = useRef<HTMLInputElement>(null);
+  const algInputRef = useRef<HTMLInputElement>(null);
+
+  const [inErrorState, setInErrorState] = useState<boolean>(false);
+
   const kpuzzle: KPuzzle = use<KPuzzle>(get3x3x3());
-  const kpattern: KPattern = kpuzzle.defaultPattern();
-  const setupKPattern = kpattern.applyAlg(setupAlg);
-  const updatedKPattern = setupKPattern.applyAlg(alg);
+
+  const kpattern: KPattern = useMemo(() => {
+    const defaultKPattern: KPattern = kpuzzle.defaultPattern();
+
+    try {
+      const setupKPattern = defaultKPattern.applyAlg(setupAlg);
+      const algKPattern = setupKPattern.applyAlg(alg);
+      return algKPattern;
+    } catch {
+      return defaultKPattern;
+    }
+  }, [setupAlg, alg, kpuzzle]);
 
   const isMobile = useIsMobile();
 
@@ -114,13 +134,23 @@ function VirtualPage() {
             devices.
           </h2>
         )}
-        <div className="max-h-[50vh] grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-2 gap-5">
           <div className="flex flex-col gap-1 p-4 items-center">
-            <div className="h-60 w-full">
-              <ExampleScene
+            <div
+              className={cn(
+                "h-60 w-full border border-3 rounded-lg",
+                inErrorState ? "bg-error/30 border-error" : ""
+              )}
+            >
+              <VirtualCube
                 setupAlg={setupAlg}
                 alg={alg}
-                className="border-3 border rounded"
+                onError={() => {
+                  setInErrorState(true);
+                }}
+                onErrorClear={() => {
+                  setInErrorState(false);
+                }}
               />
             </div>
             <div className="flex flex-row gap-2 justify-start w-full">
@@ -145,13 +175,14 @@ function VirtualPage() {
               </Button>
             </div>
           </div>
-          <div className="flex flex-col gap-1 p-4 items-center">
+          <div className="flex flex-col max-h-[50vh] gap-1 p-4 items-center">
             <div className="flex flex-row gap-1 w-full items-center">
               <p className="whitespace-nowrap">Setup Alg</p>
               <Input
                 placeholder="Type setup alg here..."
                 value={setupAlg}
                 onChange={(event) => setSetupAlg(event.target.value)}
+                ref={setupAlgInputRef}
               />
             </div>
 
@@ -161,16 +192,22 @@ function VirtualPage() {
                 placeholder="Type alg here..."
                 value={alg}
                 onChange={(event) => setAlg(event.target.value)}
+                ref={algInputRef}
               />
             </div>
 
             <div className="flex flex-col gap-1 h-full w-full">
               {/* TODO: add a little info icon with a tooltip linking to cubing.js KPattern API */}
               <h2 className="text-2xl text-bold">Cube State Representation</h2>
-              <div className="border border-2 font-mono overflow-y-auto">
+              <div
+                className={cn(
+                  "border border-3 font-mono overflow-y-auto",
+                  inErrorState ? "bg-error/30 border-error" : ""
+                )}
+              >
                 <pre>
                   {JSON.stringify(
-                    updatedKPattern.toJSON(),
+                    kpattern.toJSON(),
                     (_key, value) => {
                       if (Array.isArray(value)) {
                         return JSON.stringify(value);
@@ -185,24 +222,46 @@ function VirtualPage() {
           </div>
         </div>
         <div className="flex flex-col p-4 gap-2">
-          <h2 className="text-2xl text-bold">Keyboard</h2>
-          <div className="flex flex-row">
-            <div className="grid grid-cols-10 grid-rows-4 gap-1">
-              {[...KEY_TO_MOVE_MAP.keys()].map((key) => (
-                <KeyboardListenerKey
-                  key={key}
-                  keyName={KEY_TO_MOVE_MAP.get(key)?.keyCode ?? ""}
-                  primaryText={key}
-                  secondaryText={KEY_TO_MOVE_MAP.get(key)?.keyBind ?? ""}
-                  onKeyDown={() => {
-                    executeKeyboundMove(key);
-                  }}
-                />
-              ))}
-            </div>
-          </div>
+          <KeyboardWithCubeControls onExecuteMove={handleKeyboardBoundMove} />
         </div>
       </div>
     </PageWrapper>
+  );
+}
+
+function KeyboardWithCubeControls({
+  onExecuteMove,
+}: {
+  onExecuteMove?: (move: string) => void;
+}) {
+  const executeKeyboundMove = useCallback(
+    (keyName: string) => {
+      const mappedMove = KEY_TO_MOVE_MAP.get(keyName)?.keyBind;
+      if (!mappedMove) return;
+
+      onExecuteMove?.(mappedMove);
+    },
+    [onExecuteMove]
+  );
+
+  return (
+    <>
+      <h2 className="text-2xl text-bold">Keyboard</h2>
+      <div className="flex flex-row">
+        <div className="grid grid-cols-10 grid-rows-4 gap-1">
+          {[...KEY_TO_MOVE_MAP.keys()].map((key) => (
+            <KeyboardListenerKey
+              key={key}
+              keyName={KEY_TO_MOVE_MAP.get(key)?.keyCode ?? ""}
+              primaryText={key}
+              secondaryText={KEY_TO_MOVE_MAP.get(key)?.keyBind ?? ""}
+              onKeyDown={() => {
+                executeKeyboundMove(key);
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    </>
   );
 }
