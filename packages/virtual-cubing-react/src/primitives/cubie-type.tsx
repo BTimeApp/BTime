@@ -1,9 +1,15 @@
 import type { GeometrySource, GroupProps } from "../types/geometry";
-import type { Color } from "three";
+import type { Color, Group } from "three";
 
 import { Cubie } from "./cubie";
 import React from "react";
 
+export type CubieProps = {
+  position: number;
+  orientation: number;
+  id: number;
+  ref?: React.Ref<Group>;
+};
 /**
  * A generic type that dictates the API for a new cubie type.
  * Each cubie (piece) according to KPatternData is composed of position and orientation (and optionally, orientationMod).
@@ -13,11 +19,12 @@ import React from "react";
  *
  *
  */
-export type CubieType = (
-  position: number,
-  orientation: number
-  //options?: unknown
-) => React.ReactNode;
+export type CubieType = ({
+  position,
+  orientation,
+  id,
+  ref,
+}: CubieProps) => React.ReactNode;
 
 /**
  * A function that permits creating new cubie types.
@@ -34,30 +41,14 @@ export function generateCubieType<F extends string>(
   orientationToTransform: (orientation: number) => GroupProps,
   idToColoring: (position: number) => Partial<Record<F, Color>>,
   geometrySource: GeometrySource<F>
-): ({
-  position,
-  orientation,
-  id,
-}: {
-  position: number;
-  orientation: number;
-  id: number;
-}) => React.ReactNode {
-  return function CubieType({
-    position,
-    orientation,
-    id,
-  }: {
-    position: number;
-    orientation: number;
-    id: number;
-  }) {
+): CubieType {
+  return function CubieType({ position, orientation, id, ref }: CubieProps) {
     const positionTransform = positionToTransform(position);
     const orientationTransform = orientationToTransform(orientation);
     const colors = idToColoring(id);
 
     return (
-      <group {...positionTransform}>
+      <group {...positionTransform} ref={ref}>
         <group {...orientationTransform}>
           <Cubie colors={colors} geometrySource={geometrySource} />
         </group>
