@@ -35,6 +35,7 @@ export type CubieType = ({
  * positionToTransform: maps position (KPuzzleData position) to transformation. Uses GroupProps for now for full expressiveness
  * orientationToTransform: maps orientation (KPuzzleData orientation) to transformation. Uses GroupProps for now for full expressiveness.
  * idToColoring: maps cubie id to the color order for a particular GeometrySource.
+ * geometrySource: the source of the geometry to be passed down to Cubie.
  */
 export function generateCubieType<F extends string>(
   positionToTransform: (position: number) => GroupProps,

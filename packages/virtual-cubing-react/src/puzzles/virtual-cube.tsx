@@ -3,28 +3,66 @@ import type { Alg, Move } from "cubing/alg";
 import { VirtualCube3x3x3 } from ".";
 import { ErrorBoundary } from "../utils/error-boundary";
 import { OrbitControls } from "@react-three/drei";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { EffectComposer, Vignette } from "@react-three/postprocessing";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { clamp } from "three/src/math/MathUtils.js";
 
-export type VirtualCubeProps = {
+type VirtualCubeAnimationManagerProps = {
   setupAlg: Alg | string;
   alg: Alg | string;
-  viewerControlsEnabled?: boolean;
   animationMove?: Move;
+
+  /**
+   * The time to consider the start of animating, in ms. Should be taken with performance.now() in the parent.
+   * Defaults to null, but will be internally set to performance.now() if animationMove is non-null.
+   */
+  animationStart?: number;
+
+  /**
+   * The length of time to animate the current move for, in ms. Defaults to 100ms (10tps).
+   */
+  animationDuration?: number;
+
+  /**
+   * The easing function to use for animating the current move. The easing function maps normalized time progress to normalized animation progress.
+   * For this component, the only functional requirement of the easing function (although not strictly enforced) is:
+   *  - exists everywhere on the domain [0, 1]
+   *
+   * Highly recommended that the easing function also:
+   *  - is continuous on the domain [0, 1]
+   *  - exists in the range [0, 1] on domain [0, 1]
+   *  - starts at 0 and ends at 1
+   *
+   * As long as your function meets the requirement, VirtualCube should work, but it might not look great unless it also meets the recommendations.
+   *
+   * The default easing function is f(t) = t.
+   *
+   * See:
+   *  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/easing-function
+   *  - https://easings.net/
+   */
+  animationEasingFunction?: (t: number) => number;
+
+  /**
+   * A callback function to run upon the current animated move "finishing" its animation.
+   * Recommended to be used to notify the parent component that animation is over and state should be updated.
+   */
   onFinishAnimating?: () => void;
+};
+
+export type VirtualCubeProps = VirtualCubeAnimationManagerProps & {
+  viewerControlsEnabled?: boolean;
   onError?: () => void;
   onErrorClear?: () => void;
 };
 
 export function VirtualCube({
-  setupAlg = "",
-  alg,
+  //virtual cube only props
   viewerControlsEnabled = true,
-  animationMove,
-  onFinishAnimating,
   onError,
   onErrorClear,
+  ...virtualCubeInternalProps
 }: VirtualCubeProps) {
   const [inErrorState, setInErrorState] = useState<boolean>(false);
 
@@ -46,20 +84,23 @@ export function VirtualCube({
             onError?.();
 
             console.warn(`VirtualCube encountered an error: ${error.message}`);
-            return <VirtualCube3x3x3 />;
+            return (
+              <VirtualCubeAnimationManager
+                setupAlg={virtualCubeInternalProps.setupAlg}
+                alg={virtualCubeInternalProps.alg}
+              />
+            );
           }}
           onReset={() => {
             setInErrorState(false);
             onErrorClear?.();
           }}
-          resetKey={{ alg: alg, setupAlg: setupAlg }}
+          resetKey={{
+            alg: virtualCubeInternalProps.alg,
+            setupAlg: virtualCubeInternalProps.setupAlg,
+          }}
         >
-          <VirtualCube3x3x3
-            setupAlg={setupAlg}
-            alg={alg}
-            animationMove={animationMove}
-            onFinishAnimating={onFinishAnimating}
-          />
+          <VirtualCubeAnimationManager {...virtualCubeInternalProps} />
         </ErrorBoundary>
 
         {viewerControlsEnabled && <OrbitControls />}
@@ -70,5 +111,64 @@ export function VirtualCube({
         )}
       </Suspense>
     </Canvas>
+  );
+}
+
+/**
+ * Pull out the wrapper of a virtual cube implementation into its own component b/c useFrame has to be within a canvas, not at the same level
+ */
+function VirtualCubeAnimationManager({
+  setupAlg = "",
+  alg,
+  animationMove,
+  animationStart = undefined,
+  animationDuration = 70, //14 tps seems to be a decent default
+  animationEasingFunction = (x) => x,
+  onFinishAnimating = undefined,
+}: VirtualCubeAnimationManagerProps) {
+  const [animationProgress, setAnimationProgress] = useState<
+    number | undefined
+  >(undefined);
+
+  const startTimeRef = useRef<number>(null);
+  const animationFinishedRef = useRef<boolean>(false);
+
+  // Set animation start time properly upon prop change
+  useEffect(() => {
+    if (animationMove) {
+      startTimeRef.current =
+        animationStart == null ? performance.now() : animationStart;
+    } else {
+      startTimeRef.current = null;
+    }
+  }, [animationMove, animationStart]);
+
+  // Reset animation finish flag, animation group's rotation upon new animationMove
+  useEffect(() => {
+    animationFinishedRef.current = false;
+  }, [animationMove]);
+
+  useFrame(() => {
+    if (!animationMove || !startTimeRef.current) return;
+
+    // Calculate animation progress
+    const elapsed = performance.now() - startTimeRef.current;
+    const t = clamp(elapsed / animationDuration, 0, 1);
+    const progress = clamp(animationEasingFunction(t), 0, 1);
+    setAnimationProgress(progress);
+
+    if (t >= 1 && !animationFinishedRef.current) {
+      animationFinishedRef.current = true;
+      onFinishAnimating?.();
+    }
+  });
+
+  return (
+    <VirtualCube3x3x3
+      setupAlg={setupAlg}
+      alg={alg}
+      animationMove={animationMove}
+      animationProgress={animationProgress}
+    />
   );
 }

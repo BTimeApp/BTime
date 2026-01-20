@@ -78,41 +78,10 @@ interface VirtualCubeProps {
   animationMove?: Move;
 
   /**
-   * The time to consider the start of animating, in ms. Should be taken with performance.now() in the parent.
-   * Defaults to null, but will be internally set to performance.now() if animationMove is non-null.
+   * The animation progress for the current animated move. Must fall in range [0, 1] or get clamped.
+   * The layer above the cube component should be responsible for handling animation.
    */
-  animationStart?: number;
-
-  /**
-   * The length of time to animate the current move for, in ms. Defaults to 100ms (10tps).
-   */
-  animationDuration?: number;
-
-  /**
-   * The easing function to use for animating the current move. The easing function maps normalized time progress to normalized animation progress.
-   * For this component, the only functional requirement of the easing function (although not strictly enforced) is:
-   *  - exists everywhere on the domain [0, 1]
-   *
-   * Highly recommended that the easing function also:
-   *  - is continuous on the domain [0, 1]
-   *  - exists in the range [0, 1] on domain [0, 1]
-   *  - starts at 0 and ends at 1
-   *
-   * As long as your function meets the requirement, VirtualCube should work, but it might not look great unless it also meets the recommendations.
-   *
-   * The default easing function is f(t) = t.
-   *
-   * See:
-   *  - https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/easing-function
-   *  - https://easings.net/
-   */
-  animationEasingFunction?: (t: number) => number;
-
-  /**
-   * A callback function to run upon the current animated move "finishing" its animation.
-   * Recommended to be used to notify the parent component that animation is over and state should be updated.
-   */
-  onFinishAnimating?: () => void;
+  animationProgress?: number;
 }
 
 export const VirtualCube3x3x3 = ({
@@ -120,10 +89,7 @@ export const VirtualCube3x3x3 = ({
   alg = "",
   orientation = new Quaternion(0, 0, 0, 1),
   animationMove = undefined,
-  animationStart = undefined,
-  animationDuration = 100,
-  animationEasingFunction = (x) => x,
-  onFinishAnimating = undefined,
+  animationProgress = 0,
 }: VirtualCubeProps) => {
   const kpuzzle: KPuzzle = use<KPuzzle>(get3x3x3());
   const kpattern: KPattern = kpuzzle.defaultPattern();
@@ -138,10 +104,9 @@ export const VirtualCube3x3x3 = ({
 
   const mainGroupRef = useRef<Group>(null);
   const animationGroupRef = useRef<Group>(null);
-  const startTimeRef = useRef<number>(null);
   const cubieRefs = useRef<Map<string, Group>>(new Map<string, Group>());
 
-  const animationFinishedRef = useRef<boolean>(false);
+  const prevAnimationProgressRef = useRef<number | null>(null);
 
   const moveFamily = animationMove
     ? kpuzzle.definition.derivedMoves?.[animationMove.quantum.family] ??
@@ -197,16 +162,6 @@ export const VirtualCube3x3x3 = ({
     return affectedCubieKeys;
   }, [kPatternData, moveTransformDefinition]);
 
-  // Set animation start time properly upon prop change
-  useEffect(() => {
-    if (animationMove) {
-      startTimeRef.current =
-        animationStart == null ? performance.now() : animationStart;
-    } else {
-      startTimeRef.current = null;
-    }
-  }, [animationMove, animationStart]);
-
   // Handle conditions for cubies in the correct animation group.
   useEffect(() => {
     if (!animationMove) return;
@@ -236,41 +191,32 @@ export const VirtualCube3x3x3 = ({
     };
   }, [animationMove, animationAffectedCubies]);
 
-  // Reset animation finish flag, animation group's rotation upon new animationMove
+  // reset relevant refs when animationMove updates
   useEffect(() => {
     animationGroupRef.current?.quaternion.identity();
-    animationFinishedRef.current = false;
+    prevAnimationProgressRef.current = null;
   }, [animationMove]);
 
   /**
-   * Main animation loop
+   * Main animation loop.
    */
   useFrame(() => {
-    //TODO move as much of this out of the animation loop as possible (saves compute)
-
-    if (!animationMove || !startTimeRef.current) return;
+    if (!animationMove || animationProgress == null) return;
     // make sure refs exist
     const mainGroup = mainGroupRef.current;
     const animationGroup = animationGroupRef.current;
     if (!mainGroup || !animationGroup) return;
 
-    // Calculate animation progress
-    const elapsed = performance.now() - startTimeRef.current;
-    const t = clamp(elapsed / animationDuration, 0, 1);
-    const progress = clamp(animationEasingFunction(t), 0, 1);
+    if (prevAnimationProgressRef.current === animationProgress) return;
+    prevAnimationProgressRef.current = animationProgress;
 
     // Apply rotation to animation group
-    const currentAngle = (finalAxisAngle?.angle ?? 0) * progress;
+    const currentAngle =
+      (finalAxisAngle?.angle ?? 0) * clamp(animationProgress, 0, 1);
     animationGroup.quaternion.setFromAxisAngle(
       finalAxisAngle!.axis!, //this is ugly, but have to deal with it for now
       currentAngle
     );
-
-    // Check if animation is complete
-    if (t >= 1 && !animationFinishedRef.current) {
-      animationFinishedRef.current = true;
-      onFinishAnimating?.();
-    }
   });
 
   return (
