@@ -1,12 +1,15 @@
 import type { CubieType } from "../../primitives";
+import type { AxisAngle } from "../../types/angle";
 import type { Alg, Move } from "cubing/alg";
 import type { KPattern, KPatternData, KPuzzle } from "cubing/kpuzzle";
 import type { Group } from "three";
 
 import { CenterCubie, CornerCubie, EdgeCubie } from "./333-cubie-types";
 import { get3x3x3 } from "./333-loader";
-import { use, useEffect, useRef } from "react";
-import { Quaternion } from "three";
+import { useFrame } from "@react-three/fiber";
+import { use, useEffect, useMemo, useRef } from "react";
+import { Quaternion, Vector3 } from "three";
+import { clamp } from "three/src/math/MathUtils.js";
 
 const ORBIT_NAME_CUBIE_MAPPING: Record<string, CubieType> = {
   CENTERS: CenterCubie,
@@ -14,6 +17,44 @@ const ORBIT_NAME_CUBIE_MAPPING: Record<string, CubieType> = {
   CORNERS: CornerCubie,
 };
 
+function getCubieKey(orbitName: string, id: number) {
+  return orbitName + "-" + id.toString();
+}
+
+/**
+ * TODO - this mapping is specific to 3x3, but we need to make a general Move -> Quaternion mapping function
+ * once we generalize the VirtualCube into its own component
+ *
+ *
+ */
+const moveTransforms3x3: Map<string, AxisAngle> = new Map<string, AxisAngle>([
+  ["U", { axis: new Vector3(0, 1, 0), angle: -Math.PI / 2 }],
+  ["D", { axis: new Vector3(0, 1, 0), angle: Math.PI / 2 }],
+  ["F", { axis: new Vector3(0, 0, 1), angle: -Math.PI / 2 }],
+  ["B", { axis: new Vector3(0, 0, 1), angle: Math.PI / 2 }],
+  ["R", { axis: new Vector3(1, 0, 0), angle: -Math.PI / 2 }],
+  ["L", { axis: new Vector3(1, 0, 0), angle: Math.PI / 2 }],
+
+  ["M", { axis: new Vector3(1, 0, 0), angle: Math.PI / 2 }],
+  ["E", { axis: new Vector3(0, 1, 0), angle: Math.PI / 2 }],
+  ["S", { axis: new Vector3(0, 0, 1), angle: -Math.PI / 2 }],
+
+  ["u", { axis: new Vector3(0, 1, 0), angle: -Math.PI / 2 }],
+  ["d", { axis: new Vector3(0, 1, 0), angle: Math.PI / 2 }],
+  ["f", { axis: new Vector3(0, 0, 1), angle: -Math.PI / 2 }],
+  ["b", { axis: new Vector3(0, 0, 1), angle: Math.PI / 2 }],
+  ["r", { axis: new Vector3(1, 0, 0), angle: -Math.PI / 2 }],
+  ["l", { axis: new Vector3(1, 0, 0), angle: Math.PI / 2 }],
+
+  ["x", { axis: new Vector3(1, 0, 0), angle: -Math.PI / 2 }],
+  ["y", { axis: new Vector3(0, 1, 0), angle: -Math.PI / 2 }],
+  ["z", { axis: new Vector3(0, 1, 0), angle: -Math.PI / 2 }],
+]);
+
+/**
+ * TODO Move animation start, duration, easing function, and onFinishAnimating up a layer. These
+ * should not be the responsibility of the rendered puzzle, but the player!
+ */
 interface VirtualCubeProps {
   /**
    * An alg to be run as setup before the main algorithm. Default empty
@@ -80,6 +121,9 @@ export const VirtualCube3x3x3 = ({
   orientation = new Quaternion(0, 0, 0, 1),
   animationMove = undefined,
   animationStart = undefined,
+  animationDuration = 100,
+  animationEasingFunction = (x) => x,
+  onFinishAnimating = undefined,
 }: VirtualCubeProps) => {
   const kpuzzle: KPuzzle = use<KPuzzle>(get3x3x3());
   const kpattern: KPattern = kpuzzle.defaultPattern();
@@ -97,6 +141,62 @@ export const VirtualCube3x3x3 = ({
   const startTimeRef = useRef<number>(null);
   const cubieRefs = useRef<Map<string, Group>>(new Map<string, Group>());
 
+  const animationFinishedRef = useRef<boolean>(false);
+
+  const moveFamily = animationMove
+    ? kpuzzle.definition.derivedMoves?.[animationMove.quantum.family] ??
+      animationMove.quantum.family
+    : undefined;
+
+  const moveTransformDefinition = moveFamily
+    ? kpuzzle.definition.moves[moveFamily]
+    : undefined;
+
+  const finalAxisAngle =
+    animationMove && moveFamily
+      ? {
+          ...moveTransforms3x3.get(moveFamily),
+          angle:
+            (moveTransforms3x3.get(moveFamily)?.angle ?? 0) *
+            animationMove.amount,
+        }
+      : undefined;
+
+  const animationAffectedCubies: Set<string> = useMemo(() => {
+    if (moveTransformDefinition == null) {
+      return new Set<string>();
+    }
+
+    const affectedCubieKeys = new Set<string>();
+
+    for (const [orbitName, orbitDefn] of Object.entries(
+      moveTransformDefinition
+    )) {
+      // permutation - how pieces get shuffled. The indices where permutation[i] != i are affected ids
+      orbitDefn.permutation
+        .filter((id, posn) => id != posn)
+        .forEach((id) => {
+          affectedCubieKeys.add(
+            getCubieKey(orbitName, kPatternData[orbitName].pieces[id])
+          );
+        });
+
+      // orientation - pieces at indices where orientationDelta[i] != 0 are affected ids.
+      orbitDefn.orientationDelta.forEach((delta, idx) => {
+        if (delta != 0) {
+          affectedCubieKeys.add(
+            getCubieKey(
+              orbitName,
+              kPatternData[orbitName].pieces[orbitDefn.permutation[idx]]
+            )
+          );
+        }
+      });
+    }
+
+    return affectedCubieKeys;
+  }, [kPatternData, moveTransformDefinition]);
+
   // Set animation start time properly upon prop change
   useEffect(() => {
     if (animationMove) {
@@ -106,6 +206,72 @@ export const VirtualCube3x3x3 = ({
       startTimeRef.current = null;
     }
   }, [animationMove, animationStart]);
+
+  // Handle conditions for cubies in the correct animation group.
+  useEffect(() => {
+    if (!animationMove) return;
+
+    const mainGroup = mainGroupRef.current;
+    const animationGroup = animationGroupRef.current;
+    const cubies = cubieRefs.current;
+
+    // Move cubies to animation group
+    animationAffectedCubies.forEach((key) => {
+      const group = cubies.get(key);
+      if (group) {
+        animationGroup?.add(group);
+      }
+    });
+
+    // Cleanup: return cubies to main group if animation is interrupted
+    return () => {
+      animationAffectedCubies.forEach((key) => {
+        const group = cubies.get(key);
+        if (group) {
+          mainGroup?.add(group);
+        }
+      });
+
+      animationGroup?.quaternion.identity();
+    };
+  }, [animationMove, animationAffectedCubies]);
+
+  // Reset animation finish flag, animation group's rotation upon new animationMove
+  useEffect(() => {
+    animationGroupRef.current?.quaternion.identity();
+    animationFinishedRef.current = false;
+  }, [animationMove]);
+
+  /**
+   * Main animation loop
+   */
+  useFrame(() => {
+    //TODO move as much of this out of the animation loop as possible (saves compute)
+
+    if (!animationMove || !startTimeRef.current) return;
+    // make sure refs exist
+    const mainGroup = mainGroupRef.current;
+    const animationGroup = animationGroupRef.current;
+    if (!mainGroup || !animationGroup) return;
+
+    // Calculate animation progress
+    const elapsed = performance.now() - startTimeRef.current;
+    const t = clamp(elapsed / animationDuration, 0, 1);
+    const progress = clamp(animationEasingFunction(t), 0, 1);
+
+    // Apply rotation to animation group
+    const currentAngle = (finalAxisAngle?.angle ?? 0) * progress;
+    animationGroup.quaternion.setFromAxisAngle(
+      finalAxisAngle!.axis!, //this is ugly, but have to deal with it for now
+      currentAngle
+    );
+
+    // Check if animation is complete
+    if (t >= 1 && !animationFinishedRef.current) {
+      animationFinishedRef.current = true;
+      onFinishAnimating?.();
+    }
+  });
 
   return (
     <group quaternion={orientation} ref={mainGroupRef}>

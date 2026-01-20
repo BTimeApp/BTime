@@ -7,11 +7,12 @@ import { Input } from "@/components/ui/input";
 import { KeyboardListenerKey } from "@/components/virtual/keyboard-key";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { VirtualCube } from "@btime/virtual-cubing-react";
+import { useAnimationQueue, VirtualCube } from "@btime/virtual-cubing-react";
 import { createFileRoute } from "@tanstack/react-router";
+import { Move } from "cubing/alg";
 import { cube3x3x3 } from "cubing/puzzles";
 import { randomScrambleForEvent } from "cubing/scramble";
-import { use, useCallback, useMemo, useRef, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export const Route = createFileRoute("/virtual/")({
   component: VirtualPage,
@@ -24,6 +25,7 @@ type Keybind = {
 /**
  * Hardcoded keybinds for virtual cube control.
  * TODO: set up customizable keybinds and store as user preference.
+ *
  */
 const KEY_TO_MOVE_MAP: Map<string, Keybind> = new Map([
   ["1", { keyCode: "Digit1", keyBind: "S'" }],
@@ -84,17 +86,38 @@ function VirtualPage() {
   const [setupAlg, setSetupAlg] = useState<string>("");
   const [alg, setAlg] = useState<string>("");
 
-  const handleKeyboardBoundMove = useCallback((move: string) => {
-    if (
-      algInputRef.current === document.activeElement ||
-      setupAlgInputRef.current === document.activeElement
-    ) {
-      // do not process moves when either input is focused
-      return;
-    }
+  const {
+    currentMove,
+    animationQueue,
+    addToAnimationQueue,
+    processAnimationQueue,
+    handleAnimationComplete,
+  } = useAnimationQueue();
 
-    setAlg((alg) => alg + " " + move);
-  }, []);
+  useEffect(() => {
+    processAnimationQueue();
+  }, [animationQueue, currentMove, processAnimationQueue]);
+
+  const handleKeyboardBoundMove = useCallback(
+    (move: string) => {
+      if (
+        algInputRef.current === document.activeElement ||
+        setupAlgInputRef.current === document.activeElement
+      ) {
+        // do not process moves when either input is focused
+        return;
+      }
+
+      addToAnimationQueue(new Move(move));
+      // setAlg((alg) => alg + " " + move);
+    },
+    [addToAnimationQueue]
+  );
+
+  const onFinishAnimating = useCallback(() => {
+    setAlg((alg) => alg + " " + currentMove);
+    handleAnimationComplete();
+  }, [currentMove, handleAnimationComplete]);
 
   const generateScramble = useCallback(async () => {
     const scrambleAlg = await randomScrambleForEvent("333");
@@ -151,6 +174,8 @@ function VirtualPage() {
                 onErrorClear={() => {
                   setInErrorState(false);
                 }}
+                animationMove={currentMove}
+                onFinishAnimating={onFinishAnimating}
               />
             </div>
             <div className="flex flex-row gap-2 justify-start w-full">

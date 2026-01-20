@@ -1,4 +1,4 @@
-import type { Alg } from "cubing/alg";
+import type { Alg, Move } from "cubing/alg";
 
 import { VirtualCube3x3x3 } from ".";
 import { ErrorBoundary } from "../utils/error-boundary";
@@ -11,6 +11,8 @@ export type VirtualCubeProps = {
   setupAlg: Alg | string;
   alg: Alg | string;
   viewerControlsEnabled?: boolean;
+  animationMove?: Move;
+  onFinishAnimating?: () => void;
   onError?: () => void;
   onErrorClear?: () => void;
 };
@@ -19,6 +21,8 @@ export function VirtualCube({
   setupAlg = "",
   alg,
   viewerControlsEnabled = true,
+  animationMove,
+  onFinishAnimating,
   onError,
   onErrorClear,
 }: VirtualCubeProps) {
@@ -50,7 +54,12 @@ export function VirtualCube({
           }}
           resetKey={{ alg: alg, setupAlg: setupAlg }}
         >
-          <VirtualCube3x3x3 setupAlg={setupAlg} alg={alg} />
+          <VirtualCube3x3x3
+            setupAlg={setupAlg}
+            alg={alg}
+            animationMove={animationMove}
+            onFinishAnimating={onFinishAnimating}
+          />
         </ErrorBoundary>
 
         {viewerControlsEnabled && <OrbitControls />}
