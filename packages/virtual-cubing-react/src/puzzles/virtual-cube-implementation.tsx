@@ -111,11 +111,7 @@ export function generateVirtualCubeImplementation(
         return {
           ...moveAnimationRotation[moveFamily],
           angle:
-<<<<<<< HEAD
-            (moveAnimationRotation[moveFamily]?.angle ?? 0) &
-=======
             (moveAnimationRotation[moveFamily]?.angle ?? 0) *
->>>>>>> virtual
             animationMove?.amount,
         };
       } else {
