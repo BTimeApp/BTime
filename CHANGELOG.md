@@ -4,6 +4,14 @@ This file contains summaries of major/relevant changes to the BTime project in r
 
 The current versioning convention tracks changes to BTime as a whole. Packages will maintain their own versions as necessary.
 
+## 0.4.0 - 2026-01-20
+
+Added:
+
+- new Virtual cube library to support rendering 3D cubes (only 3x3 for now)
+  - supports live move animation
+- new /virtual route to demonstrate the virtual cube
+
 ## 0.3.0 - 2026-01-10
 
 Changed:
