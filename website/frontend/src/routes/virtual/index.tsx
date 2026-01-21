@@ -12,7 +12,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Move } from "cubing/alg";
 import { cube3x3x3 } from "cubing/puzzles";
 import { randomScrambleForEvent } from "cubing/scramble";
-import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { use, useCallback, useMemo, useRef, useState } from "react";
 
 export const Route = createFileRoute("/virtual/")({
   component: VirtualPage,
@@ -86,17 +86,8 @@ function VirtualPage() {
   const [setupAlg, setSetupAlg] = useState<string>("");
   const [alg, setAlg] = useState<string>("");
 
-  const {
-    currentMove,
-    animationQueue,
-    addToAnimationQueue,
-    processAnimationQueue,
-    handleAnimationComplete,
-  } = useAnimationQueue();
-
-  useEffect(() => {
-    processAnimationQueue();
-  }, [animationQueue, currentMove, processAnimationQueue]);
+  const { currentMove, addToAnimationQueue, handleAnimationComplete } =
+    useAnimationQueue();
 
   const handleKeyboardBoundMove = useCallback(
     (move: string) => {
@@ -109,7 +100,6 @@ function VirtualPage() {
       }
 
       addToAnimationQueue(new Move(move));
-      // setAlg((alg) => alg + " " + move);
     },
     [addToAnimationQueue]
   );

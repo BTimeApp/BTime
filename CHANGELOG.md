@@ -18,6 +18,12 @@ Changed:
 
 - hotfix typo made when refactoring virtual cube library that caused incorrect animation direction
 
+### 0.4.2 = 2026-01-21
+
+Changed:
+
+- update useAnimationQueue to use refs instead of state for tracking moves to fix a race condition, clean up hook return values.
+
 ## 0.3.0 - 2026-01-10
 
 Changed:
