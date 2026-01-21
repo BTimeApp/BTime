@@ -12,6 +12,12 @@ Added:
   - supports live move animation
 - new /virtual route to demonstrate the virtual cube
 
+### 0.4.1 - 2026-01-20
+
+Changed:
+
+- hotfix typo made when refactoring virtual cube library that caused incorrect animation direction
+
 ## 0.3.0 - 2026-01-10
 
 Changed:

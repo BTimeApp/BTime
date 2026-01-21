@@ -111,7 +111,7 @@ export function generateVirtualCubeImplementation(
         return {
           ...moveAnimationRotation[moveFamily],
           angle:
-            (moveAnimationRotation[moveFamily]?.angle ?? 0) &
+            (moveAnimationRotation[moveFamily]?.angle ?? 0) *
             animationMove?.amount,
         };
       } else {
