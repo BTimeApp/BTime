@@ -166,6 +166,7 @@ function VirtualPage() {
               )}
             >
               <VirtualCube
+                event="3x3x3"
                 setupAlg={setupAlg}
                 alg={alg}
                 onError={() => {

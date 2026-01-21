@@ -1,6 +1,6 @@
 import type { Alg, Move } from "cubing/alg";
 
-import { VirtualCube3x3x3 } from ".";
+import { VIRTUAL_CUBE_IMPLEMENTATIONS } from "./virtual-cube-implementation";
 import { ErrorBoundary } from "../utils/error-boundary";
 import { OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
@@ -9,6 +9,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { clamp } from "three/src/math/MathUtils.js";
 
 type VirtualCubeAnimationManagerProps = {
+  event?: string;
   setupAlg: Alg | string;
   alg: Alg | string;
   animationMove?: Move;
@@ -86,6 +87,7 @@ export function VirtualCube({
             console.warn(`VirtualCube encountered an error: ${error.message}`);
             return (
               <VirtualCubeAnimationManager
+                event={virtualCubeInternalProps.event}
                 setupAlg={virtualCubeInternalProps.setupAlg}
                 alg={virtualCubeInternalProps.alg}
               />
@@ -118,6 +120,7 @@ export function VirtualCube({
  * Pull out the wrapper of a virtual cube implementation into its own component b/c useFrame has to be within a canvas, not at the same level
  */
 function VirtualCubeAnimationManager({
+  event = "3x3x3",
   setupAlg = "",
   alg,
   animationMove,
@@ -126,6 +129,8 @@ function VirtualCubeAnimationManager({
   animationEasingFunction = (x) => x,
   onFinishAnimating = undefined,
 }: VirtualCubeAnimationManagerProps) {
+  const VirtualCubeComponent = VIRTUAL_CUBE_IMPLEMENTATIONS.get(event);
+
   const [animationProgress, setAnimationProgress] = useState<
     number | undefined
   >(undefined);
@@ -163,8 +168,12 @@ function VirtualCubeAnimationManager({
     }
   });
 
+  if (!VirtualCubeComponent) {
+    return null;
+  }
+
   return (
-    <VirtualCube3x3x3
+    <VirtualCubeComponent
       setupAlg={setupAlg}
       alg={alg}
       animationMove={animationMove}
