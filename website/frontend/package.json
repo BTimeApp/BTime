@@ -1,6 +1,6 @@
 {
   "name": "btime-website-frontend",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -15,6 +15,7 @@
     "@btime/bluetooth-cubing-react": "workspace:*",
     "@btime/lib": "workspace:*",
     "@btime/types": "workspace:*",
+    "@btime/virtual-cubing-react": "workspace:^",
     "@fontsource-variable/inter": "^5.2.8",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-avatar": "^1.1.11",
@@ -38,7 +39,7 @@
     "@unpic/react": "^1.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "cubing": "^0.61.2",
+    "cubing": "~0.58.2",
     "embla-carousel-react": "^8.6.0",
     "immer": "^11.1.3",
     "lucide-react": "^0.562.0",
