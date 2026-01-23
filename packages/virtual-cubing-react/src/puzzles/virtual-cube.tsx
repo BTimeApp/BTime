@@ -88,8 +88,8 @@ export function VirtualCube({
             return (
               <VirtualCubeAnimationManager
                 event={virtualCubeInternalProps.event}
-                setupAlg={virtualCubeInternalProps.setupAlg}
-                alg={virtualCubeInternalProps.alg}
+                setupAlg=""
+                alg=""
               />
             );
           }}
