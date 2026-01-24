@@ -2,7 +2,7 @@ import type { Alg, Move } from "cubing/alg";
 
 import { VIRTUAL_CUBE_IMPLEMENTATIONS } from "./virtual-cube-implementation";
 import { ErrorBoundary } from "../utils/error-boundary";
-import { OrbitControls } from "@react-three/drei";
+import { TrackballControls } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { EffectComposer, Vignette } from "@react-three/postprocessing";
 import { Suspense, useEffect, useRef, useState } from "react";
@@ -105,7 +105,9 @@ export function VirtualCube({
           <VirtualCubeAnimationManager {...virtualCubeInternalProps} />
         </ErrorBoundary>
 
-        {viewerControlsEnabled && <OrbitControls />}
+        {viewerControlsEnabled && (
+          <TrackballControls minDistance={3} maxDistance={12} />
+        )}
         {inErrorState && (
           <EffectComposer>
             <Vignette color={0xff0000} darkness={0.3} />
