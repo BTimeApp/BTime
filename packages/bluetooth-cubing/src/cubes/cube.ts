@@ -1,3 +1,4 @@
+//cube.ts
 import type { Move } from "cubing/alg";
 import type { KPattern } from "cubing/kpuzzle";
 
@@ -59,6 +60,7 @@ export abstract class BluetoothCube extends EventTarget {
   }
 
   async init(): Promise<void> {
+    // we do not call gatt setup before setup here since some cubes need a MAC discovery + encryption setup step.
     await this.setup();
 
     this.device.addEventListener("gattserverdisconnected", this.disconnect);

@@ -1,6 +1,8 @@
+//index.ts
 import type { BluetoothCube } from "./cube";
 
 import { CubeRegistry } from "./cube-registry";
+import "./register-cubes"; //register all cubes
 export * from "./cube";
 
 export async function connectCube(): Promise<BluetoothCube> {
