@@ -1,5 +1,12 @@
-//cube.ts
-import type { Move } from "cubing/alg";
+import type {
+  CubeMoveEventListener,
+  CubeOrientationEventListener,
+  CubeStateEventListener,
+  MoveEvent,
+  OrientationEvent,
+  Quaternion,
+  StateEvent,
+} from "../types/cube-types";
 import type { KPattern } from "cubing/kpuzzle";
 
 import { Alg, experimentalAppendMove } from "cubing/alg";
@@ -9,36 +16,17 @@ export const CUBE_STATE_EVENT = "CUBE_STATE_EVENT";
 export const CUBE_ORIENTATION_EVENT = "CUBE_ORIENTATION_EVENT";
 export const CUBE_DISCONNECT_EVENT = "CUBE_DISCONNECT_EVENT";
 
-export type Quaternion = {
-  x: number;
-  y: number;
-  z: number;
-  w: number;
-};
-
-export type BluetoothEvent = {
-  timestamp?: number;
-};
-
-export type MoveEvent = BluetoothEvent & {
-  move: Move;
-};
-
-export type OrientationEvent = BluetoothEvent & {
-  quaternion: Quaternion;
-};
-
-export type CubeMoveEventListener = (event: MoveEvent) => void;
-export type CubeOrientationEventListener = (
-  orientation: OrientationEvent
-) => void;
-
+/**
+ * An abstract parent class that represents the public API for bluetooth cube connection.
+ */
 export abstract class BluetoothCube extends EventTarget {
   protected device!: BluetoothDevice;
   protected server!: BluetoothRemoteGATTServer;
-  protected alg!: Alg;
-  protected kPattern!: KPattern;
-  protected quaternion!: Quaternion;
+  private kpattern!: KPattern;
+  private quaternion!: Quaternion;
+  // we don't store state events (there's no point)
+  private moveEvents: MoveEvent[] = []; //sorted by timestamp
+  private orientationEvents: OrientationEvent[] = []; //sorted by timestamp
 
   private moveListeners: Map<CubeMoveEventListener, EventListener> = new Map<
     CubeMoveEventListener,
@@ -48,6 +36,10 @@ export abstract class BluetoothCube extends EventTarget {
     CubeOrientationEventListener,
     EventListener
   > = new Map<CubeOrientationEventListener, EventListener>();
+  private stateListeners: Map<CubeStateEventListener, EventListener> = new Map<
+    CubeStateEventListener,
+    EventListener
+  >();
 
   constructor(device: BluetoothDevice) {
     super();
@@ -55,25 +47,50 @@ export abstract class BluetoothCube extends EventTarget {
     this.disconnect = this.disconnect.bind(this);
   }
 
-  getName() {
+  /**
+   * Getters for read-only synchronous access to properties.
+   * We highly recommend not relying on these and attaching your own event listeners instead */
+
+  get name(): string {
     return this.device?.name ?? "";
   }
 
-  async init(): Promise<void> {
-    // we do not call gatt setup before setup here since some cubes need a MAC discovery + encryption setup step.
+  get moveHistory(): MoveEvent[] {
+    return this.moveEvents;
+  }
+
+  get orientationHistory(): OrientationEvent[] {
+    return this.orientationEvents;
+  }
+
+  get alg(): Alg {
+    const alg = new Alg();
+    this.moveHistory.forEach((moveEvent: MoveEvent) => {
+      experimentalAppendMove(alg, moveEvent.move);
+    });
+
+    return alg;
+  }
+
+  get orientation(): Quaternion {
+    return this.quaternion;
+  }
+
+  get state(): KPattern {
+    return this.kpattern;
+  }
+
+  public async init(): Promise<void> {
     await this.setup();
 
     this.device.addEventListener("gattserverdisconnected", this.disconnect);
   }
 
-  // get current KPattern (cube state)
-  public getPattern(): KPattern {
-    return this.kPattern;
-  }
+  public sync(): void {
+    this.onSync();
 
-  public resetAlg() {
-    // Resets the internal alg state. We expect the consumer to reset it themselves from the application side.
-    this.alg = new Alg();
+    this.moveEvents = [];
+    this.orientationEvents = [];
   }
 
   /** Public APIs to offer managed subscriptions to events */
@@ -104,23 +121,48 @@ export abstract class BluetoothCube extends EventTarget {
     };
   }
 
-  /** Event dispatchers for subclasses to safely emit */
+  public onStateEvent(cb: CubeStateEventListener) {
+    const handler = (event: Event) => {
+      cb((event as CustomEvent<StateEvent>).detail);
+    };
+    this.stateListeners.set(cb, handler);
+    this.addEventListener(CUBE_ORIENTATION_EVENT, handler);
+
+    return () => {
+      this.removeEventListener(CUBE_ORIENTATION_EVENT, handler);
+      this.stateListeners.delete(cb);
+    };
+  }
+
+  /** Event dispatchers for subclasses to call*/
 
   protected processMoveEvent(event: MoveEvent) {
     experimentalAppendMove(this.alg, event.move);
+    this.moveEvents.push(event);
 
     this.dispatchEvent(
-      new CustomEvent(CUBE_MOVE_EVENT, {
+      new CustomEvent<MoveEvent>(CUBE_MOVE_EVENT, {
         detail: event,
       })
     );
   }
 
-  protected processOrientationEvent(event: MoveEvent) {
-    experimentalAppendMove(this.alg, event.move);
+  protected processOrientationEvent(event: OrientationEvent) {
+    this.quaternion = event.quaternion;
+    this.orientationEvents.push(event);
 
     this.dispatchEvent(
-      new CustomEvent(CUBE_MOVE_EVENT, {
+      new CustomEvent<OrientationEvent>(CUBE_ORIENTATION_EVENT, {
+        detail: event,
+      })
+    );
+  }
+
+  protected processStateEvent(event: StateEvent) {
+    this.kpattern = event.kpattern;
+
+    this.dispatchEvent(
+      new CustomEvent<StateEvent>(CUBE_STATE_EVENT, {
         detail: event,
       })
     );
@@ -138,8 +180,13 @@ export abstract class BluetoothCube extends EventTarget {
     for (const listener of this.orientationListeners.values()) {
       this.removeEventListener(CUBE_ORIENTATION_EVENT, listener);
     }
+    for (const listener of this.stateListeners.values()) {
+      this.removeEventListener(CUBE_STATE_EVENT, listener);
+    }
+
     this.moveListeners.clear();
     this.orientationListeners.clear();
+    this.stateListeners.clear();
 
     await this.onDisconnect();
 
@@ -154,7 +201,12 @@ export abstract class BluetoothCube extends EventTarget {
   protected abstract setup(): Promise<void>;
 
   /**
+   * Runs implementation-specific synchronization. Expected to update state.
+   */
+  protected onSync(): void {}
+
+  /**
    * Runs brand/model-specific cleanup.
    */
-  protected abstract onDisconnect(): Promise<void>;
+  protected async onDisconnect(): Promise<void> {}
 }
