@@ -1,38 +1,10 @@
+import {
+  TimerState,
+  type TimerEvent,
+  type TimerStateEventListener,
+} from "../types";
+
 export const TIMER_STATE_EVENT = "TIMER_STATE_CHANGE";
-
-/**
- * Generic timer state. Directly from GanTimerState in the gan-web-bluetooth package (by afedotov)
- */
-export enum TimerState {
-  /** Fired when timer is disconnected from bluetooth */
-  DISCONNECT = 0,
-  /** Grace delay is expired and timer is ready to start */
-  GET_SET = 1,
-  /** Hands removed from the timer before grace delay expired */
-  HANDS_OFF = 2,
-  /** Timer is running */
-  RUNNING = 3,
-  /** Timer is stopped, this event includes recorded time */
-  STOPPED = 4,
-  /** Timer is reset and idle */
-  IDLE = 5,
-  /** Hands are placed on the timer */
-  HANDS_ON = 6,
-  /** Timer moves to this state immediately after STOPPED */
-  FINISHED = 7,
-  /** For timers with an explicit inspection mode, like Qiyi */
-  INSPECTION = 8,
-}
-
-// time in milliseconds
-export type TimeMS = number;
-
-export type TimerEvent = {
-  state: TimerState;
-  recordedTime?: TimeMS;
-};
-
-export type TimerStateEventListener = (event: TimerEvent) => void;
 
 export abstract class BluetoothTimer extends EventTarget {
   protected device!: BluetoothDevice;
@@ -75,7 +47,7 @@ export abstract class BluetoothTimer extends EventTarget {
     }
 
     this.dispatchEvent(
-      new CustomEvent(TIMER_STATE_EVENT, {
+      new CustomEvent<TimerEvent>(TIMER_STATE_EVENT, {
         detail: {
           state: TimerState.DISCONNECT,
         },
@@ -89,7 +61,7 @@ export abstract class BluetoothTimer extends EventTarget {
     if (event.recordedTime) this.time = event.recordedTime;
 
     this.dispatchEvent(
-      new CustomEvent(TIMER_STATE_EVENT, {
+      new CustomEvent<TimerEvent>(TIMER_STATE_EVENT, {
         detail: event,
       })
     );
