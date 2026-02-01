@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { KeyboardListenerKey } from "@/components/virtual/keyboard-key";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { get3x3x3 } from "@/lib/get-kpuzzle";
 import { cn } from "@/lib/utils";
 import { useAnimationQueue, VirtualCube } from "@btime/virtual-cubing-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Move } from "cubing/alg";
-import { cube3x3x3 } from "cubing/puzzles";
 import { randomScrambleForEvent } from "cubing/scramble";
 import { use, useCallback, useMemo, useRef, useState } from "react";
 
@@ -72,15 +72,6 @@ const KEY_TO_MOVE_MAP: Map<string, Keybind> = new Map([
   [".", { keyCode: "Period", keyBind: "M'" }],
   ["/", { keyCode: "Slash", keyBind: "Dw'" }],
 ]);
-
-// cache the kpuzzle on browser like is done in virtual-cubing-react
-let kpuzzlePromise: Promise<KPuzzle>;
-export function get3x3x3(): Promise<KPuzzle> {
-  if (!kpuzzlePromise) {
-    kpuzzlePromise = cube3x3x3.kpuzzle();
-  }
-  return kpuzzlePromise;
-}
 
 function VirtualPage() {
   const [setupAlg, setSetupAlg] = useState<string>("");
