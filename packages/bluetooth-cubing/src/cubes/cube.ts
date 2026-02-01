@@ -91,6 +91,7 @@ export abstract class BluetoothCube extends EventTarget {
 
     this.moveEvents = [];
     this.orientationEvents = [];
+    //don't reset quaternion and kpattern - these should be handled in onsync/via normal events
   }
 
   /** Public APIs to offer managed subscriptions to events */

@@ -1,5 +1,5 @@
 import type { MoveEvent } from "../types/cube-types";
-import type { KPattern } from "cubing/kpuzzle";
+import type { KPatternData, KPuzzle } from "cubing/kpuzzle";
 
 import { BluetoothCube } from "./cube";
 import { CubeRegistry } from "./cube-registry";
@@ -7,6 +7,7 @@ import { findUUID, requestMACAddress } from "../utils";
 import { AES128Cipher } from "../utils/aes128";
 import { get3x3KPuzzle } from "../utils/load-333";
 import { Move } from "cubing/alg";
+import { KPattern } from "cubing/kpuzzle";
 import LZString from "lz-string";
 
 /**
@@ -25,7 +26,7 @@ const MOYU32_CUBE_POWER = 164;
 
 const MOYU32_CUBE_STATE = 163;
 const MOYU32_CUBE_MOVE = 165;
-// const MOYU32_CUBE_GYRO = 171;
+const MOYU32_CUBE_GYRO = 171;
 
 const ENCRYPTION_KEYS = [
   "NoJgjANGYJwQrADgjEUAMBmKAWCP4JNIRswt81Yp5DztE1EB2AXSA",
@@ -37,6 +38,134 @@ const ENCRYPTION_KEYS = [
 //   return (i + 1) << 8;
 // });
 
+/** Helper types for Edges and Corners as defined by Moyu32. If other protocols use these definitions, consider moving them to /types */
+
+/**
+ * Types for edge facelet
+ */
+type EdgeFacelet = [number, number];
+type CornerFacelet = [number, number, number];
+
+type PieceData = { id: number; orientation: number };
+
+//canonical order (same as piece id order): UF, UR, UB, UL, DF, DR, DB, DL, FR, FL, BR, BL
+
+/**
+ * Each face (FBUDLR) has 24 bits, each facelet (non-center, reading-order) has 3 bits
+ * edges can be identified 2 offsets for the starting bits of each facelet.
+ * for example,
+ *    UF would be
+ *    face 2 facelet 7 [24*2 + (7 * 3), 24*2 + ((7 + 1) * 3)) and
+ *    face 0 facelet 2 [2 * 3, ((2 + 1) * 3))
+ *
+ * For simplicity, we store only the starting bit index K. The end is always K + 3.
+ */
+const EDGE_FACELET_BIT_ORDER: EdgeFacelet[] = [
+  [24 * 2 + 6 * 3, 24 * 0 + 1 * 3], //UF
+  [24 * 2 + 4 * 3, 24 * 5 + 1 * 3], //UR
+  [24 * 2 + 1 * 3, 24 * 1 + 1 * 3], //UB
+  [24 * 2 + 3 * 3, 24 * 4 + 1 * 3], //UL
+  [24 * 3 + 1 * 3, 24 * 0 + 6 * 3], //DF
+  [24 * 3 + 4 * 3, 24 * 5 + 6 * 3], //DR
+  [24 * 3 + 6 * 3, 24 * 1 + 6 * 3], //DB
+  [24 * 3 + 3 * 3, 24 * 4 + 6 * 3], //DL
+  [24 * 0 + 4 * 3, 24 * 5 + 3 * 3], //FR
+  [24 * 0 + 3 * 3, 24 * 4 + 4 * 3], //FL
+  [24 * 1 + 4 * 3, 24 * 5 + 4 * 3], //BR
+  [24 * 1 + 3 * 3, 24 * 4 + 3 * 3], //BL
+];
+
+const EDGE_FACELET_PIECEDATA_MAPPING: Map<string, PieceData> = new Map<
+  string,
+  PieceData
+>([
+  ["UF", { id: 0, orientation: 0 }],
+  ["FU", { id: 0, orientation: 1 }],
+
+  ["UR", { id: 1, orientation: 0 }],
+  ["RU", { id: 1, orientation: 1 }],
+
+  ["UB", { id: 2, orientation: 0 }],
+  ["BU", { id: 2, orientation: 1 }],
+
+  ["UL", { id: 3, orientation: 0 }],
+  ["LU", { id: 3, orientation: 1 }],
+
+  ["DF", { id: 4, orientation: 0 }],
+  ["FD", { id: 4, orientation: 1 }],
+
+  ["DR", { id: 5, orientation: 0 }],
+  ["RD", { id: 5, orientation: 1 }],
+
+  ["DB", { id: 6, orientation: 0 }],
+  ["BD", { id: 6, orientation: 1 }],
+
+  ["DL", { id: 7, orientation: 0 }],
+  ["LD", { id: 7, orientation: 1 }],
+
+  ["FR", { id: 8, orientation: 0 }],
+  ["RF", { id: 8, orientation: 1 }],
+
+  ["FL", { id: 9, orientation: 0 }],
+  ["LF", { id: 9, orientation: 1 }],
+
+  ["BR", { id: 10, orientation: 0 }],
+  ["RB", { id: 10, orientation: 1 }],
+
+  ["BL", { id: 11, orientation: 0 }],
+  ["LB", { id: 11, orientation: 1 }],
+]);
+
+//FBUDLR
+// URF, UBR, ULB, UFL, DFR, DLF, DBL, DRB
+const CORNER_FACELET_BIT_ORDER: CornerFacelet[] = [
+  [24 * 2 + 7 * 3, 24 * 5 + 0 * 3, 24 * 0 + 2 * 3], //URF
+  [24 * 2 + 2 * 3, 24 * 1 + 0 * 3, 24 * 5 + 2 * 3], //UBR
+  [24 * 2 + 0 * 3, 24 * 4 + 0 * 3, 24 * 1 + 2 * 3], //ULB
+  [24 * 2 + 5 * 3, 24 * 0 + 0 * 3, 24 * 4 + 2 * 3], //UFL
+  [24 * 3 + 2 * 3, 24 * 0 + 7 * 3, 24 * 5 + 5 * 3], //DFR
+  [24 * 3 + 0 * 3, 24 * 4 + 7 * 3, 24 * 0 + 5 * 3], //DLF
+  [24 * 3 + 5 * 3, 24 * 1 + 7 * 3, 24 * 4 + 5 * 3], //DBL
+  [24 * 3 + 7 * 3, 24 * 5 + 7 * 3, 24 * 1 + 5 * 3], //DRB
+];
+
+const CORNER_FACELET_PIECEDATA_MAPPING: Map<string, PieceData> = new Map<
+  string,
+  PieceData
+>([
+  ["URF", { id: 0, orientation: 0 }],
+  ["RFU", { id: 0, orientation: 1 }],
+  ["FUR", { id: 0, orientation: 2 }],
+
+  ["UBR", { id: 1, orientation: 0 }],
+  ["BRU", { id: 1, orientation: 1 }],
+  ["RUB", { id: 1, orientation: 2 }],
+
+  ["ULB", { id: 2, orientation: 0 }],
+  ["LBU", { id: 2, orientation: 1 }],
+  ["BUL", { id: 2, orientation: 2 }],
+
+  ["UFL", { id: 3, orientation: 0 }],
+  ["FLU", { id: 3, orientation: 1 }],
+  ["LUF", { id: 3, orientation: 2 }],
+
+  ["DFR", { id: 4, orientation: 0 }],
+  ["FRD", { id: 4, orientation: 1 }],
+  ["RDF", { id: 4, orientation: 2 }],
+
+  ["DLF", { id: 5, orientation: 0 }],
+  ["LFD", { id: 5, orientation: 1 }],
+  ["FDL", { id: 5, orientation: 2 }],
+
+  ["DBL", { id: 6, orientation: 0 }],
+  ["BLD", { id: 6, orientation: 1 }],
+  ["LDB", { id: 6, orientation: 2 }],
+
+  ["DRB", { id: 7, orientation: 0 }],
+  ["RBD", { id: 7, orientation: 1 }],
+  ["BDR", { id: 7, orientation: 2 }],
+]);
+
 class Moyu32Cube extends BluetoothCube {
   private readCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
   private writeCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
@@ -44,6 +173,7 @@ class Moyu32Cube extends BluetoothCube {
   private decoder: AES128Cipher | null = null;
 
   // private batteryLevel: number = 100;
+  private kpuzzle!: KPuzzle; //since fetching the 3x3 kpuzzle is async, we'll handle this in setup
   private initialState!: KPattern;
   private prevMoveSequenceNumber: number = -1;
   private initialStateInitialized: boolean = false;
@@ -51,8 +181,8 @@ class Moyu32Cube extends BluetoothCube {
   async setup(): Promise<void> {
     const deviceName = this.device.name!.trim();
 
-    const kpuzzle333 = await get3x3KPuzzle();
-    this.initialState = kpuzzle333.defaultPattern();
+    this.kpuzzle = await get3x3KPuzzle();
+    this.initialState = this.kpuzzle.defaultPattern();
 
     /**
      * Attempt automatic MAC discovery - in my experience, this doesn't work.
@@ -183,12 +313,9 @@ class Moyu32Cube extends BluetoothCube {
       return Promise.reject("No write characteristic on Moyu32Cube");
     }
     const encodedReq = this.encode(req.slice());
-    console.log("[Moyu32Cube] SENDING REQUEST, encoded:", encodedReq);
     return this.writeCharacteristic
       .writeValue(new Uint8Array(encodedReq).buffer)
-      .then(() => {
-        console.log("[Moyu32Cube] REQUEST SENT SUCCESSFULLY");
-      })
+      .then(() => {})
       .catch((error) => {
         console.error("[Moyu32Cube] REQUEST FAILED:", error);
         throw error;
@@ -332,12 +459,18 @@ class Moyu32Cube extends BluetoothCube {
       if (!this.initialStateInitialized) {
         this.prevMoveSequenceNumber = parseInt(binaryString.slice(152, 160), 2);
 
-        const initialStateFacelets = this.parseFacelet(
+        const initialStateData: KPatternData = this.parseState(
           binaryString.slice(8, 152)
         );
-        console.log("latest cube state", initialStateFacelets);
+        console.log("latest initial cube state", initialStateData);
 
-        // TODO - turn the facelet representation into a kpattern and call processStateEvent
+        this.initialState = new KPattern(this.kpuzzle, initialStateData);
+
+        this.processStateEvent({
+          kpattern: this.initialState,
+          timestamp: timestamp,
+        });
+
         this.initialStateInitialized = true;
       }
     } else if (msgType === MOYU32_CUBE_POWER) {
@@ -379,13 +512,20 @@ class Moyu32Cube extends BluetoothCube {
           binaryString.slice(8 + i * 16, 24 + i * 16),
           2
         );
-        moves[i] = "FBUDLR".charAt(move >> 1) + " '".charAt(move & 1);
+        moves[i] = "FBUDLR".charAt(move >> 1) + (move & 1 ? "'" : "");
 
         if (move >= 12) {
           moves[i] = "U ";
           invalidMove = true;
         }
       }
+
+      // console.log(
+      //   "move seq number | moves | time offsets",
+      //   moveSequenceNumber,
+      //   moves,
+      //   timeOffsets
+      // );
 
       if (invalidMove) {
         console.warn("invalid move detected!", moves);
@@ -441,23 +581,16 @@ class Moyu32Cube extends BluetoothCube {
           }
         }
 
-        console.log(
-          "move seq number | moves | time offsets",
-          moveSequenceNumber,
-          moves,
-          timeOffsets
-        );
-
         this.prevMoveSequenceNumber = moveSequenceNumber;
       }
+    } else if (msgType === MOYU32_CUBE_GYRO) {
+      // gyro
+      // Handle gyro data if needed
+      // console.log(binaryString);
     }
-    // else if (msgType === MOYU32_CUBE_GYRO) { // gyro
-    //   // Handle gyro data if needed
-    //   console.log(binaryString);
-    // }
   };
 
-  private parseFacelet(faceletBits: string) {
+  private parseState(faceletBits: string): KPatternData {
     /**
      * This representation is subject to change
      *
@@ -467,18 +600,58 @@ class Moyu32Cube extends BluetoothCube {
      * TODO convert to parse directly into a kpattern
      */
 
-    const state = [];
-    const faces = [2, 5, 0, 3, 4, 1]; // parse in order URFDLB instead of FBUDLR
-    for (let i = 0; i < 6; i += 1) {
-      const face = faceletBits.slice(faces[i] * 24, 24 + faces[i] * 24);
-      for (let j = 0; j < 8; j += 1) {
-        state.push("FBUDLR".charAt(parseInt(face.slice(j * 3, 3 + j * 3), 2)));
-        if (j == 3) {
-          state.push("FBUDLR".charAt(faces[i]));
-        }
-      }
+    /**
+     * Draft idea for parsing directly to kpattern
+     *
+     * Per [edge, corner] piece type:
+     * iterate over the positions in index order (cubing.js).
+     *  - get the corresponding facelet bits in orientation order
+     *  - call a helper parsing function to get: (1) the correct piece ID and (2) the orientation
+     *
+     * This will let us reconstruct the KPatternData correctly, which we can create a KPattern with
+     */
+
+    const newState: KPatternData = {
+      EDGES: {
+        pieces: [],
+        orientation: [],
+      },
+      CORNERS: {
+        pieces: [],
+        orientation: [],
+      },
+      CENTERS: {
+        pieces: [0, 1, 2, 3, 4, 5],
+        orientation: [0, 0, 0, 0, 0, 0],
+        orientationMod: [1, 1, 1, 1, 1, 1],
+      },
+    };
+
+    //TODO: inline
+    for (let i = 0; i < 12; i++) {
+      const pieceString = EDGE_FACELET_BIT_ORDER[i]
+        .map((x) => "FBUDLR".charAt(parseInt(faceletBits.slice(x, x + 3), 2)))
+        .join("");
+      const pieceData = EDGE_FACELET_PIECEDATA_MAPPING.get(pieceString)!;
+      newState.EDGES.pieces.push(pieceData.id);
+      newState.EDGES.orientation.push(pieceData.orientation);
     }
-    return state.join("");
+    for (let i = 0; i < 8; i++) {
+      const pieceString = CORNER_FACELET_BIT_ORDER[i]
+        .map((x) => "FBUDLR".charAt(parseInt(faceletBits.slice(x, x + 3), 2)))
+        .join("");
+      const pieceData = CORNER_FACELET_PIECEDATA_MAPPING.get(pieceString)!;
+      newState.CORNERS.pieces.push(pieceData.id);
+      newState.CORNERS.orientation.push(pieceData.orientation);
+    }
+
+    return newState;
+  }
+
+  protected onSync() {
+    this.prevMoveSequenceNumber = -1;
+    this.initialStateInitialized = false;
+    this.initialState = this.kpuzzle.defaultPattern();
   }
 
   protected processMoveEvent(event: MoveEvent) {
