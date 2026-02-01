@@ -9,56 +9,121 @@ import type {
 } from "@btime/bluetooth-cubing";
 
 import { connectCube } from "@btime/bluetooth-cubing";
-import { useCallback, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+
+const DEFAULT_ORIENTATION = { w: 1, x: 0, y: 0, z: 0 };
 
 export function useBluetoothCube(
   onMoveEvent?: CubeMoveEventListener,
   onStateEvent?: CubeStateEventListener,
   onOrientationEvent?: CubeOrientationEventListener
 ) {
-  const timerRef = useRef<BluetoothCube>(null);
+  const cubeRef = useRef<BluetoothCube>(null);
   const [connected, setConnected] = useState<boolean>(false);
+
+  const handleMove = useEffectEvent((event: MoveEvent) => {
+    onMoveEvent?.(event);
+  });
+
+  const handleState = useEffectEvent((event: StateEvent) => {
+    onStateEvent?.(event);
+  });
+
+  useEffect(() => {
+    const cube = cubeRef.current;
+    if (!cube) return;
+
+    const cleanupMove = cube.onMoveEvent(handleMove);
+    const cleanupState = cube.onStateEvent(handleState);
+
+    return () => {
+      // Call the cleanup functions returned from onMoveEvent/onStateEvent
+      cleanupMove();
+      cleanupState();
+    };
+  }, [connected, onMoveEvent, onStateEvent]);
+
+  // Track orientation with useSyncExternalStore
+  const orientation = useSyncExternalStore(
+    (callback) => {
+      const cube = cubeRef.current;
+      if (!cube) return () => {};
+
+      // Throttle with RAF
+      let rafId: number | null = null;
+
+      const handleOrientation = () => {
+        // Still call user's callback if provided
+        // onOrientationEvent?.(event);
+
+        // Throttle React updates
+        if (rafId === null) {
+          rafId = requestAnimationFrame(() => {
+            callback(); // Tell React to re-read the snapshot
+            rafId = null;
+          });
+        }
+      };
+
+      const cleanup = cube.onOrientationEvent(handleOrientation);
+
+      return () => {
+        if (rafId !== null) cancelAnimationFrame(rafId);
+        cleanup();
+      };
+    },
+    () => cubeRef.current?.orientation ?? DEFAULT_ORIENTATION,
+    () => DEFAULT_ORIENTATION
+  );
 
   /**
    * Due to web bluetooth API, this connect() callback will only work when triggered by a user gesture (e.g. button click)
    */
   const connect = useCallback(
     async (onConnect?: () => void) => {
-      const timer = await connectCube();
-      timerRef.current = timer;
+      const cube = await connectCube();
+      cubeRef.current = cube;
 
       //TODO - attach listeners, handle callbacks, etc.
 
-      timer.onMoveEvent((event: MoveEvent) => {
-        console.log("[UseBluetoothCube] received move event", event);
-        onMoveEvent?.(event);
-      });
+      // cube.onMoveEvent((event: MoveEvent) => {
 
-      timer.onStateEvent((event: StateEvent) => {
-        console.log("[UseBluetoothCube] received state event", event);
-        onStateEvent?.(event);
-      });
-      timer.onOrientationEvent((event: OrientationEvent) => {
-        console.log("[UseBluetoothCube] received orientation event", event);
+      //   onMoveEvent?.(event);
+      // });
+
+      // cube.onStateEvent((event: StateEvent) => {
+      //   // console.log("[UseBluetoothCube] received state event", event);
+      //   onStateEvent?.(event);
+      // });
+      cube.onOrientationEvent((event: OrientationEvent) => {
+        // console.log("[UseBluetoothCube] received orientation event", event);
         onOrientationEvent?.(event);
       });
 
       setConnected(true);
       onConnect?.();
     },
-    [onMoveEvent, onStateEvent, onOrientationEvent]
+    [onOrientationEvent]
   );
 
   const disconnect = useCallback(async () => {
-    await timerRef.current?.disconnect();
+    await cubeRef.current?.disconnect();
     setConnected(false);
   }, []);
 
   // eslint-disable-next-line react-hooks/refs
   return {
     // eslint-disable-next-line react-hooks/refs
-    timer: timerRef.current,
+    cube: cubeRef.current,
     connected,
+    orientation,
     connect,
     disconnect,
   };

@@ -6,6 +6,7 @@ import { TrackballControls } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { EffectComposer, Vignette } from "@react-three/postprocessing";
 import { Suspense, useEffect, useRef, useState } from "react";
+import { Quaternion } from "three";
 import { clamp } from "three/src/math/MathUtils.js";
 
 type VirtualCubeAnimationManagerProps = {
@@ -13,6 +14,8 @@ type VirtualCubeAnimationManagerProps = {
   setupAlg: Alg | string;
   alg: Alg | string;
   animationMove?: Move;
+
+  orientation?: Quaternion;
 
   /**
    * The time to consider the start of animating, in ms. Should be taken with performance.now() in the parent.
@@ -90,6 +93,7 @@ export function VirtualCube({
                 event={virtualCubeInternalProps.event}
                 setupAlg=""
                 alg=""
+                orientation={new Quaternion()}
               />
             );
           }}
@@ -125,6 +129,7 @@ function VirtualCubeAnimationManager({
   event = "3x3x3",
   setupAlg = "",
   alg,
+  orientation = new Quaternion(),
   animationMove,
   animationStart = undefined,
   animationDuration = 70, //14 tps seems to be a decent default
@@ -178,6 +183,7 @@ function VirtualCubeAnimationManager({
     <VirtualCubeComponent
       setupAlg={setupAlg}
       alg={alg}
+      orientation={orientation}
       animationMove={animationMove}
       animationProgress={animationProgress}
     />

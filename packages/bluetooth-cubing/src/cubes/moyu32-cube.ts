@@ -1,4 +1,4 @@
-import type { MoveEvent } from "../types/cube-types";
+import type { MoveEvent, Quaternion } from "../types/cube-types";
 import type { KPatternData, KPuzzle } from "cubing/kpuzzle";
 
 import { BluetoothCube } from "./cube";
@@ -562,7 +562,7 @@ class Moyu32Cube extends BluetoothCube {
             //TODO - figure out how to manually resync state from here. Move event/alg state may be lost.
           }
 
-          const movesToProcess = Math.max(5, numMovesToProcess);
+          const movesToProcess = Math.min(5, numMovesToProcess);
 
           let sum = 0;
           const timeOffsetPrefixSums = timeOffsets
@@ -586,7 +586,13 @@ class Moyu32Cube extends BluetoothCube {
     } else if (msgType === MOYU32_CUBE_GYRO) {
       // gyro
       // Handle gyro data if needed
-      // console.log(binaryString);
+      const orientation = this.parseOrientation(binaryString);
+      const canonicalOrientation = this.convertOrientation(orientation);
+
+      this.processOrientationEvent({
+        quaternion: canonicalOrientation,
+        timestamp: timestamp,
+      });
     }
   };
 
@@ -646,6 +652,79 @@ class Moyu32Cube extends BluetoothCube {
     }
 
     return newState;
+  }
+
+  private static parseSignedInt32(binaryString: string): number {
+    // Split into 4 bytes (8 bits each)
+    const byte0 = parseInt(binaryString.slice(0, 8), 2);
+    const byte1 = parseInt(binaryString.slice(8, 16), 2);
+    const byte2 = parseInt(binaryString.slice(16, 24), 2);
+    const byte3 = parseInt(binaryString.slice(24, 32), 2);
+
+    // Reconstruct as little-endian: byte0 is LSB, byte3 is MSB
+    const unsigned = byte0 | (byte1 << 8) | (byte2 << 16) | (byte3 << 24);
+
+    // Convert to signed
+    return unsigned >= 0x80000000 ? unsigned - 0x100000000 : unsigned;
+  }
+
+  private parseOrientation(binaryString: string): Quaternion {
+    /**
+     * After testing with the Moyu32Cube protocol, we found:
+     *
+     * Each orientation message is 160 bits long. The first 8 bits are for event type (171, gyro data)
+     * bits [8, 39] - quat W
+     * bits [40, 71] - quat X
+     * bits [72, 103] - quat Y
+     * bits [104, 135] - quat Z
+     * bits [136, 159] - final 24 bits are always 0 (reserved for padding)
+     *
+     * Each quaternion is scaled up to 2^30. To reduce to a normalized quaternion, divide all parts by 2^30.
+     *
+     * The cube appears to not have a single global orientation. Instead, orientation is only defined up to a global "up" axis.
+     *
+     * For example, when initializing connection with the cube in ANY orientation where the white face points up, we get a (1, 0, 0, 0) wxyz quaternion, representing the identity rotation matrix.
+     * As a result, this protocol will force any library author that uses this orientation in a meaningful way to "sync" their orientation events with a canonical orientation that the user holds the cube in.
+     *
+     * NOTE: Moyu32Cube protocol appears to assign x right, y back, z up. This should be transformed to use the global reference frame x right, y up, z front.
+     *
+     * Thanks to @hppeng for helping test
+     */
+
+    const QUAT_SCALE = 1 / (1 << 30);
+
+    const w =
+      Moyu32Cube.parseSignedInt32(binaryString.slice(8, 40)) * QUAT_SCALE;
+    const x =
+      Moyu32Cube.parseSignedInt32(binaryString.slice(40, 72)) * QUAT_SCALE;
+    const y =
+      Moyu32Cube.parseSignedInt32(binaryString.slice(72, 104)) * QUAT_SCALE;
+    const z =
+      Moyu32Cube.parseSignedInt32(binaryString.slice(104, 136)) * QUAT_SCALE;
+
+    //normalize to get rid of rounding error - should already be very close to 1
+    const magnitude_inv = 1 / Math.sqrt(w ** 2 + x ** 2 + y ** 2 + z ** 2);
+
+    return {
+      w: w * magnitude_inv,
+      x: x * magnitude_inv,
+      y: y * magnitude_inv,
+      z: z * magnitude_inv,
+    };
+  }
+
+  private convertOrientation(orientation: Quaternion): Quaternion {
+    /**
+     * Converts orientation (x right, y back, z up) to the canonical (x right, y up, z front).
+     * This maps to a pi/2 rotation about the x axis. Luckily, this is an easy transformation for quaternions.
+     */
+    const { w, x, y, z } = orientation;
+    return {
+      w: w,
+      x: x,
+      y: z,
+      z: -y,
+    };
   }
 
   protected onSync() {

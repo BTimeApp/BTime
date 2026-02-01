@@ -1,16 +1,24 @@
+import type {
+  CubeMoveEventListener,
+  MoveEvent,
+  TimerEvent,
+} from "@btime/bluetooth-cubing";
+
 import { Header, HeaderTitle } from "@/components/common/header";
 import PageWrapper from "@/components/common/page-wrapper";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { TimerState } from "@btime/bluetooth-cubing";
 import {
-  connectCube,
-  TimerState,
-  type TimerEvent,
-} from "@btime/bluetooth-cubing";
-import { useBluetoothTimer } from "@btime/bluetooth-cubing-react";
+  useBluetoothCube,
+  useBluetoothTimer,
+} from "@btime/bluetooth-cubing-react";
 import { Result } from "@btime/lib";
+import { useAnimationQueue, VirtualCube } from "@btime/virtual-cubing-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
+import { Quaternion } from "three";
 
 export const Route = createFileRoute("/bluetooth/")({
   component: BluetoothPage,
@@ -50,6 +58,32 @@ function BluetoothPage() {
     connect: connectTimer,
     disconnect: disconnectTimer,
   } = useBluetoothTimer(handleTimerEvent);
+
+  const { currentMove, addToAnimationQueue, handleAnimationComplete } =
+    useAnimationQueue();
+
+  const [alg, setAlg] = useState<string>("");
+
+  //TODO: add duration to animation queue
+  const handleMoveEvent: CubeMoveEventListener = useCallback(
+    (moveEvent: MoveEvent) => {
+      addToAnimationQueue(moveEvent.move);
+    },
+    [addToAnimationQueue]
+  );
+
+  const onFinishAnimating = useCallback(() => {
+    setAlg((alg) => alg + " " + currentMove);
+    handleAnimationComplete();
+  }, [currentMove, handleAnimationComplete]);
+
+  const {
+    // cube,
+    connected: cubeConnected,
+    orientation,
+    connect: connectCube,
+    disconnect: disconnectCube,
+  } = useBluetoothCube(handleMoveEvent);
 
   return (
     <PageWrapper>
@@ -112,19 +146,70 @@ function BluetoothPage() {
         </div>
         <div className="flex flex-col h-full py-3">
           <div className="flex flex-row justify-center">
-            <Button
-              variant="primary"
-              className="w-fit"
-              onClick={async () => {
-                try {
-                  await connectCube();
-                } catch (err) {
-                  toast.error((err as Error).message);
-                }
-              }}
-            >
-              Connect
-            </Button>
+            {cubeConnected ? (
+              <div className="flex flex-col text-lg">
+                <div
+                  className={cn(
+                    "h-60 w-full border border-3 rounded-lg"
+                    // inErrorState ? "bg-error/30 border-error" : ""
+                  )}
+                >
+                  <VirtualCube
+                    setupAlg=""
+                    alg={alg}
+                    orientation={
+                      new Quaternion(
+                        orientation.x,
+                        orientation.y,
+                        orientation.z,
+                        orientation.w
+                      )
+                    }
+                    //TODO - figure out why onError and onErrorClear show up here :/
+                    onError={undefined}
+                    onErrorClear={undefined}
+                    animationMove={currentMove}
+                    onFinishAnimating={onFinishAnimating}
+                  />
+                </div>
+                <Button
+                  variant="primary"
+                  onClick={async () => {
+                    try {
+                      disconnectCube();
+                    } catch (err) {
+                      toast.error((err as Error).message);
+                    }
+                  }}
+                >
+                  Disconnect
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col text-center items-center">
+                <div>
+                  Click button to connect to Bluetooth Cube. Only Moyu32
+                  (WCU-...) cubes supported for now.
+                </div>
+                <Button
+                  variant="primary"
+                  className="w-fit"
+                  onClick={async () => {
+                    try {
+                      await connectCube(() => {
+                        toast.success(
+                          `Succesfully connected to bluetooth timer!`
+                        );
+                      });
+                    } catch (err) {
+                      toast.error((err as Error).message);
+                    }
+                  }}
+                >
+                  Connect
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </div>

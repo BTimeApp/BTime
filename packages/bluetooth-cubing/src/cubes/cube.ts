@@ -23,8 +23,14 @@ export abstract class BluetoothCube extends EventTarget {
   protected device!: BluetoothDevice;
   protected server!: BluetoothRemoteGATTServer;
   private kpattern!: KPattern;
+  /**
+   * Orientation information will be stored (and emitted) by this base class with the following reference frame:
+   * x right
+   * y up
+   * z front
+   */
   private quaternion!: Quaternion;
-  // we don't store state events (there's no point)
+
   private moveEvents: MoveEvent[] = []; //sorted by timestamp
   private orientationEvents: OrientationEvent[] = []; //sorted by timestamp
 
