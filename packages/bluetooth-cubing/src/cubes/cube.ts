@@ -133,10 +133,10 @@ export abstract class BluetoothCube extends EventTarget {
       cb((event as CustomEvent<StateEvent>).detail);
     };
     this.stateListeners.set(cb, handler);
-    this.addEventListener(CUBE_ORIENTATION_EVENT, handler);
+    this.addEventListener(CUBE_STATE_EVENT, handler);
 
     return () => {
-      this.removeEventListener(CUBE_ORIENTATION_EVENT, handler);
+      this.removeEventListener(CUBE_STATE_EVENT, handler);
       this.stateListeners.delete(cb);
     };
   }
