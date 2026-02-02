@@ -71,8 +71,8 @@ const EDGE_FACELET_BIT_ORDER: EdgeFacelet[] = [
   [24 * 3 + 3 * 3, 24 * 4 + 6 * 3], //DL
   [24 * 0 + 4 * 3, 24 * 5 + 3 * 3], //FR
   [24 * 0 + 3 * 3, 24 * 4 + 4 * 3], //FL
-  [24 * 1 + 4 * 3, 24 * 5 + 4 * 3], //BR
-  [24 * 1 + 3 * 3, 24 * 4 + 3 * 3], //BL
+  [24 * 1 + 3 * 3, 24 * 5 + 4 * 3], //BR
+  [24 * 1 + 4 * 3, 24 * 4 + 3 * 3], //BL
 ];
 
 const EDGE_FACELET_PIECEDATA_MAPPING: Map<string, PieceData> = new Map<
@@ -134,36 +134,36 @@ const CORNER_FACELET_PIECEDATA_MAPPING: Map<string, PieceData> = new Map<
   PieceData
 >([
   ["URF", { id: 0, orientation: 0 }],
-  ["RFU", { id: 0, orientation: 1 }],
-  ["FUR", { id: 0, orientation: 2 }],
+  ["FUR", { id: 0, orientation: 1 }],
+  ["RFU", { id: 0, orientation: 2 }],
 
   ["UBR", { id: 1, orientation: 0 }],
-  ["BRU", { id: 1, orientation: 1 }],
-  ["RUB", { id: 1, orientation: 2 }],
+  ["RUB", { id: 1, orientation: 1 }],
+  ["BRU", { id: 1, orientation: 2 }],
 
   ["ULB", { id: 2, orientation: 0 }],
-  ["LBU", { id: 2, orientation: 1 }],
-  ["BUL", { id: 2, orientation: 2 }],
+  ["BUL", { id: 2, orientation: 1 }],
+  ["LBU", { id: 2, orientation: 2 }],
 
   ["UFL", { id: 3, orientation: 0 }],
-  ["FLU", { id: 3, orientation: 1 }],
-  ["LUF", { id: 3, orientation: 2 }],
+  ["LUF", { id: 3, orientation: 1 }],
+  ["FLU", { id: 3, orientation: 2 }],
 
   ["DFR", { id: 4, orientation: 0 }],
-  ["FRD", { id: 4, orientation: 1 }],
-  ["RDF", { id: 4, orientation: 2 }],
+  ["RDF", { id: 4, orientation: 1 }],
+  ["FRD", { id: 4, orientation: 2 }],
 
   ["DLF", { id: 5, orientation: 0 }],
-  ["LFD", { id: 5, orientation: 1 }],
-  ["FDL", { id: 5, orientation: 2 }],
+  ["FDL", { id: 5, orientation: 1 }],
+  ["LFD", { id: 5, orientation: 2 }],
 
   ["DBL", { id: 6, orientation: 0 }],
-  ["BLD", { id: 6, orientation: 1 }],
-  ["LDB", { id: 6, orientation: 2 }],
+  ["LDB", { id: 6, orientation: 1 }],
+  ["BLD", { id: 6, orientation: 2 }],
 
   ["DRB", { id: 7, orientation: 0 }],
-  ["RBD", { id: 7, orientation: 1 }],
-  ["BDR", { id: 7, orientation: 2 }],
+  ["BDR", { id: 7, orientation: 1 }],
+  ["RBD", { id: 7, orientation: 2 }],
 ]);
 
 class Moyu32Cube extends BluetoothCube {
@@ -174,15 +174,12 @@ class Moyu32Cube extends BluetoothCube {
 
   // private batteryLevel: number = 100;
   private kpuzzle!: KPuzzle; //since fetching the 3x3 kpuzzle is async, we'll handle this in setup
-  private initialState!: KPattern;
   private prevMoveSequenceNumber: number = -1;
-  private initialStateInitialized: boolean = false;
 
   async setup(): Promise<void> {
     const deviceName = this.device.name!.trim();
 
     this.kpuzzle = await get3x3KPuzzle();
-    this.initialState = this.kpuzzle.defaultPattern();
 
     /**
      * Attempt automatic MAC discovery - in my experience, this doesn't work.
@@ -462,25 +459,20 @@ class Moyu32Cube extends BluetoothCube {
     } else if (msgType === MOYU32_CUBE_STATE) {
       /**
        * Full state info representable in 54 (48) facelets b/c it's strictly in WCA orientation.
-       * Streams after being requested. We only read once on initial read and refresh when syncing.
+       * Only sends a single message when requested. We only read once on initial read and refresh when syncing.
        */
-      if (!this.initialStateInitialized) {
-        this.prevMoveSequenceNumber = parseInt(binaryString.slice(152, 160), 2);
+      // this.prevMoveSequenceNumber = parseInt(binaryString.slice(152, 160), 2);
 
-        const initialStateData: KPatternData = this.parseState(
-          binaryString.slice(8, 152)
-        );
-        console.log("latest initial cube state", initialStateData);
+      const stateData: KPatternData = this.parseState(
+        binaryString.slice(8, 152)
+      );
 
-        this.initialState = new KPattern(this.kpuzzle, initialStateData);
-
-        this.processStateEvent({
-          kpattern: this.initialState,
-          timestamp: timestamp,
-        });
-
-        this.initialStateInitialized = true;
-      }
+      // this.initializeState(new KPattern(this.kpuzzle, initialStateData));
+      this.processStateEvent({
+        kpattern: new KPattern(this.kpuzzle, stateData),
+        timestamp: timestamp,
+      });
+      // }
     } else if (msgType === MOYU32_CUBE_POWER) {
       /**
        * Battery level. Only sends once per request.
@@ -503,12 +495,7 @@ class Moyu32Cube extends BluetoothCube {
 
       // even if initial state isn't initialized, it's useful to track move sequence number so we know how many moves to process for the first event.
       const moveSequenceNumber = parseInt(binaryString.slice(88, 96), 2);
-
       // only start tracking moves after initial state initialized
-      if (!this.initialStateInitialized) {
-        this.prevMoveSequenceNumber = moveSequenceNumber;
-        return;
-      }
 
       const timeOffsets: number[] = [];
       const moves: string[] = [];
@@ -560,7 +547,7 @@ class Moyu32Cube extends BluetoothCube {
           }
         } else {
           const numMovesToProcess =
-            (moveSequenceNumber - this.prevMoveSequenceNumber) % 256;
+            (moveSequenceNumber - this.prevMoveSequenceNumber) & 0xff;
 
           if (numMovesToProcess > 5) {
             // we can only process at most 5 moves at a time with the given moyu32 protocol.
@@ -585,6 +572,10 @@ class Moyu32Cube extends BluetoothCube {
             this.processMoveEvent({
               move: new Move(moves[i]),
               timestamp: timestamp - timeOffsetPrefixSums[i],
+              duration:
+                timeOffsetPrefixSums[i] < 200
+                  ? timeOffsetPrefixSums[i]
+                  : undefined,
             });
           }
         }
@@ -737,8 +728,6 @@ class Moyu32Cube extends BluetoothCube {
 
   protected async onSync() {
     this.prevMoveSequenceNumber = -1;
-    this.initialStateInitialized = false;
-    this.initialState = this.kpuzzle.defaultPattern();
 
     await this.refreshReadCharacteristic();
     await this.sendCubeRequests();
@@ -755,7 +744,7 @@ class Moyu32Cube extends BluetoothCube {
       timestamp: event.timestamp,
     });
 
-    const newState = this.initialState.applyAlg(this.alg);
+    const newState = this.state!.applyAlg(this.alg);
     this.processStateEvent({ kpattern: newState, timestamp: event.timestamp });
   }
 

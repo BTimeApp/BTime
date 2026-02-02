@@ -28,19 +28,14 @@ export function useBluetoothCube(
 ) {
   const cubeRef = useRef<BluetoothCube>(null);
   const [connected, setConnected] = useState<boolean>(false);
-  const [initialState, setInitialState] = useState<KPattern | null>(null);
+  const [initialState, setInitialState] = useState<KPattern | undefined>(
+    undefined
+  );
   const initialStateInitializedRef = useRef<boolean>(false);
 
   const handleMove = useEffectEvent((event: MoveEvent) => {
-    onMoveEvent?.(event);
-  });
-
-  const handleState = useEffectEvent((event: StateEvent) => {
-    onStateEvent?.(event);
-
-    if (!initialStateInitializedRef.current) {
-      setInitialState(event.kpattern);
-      initialStateInitializedRef.current = true;
+    if (initialStateInitializedRef.current) {
+      onMoveEvent?.(event);
     }
   });
 
@@ -49,14 +44,11 @@ export function useBluetoothCube(
     if (!cube) return;
 
     const cleanupMove = cube.onMoveEvent(handleMove);
-    const cleanupState = cube.onStateEvent(handleState);
 
     return () => {
-      // Call the cleanup functions returned from onMoveEvent/onStateEvent
       cleanupMove();
-      cleanupState();
     };
-  }, [connected, onMoveEvent, onStateEvent]);
+  }, [connected, onMoveEvent]);
 
   // Track orientation with useSyncExternalStore
   const orientation = useSyncExternalStore(
@@ -106,19 +98,30 @@ export function useBluetoothCube(
       //   onMoveEvent?.(event);
       // });
 
-      // cube.onStateEvent((event: StateEvent) => {
-      //   // console.log("[UseBluetoothCube] received state event", event);
-      //   onStateEvent?.(event);
-      // });
+      const handleStateEvent = (event: StateEvent) => {
+        // console.log("[handleStateEvent] state", event.kpattern.patternData);
+        onStateEvent?.(event);
+
+        if (!initialStateInitializedRef.current) {
+          // always prefer using the cube's tracked initial state if possible
+          setInitialState(event.kpattern);
+
+          initialStateInitializedRef.current = true;
+        }
+      };
+
+      cube.onStateEvent(handleStateEvent);
+
       cube.onOrientationEvent((event: OrientationEvent) => {
-        // console.log("[UseBluetoothCube] received orientation event", event);
         onOrientationEvent?.(event);
       });
+
+      await cube.sync();
 
       setConnected(true);
       onConnect?.();
     },
-    [onOrientationEvent]
+    [onOrientationEvent, onStateEvent]
   );
 
   const disconnect = useCallback(async () => {

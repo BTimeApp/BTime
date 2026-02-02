@@ -79,8 +79,9 @@ function BluetoothPage() {
   );
 
   const onFinishAnimating = useCallback(() => {
-    setAlg((alg) =>
-      alg + currentMoveEvent ? " " + currentMoveEvent?.move.toString() : ""
+    setAlg(
+      (alg) =>
+        alg + (currentMoveEvent ? " " + currentMoveEvent.move.toString() : "")
     );
     handleAnimationComplete();
   }, [currentMoveEvent, handleAnimationComplete]);
@@ -88,6 +89,7 @@ function BluetoothPage() {
   const {
     // cube,
     connected: cubeConnected,
+    initialState,
     orientation,
     connect: connectCube,
     disconnect: disconnectCube,
@@ -190,13 +192,9 @@ function BluetoothPage() {
           <div className="flex flex-row justify-center">
             {cubeConnected ? (
               <div className="flex flex-col text-lg">
-                <div
-                  className={cn(
-                    "h-60 w-full border border-3 rounded-lg"
-                    // inErrorState ? "bg-error/30 border-error" : ""
-                  )}
-                >
+                <div className={cn("h-60 w-full border border-3 rounded-lg")}>
                   <VirtualCube
+                    initialState={initialState}
                     setupAlg=""
                     alg={alg}
                     orientation={

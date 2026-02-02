@@ -31,6 +31,9 @@ export abstract class BluetoothCube extends EventTarget {
    */
   private quaternion!: Quaternion;
 
+  // private _initialStateInitialized: boolean = false;
+  // private _initialState: KPattern | undefined;
+
   private moveEvents: MoveEvent[] = []; //sorted by timestamp
   private orientationEvents: OrientationEvent[] = []; //sorted by timestamp
 
@@ -86,6 +89,14 @@ export abstract class BluetoothCube extends EventTarget {
     return this.kpattern;
   }
 
+  // get initialStateInitialized(): boolean {
+  //   return this._initialStateInitialized;
+  // }
+
+  // get initialState(): KPattern | undefined {
+  //   return this._initialState;
+  // }
+
   public async init(): Promise<void> {
     await this.setup();
 
@@ -95,6 +106,9 @@ export abstract class BluetoothCube extends EventTarget {
   public async sync(): Promise<void> {
     this.moveEvents = [];
     this.orientationEvents = [];
+
+    // this._initialStateInitialized = false;
+    // this._initialState = undefined;
 
     await this.onSync();
     //don't reset quaternion and kpattern - these should be handled in onsync/via normal events
@@ -165,8 +179,23 @@ export abstract class BluetoothCube extends EventTarget {
     );
   }
 
+  /**
+   * Provide a quick way for subclasses to initialize state b/c it's dependent on the puzzle, which this class shouldn't care about
+   */
+  // protected initializeState(state: KPattern) {
+  //   if (!this.initialStateInitialized) {
+  //     this._initialState = state;
+  //     this._initialStateInitialized = true;
+  //   }
+  // }
+
   protected processStateEvent(event: StateEvent) {
     this.kpattern = event.kpattern;
+
+    // if (!this.initialStateInitialized) {
+    //   this._initialState = event.kpattern;
+    //   this._initialStateInitialized = true;
+    // }
 
     this.dispatchEvent(
       new CustomEvent<StateEvent>(CUBE_STATE_EVENT, {
