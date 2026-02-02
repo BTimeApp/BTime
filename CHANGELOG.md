@@ -18,7 +18,6 @@ Added:
 Changed:
 
 - refactor bluetooth-cubing package for consolidated types and utils
-- updated virtual-cubing package with support for
 
 ## 0.4.0 - 2026-01-20
 
