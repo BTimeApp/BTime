@@ -9,6 +9,7 @@ The current versioning convention tracks changes to BTime as a whole. Packages w
 Added:
 
 - new Bluetooth cube API in bluetooth-cubing to support bluetooth cube development and integration
+  - first bluetooth cube implementation for Moyu32 cube protocol
 - new hook for bluetooth cubes in bluetooth-cubing-react to make lifecycle management easier
 - new bluetooth cube demo in /bluetooth route
 - added support for initial state in virtual cube
