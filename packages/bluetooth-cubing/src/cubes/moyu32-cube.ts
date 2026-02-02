@@ -542,10 +542,10 @@ class Moyu32Cube extends BluetoothCube {
           const numMovesToProcess =
             (moveSequenceNumber - this.prevMoveSequenceNumber) & 0xff;
 
-          if (numMovesToProcess > 5) {
+          if (numMovesToProcess > moves.length) {
             // we can only process at most 5 moves at a time with the given moyu32 protocol.
             console.warn(
-              "[Moyu32Cube] somehow has more than 5 moves to process. Resync your cube to ensure correct state tracking."
+              `[Moyu32Cube] somehow has more than ${moves.length} moves to process. Resync your cube to ensure correct state tracking.`
             );
             //TODO - figure out how to manually resync state from here. Move event/alg state may be lost.
           }

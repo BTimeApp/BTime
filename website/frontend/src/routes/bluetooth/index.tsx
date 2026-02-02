@@ -255,7 +255,7 @@ function BluetoothPage() {
         <div className="flex flex-col h-full py-3">
           <div className="flex flex-row justify-center">
             {cubeConnected ? (
-              <div className="flex flex-col text-lg">
+              <div className="flex flex-col text-lg gap-2">
                 <div className={cn("h-60 w-full border border-3 rounded-lg")}>
                   <VirtualCube
                     initialState={initialState}
@@ -269,9 +269,6 @@ function BluetoothPage() {
                         orientation.w
                       )
                     }
-                    //TODO - figure out why onError and onErrorClear show up here :/
-                    onError={undefined}
-                    onErrorClear={undefined}
                     animationMove={currentMoveEvent?.move}
                     animationStart={currentMoveEvent?.timestamp}
                     animationDuration={currentMoveEvent?.duration}
