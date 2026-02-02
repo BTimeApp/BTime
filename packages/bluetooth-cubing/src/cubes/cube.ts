@@ -9,6 +9,7 @@ import type {
 } from "../types/cube-types";
 import type { KPattern } from "cubing/kpuzzle";
 
+import { applyQuaternion, invertQuaternion } from "../utils";
 import { Alg, experimentalAppendMove } from "cubing/alg";
 
 export const CUBE_MOVE_EVENT = "CUBE_MOVE_EVENT";
@@ -31,9 +32,7 @@ export abstract class BluetoothCube extends EventTarget {
    */
   private quaternion!: Quaternion;
 
-  // private _initialStateInitialized: boolean = false;
-  // private _initialState: KPattern | undefined;
-
+  private syncQuaternionTransform: Quaternion = { w: 1, x: 0, y: 0, z: 0 };
   private moveEvents: MoveEvent[] = []; //sorted by timestamp
   private orientationEvents: OrientationEvent[] = []; //sorted by timestamp
 
@@ -49,6 +48,9 @@ export abstract class BluetoothCube extends EventTarget {
     CubeStateEventListener,
     EventListener
   >();
+
+  private disconnectListeners: Map<(event: Event) => void, EventListener> =
+    new Map<(event: Event) => void, EventListener>();
 
   constructor(device: BluetoothDevice) {
     super();
@@ -107,8 +109,18 @@ export abstract class BluetoothCube extends EventTarget {
     this.moveEvents = [];
     this.orientationEvents = [];
 
-    // this._initialStateInitialized = false;
-    // this._initialState = undefined;
+    /**
+     * given Q1 = raw quat, Q2 = transform quat, Q3 = processed quat (the ones we store) where Q3 = Q1 * Q2
+     * we want to update Q2 <- Q1^(-1).
+     * Q3 * (Q2^(-1)) = Q1
+     * (Q3 * (Q2^(-1)))^(-1) = Q1^(-1)
+     */
+    this.syncQuaternionTransform = invertQuaternion(
+      applyQuaternion(
+        this.quaternion,
+        invertQuaternion(this.syncQuaternionTransform)
+      )
+    );
 
     await this.onSync();
     //don't reset quaternion and kpattern - these should be handled in onsync/via normal events
@@ -155,6 +167,20 @@ export abstract class BluetoothCube extends EventTarget {
     };
   }
 
+  public onDisconnectEvent(cb: (event: Event) => void) {
+    const handler = (event: Event) => {
+      cb(event);
+    };
+
+    this.disconnectListeners.set(cb, handler);
+    this.addEventListener(CUBE_DISCONNECT_EVENT, handler);
+
+    return () => {
+      this.removeEventListener(CUBE_DISCONNECT_EVENT, handler);
+      this.disconnectListeners.delete(cb);
+    };
+  }
+
   /** Event dispatchers for subclasses to call*/
 
   protected processMoveEvent(event: MoveEvent) {
@@ -169,7 +195,14 @@ export abstract class BluetoothCube extends EventTarget {
   }
 
   protected processOrientationEvent(event: OrientationEvent) {
-    this.quaternion = event.quaternion;
+    // transform the incoming quaternion by the sync quaternion transform
+    const transformedQuaternion = applyQuaternion(
+      event.quaternion,
+      this.syncQuaternionTransform
+    );
+
+    this.quaternion = transformedQuaternion;
+    event.quaternion = transformedQuaternion;
     this.orientationEvents.push(event);
 
     this.dispatchEvent(
@@ -203,6 +236,10 @@ export abstract class BluetoothCube extends EventTarget {
     }
     for (const listener of this.stateListeners.values()) {
       this.removeEventListener(CUBE_STATE_EVENT, listener);
+    }
+
+    for (const listener of this.disconnectListeners.values()) {
+      this.removeEventListener(CUBE_DISCONNECT_EVENT, listener);
     }
 
     this.moveListeners.clear();

@@ -3,7 +3,7 @@ import type { KPatternData, KPuzzle } from "cubing/kpuzzle";
 
 import { BluetoothCube } from "./cube";
 import { CubeRegistry } from "./cube-registry";
-import { findUUID, requestMACAddress } from "../utils";
+import { findUUID, normalizeQuaternion, requestMACAddress } from "../utils";
 import { AES128Cipher } from "../utils/aes128";
 import { get3x3KPuzzle } from "../utils/load-333";
 import { Move } from "cubing/alg";
@@ -576,8 +576,7 @@ class Moyu32Cube extends BluetoothCube {
         this.prevMoveSequenceNumber = moveSequenceNumber;
       }
     } else if (msgType === MOYU32_CUBE_GYRO) {
-      // gyro
-      // Handle gyro data if needed
+      // Gyro data - see parseOrientation for explanation
       const orientation = this.parseOrientation(binaryString);
       const canonicalOrientation = this.convertOrientation(orientation);
 
@@ -685,15 +684,12 @@ class Moyu32Cube extends BluetoothCube {
     const z =
       Moyu32Cube.parseSignedInt32(binaryString.slice(104, 136)) * QUAT_SCALE;
 
-    //normalize to get rid of rounding error - should already be very close to 1
-    const magnitude_inv = 1 / Math.sqrt(w ** 2 + x ** 2 + y ** 2 + z ** 2);
-
-    return {
-      w: w * magnitude_inv,
-      x: x * magnitude_inv,
-      y: y * magnitude_inv,
-      z: z * magnitude_inv,
-    };
+    return normalizeQuaternion({
+      w: w,
+      x: x,
+      y: y,
+      z: z,
+    });
   }
 
   private convertOrientation(orientation: Quaternion): Quaternion {
@@ -713,8 +709,8 @@ class Moyu32Cube extends BluetoothCube {
   protected async onSync() {
     this.prevMoveSequenceNumber = -1;
 
-    await this.refreshReadCharacteristic();
-    await this.sendCubeRequests();
+    this.refreshReadCharacteristic();
+    this.sendCubeRequests();
   }
 
   protected processMoveEvent(event: MoveEvent) {

@@ -20,7 +20,6 @@ import { Move } from "cubing/alg";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { Quaternion } from "three";
-import { current } from "immer";
 
 export const Route = createFileRoute("/bluetooth/")({
   component: BluetoothPage,
@@ -121,10 +120,6 @@ const customAddToQueue = (
   }
 
   ret.push(curr);
-  console.log(
-    "[/bluetooth] New move animation queue:",
-    ret.map((x) => `${x.timestamp}: ${x.move.toString()}`)
-  );
 
   return ret;
 };
@@ -194,6 +189,7 @@ function BluetoothPage() {
     initialState,
     orientation,
     connect: connectCube,
+    sync: syncCube,
     disconnect: disconnectCube,
   } = useBluetoothCube(handleMoveEvent);
 
@@ -282,18 +278,34 @@ function BluetoothPage() {
                     onFinishAnimating={onFinishAnimating}
                   />
                 </div>
-                <Button
-                  variant="primary"
-                  onClick={async () => {
-                    try {
-                      disconnectCube();
-                    } catch (err) {
-                      toast.error((err as Error).message);
-                    }
-                  }}
-                >
-                  Disconnect
-                </Button>
+                <div className="flex flex-row gap-2">
+                  <Button
+                    variant="primary"
+                    onClick={async () => {
+                      try {
+                        await syncCube();
+                        toast.info("Synchronizing Cube");
+                      } catch (err) {
+                        toast.error((err as Error).message);
+                      }
+                    }}
+                  >
+                    Sync Cube
+                  </Button>
+
+                  <Button
+                    variant="destructive"
+                    onClick={async () => {
+                      try {
+                        disconnectCube();
+                      } catch (err) {
+                        toast.error((err as Error).message);
+                      }
+                    }}
+                  >
+                    Disconnect
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="flex flex-col text-center items-center">

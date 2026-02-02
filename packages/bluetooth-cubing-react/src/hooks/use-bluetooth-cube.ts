@@ -60,10 +60,6 @@ export function useBluetoothCube(
       let rafId: number | null = null;
 
       const handleOrientation = () => {
-        // Still call user's callback if provided
-        // onOrientationEvent?.(event);
-
-        // Throttle React updates
         if (rafId === null) {
           rafId = requestAnimationFrame(() => {
             callback(); // Tell React to re-read the snapshot
@@ -91,13 +87,6 @@ export function useBluetoothCube(
       const cube = await connectCube();
       cubeRef.current = cube;
 
-      //TODO - attach listeners, handle callbacks, etc.
-
-      // cube.onMoveEvent((event: MoveEvent) => {
-
-      //   onMoveEvent?.(event);
-      // });
-
       const handleStateEvent = (event: StateEvent) => {
         // console.log("[handleStateEvent] state", event.kpattern.patternData);
         onStateEvent?.(event);
@@ -110,7 +99,14 @@ export function useBluetoothCube(
         }
       };
 
+      const handleDisconnectEvent = () => {
+        initialStateInitializedRef.current = false;
+        setInitialState(undefined);
+        setConnected(false);
+      };
+
       cube.onStateEvent(handleStateEvent);
+      cube.onDisconnectEvent(handleDisconnectEvent);
 
       cube.onOrientationEvent((event: OrientationEvent) => {
         onOrientationEvent?.(event);
@@ -123,6 +119,13 @@ export function useBluetoothCube(
     },
     [onOrientationEvent, onStateEvent]
   );
+
+  const sync = useCallback(async () => {
+    setInitialState(undefined);
+    initialStateInitializedRef.current = false;
+
+    await cubeRef.current?.sync();
+  }, []);
 
   const disconnect = useCallback(async () => {
     await cubeRef.current?.disconnect();
@@ -137,6 +140,7 @@ export function useBluetoothCube(
     initialState,
     orientation,
     connect,
+    sync,
     disconnect,
   };
 }
