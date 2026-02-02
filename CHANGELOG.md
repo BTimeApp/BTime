@@ -4,6 +4,21 @@ This file contains summaries of major/relevant changes to the BTime project in r
 
 The current versioning convention tracks changes to BTime as a whole. Packages will maintain their own versions as necessary.
 
+## 0.5.0 - 2026-02-02
+
+Added:
+
+- new Bluetooth cube API in bluetooth-cubing to support bluetooth cube development and integration
+- new hook for bluetooth cubes in bluetooth-cubing-react to make lifecycle management easier
+- new bluetooth cube demo in /bluetooth route
+- added support for initial state in virtual cube
+- added scripts folder for convenient dev-time scripting
+
+Changed:
+
+- refactor bluetooth-cubing package for consolidated types and utils
+- updated virtual-cubing package with support for
+
 ## 0.4.0 - 2026-01-20
 
 Added:
