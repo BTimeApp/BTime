@@ -20,6 +20,7 @@ import { Move } from "cubing/alg";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { Quaternion } from "three";
+import { current } from "immer";
 
 export const Route = createFileRoute("/bluetooth/")({
   component: BluetoothPage,
@@ -276,6 +277,8 @@ function BluetoothPage() {
                     onError={undefined}
                     onErrorClear={undefined}
                     animationMove={currentMoveEvent?.move}
+                    animationStart={currentMoveEvent?.timestamp}
+                    animationDuration={currentMoveEvent?.duration}
                     onFinishAnimating={onFinishAnimating}
                   />
                 </div>
