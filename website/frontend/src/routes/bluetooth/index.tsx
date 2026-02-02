@@ -16,6 +16,7 @@ import {
 import { Result } from "@btime/lib";
 import { useAnimationQueue, VirtualCube } from "@btime/virtual-cubing-react";
 import { createFileRoute } from "@tanstack/react-router";
+import { Move } from "cubing/alg";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { Quaternion } from "three";
@@ -24,8 +25,108 @@ export const Route = createFileRoute("/bluetooth/")({
   component: BluetoothPage,
 });
 
-// const DEFAULT_MOVE_EVENT_DURATION = 70;
-// const SLOWEST_MOVE_EVENT_DURATION = 300;
+const DEFAULT_MOVE_EVENT_DURATION = 70;
+const SLOWEST_MOVE_EVENT_DURATION = 300;
+const SLOWEST_CONTINUOUS_MOVE_PAUSE = 25;
+
+function mergeMoveEvents(
+  eventA: MoveEvent,
+  eventB: MoveEvent
+): MoveEvent | null {
+  /**
+   * Tries to merge two move events. If the events are incompatible, just returns null. A should have always occurred BEFORE B.
+   *
+   * Two criteria for merge-ability:
+   *   1) stacking same move family
+   *   2) moves happen close enough to each other to be feasible (most often seen by low timestamp diff)
+   *
+   * While I would like to implement simplifying into slice moves, it would require transforming other moves done after slice
+   * moves to account for the absolute orientation given by bluetooth module.
+   * e.g. in H perm, the U done after the the first M2 is actually read as a D/D' by the bluetooth module
+   */
+
+  const moveAFamily = eventA.move.quantum.family;
+  const moveBFamily = eventB.move.quantum.family;
+
+  if (
+    moveAFamily == moveBFamily &&
+    //move directions need to agree to be stackable
+    eventA.move.amount * eventB.move.amount >= 0
+  ) {
+    if (eventA.duration != null) {
+      if (
+        eventB.timestamp - eventA.timestamp - eventA.duration <
+        SLOWEST_CONTINUOUS_MOVE_PAUSE
+      ) {
+        return {
+          move: new Move(moveAFamily, eventA.move.amount + eventB.move.amount),
+          timestamp: eventA.timestamp,
+          duration:
+            eventB.timestamp -
+            eventA.timestamp +
+            (eventB.duration ?? DEFAULT_MOVE_EVENT_DURATION),
+        };
+      }
+    } else if (
+      eventB.timestamp - eventA.timestamp <=
+      SLOWEST_MOVE_EVENT_DURATION
+    ) {
+      return {
+        move: new Move(moveAFamily, eventA.move.amount + eventB.move.amount),
+        timestamp: eventA.timestamp,
+        duration:
+          eventB.timestamp -
+          eventA.timestamp +
+          (eventB.duration ?? DEFAULT_MOVE_EVENT_DURATION),
+      };
+    }
+  }
+
+  return null;
+}
+
+const customAddToQueue = (
+  queue: MoveEvent[],
+  newElem: MoveEvent
+): MoveEvent[] => {
+  if (!newElem.duration) {
+    if (queue.length == 0) {
+      newElem.duration = DEFAULT_MOVE_EVENT_DURATION;
+    } else if (
+      newElem.timestamp - queue.at(-1)!.timestamp <=
+      SLOWEST_MOVE_EVENT_DURATION
+    ) {
+      newElem.duration = newElem.timestamp - queue.at(-1)!.timestamp;
+    } else {
+      newElem.duration = DEFAULT_MOVE_EVENT_DURATION;
+    }
+  }
+
+  if (queue.length == 0) {
+    return [newElem];
+  }
+
+  const ret = queue.slice();
+  let curr = newElem;
+
+  let mergedEvent = mergeMoveEvents(ret.at(-1)!, curr);
+
+  while (ret.length > 0 && mergedEvent != null) {
+    ret.pop();
+    curr = mergedEvent;
+    if (ret.length > 0) {
+      mergedEvent = mergeMoveEvents(ret.at(-1)!, curr);
+    }
+  }
+
+  ret.push(curr);
+  console.log(
+    "[/bluetooth] New move animation queue:",
+    ret.map((x) => `${x.timestamp}: ${x.move.toString()}`)
+  );
+
+  return ret;
+};
 
 function BluetoothPage() {
   const [timerTextClassName, setTimerTextClassName] = useState<string>("");
@@ -66,7 +167,7 @@ function BluetoothPage() {
     currentElem: currentMoveEvent,
     addToAnimationQueue,
     handleAnimationComplete,
-  } = useAnimationQueue<MoveEvent>();
+  } = useAnimationQueue<MoveEvent>(customAddToQueue);
 
   const [alg, setAlg] = useState<string>("");
 
@@ -94,40 +195,6 @@ function BluetoothPage() {
     connect: connectCube,
     disconnect: disconnectCube,
   } = useBluetoothCube(handleMoveEvent);
-
-  // const customAddToQueue = useCallback(
-  //   (queue: MoveEvent[], newElem: MoveEvent): MoveEvent[] => {
-  //     if (!newElem.duration) {
-  //       if (queue.length == 0) {
-  //         newElem.duration = DEFAULT_MOVE_EVENT_DURATION;
-  //       } else if (newElem.timestamp - queue.at(-1)!.timestamp <= SLOWEST_MOVE_EVENT_DURATION) {
-  //         newElem.duration = newElem.timestamp - queue.at(-1)!.timestamp;
-  //       } else {
-  //         newElem.duration = DEFAULT_MOVE_EVENT_DURATION;
-  //       }
-  //     }
-
-  //     if (queue.length == 0) {
-  //       return [newElem];
-  //     }
-
-  //     function getMoveEventsSimplified(eventA: MoveEvent, eventB: MoveEvent): MoveEvent | null {
-
-  //     }
-
-  //     const ret = queue.slice();
-  //     let tempMove = newElem;
-
-  //     // const moveFamily =
-  //     //   cube?.state.kpuzzle?.definition.derivedMoves?.[
-  //     //     newElem.move.quantum.family
-  //     //   ] ?? newElem.move.quantum.family;
-
-  //     //default return
-  //     return ret;
-  //   },
-  //   [cube]
-  // );
 
   return (
     <PageWrapper>
