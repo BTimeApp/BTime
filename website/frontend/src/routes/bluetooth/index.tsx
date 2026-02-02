@@ -258,6 +258,7 @@ function BluetoothPage() {
               <div className="flex flex-col text-lg gap-2">
                 <div className={cn("h-60 w-full border border-3 rounded-lg")}>
                   <VirtualCube
+                    viewerControlsEnabled={false}
                     initialState={initialState}
                     setupAlg=""
                     alg={alg}
