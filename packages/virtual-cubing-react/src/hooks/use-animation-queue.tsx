@@ -1,42 +1,52 @@
-import type { Move } from "cubing/alg";
-
 import { useCallback, useRef, useState } from "react";
 
 /**
- * Hook for animating moves. Meant to be used in product code directly as a queue helper.
- * Automatically tries to process moves when adding new moves or when moves finish (handleAnimationComplete).
+ * Hook for handling an animation queue. Meant to be used in product code directly as a queue helper.
+ * Automatically tries to process elements when adding new elems or when animations finish (handleAnimationComplete).
  */
-export const useAnimationQueue = () => {
-  const animationQueueRef = useRef<Move[]>([]);
-  const [currentMove, setCurrentMove] = useState<Move | undefined>(undefined);
-  const currentMoveRef = useRef<Move | undefined>(undefined);
+export const useAnimationQueue = <T,>(
+  customAddToQueue?: (queue: T[], newElem: T) => T[]
+) => {
+  const animationQueueRef = useRef<T[]>([]);
+  const [currentElem, setCurrentElem] = useState<T | undefined>(undefined);
+  const currentElemRef = useRef<T | undefined>(undefined);
 
   const processAnimationQueue = useCallback(() => {
-    if (currentMoveRef.current) return; //ref helps avoid stale closure
+    if (currentElemRef.current) return; //ref helps avoid stale closure
 
     const next = animationQueueRef.current.shift();
     if (next) {
-      currentMoveRef.current = next;
-      setCurrentMove(next); //update state for downstream consumers to use
+      currentElemRef.current = next;
+      setCurrentElem(next); //update state for downstream consumers to use
     }
   }, []);
 
   const addToAnimationQueue = useCallback(
-    (newMove: Move) => {
-      animationQueueRef.current.push(newMove);
+    (newElem: T) => {
+      if (customAddToQueue) {
+        animationQueueRef.current = customAddToQueue(
+          animationQueueRef.current,
+          newElem
+        );
+      } else {
+        //default processing - add to end
+        animationQueueRef.current.push(newElem);
+      }
+
+      //immediately try to process new events
       processAnimationQueue();
     },
-    [processAnimationQueue]
+    [processAnimationQueue, customAddToQueue]
   );
 
   const handleAnimationComplete = useCallback(() => {
-    currentMoveRef.current = undefined;
-    setCurrentMove(undefined);
+    currentElemRef.current = undefined;
+    setCurrentElem(undefined);
     processAnimationQueue();
   }, [processAnimationQueue]);
 
   return {
-    currentMove,
+    currentElem,
     addToAnimationQueue,
     handleAnimationComplete,
   };

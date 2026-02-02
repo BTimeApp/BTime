@@ -15,6 +15,10 @@ function getCubieKey(orbitName: string, id: number) {
 
 export type VirtualCubeImplementationProps = {
   /**
+   * The initial state (KPattern) that this cube will be in. "Applied" before setupAlg
+   */
+  initialState?: KPattern;
+  /**
    * An alg to be run as setup before the main algorithm. Default empty
    */
   setupAlg?: Alg | string;
@@ -74,6 +78,7 @@ export function generateVirtualCubeImplementation(
   moveAnimationRotation: Record<string, AxisAngle>
 ): VirtualCubeImplementation {
   return function VirtualCubeImplementation({
+    initialState,
     setupAlg = "",
     alg = "",
     orientation = new Quaternion(),
@@ -81,7 +86,7 @@ export function generateVirtualCubeImplementation(
     animationProgress = 0,
   }: VirtualCubeImplementationProps) {
     const kpuzzle: KPuzzle = use<KPuzzle>(kPuzzleLoader());
-    const kpattern: KPattern = kpuzzle.defaultPattern();
+    const kpattern: KPattern = initialState ?? kpuzzle.defaultPattern();
 
     /**
      * applyAlg does not apply any validation to string parameters.
