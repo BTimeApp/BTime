@@ -179,23 +179,8 @@ export abstract class BluetoothCube extends EventTarget {
     );
   }
 
-  /**
-   * Provide a quick way for subclasses to initialize state b/c it's dependent on the puzzle, which this class shouldn't care about
-   */
-  // protected initializeState(state: KPattern) {
-  //   if (!this.initialStateInitialized) {
-  //     this._initialState = state;
-  //     this._initialStateInitialized = true;
-  //   }
-  // }
-
   protected processStateEvent(event: StateEvent) {
     this.kpattern = event.kpattern;
-
-    // if (!this.initialStateInitialized) {
-    //   this._initialState = event.kpattern;
-    //   this._initialStateInitialized = true;
-    // }
 
     this.dispatchEvent(
       new CustomEvent<StateEvent>(CUBE_STATE_EVENT, {

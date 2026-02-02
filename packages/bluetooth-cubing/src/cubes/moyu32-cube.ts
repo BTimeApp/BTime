@@ -461,7 +461,7 @@ class Moyu32Cube extends BluetoothCube {
        * Full state info representable in 54 (48) facelets b/c it's strictly in WCA orientation.
        * Only sends a single message when requested. We only read once on initial read and refresh when syncing.
        */
-      // this.prevMoveSequenceNumber = parseInt(binaryString.slice(152, 160), 2);
+      this.prevMoveSequenceNumber = parseInt(binaryString.slice(152, 160), 2);
 
       const stateData: KPatternData = this.parseState(
         binaryString.slice(8, 152)
@@ -493,9 +493,7 @@ class Moyu32Cube extends BluetoothCube {
        * The move sequence number will be (prev event + 2) to reflect this.
        */
 
-      // even if initial state isn't initialized, it's useful to track move sequence number so we know how many moves to process for the first event.
       const moveSequenceNumber = parseInt(binaryString.slice(88, 96), 2);
-      // only start tracking moves after initial state initialized
 
       const timeOffsets: number[] = [];
       const moves: string[] = [];
@@ -515,13 +513,6 @@ class Moyu32Cube extends BluetoothCube {
         }
       }
 
-      // console.log(
-      //   "move seq number | moves | time offsets",
-      //   moveSequenceNumber,
-      //   moves,
-      //   timeOffsets
-      // );
-
       if (invalidMove) {
         console.warn("invalid move detected!", moves);
       } else {
@@ -533,18 +524,20 @@ class Moyu32Cube extends BluetoothCube {
          *    - otherwise, we take moveSeqNum - prevMoveSeqNum and pray that it isn't > 5.
          */
         if (this.prevMoveSequenceNumber == -1) {
-          this.processMoveEvent({
-            move: new Move(moves[0]),
-            timestamp: timestamp,
-          });
-
           // if the first move has a 0 time offset, we need to process two events (slice move).
           if (timeOffsets[0] === 0) {
             this.processMoveEvent({
               move: new Move(moves[1]),
               timestamp: timestamp,
+              duration: timeOffsets[1] < 200 ? timeOffsets[1] : undefined,
             });
           }
+
+          this.processMoveEvent({
+            move: new Move(moves[0]),
+            timestamp: timestamp,
+            duration: timeOffsets[0] < 200 ? timeOffsets[0] : undefined,
+          });
         } else {
           const numMovesToProcess =
             (moveSequenceNumber - this.prevMoveSequenceNumber) & 0xff;
@@ -597,16 +590,7 @@ class Moyu32Cube extends BluetoothCube {
 
   private parseState(faceletBits: string): KPatternData {
     /**
-     * This representation is subject to change
-     *
-     * Returns a 54-character string, with 9 characters for each face (FBUDLR order)
-     * in english reader order (left to right, top to bottom when held in canonical orientations)
-     *
-     * TODO convert to parse directly into a kpattern
-     */
-
-    /**
-     * Draft idea for parsing directly to kpattern
+     * Parses bitstring state representation directly to kpattern
      *
      * Per [edge, corner] piece type:
      * iterate over the positions in index order (cubing.js).
