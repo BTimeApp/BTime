@@ -55,6 +55,9 @@ importers:
       '@btime/bluetooth-cubing':
         specifier: workspace:*
         version: link:../bluetooth-cubing
+      cubing:
+        specifier: ~0.58.2
+        version: 0.58.2
     devDependencies:
       '@eslint/js':
         specifier: ^9.39.2

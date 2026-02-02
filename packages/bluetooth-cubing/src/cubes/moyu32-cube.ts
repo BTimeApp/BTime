@@ -213,24 +213,11 @@ class Moyu32Cube extends BluetoothCube {
     );
 
     // cleanup
-    await this.readCharacteristic?.stopNotifications().catch(() => {});
-    this.readCharacteristic?.removeEventListener(
-      "characteristicvaluechanged",
-      this.handleReadChrEvent
-    );
-
-    this.readCharacteristic?.addEventListener(
-      "characteristicvaluechanged",
-      this.handleReadChrEvent
-    );
-
-    await this.readCharacteristic?.startNotifications();
+    await this.refreshReadCharacteristic();
 
     this.initMac(deviceName, true, false);
 
-    await this.requestCubeInfo();
-    await this.requestCubeStatus();
-    await this.requestCubePower();
+    await this.sendCubeRequests();
   }
 
   /** helpers */
@@ -398,6 +385,27 @@ class Moyu32Cube extends BluetoothCube {
       return;
     }
     this.initDecoder(this.deviceMac);
+  }
+
+  private async refreshReadCharacteristic(): Promise<void> {
+    await this.readCharacteristic?.stopNotifications().catch(() => {});
+    this.readCharacteristic?.removeEventListener(
+      "characteristicvaluechanged",
+      this.handleReadChrEvent
+    );
+
+    this.readCharacteristic?.addEventListener(
+      "characteristicvaluechanged",
+      this.handleReadChrEvent
+    );
+
+    await this.readCharacteristic?.startNotifications();
+  }
+
+  private async sendCubeRequests(): Promise<void> {
+    await this.requestCubeInfo();
+    await this.requestCubeStatus();
+    await this.requestCubePower();
   }
 
   /**
@@ -727,10 +735,13 @@ class Moyu32Cube extends BluetoothCube {
     };
   }
 
-  protected onSync() {
+  protected async onSync() {
     this.prevMoveSequenceNumber = -1;
     this.initialStateInitialized = false;
     this.initialState = this.kpuzzle.defaultPattern();
+
+    await this.refreshReadCharacteristic();
+    await this.sendCubeRequests();
   }
 
   protected processMoveEvent(event: MoveEvent) {
@@ -749,8 +760,11 @@ class Moyu32Cube extends BluetoothCube {
   }
 
   protected async onDisconnect(): Promise<void> {
-    //TODO implement
-    throw new Error("Method not implemented.");
+    this.readCharacteristic?.removeEventListener(
+      "characteristicvaluechanged",
+      this.handleReadChrEvent
+    );
+    await this.readCharacteristic?.stopNotifications().catch(() => {});
   }
 }
 

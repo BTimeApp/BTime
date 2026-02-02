@@ -24,6 +24,9 @@ export const Route = createFileRoute("/bluetooth/")({
   component: BluetoothPage,
 });
 
+// const DEFAULT_MOVE_EVENT_DURATION = 70;
+// const SLOWEST_MOVE_EVENT_DURATION = 300;
+
 function BluetoothPage() {
   const [timerTextClassName, setTimerTextClassName] = useState<string>("");
 
@@ -59,23 +62,28 @@ function BluetoothPage() {
     disconnect: disconnectTimer,
   } = useBluetoothTimer(handleTimerEvent);
 
-  const { currentMove, addToAnimationQueue, handleAnimationComplete } =
-    useAnimationQueue();
+  const {
+    currentElem: currentMoveEvent,
+    addToAnimationQueue,
+    handleAnimationComplete,
+  } = useAnimationQueue<MoveEvent>();
 
   const [alg, setAlg] = useState<string>("");
 
   //TODO: add duration to animation queue
   const handleMoveEvent: CubeMoveEventListener = useCallback(
     (moveEvent: MoveEvent) => {
-      addToAnimationQueue(moveEvent.move);
+      addToAnimationQueue(moveEvent);
     },
     [addToAnimationQueue]
   );
 
   const onFinishAnimating = useCallback(() => {
-    setAlg((alg) => alg + " " + currentMove);
+    setAlg((alg) =>
+      alg + currentMoveEvent ? " " + currentMoveEvent?.move.toString() : ""
+    );
     handleAnimationComplete();
-  }, [currentMove, handleAnimationComplete]);
+  }, [currentMoveEvent, handleAnimationComplete]);
 
   const {
     // cube,
@@ -84,6 +92,40 @@ function BluetoothPage() {
     connect: connectCube,
     disconnect: disconnectCube,
   } = useBluetoothCube(handleMoveEvent);
+
+  // const customAddToQueue = useCallback(
+  //   (queue: MoveEvent[], newElem: MoveEvent): MoveEvent[] => {
+  //     if (!newElem.duration) {
+  //       if (queue.length == 0) {
+  //         newElem.duration = DEFAULT_MOVE_EVENT_DURATION;
+  //       } else if (newElem.timestamp - queue.at(-1)!.timestamp <= SLOWEST_MOVE_EVENT_DURATION) {
+  //         newElem.duration = newElem.timestamp - queue.at(-1)!.timestamp;
+  //       } else {
+  //         newElem.duration = DEFAULT_MOVE_EVENT_DURATION;
+  //       }
+  //     }
+
+  //     if (queue.length == 0) {
+  //       return [newElem];
+  //     }
+
+  //     function getMoveEventsSimplified(eventA: MoveEvent, eventB: MoveEvent): MoveEvent | null {
+
+  //     }
+
+  //     const ret = queue.slice();
+  //     let tempMove = newElem;
+
+  //     // const moveFamily =
+  //     //   cube?.state.kpuzzle?.definition.derivedMoves?.[
+  //     //     newElem.move.quantum.family
+  //     //   ] ?? newElem.move.quantum.family;
+
+  //     //default return
+  //     return ret;
+  //   },
+  //   [cube]
+  // );
 
   return (
     <PageWrapper>
@@ -168,7 +210,7 @@ function BluetoothPage() {
                     //TODO - figure out why onError and onErrorClear show up here :/
                     onError={undefined}
                     onErrorClear={undefined}
-                    animationMove={currentMove}
+                    animationMove={currentMoveEvent?.move}
                     onFinishAnimating={onFinishAnimating}
                   />
                 </div>

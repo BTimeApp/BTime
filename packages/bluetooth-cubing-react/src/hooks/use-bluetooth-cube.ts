@@ -7,6 +7,7 @@ import type {
   OrientationEvent,
   StateEvent,
 } from "@btime/bluetooth-cubing";
+import type { KPattern } from "cubing/kpuzzle";
 
 import { connectCube } from "@btime/bluetooth-cubing";
 import {
@@ -27,6 +28,8 @@ export function useBluetoothCube(
 ) {
   const cubeRef = useRef<BluetoothCube>(null);
   const [connected, setConnected] = useState<boolean>(false);
+  const [initialState, setInitialState] = useState<KPattern | null>(null);
+  const initialStateInitializedRef = useRef<boolean>(false);
 
   const handleMove = useEffectEvent((event: MoveEvent) => {
     onMoveEvent?.(event);
@@ -34,6 +37,11 @@ export function useBluetoothCube(
 
   const handleState = useEffectEvent((event: StateEvent) => {
     onStateEvent?.(event);
+
+    if (!initialStateInitializedRef.current) {
+      setInitialState(event.kpattern);
+      initialStateInitializedRef.current = true;
+    }
   });
 
   useEffect(() => {
@@ -123,6 +131,7 @@ export function useBluetoothCube(
     // eslint-disable-next-line react-hooks/refs
     cube: cubeRef.current,
     connected,
+    initialState,
     orientation,
     connect,
     disconnect,

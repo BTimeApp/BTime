@@ -92,11 +92,11 @@ export abstract class BluetoothCube extends EventTarget {
     this.device.addEventListener("gattserverdisconnected", this.disconnect);
   }
 
-  public sync(): void {
-    this.onSync();
-
+  public async sync(): Promise<void> {
     this.moveEvents = [];
     this.orientationEvents = [];
+
+    await this.onSync();
     //don't reset quaternion and kpattern - these should be handled in onsync/via normal events
   }
 
@@ -210,7 +210,7 @@ export abstract class BluetoothCube extends EventTarget {
   /**
    * Runs implementation-specific synchronization. Expected to update state.
    */
-  protected onSync(): void {}
+  protected async onSync(): Promise<void> {}
 
   /**
    * Runs brand/model-specific cleanup.

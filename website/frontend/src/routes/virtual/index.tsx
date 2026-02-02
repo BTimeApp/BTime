@@ -77,8 +77,11 @@ function VirtualPage() {
   const [setupAlg, setSetupAlg] = useState<string>("");
   const [alg, setAlg] = useState<string>("");
 
-  const { currentMove, addToAnimationQueue, handleAnimationComplete } =
-    useAnimationQueue();
+  const {
+    currentElem: currentMove,
+    addToAnimationQueue,
+    handleAnimationComplete,
+  } = useAnimationQueue<Move>();
 
   const handleKeyboardBoundMove = useCallback(
     (move: string) => {
