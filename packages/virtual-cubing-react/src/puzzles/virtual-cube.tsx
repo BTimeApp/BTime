@@ -1,4 +1,5 @@
 import type { Alg, Move } from "cubing/alg";
+import type { KPattern } from "cubing/kpuzzle";
 
 import { VIRTUAL_CUBE_IMPLEMENTATIONS } from "./virtual-cube-implementation";
 import { ErrorBoundary } from "../utils/error-boundary";
@@ -11,6 +12,7 @@ import { clamp } from "three/src/math/MathUtils.js";
 
 type VirtualCubeAnimationManagerProps = {
   event?: string;
+  initialState?: KPattern;
   setupAlg: Alg | string;
   alg: Alg | string;
   animationMove?: Move;
@@ -127,6 +129,7 @@ export function VirtualCube({
  */
 function VirtualCubeAnimationManager({
   event = "3x3x3",
+  initialState,
   setupAlg = "",
   alg,
   orientation = new Quaternion(),
@@ -181,6 +184,7 @@ function VirtualCubeAnimationManager({
 
   return (
     <VirtualCubeComponent
+      initialState={initialState}
       setupAlg={setupAlg}
       alg={alg}
       orientation={orientation}
