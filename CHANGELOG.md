@@ -4,6 +4,18 @@ This file contains summaries of major/relevant changes to the BTime project in r
 
 The current versioning convention tracks changes to BTime as a whole. Packages will maintain their own versions as necessary.
 
+## 0.5.1 - 2026-02-03
+
+Added:
+
+- new reusable `useTimer()` hook
+
+Changed:
+
+- use `useTimer()` in stopwatch timer component, /virtual routes
+- prevent double-click on submit result button
+- disable viewer controls on /bluetooth cube viewer
+
 ## 0.5.0 - 2026-02-02
 
 Added:
