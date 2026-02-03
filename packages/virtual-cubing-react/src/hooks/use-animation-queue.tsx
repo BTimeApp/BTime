@@ -45,9 +45,14 @@ export const useAnimationQueue = <T,>(
     processAnimationQueue();
   }, [processAnimationQueue]);
 
+  const clearAnimationQueue = useCallback(() => {
+    animationQueueRef.current = [];
+  }, []);
+
   return {
     currentElem,
     addToAnimationQueue,
     handleAnimationComplete,
+    clearAnimationQueue,
   };
 };
