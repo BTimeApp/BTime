@@ -1,8 +1,9 @@
 import type { TimerType } from "@btime/types";
 
 import KeyListener from "@/components/common/key-listener";
+import { useTimer } from "@/hooks/use-timer"; // Import the hook
 import { Result } from "@btime/lib";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect } from "react";
 
 type StopwatchTimerProps = {
   startTime?: number;
@@ -17,48 +18,24 @@ function StopwatchTimer({
   timerType,
   className,
 }: StopwatchTimerProps) {
-  const [elapsed, setElapsed] = useState<number>(0);
-  // eslint-disable-next-line react-hooks/purity
-  const startRef = useRef<number>(startTime ? startTime : performance.now());
-  const animationRef = useRef<number>(0);
+  const { time, startTimer, stopTimer } = useTimer();
 
-  // startTime prop change does not update startRef on its own (we need a ref to use with RAF).
-  // need this useEffect to correctly update startRef value
-  // TODO figure out a cleaner pattern
+  // Start timer on mount or when startTime changes
   useEffect(() => {
-    // for new startTime, we need to effectively reset the timer.
-    if (startTime != null) {
-      startRef.current = startTime;
-      setElapsed(0);
-    }
-  }, [startTime]);
-
-  useEffect(() => {
-    const update = () => {
-      const now = performance.now();
-      setElapsed(now - startRef.current);
-      animationRef.current = requestAnimationFrame(update);
-    };
-
-    animationRef.current = requestAnimationFrame(update);
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, []);
+    startTimer(startTime);
+  }, [startTime, startTimer]);
 
   const handleKeyDown = useCallback(() => {
-    onFinishTimer?.(Math.floor(elapsed / 10));
-  }, [elapsed, onFinishTimer]);
+    const finalTime = stopTimer();
+    onFinishTimer?.(finalTime);
+  }, [stopTimer, onFinishTimer]);
 
   return (
     <div className={className}>
       {timerType === "KEYBOARD" && (
         <KeyListener keyName="Space" onKeyDown={handleKeyDown} />
       )}
-      <div>{Result.timeToString(Math.floor(elapsed / 10))}</div>
+      <div>{Result.timeToString(time)}</div>
     </div>
   );
 }
