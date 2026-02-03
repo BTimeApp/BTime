@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { KeyboardListenerKey } from "@/components/virtual/keyboard-key";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useTimer } from "@/hooks/use-timer";
 import { get3x3x3 } from "@/lib/get-kpuzzle";
 import { cn } from "@/lib/utils";
+import { Result } from "@btime/lib";
 import { useAnimationQueue, VirtualCube } from "@btime/virtual-cubing-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Move } from "cubing/alg";
@@ -73,14 +75,21 @@ const KEY_TO_MOVE_MAP: Map<string, Keybind> = new Map([
   ["/", { keyCode: "Slash", keyBind: "Dw'" }],
 ]);
 
+const ROTATIONS = new Set<string>(["x", "y", "z"]);
+
 function VirtualPage() {
   const [setupAlg, setSetupAlg] = useState<string>("");
   const [alg, setAlg] = useState<string>("");
+
+  const { time, startTimer, stopTimer, isRunning } = useTimer();
+  const [latestTime, setLatestTime] = useState<number>(0);
+  const solveFirstMoveDoneRef = useRef<boolean>(false);
 
   const {
     currentElem: currentMove,
     addToAnimationQueue,
     handleAnimationComplete,
+    clearAnimationQueue,
   } = useAnimationQueue<Move>();
 
   const handleKeyboardBoundMove = useCallback(
@@ -92,21 +101,34 @@ function VirtualPage() {
         // do not process moves when either input is focused
         return;
       }
+      const timestamp = performance.now();
 
-      addToAnimationQueue(new Move(move));
+      const moveObj = new Move(move);
+
+      addToAnimationQueue(moveObj);
+      if (
+        !solveFirstMoveDoneRef.current &&
+        !ROTATIONS.has(moveObj.quantum.family)
+      ) {
+        solveFirstMoveDoneRef.current = true;
+        startTimer(timestamp);
+      }
     },
-    [addToAnimationQueue]
+    [addToAnimationQueue, startTimer]
   );
-
-  const onFinishAnimating = useCallback(() => {
-    setAlg((alg) => alg + " " + currentMove);
-    handleAnimationComplete();
-  }, [currentMove, handleAnimationComplete]);
 
   const generateScramble = useCallback(async () => {
     const scrambleAlg = await randomScrambleForEvent("333");
     return scrambleAlg.toString();
   }, []);
+
+  const handleScramble = useCallback(async () => {
+    setSetupAlg(await generateScramble());
+    setAlg(""); //resets the current alg!
+    clearAnimationQueue();
+
+    solveFirstMoveDoneRef.current = false;
+  }, [generateScramble, clearAnimationQueue]);
 
   const setupAlgInputRef = useRef<HTMLInputElement>(null);
   const algInputRef = useRef<HTMLInputElement>(null);
@@ -114,7 +136,6 @@ function VirtualPage() {
   const [inErrorState, setInErrorState] = useState<boolean>(false);
 
   const kpuzzle: KPuzzle = use<KPuzzle>(get3x3x3());
-
   const kpattern: KPattern = useMemo(() => {
     const defaultKPattern: KPattern = kpuzzle.defaultPattern();
 
@@ -126,6 +147,39 @@ function VirtualPage() {
       return defaultKPattern;
     }
   }, [setupAlg, alg, kpuzzle]);
+
+  const isSolved: boolean = useMemo(() => {
+    return kpattern.experimentalIsSolved({
+      ignoreCenterOrientation: true,
+      ignorePuzzleOrientation: true,
+    });
+  }, [kpattern]);
+
+  const applyMove = useCallback(
+    (move: Move) => {
+      // Apply the move to your alg state
+      setAlg((prev) => prev + " " + move.toString());
+
+      // Check if solved after this move
+      const newKPattern = kpattern.applyMove(move);
+      const nowSolved = newKPattern.experimentalIsSolved({
+        ignoreCenterOrientation: true,
+        ignorePuzzleOrientation: true,
+      });
+
+      if (isRunning && nowSolved) {
+        setLatestTime(stopTimer());
+      }
+    },
+    [kpattern, isRunning, stopTimer]
+  );
+
+  const onFinishAnimating = useCallback(() => {
+    if (currentMove) {
+      applyMove(currentMove);
+    }
+    handleAnimationComplete();
+  }, [applyMove, currentMove, handleAnimationComplete]);
 
   const isMobile = useIsMobile();
 
@@ -170,6 +224,8 @@ function VirtualPage() {
                 onClick={() => {
                   setAlg("");
                   setSetupAlg("");
+                  setLatestTime(0);
+                  solveFirstMoveDoneRef.current = false;
                 }}
               >
                 Reset
@@ -178,11 +234,19 @@ function VirtualPage() {
                 variant="primary"
                 className="text-md"
                 onClick={async () => {
-                  setSetupAlg(await generateScramble());
+                  await handleScramble();
                 }}
               >
                 Scramble
               </Button>
+            </div>
+            <div className="flex flex-row w-full justify-center">
+              <div className="flex font-bold text-2xl">
+                Time:{" "}
+                {isSolved || !isRunning
+                  ? Result.timeToString(latestTime)
+                  : Result.timeToString(time)}
+              </div>
             </div>
           </div>
           <div className="flex flex-col max-h-[50vh] gap-1 p-4 items-center">
@@ -204,6 +268,10 @@ function VirtualPage() {
                 onChange={(event) => setAlg(event.target.value)}
                 ref={algInputRef}
               />
+            </div>
+
+            <div className="flex flex-row gap-1 w-full items-center">
+              <p>Solved: {isSolved.toString().toUpperCase()}</p>
             </div>
 
             <div className="flex flex-col gap-1 h-full w-full">
