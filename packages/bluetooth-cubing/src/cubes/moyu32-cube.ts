@@ -6,7 +6,7 @@ import { CubeRegistry } from "./cube-registry";
 import { findUUID, normalizeQuaternion, requestMACAddress } from "../utils";
 import { AES128Cipher } from "../utils/aes128";
 import { get3x3KPuzzle } from "../utils/load-333";
-import { Move } from "cubing/alg";
+import { Alg, Move } from "cubing/alg";
 import { KPattern } from "cubing/kpuzzle";
 import LZString from "lz-string";
 
@@ -724,7 +724,7 @@ class Moyu32Cube extends BluetoothCube {
       timestamp: event.timestamp,
     });
 
-    const newState = this.state!.applyAlg(this.alg);
+    const newState = this.state!.applyAlg(new Alg([event.move]));
     this.processStateEvent({ kpattern: newState, timestamp: event.timestamp });
   }
 

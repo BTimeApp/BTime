@@ -184,7 +184,6 @@ export abstract class BluetoothCube extends EventTarget {
   /** Event dispatchers for subclasses to call*/
 
   protected processMoveEvent(event: MoveEvent) {
-    experimentalAppendMove(this.alg, event.move);
     this.moveEvents.push(event);
 
     this.dispatchEvent(
