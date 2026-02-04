@@ -24,14 +24,22 @@ const DEFAULT_ORIENTATION = { w: 1, x: 0, y: 0, z: 0 };
 export function useBluetoothCube(
   onMoveEvent?: CubeMoveEventListener,
   onStateEvent?: CubeStateEventListener,
-  onOrientationEvent?: CubeOrientationEventListener
+  onOrientationEvent?: CubeOrientationEventListener,
+  onSolved?: () => void
 ) {
   const cubeRef = useRef<BluetoothCube>(null);
   const [connected, setConnected] = useState<boolean>(false);
+  const [solved, setSolved] = useState<boolean>(false);
   const [initialState, setInitialState] = useState<KPattern | undefined>(
     undefined
   );
   const initialStateInitializedRef = useRef<boolean>(false);
+
+  const onSolvedRef = useRef(onSolved);
+
+  useEffect(() => {
+    onSolvedRef.current = onSolved;
+  }, [onSolved]);
 
   const handleMove = useEffectEvent((event: MoveEvent) => {
     if (initialStateInitializedRef.current) {
@@ -97,6 +105,18 @@ export function useBluetoothCube(
 
           initialStateInitializedRef.current = true;
         }
+
+        if (
+          event.kpattern.experimentalIsSolved({
+            ignoreCenterOrientation: true,
+            ignorePuzzleOrientation: true,
+          })
+        ) {
+          setSolved(true);
+          onSolvedRef.current?.();
+        } else {
+          setSolved(false);
+        }
       };
 
       const handleDisconnectEvent = () => {
@@ -136,6 +156,7 @@ export function useBluetoothCube(
   return {
     // eslint-disable-next-line react-hooks/refs
     cube: cubeRef.current,
+    solved,
     connected,
     initialState,
     orientation,
