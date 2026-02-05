@@ -4,17 +4,20 @@ This file contains summaries of major/relevant changes to the BTime project in r
 
 The current versioning convention tracks changes to BTime as a whole. Packages will maintain their own versions as necessary.
 
-## 0.5.1 - 2026-02-03
+## 0.5.1 - 2026-02-05
 
 Added:
 
 - new reusable `useTimer()` hook
+- new `onSolved()` listener in `useBluetoothCube()` hook
+- new `clearAnimationQueue, clearCurrentElem` callbacks in `useAnimationQueue()` hook
 
 Changed:
 
-- use `useTimer()` in stopwatch timer component, /virtual routes
+- use `useTimer()` in stopwatch timer component, /virtual and /bluetooth routes
 - prevent double-click on submit result button
 - disable viewer controls on /bluetooth cube viewer
+- fix state event handling in bluetooth-cubing
 
 ## 0.5.0 - 2026-02-02
 
