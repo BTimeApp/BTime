@@ -49,10 +49,16 @@ export const useAnimationQueue = <T,>(
     animationQueueRef.current = [];
   }, []);
 
+  const clearCurrentElem = useCallback(() => {
+    setCurrentElem(undefined);
+    currentElemRef.current = undefined;
+  }, []);
+
   return {
     currentElem,
     addToAnimationQueue,
     handleAnimationComplete,
     clearAnimationQueue,
+    clearCurrentElem,
   };
 };
