@@ -9,7 +9,11 @@ import type {
 } from "../types/cube-types";
 import type { KPattern } from "cubing/kpuzzle";
 
-import { applyQuaternion, invertQuaternion } from "../utils";
+import {
+  applyQuaternion,
+  IDENTITY_QUATERNION,
+  invertQuaternion,
+} from "../utils";
 import { Alg, experimentalAppendMove } from "cubing/alg";
 
 export const CUBE_MOVE_EVENT = "CUBE_MOVE_EVENT";
@@ -32,7 +36,7 @@ export abstract class BluetoothCube extends EventTarget {
    */
   private quaternion!: Quaternion;
 
-  private syncQuaternionTransform: Quaternion = { w: 1, x: 0, y: 0, z: 0 };
+  private syncQuaternion: Quaternion = IDENTITY_QUATERNION;
   private moveEvents: MoveEvent[] = []; //sorted by timestamp
   private orientationEvents: OrientationEvent[] = []; //sorted by timestamp
 
@@ -91,14 +95,6 @@ export abstract class BluetoothCube extends EventTarget {
     return this.kpattern;
   }
 
-  // get initialStateInitialized(): boolean {
-  //   return this._initialStateInitialized;
-  // }
-
-  // get initialState(): KPattern | undefined {
-  //   return this._initialState;
-  // }
-
   public async init(): Promise<void> {
     await this.setup();
 
@@ -110,16 +106,20 @@ export abstract class BluetoothCube extends EventTarget {
     this.orientationEvents = [];
 
     /**
-     * given Q1 = raw quat, Q2 = transform quat, Q3 = processed quat (the ones we store) where Q3 = Q1 * Q2
-     * we want to update Q2 <- Q1^(-1).
-     * Q3 * (Q2^(-1)) = Q1
-     * (Q3 * (Q2^(-1)))^(-1) = Q1^(-1)
+     * final_quat = sync_quat x btime_quat
+     * sync_quat' x final_quat = btime_quat
+     *
+     * we want to find new_sync_quat s.t.
+     * IDENTITY = new_sync_quat x btime_quat
+     *
+     * IDENTITY = new_sync_quat x (sync_quat' x final_quat)
+     * new_sync_quat = final_quat' x sync_quat
+     *
      */
-    this.syncQuaternionTransform = invertQuaternion(
-      applyQuaternion(
-        this.quaternion,
-        invertQuaternion(this.syncQuaternionTransform)
-      )
+
+    this.syncQuaternion = applyQuaternion(
+      invertQuaternion(this.quaternion),
+      this.syncQuaternion
     );
 
     await this.onSync();
@@ -194,10 +194,11 @@ export abstract class BluetoothCube extends EventTarget {
   }
 
   protected processOrientationEvent(event: OrientationEvent) {
-    // transform the incoming quaternion by the sync quaternion transform
+    // final_quat = sync_quat x quat_btime_frame
+
     const transformedQuaternion = applyQuaternion(
-      event.quaternion,
-      this.syncQuaternionTransform
+      this.syncQuaternion,
+      event.quaternion
     );
 
     this.quaternion = transformedQuaternion;

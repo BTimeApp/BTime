@@ -3,7 +3,13 @@ import type { KPatternData, KPuzzle } from "cubing/kpuzzle";
 
 import { BluetoothCube } from "./cube";
 import { CubeRegistry } from "./cube-registry";
-import { findUUID, normalizeQuaternion, requestMACAddress } from "../utils";
+import {
+  applyQuaternion,
+  findUUID,
+  invertQuaternion,
+  normalizeQuaternion,
+  requestMACAddress,
+} from "../utils";
 import { AES128Cipher } from "../utils/aes128";
 import { get3x3KPuzzle } from "../utils/load-333";
 import { Alg, Move } from "cubing/alg";
@@ -175,6 +181,21 @@ class Moyu32Cube extends BluetoothCube {
   // private batteryLevel: number = 100;
   private kpuzzle!: KPuzzle; //since fetching the 3x3 kpuzzle is async, we'll handle this in setup
   private prevMoveSequenceNumber: number = -1;
+
+  /**
+   * The reference frame of moyu32cube is (x right, y back, z up).
+   * This quaternion maps moyu coordinate frame to BTime coordinate frame (x right, y up, z front)
+   *
+   */
+  static readonly MOYU_TO_BTIME_FRAME_TRANSFORM: Quaternion = {
+    w: Math.sqrt(2) / 2,
+    x: Math.sqrt(2) / 2,
+    y: 0,
+    z: 0,
+  };
+
+  static readonly MOYU_TO_BTIME_FRAME_TRANSFORM_INVERSE: Quaternion =
+    invertQuaternion(Moyu32Cube.MOYU_TO_BTIME_FRAME_TRANSFORM);
 
   async setup(): Promise<void> {
     const deviceName = this.device.name!.trim();
@@ -577,11 +598,21 @@ class Moyu32Cube extends BluetoothCube {
       }
     } else if (msgType === MOYU32_CUBE_GYRO) {
       // Gyro data - see parseOrientation for explanation
-      const orientation = this.parseOrientation(binaryString);
-      const canonicalOrientation = this.convertOrientation(orientation);
+
+      /**
+       * The raw quaternion from parseOrientation represents moyu reference frame relative to cube's sensor frame.
+       * The correct change of basis to get the quaternion representing the cube in BTime's reference frame is:
+       * q_btime = F' x raw_quat x F
+       */
 
       this.processOrientationEvent({
-        quaternion: canonicalOrientation,
+        quaternion: applyQuaternion(
+          Moyu32Cube.MOYU_TO_BTIME_FRAME_TRANSFORM_INVERSE,
+          applyQuaternion(
+            this.parseOrientation(binaryString),
+            Moyu32Cube.MOYU_TO_BTIME_FRAME_TRANSFORM
+          )
+        ),
         timestamp: timestamp,
       });
     }
@@ -690,20 +721,6 @@ class Moyu32Cube extends BluetoothCube {
       y: y,
       z: z,
     });
-  }
-
-  private convertOrientation(orientation: Quaternion): Quaternion {
-    /**
-     * Converts orientation (x right, y back, z up) to the canonical (x right, y up, z front).
-     * This maps to a pi/2 rotation about the x axis. Luckily, this is an easy transformation for quaternions.
-     */
-    const { w, x, y, z } = orientation;
-    return {
-      w: w,
-      x: x,
-      y: z,
-      z: -y,
-    };
   }
 
   protected async onSync() {

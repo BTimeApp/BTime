@@ -16,6 +16,13 @@ export function valuedArray(
   return ret;
 }
 
+export const IDENTITY_QUATERNION: Quaternion = {
+  w: 1,
+  x: 0,
+  y: 0,
+  z: 0,
+} as const;
+
 /**
  * Invert a quaternion
  */
@@ -44,7 +51,7 @@ export function normalizeQuaternion(q: Quaternion): Quaternion {
 }
 
 /**
- * Computes the quaternion multiplication q1 * q2
+ * Computes the quaternion multiplication q1 x q2 (applies q1 to q2)
  */
 export function applyQuaternion(q1: Quaternion, q2: Quaternion): Quaternion {
   const { w: w1, x: x1, y: y1, z: z1 } = q1;
