@@ -35,11 +35,21 @@ export function useBluetoothCube(
   );
   const initialStateInitializedRef = useRef<boolean>(false);
 
+  const onStateEventRef = useRef(onStateEvent);
+  const onOrientationEventRef = useRef(onOrientationEvent);
   const onSolvedRef = useRef(onSolved);
 
   useEffect(() => {
     onSolvedRef.current = onSolved;
   }, [onSolved]);
+
+  useEffect(() => {
+    onStateEventRef.current = onStateEvent;
+  }, [onStateEvent]);
+
+  useEffect(() => {
+    onOrientationEventRef.current = onOrientationEvent;
+  }, [onOrientationEvent]);
 
   const handleMove = useEffectEvent((event: MoveEvent) => {
     if (initialStateInitializedRef.current) {
@@ -56,7 +66,7 @@ export function useBluetoothCube(
     return () => {
       cleanupMove();
     };
-  }, [connected, onMoveEvent]);
+  }, [connected]);
 
   // Track orientation with useSyncExternalStore
   const orientation = useSyncExternalStore(
@@ -70,7 +80,7 @@ export function useBluetoothCube(
       const handleOrientation = () => {
         if (rafId === null) {
           rafId = requestAnimationFrame(() => {
-            callback(); // Tell React to re-read the snapshot
+            callback();
             rafId = null;
           });
         }
@@ -90,55 +100,51 @@ export function useBluetoothCube(
   /**
    * Due to web bluetooth API, this connect() callback will only work when triggered by a user gesture (e.g. button click)
    */
-  const connect = useCallback(
-    async (onConnect?: () => void) => {
-      const cube = await connectCube();
-      cubeRef.current = cube;
+  const connect = useCallback(async (onConnect?: () => void) => {
+    const cube = await connectCube();
+    cubeRef.current = cube;
 
-      const handleStateEvent = (event: StateEvent) => {
-        // console.log("[handleStateEvent] state", event.kpattern.patternData);
-        onStateEvent?.(event);
+    const handleStateEvent = (event: StateEvent) => {
+      onStateEventRef.current?.(event);
 
-        if (!initialStateInitializedRef.current) {
-          // always prefer using the cube's tracked initial state if possible
-          setInitialState(event.kpattern);
+      if (!initialStateInitializedRef.current) {
+        // always prefer using the cube's tracked initial state if possible
+        setInitialState(event.kpattern);
 
-          initialStateInitializedRef.current = true;
-        }
+        initialStateInitializedRef.current = true;
+      }
 
-        if (
-          event.kpattern.experimentalIsSolved({
-            ignoreCenterOrientation: true,
-            ignorePuzzleOrientation: true,
-          })
-        ) {
-          setSolved(true);
-          onSolvedRef.current?.();
-        } else {
-          setSolved(false);
-        }
-      };
+      if (
+        event.kpattern.experimentalIsSolved({
+          ignoreCenterOrientation: true,
+          ignorePuzzleOrientation: true,
+        })
+      ) {
+        setSolved(true);
+        onSolvedRef.current?.();
+      } else {
+        setSolved(false);
+      }
+    };
 
-      const handleDisconnectEvent = () => {
-        initialStateInitializedRef.current = false;
-        setInitialState(undefined);
-        setConnected(false);
-      };
+    const handleDisconnectEvent = () => {
+      initialStateInitializedRef.current = false;
+      setInitialState(undefined);
+      setConnected(false);
+    };
 
-      cube.onStateEvent(handleStateEvent);
-      cube.onDisconnectEvent(handleDisconnectEvent);
+    cube.onStateEvent(handleStateEvent);
+    cube.onDisconnectEvent(handleDisconnectEvent);
 
-      cube.onOrientationEvent((event: OrientationEvent) => {
-        onOrientationEvent?.(event);
-      });
+    cube.onOrientationEvent((event: OrientationEvent) => {
+      onOrientationEventRef.current?.(event);
+    });
 
-      await cube.sync();
+    await cube.sync();
 
-      setConnected(true);
-      onConnect?.();
-    },
-    [onOrientationEvent, onStateEvent]
-  );
+    setConnected(true);
+    onConnect?.();
+  }, []);
 
   const sync = useCallback(async () => {
     setInitialState(undefined);
