@@ -9,7 +9,12 @@ import {
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { IconHome, IconLibraryPlus } from "@tabler/icons-react";
+import {
+  IconBluetooth,
+  IconCube3dSphere,
+  IconHome,
+  IconLibraryPlus,
+} from "@tabler/icons-react";
 import * as React from "react";
 
 const data = {
@@ -27,21 +32,16 @@ const data = {
   ],
 
   navSecondary: [
-    // {
-    //   title: "Settings",
-    //   url: "/settings",
-    //   icon: IconSettings,
-    // },
-    // {
-    //   title: "About",
-    //   url: "/about",
-    //   icon: IconHelp,
-    // },
-    // {
-    //   title: "Docs",
-    //   url: "/docs",
-    //   icon: IconFileDescription,
-    // },
+    {
+      title: "Virtual",
+      url: "/virtual",
+      icon: IconCube3dSphere,
+    },
+    {
+      title: "Bluetooth",
+      url: "/bluetooth",
+      icon: IconBluetooth,
+    },
   ],
 };
 
