@@ -7,6 +7,7 @@ import type {
 import { Header, HeaderTitle } from "@/components/common/header";
 import PageWrapper from "@/components/common/page-wrapper";
 import { Button } from "@/components/ui/button";
+import { useTimer } from "@/hooks/use-timer";
 import { cn } from "@/lib/utils";
 import { TimerState } from "@btime/bluetooth-cubing";
 import {
@@ -16,8 +17,10 @@ import {
 import { Result } from "@btime/lib";
 import { useAnimationQueue, VirtualCube } from "@btime/virtual-cubing-react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Move } from "cubing/alg";
-import { useCallback, useState } from "react";
+import { Alg, Move } from "cubing/alg";
+import { cube3x3x3 } from "cubing/puzzles";
+import { randomScrambleForEvent } from "cubing/scramble";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Quaternion } from "three";
 
@@ -28,6 +31,16 @@ export const Route = createFileRoute("/bluetooth/")({
 const DEFAULT_MOVE_EVENT_DURATION = 70;
 const SLOWEST_MOVE_EVENT_DURATION = 300;
 const SLOWEST_CONTINUOUS_MOVE_PAUSE = 25;
+
+enum SolveStates {
+  IDLE = 0,
+  SCRAMBLING = 1,
+  INSPECTING = 2,
+  SOLVING = 3,
+  FINISHED = 4,
+}
+
+const ROTATIONS = new Set<string>(["x", "y", "z"]);
 
 function mergeMoveEvents(
   eventA: MoveEvent,
@@ -163,35 +176,124 @@ function BluetoothPage() {
     currentElem: currentMoveEvent,
     addToAnimationQueue,
     handleAnimationComplete,
+    clearAnimationQueue,
+    clearCurrentElem,
   } = useAnimationQueue<MoveEvent>(customAddToQueue);
 
-  const [alg, setAlg] = useState<string>("");
+  const {
+    time,
+    startTimer,
+    stopTimer,
+    //no isRunning here - the solveState makes it redundant
+  } = useTimer();
 
-  //TODO: add duration to animation queue
+  const [solveState, setSolveState] = useState<SolveStates>(SolveStates.IDLE);
+  const [scramble, setScramble] = useState<Alg>(new Alg(""));
+  const scrambleText = useMemo(() => scramble.toString(), [scramble]);
+  const [alg, setAlg] = useState<string>("");
+  const solveFirstMoveDoneRef = useRef<boolean>(false);
+
+  const [latestTime, setLatestTime] = useState<number>(0);
+
+  const generateScramble = useCallback(async () => {
+    const scrambleAlg = await randomScrambleForEvent("333");
+    return scrambleAlg.toString();
+  }, []);
+
+  const handleScramble = useCallback(async () => {
+    const scramble = await generateScramble();
+    setScramble(new Alg(scramble));
+    if (solveState === SolveStates.IDLE) {
+      setSolveState(SolveStates.SCRAMBLING);
+    }
+  }, [solveState, generateScramble]);
+
+  /**
+   * Handles new move events from cube (enqueueing)
+   */
   const handleMoveEvent: CubeMoveEventListener = useCallback(
     (moveEvent: MoveEvent) => {
+      if (
+        solveState === SolveStates.INSPECTING &&
+        !ROTATIONS.has(moveEvent.move.quantum.family) &&
+        !solveFirstMoveDoneRef.current
+      ) {
+        setSolveState(SolveStates.SOLVING);
+        startTimer();
+        solveFirstMoveDoneRef.current = true;
+      }
       addToAnimationQueue(moveEvent);
     },
-    [addToAnimationQueue]
+    [solveState, startTimer, addToAnimationQueue]
   );
 
-  const onFinishAnimating = useCallback(() => {
-    setAlg(
-      (alg) =>
-        alg + (currentMoveEvent ? " " + currentMoveEvent.move.toString() : "")
-    );
-    handleAnimationComplete();
-  }, [currentMoveEvent, handleAnimationComplete]);
+  const handleSolvedCallback = useCallback(() => {
+    if (solveState === SolveStates.SOLVING) {
+      setLatestTime(stopTimer());
+
+      setSolveState(SolveStates.IDLE);
+      solveFirstMoveDoneRef.current = false;
+    }
+  }, [solveState, stopTimer]);
 
   const {
     // cube,
+    solved: isSolved,
     connected: cubeConnected,
     initialState,
     orientation,
     connect: connectCube,
     sync: syncCube,
     disconnect: disconnectCube,
-  } = useBluetoothCube(handleMoveEvent);
+  } = useBluetoothCube(
+    handleMoveEvent,
+    undefined,
+    undefined,
+    handleSolvedCallback
+  );
+
+  const handleSync = useCallback(async () => {
+    try {
+      await syncCube();
+      clearAnimationQueue();
+      clearCurrentElem();
+      setAlg("");
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }, [syncCube, clearAnimationQueue, clearCurrentElem]);
+
+  const onFinishAnimating = useCallback(() => {
+    if (currentMoveEvent) {
+      if (solveState === SolveStates.SCRAMBLING) {
+        const newScramble = new Alg([currentMoveEvent.move])
+          .invert()
+          .concat(scramble)
+          .experimentalSimplify({ cancel: true, puzzleLoader: cube3x3x3 });
+
+        if (newScramble.toString() === "") {
+          setSolveState(SolveStates.INSPECTING);
+        }
+        setScramble(newScramble);
+      }
+
+      // TODO - we actually dont want to reset the alg when solveState isn't updating to IDLE (it was alr idle)
+      if (isSolved && solveState === SolveStates.FINISHED) {
+        setAlg("");
+        setSolveState(SolveStates.IDLE);
+      } else {
+        setAlg((alg) => alg + " " + currentMoveEvent.move.toString());
+      }
+
+      handleAnimationComplete();
+    }
+  }, [
+    currentMoveEvent,
+    scramble,
+    solveState,
+    isSolved,
+    handleAnimationComplete,
+  ]);
 
   return (
     <PageWrapper>
@@ -256,6 +358,32 @@ function BluetoothPage() {
           <div className="flex flex-row justify-center">
             {cubeConnected ? (
               <div className="flex flex-col text-lg gap-2">
+                <div className="flex flex-row gap-2">
+                  <div className="text-wrap text-2xl text-center w-full">
+                    {(() => {
+                      switch (solveState) {
+                        case SolveStates.IDLE:
+                          return <p>{Result.timeToString(latestTime)}</p>;
+                        case SolveStates.SCRAMBLING:
+                          return (
+                            <>
+                              <span className="font-bold">
+                                {scrambleText.split(" ")[0]}
+                              </span>{" "}
+                              {scrambleText.includes(" ") &&
+                                scrambleText.split(" ").slice(1).join(" ")}
+                            </>
+                          );
+                        case SolveStates.INSPECTING:
+                          return <p>Solve!</p>;
+                        case SolveStates.SOLVING:
+                          return <p>{Result.timeToString(time)}</p>;
+                        default:
+                          return null;
+                      }
+                    })()}
+                  </div>
+                </div>
                 <div className={cn("h-60 w-full border border-3 rounded-lg")}>
                   <VirtualCube
                     viewerControlsEnabled={false}
@@ -280,8 +408,18 @@ function BluetoothPage() {
                   <Button
                     variant="primary"
                     onClick={async () => {
+                      await handleScramble();
+                    }}
+                    disabled={!isSolved}
+                  >
+                    New Scramble
+                  </Button>
+
+                  <Button
+                    variant="primary"
+                    onClick={async () => {
                       try {
-                        await syncCube();
+                        await handleSync();
                         toast.info("Synchronizing Cube");
                       } catch (err) {
                         toast.error((err as Error).message);
@@ -303,14 +441,15 @@ function BluetoothPage() {
                   >
                     Disconnect
                   </Button>
+
+                  <p className="ml-auto">
+                    Solve State: {SolveStates[solveState]}
+                  </p>
                 </div>
               </div>
             ) : (
               <div className="flex flex-col text-center items-center">
-                <div>
-                  Click button to connect to Bluetooth Cube. Only Moyu32
-                  (WCU-...) cubes supported for now.
-                </div>
+                <div>Click button to connect to Bluetooth Cube.</div>
                 <Button
                   variant="primary"
                   className="w-fit"
@@ -328,6 +467,12 @@ function BluetoothPage() {
                 >
                   Connect
                 </Button>
+                <div>
+                  Supported cubes:
+                  <ul>
+                    <li>Moyu32 cubes: WCU-MY3...</li>
+                  </ul>
+                </div>
               </div>
             )}
           </div>
