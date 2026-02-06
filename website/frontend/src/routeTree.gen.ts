@@ -50,10 +50,10 @@ const RoomRoomIdRoute = RoomRoomIdRouteImport.update({
 export interface FileRoutesByFullPath {
   "/": typeof IndexRoute
   "/room/$roomId": typeof RoomRoomIdRoute
-  "/bluetooth": typeof BluetoothIndexRoute
-  "/create": typeof CreateIndexRoute
-  "/playground": typeof PlaygroundIndexRoute
-  "/profile": typeof ProfileIndexRoute
+  "/bluetooth/": typeof BluetoothIndexRoute
+  "/create/": typeof CreateIndexRoute
+  "/playground/": typeof PlaygroundIndexRoute
+  "/profile/": typeof ProfileIndexRoute
 }
 export interface FileRoutesByTo {
   "/": typeof IndexRoute
@@ -77,10 +77,10 @@ export interface FileRouteTypes {
   fullPaths:
     | "/"
     | "/room/$roomId"
-    | "/bluetooth"
-    | "/create"
-    | "/playground"
-    | "/profile"
+    | "/bluetooth/"
+    | "/create/"
+    | "/playground/"
+    | "/profile/"
   fileRoutesByTo: FileRoutesByTo
   to:
     | "/"
@@ -120,28 +120,28 @@ declare module "@tanstack/react-router" {
     "/profile/": {
       id: "/profile/"
       path: "/profile"
-      fullPath: "/profile"
+      fullPath: "/profile/"
       preLoaderRoute: typeof ProfileIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     "/playground/": {
       id: "/playground/"
       path: "/playground"
-      fullPath: "/playground"
+      fullPath: "/playground/"
       preLoaderRoute: typeof PlaygroundIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     "/create/": {
       id: "/create/"
       path: "/create"
-      fullPath: "/create"
+      fullPath: "/create/"
       preLoaderRoute: typeof CreateIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     "/bluetooth/": {
       id: "/bluetooth/"
       path: "/bluetooth"
-      fullPath: "/bluetooth"
+      fullPath: "/bluetooth/"
       preLoaderRoute: typeof BluetoothIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
