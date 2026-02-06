@@ -56,6 +56,8 @@ export abstract class BluetoothCube extends EventTarget {
   private disconnectListeners: Map<(event: Event) => void, EventListener> =
     new Map<(event: Event) => void, EventListener>();
 
+  private syncLock: boolean = false;
+
   constructor(device: BluetoothDevice) {
     super();
     this.device = device;
@@ -101,29 +103,50 @@ export abstract class BluetoothCube extends EventTarget {
     this.device.addEventListener("gattserverdisconnected", this.disconnect);
   }
 
+  /**
+   * "Synchronizes" the cube. Meant to be offered as a refresh option to end users.
+   *
+   * The current implementation will:
+   *   1) clear move and orientation event history
+   *   2) set up the sync quaternion s.t. the current final adjusted quaternion is the identity (i.e. assume that the user is holding with green front white up)
+   *
+   * Resetting bluetooth characteristics is delegated to the subclass.
+   *
+   * Since we have observed bad behavior (browser crash) on calling sync twice in quick succession, we will provide a lock in this class as a precaution.
+   * However, it is important that subclasses fully await any bluetooth operations that they perform in onSync() (which is the root cause of such crashes).
+   */
   public async sync(): Promise<void> {
-    this.moveEvents = [];
-    this.orientationEvents = [];
+    if (this.syncLock) {
+      return Promise.reject();
+    } else {
+      this.syncLock = true;
 
-    /**
-     * final_quat = sync_quat x btime_quat
-     * sync_quat' x final_quat = btime_quat
-     *
-     * we want to find new_sync_quat s.t.
-     * IDENTITY = new_sync_quat x btime_quat
-     *
-     * IDENTITY = new_sync_quat x (sync_quat' x final_quat)
-     * new_sync_quat = final_quat' x sync_quat
-     *
-     */
+      try {
+        this.moveEvents = [];
+        this.orientationEvents = [];
 
-    this.syncQuaternion = applyQuaternion(
-      invertQuaternion(this.quaternion),
-      this.syncQuaternion
-    );
+        /**
+         * final_quat = sync_quat x btime_quat
+         * sync_quat' x final_quat = btime_quat
+         *
+         * we want to find new_sync_quat s.t.
+         * IDENTITY = new_sync_quat x btime_quat
+         *
+         * IDENTITY = new_sync_quat x (sync_quat' x final_quat)
+         * new_sync_quat = final_quat' x sync_quat
+         */
 
-    await this.onSync();
-    //don't reset quaternion and kpattern - these should be handled in onsync/via normal events
+        this.syncQuaternion = applyQuaternion(
+          invertQuaternion(this.quaternion),
+          this.syncQuaternion
+        );
+
+        await this.onSync();
+        //don't reset quaternion and kpattern - these should be handled in onsync/via normal events
+      } finally {
+        this.syncLock = false;
+      }
+    }
   }
 
   /** Public APIs to offer managed subscriptions to events */
@@ -193,6 +216,10 @@ export abstract class BluetoothCube extends EventTarget {
     );
   }
 
+  /**
+   * We expect quaternions passed into this function to represent the cube's rotation
+   * relative to the BTime canonical reference frame: (x right, y up, z front).
+   */
   protected processOrientationEvent(event: OrientationEvent) {
     // final_quat = sync_quat x quat_btime_frame
 
@@ -259,7 +286,10 @@ export abstract class BluetoothCube extends EventTarget {
   protected abstract setup(): Promise<void>;
 
   /**
-   * Runs implementation-specific synchronization. Expected to update state.
+   * Runs implementation-specific synchronization.
+   * This method is expected to:
+   *  1) refresh relevant bluetooth characteristics
+   *  2) reset internal state
    */
   protected async onSync(): Promise<void> {}
 

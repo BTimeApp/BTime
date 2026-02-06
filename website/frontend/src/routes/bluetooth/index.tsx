@@ -259,7 +259,7 @@ function BluetoothPage() {
       clearCurrentElem();
       setAlg("");
     } catch (err) {
-      toast.error((err as Error).message);
+      toast.error((err as Error)?.message ?? "Error during synchronizing");
     }
   }, [syncCube, clearAnimationQueue, clearCurrentElem]);
 

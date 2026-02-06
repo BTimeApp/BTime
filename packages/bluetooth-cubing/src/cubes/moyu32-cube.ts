@@ -726,8 +726,8 @@ class Moyu32Cube extends BluetoothCube {
   protected async onSync() {
     this.prevMoveSequenceNumber = -1;
 
-    this.refreshReadCharacteristic();
-    this.sendCubeRequests();
+    await this.refreshReadCharacteristic();
+    await this.sendCubeRequests();
   }
 
   protected processMoveEvent(event: MoveEvent) {
