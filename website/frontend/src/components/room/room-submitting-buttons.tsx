@@ -4,7 +4,7 @@ import { useRoomStore } from "@/context/room-context";
 import { cn } from "@/lib/utils";
 import { SOCKET_CLIENT } from "@btime/types";
 import { useRouter } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export default function RoomSubmittingButtons() {
   const router = useRouter();
@@ -13,12 +13,17 @@ export default function RoomSubmittingButtons() {
   const resetLocalSolveStatus = useRoomStore((s) => s.resetLocalSolveStatus);
   const setLocalPenalty = useRoomStore((s) => s.setLocalPenalty);
 
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const submitButtonRef = useRef<HTMLButtonElement>(null);
 
   const submitLocalResult = useCallback(() => {
+    setIsSubmitting(true);
     socket.emit(SOCKET_CLIENT.SUBMIT_RESULT, {
       result: localResult.toIResult(),
     });
+    submitButtonRef.current?.blur();
+
+    setTimeout(() => setIsSubmitting(false), 2000);
   }, [socket, localResult]);
 
   useEffect(() => {
@@ -60,20 +65,17 @@ export default function RoomSubmittingButtons() {
       >
         <h1 className={cn("font-bold text-center text-md")}>DNF</h1>
       </KeybindButton>
-      {/* <KeyListener
-        keyName="Enter"
-        onKeyDown={submitLocalResult}
-        forceInitialValue={timerType ? (timerType === "TYPING" ? true : false) : undefined}
-      > */}
       <Button
         variant="destructive"
+        disabled={isSubmitting}
         size="xs"
         onClick={submitLocalResult}
         ref={submitButtonRef}
       >
-        <h1 className={cn("font-bold text-center text-md")}>SUBMIT</h1>
+        <h1 className={cn("font-bold text-center text-md")}>
+          {isSubmitting ? "SUBMITTING..." : "SUBMIT"}
+        </h1>
       </Button>
-      {/* </KeyListener> */}
     </div>
   );
 }

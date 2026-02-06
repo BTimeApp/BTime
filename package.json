@@ -13,7 +13,7 @@
     "lint-packages": "pnpm --filter ./packages lint",
     "lint:fix-packages": "pnpm --filter ./packages lint:fix",
     "dev-website": "pnpm --filter ./website dev",
-    "build-website": "pnpm --filter ./website/* build",
+    "build-website": "pnpm --filter ./website build",
     "start-website": "pnpm --filter ./website start",
     "lint-website": "pnpm --filter ./website lint",
     "lint:fix-website": "pnpm --filter ./website lint:fix"

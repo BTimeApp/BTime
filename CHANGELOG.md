@@ -4,6 +4,56 @@ This file contains summaries of major/relevant changes to the BTime project in r
 
 The current versioning convention tracks changes to BTime as a whole. Packages will maintain their own versions as necessary.
 
+## 0.5.1 - 2026-02-05
+
+Added:
+
+- new reusable `useTimer()` hook
+- new `onSolved()` listener in `useBluetoothCube()` hook
+- new `clearAnimationQueue, clearCurrentElem` callbacks in `useAnimationQueue()` hook
+
+Changed:
+
+- use `useTimer()` in stopwatch timer component, /virtual and /bluetooth routes
+- prevent double-click on submit result button
+- disable viewer controls on /bluetooth cube viewer
+- fix state event handling in bluetooth-cubing
+
+## 0.5.0 - 2026-02-02
+
+Added:
+
+- new Bluetooth cube API in bluetooth-cubing to support bluetooth cube development and integration
+  - first bluetooth cube implementation for Moyu32 cube protocol
+- new hook for bluetooth cubes in bluetooth-cubing-react to make lifecycle management easier
+- new bluetooth cube demo in /bluetooth route
+- added support for initial state in virtual cube
+- added scripts folder for convenient dev-time scripting
+
+Changed:
+
+- refactor bluetooth-cubing package for consolidated types and utils
+
+## 0.4.0 - 2026-01-20
+
+Added:
+
+- new Virtual cube library to support rendering 3D cubes (only 3x3 for now)
+  - supports live move animation
+- new /virtual route to demonstrate the virtual cube
+
+### 0.4.1 - 2026-01-20
+
+Changed:
+
+- hotfix typo made when refactoring virtual cube library that caused incorrect animation direction
+
+### 0.4.2 = 2026-01-21
+
+Changed:
+
+- update useAnimationQueue to use refs instead of state for tracking moves to fix a race condition, clean up hook return values.
+
 ## 0.3.0 - 2026-01-10
 
 Changed:

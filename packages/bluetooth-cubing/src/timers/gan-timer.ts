@@ -1,7 +1,8 @@
-import type { TimeMS, TimerEvent } from "./timer";
+import type { TimerEvent } from "../types";
 
-import { BluetoothTimer, TimerState } from "./timer";
+import { BluetoothTimer } from "./timer";
 import { TimerRegistry } from "./timer-registry";
+import { TimerState } from "../types";
 import { crc16ccit } from "../utils/utils";
 
 /**
@@ -75,7 +76,7 @@ class GanTimer extends BluetoothTimer {
   /**
    * Construct a time in ms from raw data
    */
-  static timeFromData(data: DataView, offset: number): TimeMS {
+  static timeFromData(data: DataView, offset: number): number {
     const min = data.getUint8(offset);
     const sec = data.getUint8(offset + 1);
     const ms = data.getUint16(offset + 2, true);

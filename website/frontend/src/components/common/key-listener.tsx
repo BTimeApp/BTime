@@ -1,6 +1,6 @@
 import type React from "react";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
 
 type KeyListenerProps = {
   keyName?: string; //the name of the key to listen to. For example, "Space" for the space bar
@@ -27,21 +27,27 @@ function KeyListener({
    */
   const isPressedRef = useRef(forceInitialValue);
 
+  const handleKeyDown = useEffectEvent((event: KeyboardEvent) => {
+    if (
+      (event.code === keyName || event.key === keyName) &&
+      !isPressedRef.current
+    ) {
+      isPressedRef.current = true;
+      onKeyDown?.();
+    }
+  });
+
+  const handleKeyUp = useEffectEvent((event: KeyboardEvent) => {
+    if (
+      (event.code === keyName || event.key === keyName) &&
+      isPressedRef.current
+    ) {
+      isPressedRef.current = false;
+      onKeyUp?.();
+    }
+  });
+
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.code === keyName && !isPressedRef.current) {
-        isPressedRef.current = true;
-        onKeyDown?.();
-      }
-    };
-
-    const handleKeyUp = (event: KeyboardEvent) => {
-      if (event.code === keyName && isPressedRef.current) {
-        isPressedRef.current = false;
-        onKeyUp?.();
-      }
-    };
-
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
 
@@ -50,9 +56,7 @@ function KeyListener({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [onKeyDown, onKeyUp, keyName, onDismount]);
-
-  if (!children) return null;
+  }, [onDismount]);
 
   return children;
 }

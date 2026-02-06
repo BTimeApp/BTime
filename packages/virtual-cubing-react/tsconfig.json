@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "target": "es2022",
+    "verbatimModuleSyntax": true,
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "moduleDetection": "force",
+
+    "strict": true,
+
+    "moduleResolution": "bundler",
+    "module": "esnext",
+    "outDir": "dist",
+    "rootDir": "src",
+    "sourceMap": true,
+
+    "lib": ["es2022", "dom", "dom.iterable"],
+
+    "declaration": true,
+
+    "declarationMap": true,
+
+    "jsx": "react-jsx"
+    // "jsxImportSource": "react",
+    // "types": ["@react-three/fiber", "three"]
+  },
+  "exclude": ["node_modules", "dist"],
+  "include": ["src/**/*"]
+}
