@@ -26,7 +26,7 @@ type VirtualCubeAnimationManagerProps = {
   animationStart?: number;
 
   /**
-   * The length of time to animate the current move for, in ms. Defaults to 100ms (10tps).
+   * The length of time to animate the current move for, in ms. Defaults to 70ms (~14 tps).
    */
   animationDuration?: number;
 

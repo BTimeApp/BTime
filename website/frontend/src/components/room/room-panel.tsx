@@ -208,7 +208,7 @@ function UserCenterSection({
           {isLocalUser ? (
             users[userId].competing ? (
               <>
-                <TimerSection />
+                <TimerSection scramble={currScramble} />
                 {solveStatus === "SUBMITTING" && <RoomSubmittingButtons />}
               </>
             ) : (

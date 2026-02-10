@@ -6,6 +6,7 @@ import { literalKeys } from "./utils.js";
 
 export interface RoomEventAttributes {
   displayName: string;
+  baseEvent: string;
   jsName: string;
   iconSrc: string;
 }
@@ -33,76 +34,91 @@ export interface RoomEventAttributes {
 export const ROOM_EVENTS_INFO = {
   "333": {
     displayName: "3x3",
+    baseEvent: "333",
     jsName: "3x3x3",
     iconSrc: "event-333",
   },
   "222": {
     displayName: "2x2",
+    baseEvent: "222",
     jsName: "2x2x2",
     iconSrc: "event-222",
   },
   "444": {
     displayName: "4x4",
+    baseEvent: "444",
     jsName: "4x4x4",
     iconSrc: "event-444",
   },
   "555": {
     displayName: "5x5",
+    baseEvent: "555",
     jsName: "5x5x5",
     iconSrc: "event-555",
   },
   "666": {
     displayName: "6x6",
+    baseEvent: "666",
     jsName: "6x6x6",
     iconSrc: "event-666",
   },
   "777": {
     displayName: "7x7",
+    baseEvent: "777",
     jsName: "7x7x7",
     iconSrc: "event-777",
   },
   megaminx: {
     displayName: "Megaminx",
+    baseEvent: "megaminx",
     jsName: "megaminx",
     iconSrc: "event-minx",
   },
   pyraminx: {
     displayName: "Pyraminx",
+    baseEvent: "pyraminx",
     jsName: "pyraminx",
     iconSrc: "event-pyra",
   },
   skewb: {
     displayName: "Skewb",
+    baseEvent: "skewb",
     jsName: "skewb",
     iconSrc: "event-skewb",
   },
   clock: {
     displayName: "Clock",
+    baseEvent: "clock",
     jsName: "clock",
     iconSrc: "event-clock",
   },
   sq1: {
     displayName: "Sq-1",
+    baseEvent: "sq1",
     jsName: "square1",
     iconSrc: "event-sq1",
   },
   "3oh": {
     displayName: "3x3 OH",
+    baseEvent: "333",
     jsName: "3x3x3",
     iconSrc: "event-333oh",
   },
   "3bld": {
     displayName: "3BLD",
+    baseEvent: "333",
     jsName: "3x3x3",
     iconSrc: "event-3bf",
   },
   "4bld": {
     displayName: "4BLD",
+    baseEvent: "444",
     jsName: "4x4x4",
     iconSrc: "event-4bf",
   },
   "5bld": {
     displayName: "5BLD",
+    baseEvent: "555",
     jsName: "5x5x5",
     iconSrc: "event-5bf",
   },

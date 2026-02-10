@@ -182,7 +182,7 @@ export default function BluetoothTimer({
       case "INSPECTING":
         return (
           <InspectionCountdown
-            timerType="BLUETOOTH"
+            timerType="BLUETOOTHTIMER"
             onFinishInspection={(penalty: Penalty) => {
               setLocalInspectionPenalty(penalty);
             }}
@@ -194,7 +194,7 @@ export default function BluetoothTimer({
           <StopwatchTimer
             startTime={liveTimerStartTime}
             className="text-4xl"
-            timerType="BLUETOOTH"
+            timerType="BLUETOOTHTIMER"
           />
         );
       case "SUBMITTING":

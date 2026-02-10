@@ -9,6 +9,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useTimer } from "@/hooks/use-timer";
 import { get3x3x3 } from "@/lib/get-kpuzzle";
 import { cn } from "@/lib/utils";
+import { DEFAULT_VIRTUAL_KEYBINDS } from "@/lib/virtual-keybinds";
 import { Result } from "@btime/lib";
 import { useAnimationQueue, VirtualCube } from "@btime/virtual-cubing-react";
 import { createFileRoute } from "@tanstack/react-router";
@@ -19,61 +20,6 @@ import { use, useCallback, useMemo, useRef, useState } from "react";
 export const Route = createFileRoute("/virtual/")({
   component: VirtualPage,
 });
-
-type Keybind = {
-  keyCode: string;
-  keyBind: string;
-};
-/**
- * Hardcoded keybinds for virtual cube control.
- * TODO: set up customizable keybinds and store as user preference.
- *
- */
-const KEY_TO_MOVE_MAP: Map<string, Keybind> = new Map([
-  ["1", { keyCode: "Digit1", keyBind: "S'" }],
-  ["2", { keyCode: "Digit2", keyBind: "E" }],
-  ["3", { keyCode: "Digit3", keyBind: "" }],
-  ["4", { keyCode: "Digit4", keyBind: "" }],
-  ["5", { keyCode: "Digit5", keyBind: "M" }],
-  ["6", { keyCode: "Digit6", keyBind: "M" }],
-  ["7", { keyCode: "Digit7", keyBind: "" }],
-  ["8", { keyCode: "Digit8", keyBind: "" }],
-  ["9", { keyCode: "Digit9", keyBind: "E'" }],
-  ["0", { keyCode: "Digit0", keyBind: "S" }],
-
-  ["Q", { keyCode: "KeyQ", keyBind: "z'" }],
-  ["W", { keyCode: "KeyW", keyBind: "B" }],
-  ["E", { keyCode: "KeyE", keyBind: "L'" }],
-  ["R", { keyCode: "KeyR", keyBind: "Lw'" }],
-  ["T", { keyCode: "KeyT", keyBind: "x" }],
-  ["Y", { keyCode: "KeyY", keyBind: "x" }],
-  ["U", { keyCode: "KeyU", keyBind: "Rw" }],
-  ["I", { keyCode: "KeyI", keyBind: "R" }],
-  ["O", { keyCode: "KeyO", keyBind: "B'" }],
-  ["P", { keyCode: "KeyP", keyBind: "z" }],
-
-  ["A", { keyCode: "KeyA", keyBind: "y'" }],
-  ["S", { keyCode: "KeyS", keyBind: "D" }],
-  ["D", { keyCode: "KeyD", keyBind: "L" }],
-  ["F", { keyCode: "KeyF", keyBind: "U'" }],
-  ["G", { keyCode: "KeyG", keyBind: "F'" }],
-  ["H", { keyCode: "KeyH", keyBind: "F" }],
-  ["J", { keyCode: "KeyJ", keyBind: "U" }],
-  ["K", { keyCode: "KeyK", keyBind: "R'" }],
-  ["L", { keyCode: "KeyL", keyBind: "D'" }],
-  [";", { keyCode: "Semicolon", keyBind: "y" }],
-
-  ["Z", { keyCode: "KeyZ", keyBind: "Dw" }],
-  ["X", { keyCode: "KeyX", keyBind: "M'" }],
-  ["C", { keyCode: "KeyC", keyBind: "Uw'" }],
-  ["V", { keyCode: "KeyV", keyBind: "Lw" }],
-  ["B", { keyCode: "KeyB", keyBind: "x'" }],
-  ["N", { keyCode: "KeyN", keyBind: "x'" }],
-  ["M", { keyCode: "KeyM", keyBind: "Rw'" }],
-  [",", { keyCode: "Comma", keyBind: "Uw" }],
-  [".", { keyCode: "Period", keyBind: "M'" }],
-  ["/", { keyCode: "Slash", keyBind: "Dw'" }],
-]);
 
 const ROTATIONS = new Set<string>(["x", "y", "z"]);
 
@@ -314,7 +260,7 @@ function KeyboardWithCubeControls({
 }) {
   const executeKeyboundMove = useCallback(
     (keyName: string) => {
-      const mappedMove = KEY_TO_MOVE_MAP.get(keyName)?.keyBind;
+      const mappedMove = DEFAULT_VIRTUAL_KEYBINDS.get(keyName)?.keyBind;
       if (!mappedMove) return;
 
       onExecuteMove?.(mappedMove);
@@ -327,12 +273,12 @@ function KeyboardWithCubeControls({
       <h2 className="text-2xl text-bold">Keyboard</h2>
       <div className="flex flex-row">
         <div className="grid grid-cols-10 grid-rows-4 gap-1">
-          {[...KEY_TO_MOVE_MAP.keys()].map((key) => (
+          {[...DEFAULT_VIRTUAL_KEYBINDS.keys()].map((key) => (
             <KeyboardListenerKey
               key={key}
-              keyName={KEY_TO_MOVE_MAP.get(key)?.keyCode ?? ""}
+              keyName={DEFAULT_VIRTUAL_KEYBINDS.get(key)?.keyCode ?? ""}
               primaryText={key}
-              secondaryText={KEY_TO_MOVE_MAP.get(key)?.keyBind ?? ""}
+              secondaryText={DEFAULT_VIRTUAL_KEYBINDS.get(key)?.keyBind ?? ""}
               onKeyDown={() => {
                 executeKeyboundMove(key);
               }}

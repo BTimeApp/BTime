@@ -3,7 +3,13 @@ import type { TimerType } from "@btime/types";
 
 import KeyListener from "@/components/common/key-listener";
 import { cn } from "@/lib/utils";
-import { useEffect, useRef, useState, useCallback } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  useEffectEvent,
+} from "react";
 
 type InspectionCountdownProps = {
   onFinishInspection?: (penalty: Penalty) => void;
@@ -68,13 +74,19 @@ function InspectionCountdown({
     onFinishInspection?.(penaltyRef.current);
   }, [onFinishInspection]);
 
+  /**
+   * While this doesn't super belong here, it's the only pattern that makes inspection penalties with bluetooth timer work right now.
+   */
+  const finishInspectionEvent = useEffectEvent(() => {
+    if (timerType === "BLUETOOTHTIMER") {
+      onFinishInspection?.(penaltyRef.current);
+    }
+  });
   useEffect(() => {
     return () => {
-      if (timerType === "BLUETOOTH") {
-        onFinishInspection?.(penaltyRef.current);
-      }
+      finishInspectionEvent();
     };
-  }, [onFinishInspection, timerType]);
+  }, [onFinishInspection]);
 
   return (
     <>
@@ -87,10 +99,10 @@ function InspectionCountdown({
       )}
       <div
         className={cn(
-          className,
           remainingTime <= 8 && "text-timer-warning",
           remainingTime <= 3 && "text-timer-notready",
-          spacebarDown && "text-timer-ready"
+          spacebarDown && "text-timer-ready",
+          className
         )}
       >
         {penalty === "DNF"

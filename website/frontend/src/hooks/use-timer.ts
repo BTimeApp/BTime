@@ -6,6 +6,8 @@ export function useTimer() {
   const startTimeRef = useRef<number>(0);
   const animationRef = useRef<number>(0);
 
+  const lastTimeRef = useRef<number>(0);
+
   // Animation loop - only runs when isRunning is true
   useEffect(() => {
     if (!isRunning) return;
@@ -13,7 +15,13 @@ export function useTimer() {
     const update = () => {
       const now = performance.now();
       const elapsed = now - startTimeRef.current;
-      setTime(Math.floor(elapsed / 10)); // Convert to centiseconds
+      const newTime = Math.floor(elapsed / 10);
+
+      // Only trigger re-render when centisecond changes
+      if (newTime !== lastTimeRef.current) {
+        lastTimeRef.current = newTime;
+        setTime(newTime);
+      }
       animationRef.current = requestAnimationFrame(update);
     };
 
@@ -37,10 +45,13 @@ export function useTimer() {
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
     }
-    const finalTime = time;
-    setTime(0); // Reset
+    const now = performance.now();
+    const elapsed = now - startTimeRef.current;
+    const finalTime = Math.floor(elapsed / 10);
+
+    setTime(0);
     return finalTime;
-  }, [time]);
+  }, []);
 
   return {
     time,

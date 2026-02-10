@@ -4,13 +4,23 @@ import KeyListener from "@/components/common/key-listener";
 import BluetoothTimer from "@/components/room/bluetooth-timer";
 import InspectionCountdown from "@/components/room/inspection-countdown";
 import StopwatchTimer from "@/components/room/stopwatch-timer";
+import VirtualTimer from "@/components/room/virtual-timer";
 import { CallbackInput } from "@/components/ui/callback-input";
 import { useRoomStore } from "@/context/room-context";
 import { cn } from "@/lib/utils";
-import { Result } from "@btime/lib";
+import { Result, timerAllowsEvent } from "@btime/lib";
+import { ROOM_EVENTS_INFO } from "@btime/types";
 import { useCallback, useState } from "react";
 
-function TimerSection() {
+type TimerSectionProps = {
+  scramble?: string;
+};
+
+/**
+ * Displays information related to the timer for the LOCAL USER ONLY.
+ * This varies mainly depending on local user's TimerType.
+ */
+function TimerSection({ scramble }: TimerSectionProps) {
   const [spacebarDown, setSpacebarDown] = useState<boolean>(false);
   const localPenalty = useRoomStore((s) => s.localPenalty);
   const localResult = useRoomStore((s) => s.localResult);
@@ -18,6 +28,7 @@ function TimerSection() {
   const localSolveStatus = useRoomStore((s) => s.localSolveStatus);
   const useInspection = useRoomStore((s) => s.useInspection);
   const liveTimerStartTime = useRoomStore((s) => s.liveTimerStartTime);
+  const roomEvent = useRoomStore((s) => s.roomEvent);
   const setLocalPenalty = useRoomStore((s) => s.setLocalPenalty);
   const setLocalResult = useRoomStore((s) => s.setLocalResult);
   const updateLocalSolveStatus = useRoomStore((s) => s.updateLocalSolveStatus);
@@ -55,6 +66,16 @@ function TimerSection() {
     [updateLocalSolveStatus, setLocalPenalty, setSpacebarDown]
   );
 
+  if (!timerAllowsEvent(timerType, roomEvent)) {
+    return (
+      <div className="text-center text-lg text-error font-bold text-wrap">
+        You cannot use the {timerType} timer for event{" "}
+        {ROOM_EVENTS_INFO[roomEvent]!.displayName}. Switch to a legal timer
+        type.
+      </div>
+    );
+  }
+
   switch (timerType) {
     case "TYPING":
       switch (localSolveStatus) {
@@ -84,7 +105,6 @@ function TimerSection() {
             </>
           );
       }
-      break;
     case "KEYBOARD":
       switch (localSolveStatus) {
         case "IDLE":
@@ -160,15 +180,23 @@ function TimerSection() {
         default:
           return <></>;
       }
-      break;
-    case "BLUETOOTH":
+    case "BLUETOOTHTIMER":
       return (
         <BluetoothTimer
           onFinishInspection={endInspectionCallback}
           onFinishTimer={endNumberTimerCallback}
         />
       );
-      break;
+    case "VIRTUAL":
+      return (
+        <VirtualTimer
+          scramble={scramble}
+          onFinishInspection={endInspectionCallback}
+          onFinishTimer={endNumberTimerCallback}
+        />
+      );
+    // case "BLUETOOTHCUBE":
+    //   return null;
     default:
       console.warn(`Illegal timer type encountered: ${timerType}`);
       return;

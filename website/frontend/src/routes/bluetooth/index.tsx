@@ -9,6 +9,11 @@ import PageWrapper from "@/components/common/page-wrapper";
 import { Button } from "@/components/ui/button";
 import { useTimer } from "@/hooks/use-timer";
 import { cn } from "@/lib/utils";
+import {
+  DEFAULT_MOVE_EVENT_DURATION,
+  SLOWEST_CONTINUOUS_MOVE_PAUSE,
+  SLOWEST_MOVE_EVENT_DURATION,
+} from "@/types/animation-constants";
 import { TimerState } from "@btime/bluetooth-cubing";
 import {
   useBluetoothCube,
@@ -27,10 +32,6 @@ import { Quaternion } from "three";
 export const Route = createFileRoute("/bluetooth/")({
   component: BluetoothPage,
 });
-
-const DEFAULT_MOVE_EVENT_DURATION = 70;
-const SLOWEST_MOVE_EVENT_DURATION = 300;
-const SLOWEST_CONTINUOUS_MOVE_PAUSE = 25;
 
 enum SolveStates {
   IDLE = 0,
