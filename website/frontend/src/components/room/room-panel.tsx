@@ -189,12 +189,15 @@ function UserCenterSection({
     (s) => [s.users, s.localSolveStatus, s.match, s.roomEvent, s.drawScramble]
   );
 
+  const currScramble = useMemo(() => {
+    return (
+      match.sets.at(-1)?.solves.at(-1)?.solve.attempts[userId]?.scramble ?? ""
+    );
+  }, [match, userId]);
+
   if (!users[userId]) {
     return null;
   }
-
-  const currScramble =
-    match.sets.at(-1)?.solves.at(-1)?.solve.attempts[userId]?.scramble ?? "";
 
   return (
     <div className={cn("flex flex-row", className)}>

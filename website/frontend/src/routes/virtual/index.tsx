@@ -129,6 +129,19 @@ function VirtualPage() {
 
   const isMobile = useIsMobile();
 
+  const kpatternJSON = useMemo(() => {
+    return JSON.stringify(
+      kpattern.toJSON(),
+      (_key, value) => {
+        if (Array.isArray(value)) {
+          return JSON.stringify(value);
+        }
+        return value;
+      },
+      2
+    );
+  }, [kpattern]);
+
   return (
     <PageWrapper>
       <Header>
@@ -229,18 +242,7 @@ function VirtualPage() {
                   inErrorState ? "bg-error/30 border-error" : ""
                 )}
               >
-                <pre>
-                  {JSON.stringify(
-                    kpattern.toJSON(),
-                    (_key, value) => {
-                      if (Array.isArray(value)) {
-                        return JSON.stringify(value);
-                      }
-                      return value;
-                    },
-                    2
-                  )}
-                </pre>
+                <pre>{kpatternJSON}</pre>
               </div>
             </div>
           </div>
