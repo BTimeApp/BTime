@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { KeybindProvider } from "@/context/keybind-context";
 import { ThemeProvider } from "@/context/theme-context";
 import { getSocket } from "@/lib/socket";
 import { routeTree } from "@/routeTree.gen";
@@ -35,7 +36,9 @@ if (!rootElement.innerHTML) {
   root.render(
     <ConditionalStrictMode>
       <ThemeProvider>
-        <RouterProvider router={router} />
+        <KeybindProvider>
+          <RouterProvider router={router} />
+        </KeybindProvider>
       </ThemeProvider>
       <Toaster position="top-center" richColors closeButton />
     </ConditionalStrictMode>

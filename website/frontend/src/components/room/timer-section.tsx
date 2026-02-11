@@ -119,7 +119,7 @@ function TimerSection({ scramble }: TimerSectionProps) {
                 keyName="Space"
                 onKeyUp={() => {
                   setSpacebarDown(false);
-                  updateLocalSolveStatus(); //updateLocalSolveStatus
+                  updateLocalSolveStatus();
                 }}
                 onKeyDown={() => {
                   setSpacebarDown(true);
@@ -139,21 +139,11 @@ function TimerSection({ scramble }: TimerSectionProps) {
           return (
             <>
               <div>Press Space to Start</div>
-              <KeyListener
-                keyName="Space"
-                onKeyUp={() => {
-                  setSpacebarDown(false);
-                }}
-                onKeyDown={() => {
-                  setSpacebarDown(true);
-                }}
-              >
-                <InspectionCountdown
-                  className="text-4xl"
-                  timerType={timerType}
-                  onFinishInspection={endInspectionCallback}
-                />
-              </KeyListener>
+              <InspectionCountdown
+                className="text-4xl"
+                timerType={timerType}
+                onFinishInspection={endInspectionCallback}
+              />
             </>
           );
         case "SOLVING":
