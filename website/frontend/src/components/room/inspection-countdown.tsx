@@ -78,7 +78,7 @@ function InspectionCountdown({
    * While this doesn't super belong here, it's the only pattern that makes inspection penalties with bluetooth timer work right now.
    */
   const finishInspectionEvent = useEffectEvent(() => {
-    if (timerType === "BLUETOOTHTIMER" || timerType === "VIRTUAL") {
+    if (timerType === "BLUETOOTHTIMER") {
       onFinishInspection?.(penaltyRef.current);
     }
   });
