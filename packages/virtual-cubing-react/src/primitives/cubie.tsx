@@ -4,7 +4,6 @@ import type { Color } from "three";
 import { COLOR_DARKGRAY } from "../types/colors";
 import { resolveGeometrySource } from "../types/geometry";
 import { useMemo } from "react";
-import { MeshBasicMaterial } from "three";
 
 type CubieProps<F extends string> = {
   colors: Partial<Record<F, Color>>;
@@ -27,12 +26,15 @@ export function Cubie<F extends string>({
     [geometrySource]
   );
 
-  const materials = orderedFaces.map(
-    (face) =>
-      new MeshBasicMaterial({
-        color: face in colors ? colors[face] : defaultColor,
-      })
+  return (
+    <mesh geometry={geometry}>
+      {orderedFaces.map((face, i) => (
+        <meshBasicMaterial
+          key={i}
+          attach={`material-${i}`}
+          color={face in colors ? colors[face] : defaultColor}
+        />
+      ))}
+    </mesh>
   );
-
-  return <mesh geometry={geometry} material={materials} />;
 }
