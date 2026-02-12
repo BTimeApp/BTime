@@ -19,8 +19,15 @@ import {
 import { Result } from "@btime/lib";
 import { useAnimationQueue, VirtualCube } from "@btime/virtual-cubing-react";
 import { Move } from "cubing/alg";
-import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
+import {
+  use,
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 function mergeMoveEvents(
   eventA: MoveEvent,
@@ -33,9 +40,7 @@ function mergeMoveEvents(
    *   1) stacking same move family
    *   2) moves happen close enough to each other to be feasible (most often seen by low timestamp diff)
    *
-   * While I would like to implement simplifying into slice moves, it would require transforming other moves done after slice
-   * moves to account for the absolute orientation given by bluetooth module.
-   * e.g. in H perm, the U done after the the first M2 is actually read as a D/D' by the bluetooth module
+   * This function is directly ripped from the /bluetooth version.
    */
 
   const moveAFamily = eventA.move.quantum.family;
@@ -109,7 +114,6 @@ const customAddToQueue = (
       mergedEvent = mergeMoveEvents(ret.at(-1)!, curr);
     }
   }
-
   ret.push(curr);
 
   return ret;
@@ -157,28 +161,37 @@ export default function VirtualTimer({
   } = useAnimationQueue<MoveEvent>(customAddToQueue);
 
   /** State manager */
-  const onSolved = useCallback(() => {
+
+  const {
+    // kpattern,
+    alg,
+    setupAlg,
+    isSolved,
+    applyMove,
+    setAlg,
+    setSetupAlg,
+    resetCube,
+  } = useCubeStateManager(kpuzzle333);
+
+  const onSolvedEvent = useEffectEvent(() => {
     /**
      * The cube state manager will call this callback every time we enter a solved state.
      * We only care about when we're still solving.
      */
     if (localSolveStatus === "SOLVING") {
+      resetCube();
       onFinishTimer(stopTimer());
       updateLocalSolveStatus();
     }
-  }, [localSolveStatus, onFinishTimer, stopTimer, updateLocalSolveStatus]);
+  }); //, [localSolveStatus, onFinishTimer, stopTimer, updateLocalSolveStatus]);
 
-  const {
-    //kpattern,
-    alg,
-    // setupAlg,
-    applyMove,
-    setAlg,
-    setSetupAlg,
-  } = useCubeStateManager(kpuzzle333, onSolved);
+  useEffect(() => {
+    if (isSolved) {
+      onSolvedEvent();
+    }
+  }, [isSolved]);
 
   const lastScrambleRef = useRef<string>(scramble);
-
   useEffect(() => {
     if (scramble != lastScrambleRef.current) {
       setSetupAlg(scramble);
@@ -198,8 +211,8 @@ export default function VirtualTimer({
 
       addToAnimationQueue(moveEvent);
       if (
-        !useInspection && // drop moves if in IDLE and we use inspection!
-        localSolveStatus === "IDLE" &&
+        ((!useInspection && localSolveStatus === "IDLE") ||
+          (useInspection && localSolveStatus === "INSPECTING")) &&
         !ROTATIONS.has(moveObj.quantum.family)
       ) {
         startTimer(timestamp);
@@ -214,19 +227,6 @@ export default function VirtualTimer({
       localSolveStatus,
     ]
   );
-
-  /**
-   * TODO: consider removing this callback once productionizing this component
-   */
-  const handleStartInspection = useCallback(() => {
-    if (localSolveStatus === "IDLE") {
-      updateLocalSolveStatus();
-    } else {
-      toast.error(
-        `Tried to start inspection when solve status was ${localSolveStatus}`
-      );
-    }
-  }, [localSolveStatus, updateLocalSolveStatus]);
 
   const onFinishAnimating = useCallback(() => {
     if (!currentMoveEvent) return;
@@ -243,7 +243,7 @@ export default function VirtualTimer({
     } else if (localSolveStatus === "INSPECTING") {
       return (
         <InspectionCountdown
-          timerType="BLUETOOTHTIMER"
+          timerType="VIRTUAL"
           onFinishInspection={(penalty: Penalty) => {
             onFinishInspection?.(penalty);
           }}
@@ -336,6 +336,9 @@ export default function VirtualTimer({
           onFinishAnimating={onFinishAnimating}
         />
       </div>
+      <div className="flex flex-row justify-center">
+        {setupAlg} | {alg}
+      </div>
       <div className="flex flex-row justify-center">{helpTextElement}</div>
       <div className="flex flex-row justify-center">
         <CubeControls
@@ -351,7 +354,9 @@ export default function VirtualTimer({
             }}
             onKeyUp={() => {
               setTimerTextClassName("");
-              handleStartInspection();
+              setSetupAlg(scramble); //will reset user done moves
+              setAlg(""); //reset all user-done moves done!
+              updateLocalSolveStatus();
             }}
           />
         )}
