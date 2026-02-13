@@ -1,57 +1,41 @@
 import type { Move } from "cubing/alg";
 import type { KPattern, KPuzzle } from "cubing/kpuzzle";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 
-export function useCubeStateManager(kpuzzle: KPuzzle, onSolved?: () => void) {
-  const [setupAlg, setSetupAlg] = useState("");
-  const [alg, setAlg] = useState("");
+export function useCubeStateManager(kpuzzle: KPuzzle, initialAlg: string = "") {
+  const [alg, setAlg] = useState<string>(initialAlg);
   const [pattern, setPattern] = useState<KPattern>(() =>
-    kpuzzle.defaultPattern()
+    kpuzzle.defaultPattern().applyAlg(initialAlg)
   );
 
-  const isSolved = useMemo(() => {
-    return pattern.experimentalIsSolved({
+  const [solved, setSolved] = useState<boolean>(true);
+
+  const checkSolved = useCallback((pattern: KPattern) => {
+    const solved = pattern.experimentalIsSolved({
       ignoreCenterOrientation: true,
       ignorePuzzleOrientation: true,
     });
-  }, [pattern]);
+    setSolved(solved);
+    return solved;
+  }, []);
 
   const applyMove = useCallback(
     (move: Move) => {
       // Update alg string
-      setAlg((prev) => prev + " " + move.toString());
+      setAlg((prev) => {
+        return prev + " " + move.toString();
+      });
 
       setPattern((prevPattern) => {
         const newPattern = prevPattern.applyMove(move);
-
-        const solved = newPattern.experimentalIsSolved({
-          ignoreCenterOrientation: true,
-          ignorePuzzleOrientation: true,
-        });
-
-        if (solved) {
-          onSolved?.();
-        }
+        const solved = checkSolved(newPattern);
+        setSolved(solved);
 
         return newPattern;
       });
     },
-    [onSolved]
-  );
-
-  const updateSetupAlg = useCallback(
-    (newSetupAlg: string) => {
-      setSetupAlg(newSetupAlg);
-
-      try {
-        const newPattern = kpuzzle.defaultPattern().applyAlg(newSetupAlg);
-        setPattern(newPattern);
-      } catch {
-        setPattern(kpuzzle.defaultPattern());
-      }
-    },
-    [kpuzzle]
+    [checkSolved]
   );
 
   const updateAlg = useCallback(
@@ -60,28 +44,27 @@ export function useCubeStateManager(kpuzzle: KPuzzle, onSolved?: () => void) {
 
       try {
         const base = kpuzzle.defaultPattern();
-        const newPattern = base.applyAlg(setupAlg).applyAlg(newAlg);
+        const newPattern = base.applyAlg(newAlg);
         setPattern(newPattern);
+        checkSolved(newPattern);
       } catch {
-        setPattern(kpuzzle.defaultPattern());
+        console.warn("something went wrong applying new alg");
       }
     },
-    [kpuzzle, setupAlg]
+    [checkSolved, kpuzzle]
   );
 
   const resetCube = useCallback(() => {
-    setSetupAlg("");
     setAlg("");
     setPattern(kpuzzle.defaultPattern());
+    setSolved(true);
   }, [kpuzzle]);
 
   return {
-    setupAlg,
     alg,
     kpattern: pattern,
-    isSolved,
+    isSolved: solved,
     applyMove,
-    setSetupAlg: updateSetupAlg,
     setAlg: updateAlg,
     resetCube,
   };

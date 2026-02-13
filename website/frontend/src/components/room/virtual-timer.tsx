@@ -74,7 +74,6 @@ export default function VirtualTimer({
 
   const [timerTextClassName, setTimerTextClassName] = useState<string>("");
   const [inErrorState, setInErrorState] = useState<boolean>(false);
-  // const solveFirstMoveDoneRef = useRef<boolean>(false);
 
   /** Keybind map */
   const keybindMap = useKeybindStore((s) => s.keybindMap);
@@ -87,22 +86,14 @@ export default function VirtualTimer({
     currentElem: currentMoveEvent,
     addToAnimationQueue,
     handleAnimationComplete,
-    // clearAnimationQueue,
-    // clearCurrentElem,
   } = useAnimationQueue<MoveEvent>(customAddToQueue);
 
   /** State manager */
 
-  const {
-    // kpattern,
-    alg,
-    // setupAlg,
-    isSolved,
-    applyMove,
-    setAlg,
-    setSetupAlg,
-    resetCube,
-  } = useCubeStateManager(kpuzzle333);
+  const { alg, isSolved, applyMove, setAlg, resetCube } = useCubeStateManager(
+    kpuzzle333,
+    scramble
+  );
 
   const onSolvedEvent = useEffectEvent(() => {
     /**
@@ -114,7 +105,7 @@ export default function VirtualTimer({
       onFinishTimer(stopTimer());
       updateLocalSolveStatus();
     }
-  }); //, [localSolveStatus, onFinishTimer, stopTimer, updateLocalSolveStatus]);
+  });
 
   useEffect(() => {
     if (isSolved) {
@@ -125,10 +116,10 @@ export default function VirtualTimer({
   const lastScrambleRef = useRef<string>(scramble);
   useEffect(() => {
     if (scramble != lastScrambleRef.current) {
-      setSetupAlg(scramble);
+      setAlg(scramble);
       lastScrambleRef.current = scramble;
     }
-  }, [scramble, setSetupAlg]);
+  }, [scramble, setAlg]);
 
   const handleKeyboardBoundMove = useCallback(
     (move: string) => {
@@ -214,17 +205,17 @@ export default function VirtualTimer({
     );
   }, [localSolveStatus, useInspection]);
 
-  const displaySetupAlg = useMemo(() => {
-    return inDisabledState ? "" : scramble;
-  }, [scramble, inDisabledState]);
+  const displayAlg = useMemo(() => {
+    return inDisabledState ? "" : alg;
+  }, [alg, inDisabledState]);
 
   const VirtualCubeElement = useMemo(() => {
     return (
       <VirtualCube
         event="3x3x3"
         viewerControlsEnabled={false}
-        setupAlg={displaySetupAlg}
-        alg={alg}
+        setupAlg=""
+        alg={displayAlg}
         onError={() => {
           setInErrorState(true);
         }}
@@ -236,7 +227,7 @@ export default function VirtualTimer({
         onFinishAnimating={onFinishAnimating}
       />
     );
-  }, [alg, currentMoveEvent, displaySetupAlg, onFinishAnimating]);
+  }, [displayAlg, currentMoveEvent, onFinishAnimating]);
 
   const helpTextElement = useMemo(() => {
     if (localSolveStatus === "SOLVING" || localSolveStatus === "SUBMITTING") {
@@ -257,8 +248,7 @@ export default function VirtualTimer({
           variant="primary"
           disabled={!resetButtonEnabled}
           onClick={() => {
-            // TODO - handle reset correctly
-            setAlg("");
+            resetCube();
           }}
         >
           Reset
@@ -288,8 +278,7 @@ export default function VirtualTimer({
             }}
             onKeyUp={() => {
               setTimerTextClassName("");
-              setSetupAlg(scramble);
-              setAlg("");
+              setAlg(scramble);
               updateLocalSolveStatus();
             }}
           />
