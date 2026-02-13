@@ -114,11 +114,9 @@ export function VirtualCube({
         {viewerControlsEnabled && (
           <TrackballControls minDistance={3} maxDistance={12} />
         )}
-        {inErrorState && (
-          <EffectComposer>
-            <Vignette color={0xff0000} darkness={0.3} />
-          </EffectComposer>
-        )}
+        <EffectComposer enabled={inErrorState}>
+          <Vignette color={0xff0000} darkness={0.3} />
+        </EffectComposer>
       </Suspense>
     </Canvas>
   );
@@ -141,9 +139,7 @@ function VirtualCubeAnimationManager({
 }: VirtualCubeAnimationManagerProps) {
   const VirtualCubeComponent = VIRTUAL_CUBE_IMPLEMENTATIONS.get(event);
 
-  const [animationProgress, setAnimationProgress] = useState<
-    number | undefined
-  >(undefined);
+  const animationProgressRef = useRef<number>(0);
 
   const startTimeRef = useRef<number>(null);
   const animationFinishedRef = useRef<boolean>(false);
@@ -165,13 +161,11 @@ function VirtualCubeAnimationManager({
 
   useFrame(() => {
     if (!animationMove || !startTimeRef.current) return;
-
     // Calculate animation progress
     const elapsed = performance.now() - startTimeRef.current;
     const t = clamp(elapsed / animationDuration, 0, 1);
     const progress = clamp(animationEasingFunction(t), 0, 1);
-    setAnimationProgress(progress);
-
+    animationProgressRef.current = progress;
     if (t >= 1 && !animationFinishedRef.current) {
       animationFinishedRef.current = true;
       onFinishAnimating?.();
@@ -189,7 +183,7 @@ function VirtualCubeAnimationManager({
       alg={alg}
       orientation={orientation}
       animationMove={animationMove}
-      animationProgress={animationProgress}
+      animationProgressRef={animationProgressRef}
     />
   );
 }
