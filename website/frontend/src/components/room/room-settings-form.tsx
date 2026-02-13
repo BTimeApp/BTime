@@ -76,7 +76,7 @@ type RoomTemplateKey = (typeof ROOM_TEMPLATES)[number];
 const AccessSchema = z.discriminatedUnion("visibility", [
   z.object({
     visibility: z.literal("PRIVATE"),
-    password: z.string().min(1, "Password is required"),
+    password: z.string(),
   }),
   z.object({
     visibility: z.literal("PUBLIC"),

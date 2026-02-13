@@ -61,15 +61,22 @@ export async function updateRoom(
   room: IRoom,
   newRoomSettings: IRoomSettings
 ): Promise<void> {
-  room.settings = newRoomSettings;
-
   if (newRoomSettings.access.visibility == "PRIVATE") {
     const access: Access = { visibility: "PRIVATE", password: "" };
-    access.password = newRoomSettings.access.password
-      ? await bcrypt.hash(newRoomSettings.access.password, 10)
-      : "";
-    room.settings.access = access;
+
+    if (newRoomSettings.access.password) {
+      access.password = await bcrypt.hash(newRoomSettings.access.password, 10);
+    } else if (
+      room.settings.access.visibility === "PRIVATE" &&
+      newRoomSettings.access.password === ""
+    ) {
+      // when we update a room without updating the password, defer to the old password if available.
+      access.password = room.settings.access.password;
+    }
+
+    newRoomSettings.access = access;
   }
+  room.settings = newRoomSettings;
 
   RoomLogger.info(
     { ...room.settings, roomId: room.id },
