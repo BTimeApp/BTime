@@ -13,7 +13,6 @@ import { cn } from "@/lib/utils";
 import { useKeybindStore } from "@/stores/keybind-store";
 import {
   DEFAULT_MOVE_EVENT_DURATION,
-  SLOWEST_CONTINUOUS_MOVE_PAUSE,
   SLOWEST_MOVE_EVENT_DURATION,
 } from "@/types/animation-constants";
 import { Result } from "@btime/lib";
@@ -29,60 +28,6 @@ import {
   useState,
 } from "react";
 
-function mergeMoveEvents(
-  eventA: MoveEvent,
-  eventB: MoveEvent
-): MoveEvent | null {
-  /**
-   * Tries to merge two move events. If the events are incompatible, just returns null. A should have always occurred BEFORE B.
-   *
-   * Two criteria for merge-ability:
-   *   1) stacking same move family
-   *   2) moves happen close enough to each other to be feasible (most often seen by low timestamp diff)
-   *
-   * This function is directly ripped from the /bluetooth version.
-   */
-
-  const moveAFamily = eventA.move.quantum.family;
-  const moveBFamily = eventB.move.quantum.family;
-
-  if (
-    moveAFamily == moveBFamily &&
-    //move directions need to agree to be stackable
-    eventA.move.amount * eventB.move.amount >= 0
-  ) {
-    if (eventA.duration != null) {
-      if (
-        eventB.timestamp - eventA.timestamp - eventA.duration <
-        SLOWEST_CONTINUOUS_MOVE_PAUSE
-      ) {
-        return {
-          move: new Move(moveAFamily, eventA.move.amount + eventB.move.amount),
-          timestamp: eventA.timestamp,
-          duration:
-            eventB.timestamp -
-            eventA.timestamp +
-            (eventB.duration ?? DEFAULT_MOVE_EVENT_DURATION),
-        };
-      }
-    } else if (
-      eventB.timestamp - eventA.timestamp <=
-      SLOWEST_MOVE_EVENT_DURATION
-    ) {
-      return {
-        move: new Move(moveAFamily, eventA.move.amount + eventB.move.amount),
-        timestamp: eventA.timestamp,
-        duration:
-          eventB.timestamp -
-          eventA.timestamp +
-          (eventB.duration ?? DEFAULT_MOVE_EVENT_DURATION),
-      };
-    }
-  }
-
-  return null;
-}
-
 const customAddToQueue = (
   queue: MoveEvent[],
   newElem: MoveEvent
@@ -91,10 +36,8 @@ const customAddToQueue = (
     return [newElem];
   }
 
-  const ret = queue.slice();
   // update duration for last event if applicable
-
-  const lastEvent = ret.at(-1)!;
+  const lastEvent = queue.at(-1)!;
   if (lastEvent.duration == null) {
     const elapsedTime = newElem.timestamp - lastEvent.timestamp;
     lastEvent.duration =
@@ -102,21 +45,9 @@ const customAddToQueue = (
         ? elapsedTime
         : DEFAULT_MOVE_EVENT_DURATION;
   }
+  queue.push(newElem);
 
-  let curr = newElem;
-
-  let mergedEvent = mergeMoveEvents(lastEvent, curr);
-
-  while (ret.length > 0 && mergedEvent != null) {
-    ret.pop();
-    curr = mergedEvent;
-    if (ret.length > 0) {
-      mergedEvent = mergeMoveEvents(ret.at(-1)!, curr);
-    }
-  }
-  ret.push(curr);
-
-  return ret;
+  return queue;
 };
 
 const ROTATIONS = new Set<string>(["x", "y", "z"]);
@@ -165,7 +96,7 @@ export default function VirtualTimer({
   const {
     // kpattern,
     alg,
-    setupAlg,
+    // setupAlg,
     isSolved,
     applyMove,
     setAlg,
@@ -283,6 +214,30 @@ export default function VirtualTimer({
     );
   }, [localSolveStatus, useInspection]);
 
+  const displaySetupAlg = useMemo(() => {
+    return inDisabledState ? "" : scramble;
+  }, [scramble, inDisabledState]);
+
+  const VirtualCubeElement = useMemo(() => {
+    return (
+      <VirtualCube
+        event="3x3x3"
+        viewerControlsEnabled={false}
+        setupAlg={displaySetupAlg}
+        alg={alg}
+        onError={() => {
+          setInErrorState(true);
+        }}
+        onErrorClear={() => {
+          setInErrorState(false);
+        }}
+        animationMove={currentMoveEvent?.move}
+        animationDuration={currentMoveEvent?.duration}
+        onFinishAnimating={onFinishAnimating}
+      />
+    );
+  }, [alg, currentMoveEvent, displaySetupAlg, onFinishAnimating]);
+
   const helpTextElement = useMemo(() => {
     if (localSolveStatus === "SOLVING" || localSolveStatus === "SUBMITTING") {
       return null;
@@ -293,10 +248,6 @@ export default function VirtualTimer({
     }
     return <p>Do any move to start timer</p>;
   }, [localSolveStatus, useInspection]);
-
-  const displaySetupAlg = useMemo(() => {
-    return inDisabledState ? "" : scramble;
-  }, [scramble, inDisabledState]);
 
   return (
     <div className="flex flex-col gap-2 p-4">
@@ -320,24 +271,7 @@ export default function VirtualTimer({
           inDisabledState ? "bg-container-3/30 border-container-3" : ""
         )}
       >
-        <VirtualCube
-          event="3x3x3"
-          viewerControlsEnabled={false}
-          setupAlg={displaySetupAlg}
-          alg={alg}
-          onError={() => {
-            setInErrorState(true);
-          }}
-          onErrorClear={() => {
-            setInErrorState(false);
-          }}
-          animationMove={currentMoveEvent?.move}
-          animationDuration={currentMoveEvent?.duration}
-          onFinishAnimating={onFinishAnimating}
-        />
-      </div>
-      <div className="flex flex-row justify-center">
-        {setupAlg} | {alg}
+        {VirtualCubeElement}
       </div>
       <div className="flex flex-row justify-center">{helpTextElement}</div>
       <div className="flex flex-row justify-center">
@@ -354,8 +288,8 @@ export default function VirtualTimer({
             }}
             onKeyUp={() => {
               setTimerTextClassName("");
-              setSetupAlg(scramble); //will reset user done moves
-              setAlg(""); //reset all user-done moves done!
+              setSetupAlg(scramble);
+              setAlg("");
               updateLocalSolveStatus();
             }}
           />

@@ -38,13 +38,11 @@ export function useCubeStateManager(kpuzzle: KPuzzle, onSolved?: () => void) {
       });
     },
     [onSolved]
-    // [kpuzzle, onSolved]
   );
 
   const updateSetupAlg = useCallback(
     (newSetupAlg: string) => {
       setSetupAlg(newSetupAlg);
-      // setAlg("");
 
       try {
         const newPattern = kpuzzle.defaultPattern().applyAlg(newSetupAlg);
