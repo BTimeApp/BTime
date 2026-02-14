@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { KeyboardListenerKey } from "@/components/virtual/keyboard-key";
 import { useRoomStore } from "@/context/room-context";
 import { useCubeStateManager } from "@/hooks/use-cube-state-manager";
+import { useInspectionCountdown } from "@/hooks/use-inspection-countdown";
 import { useTimer } from "@/hooks/use-timer";
 import { get3x3x3 } from "@/lib/get-kpuzzle";
 import { cn } from "@/lib/utils";
@@ -75,6 +76,13 @@ export default function VirtualTimer({
   const [timerTextClassName, setTimerTextClassName] = useState<string>("");
   const [inErrorState, setInErrorState] = useState<boolean>(false);
 
+  const {
+    time: inspectionTime,
+    startInspection,
+    finishInspection,
+    inspectionPenalty,
+  } = useInspectionCountdown(updateLocalSolveStatus, onFinishInspection);
+
   /** Keybind map */
   const keybindMap = useKeybindStore((s) => s.keybindMap);
 
@@ -137,14 +145,20 @@ export default function VirtualTimer({
           (useInspection && localSolveStatus === "INSPECTING")) &&
         !ROTATIONS.has(moveObj.quantum.family)
       ) {
+        if (!useInspection) {
+          updateLocalSolveStatus("TIMER_START");
+        } else {
+          finishInspection();
+        }
+
         startTimer(timestamp);
-        updateLocalSolveStatus("TIMER_START");
       }
     },
     [
       addToAnimationQueue,
       updateLocalSolveStatus,
       startTimer,
+      finishInspection,
       useInspection,
       localSolveStatus,
     ]
@@ -165,10 +179,8 @@ export default function VirtualTimer({
     } else if (localSolveStatus === "INSPECTING") {
       return (
         <InspectionCountdown
-          timerType="VIRTUAL"
-          onFinishInspection={(penalty: Penalty) => {
-            onFinishInspection?.(penalty);
-          }}
+          remainingTime={inspectionTime}
+          penalty={inspectionPenalty}
           className={cn("text-4xl", timerTextClassName)}
         />
       );
@@ -183,8 +195,9 @@ export default function VirtualTimer({
     localSolveStatus,
     time,
     timerTextClassName,
+    inspectionTime,
+    inspectionPenalty,
     localResult,
-    onFinishInspection,
   ]);
 
   const resetButtonEnabled = useMemo(() => {
@@ -279,7 +292,7 @@ export default function VirtualTimer({
             onKeyUp={() => {
               setTimerTextClassName("");
               setAlg(scramble);
-              updateLocalSolveStatus();
+              startInspection();
             }}
           />
         )}

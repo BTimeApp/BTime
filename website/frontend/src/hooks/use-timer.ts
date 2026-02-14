@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export function useTimer() {
+/**
+ * updateInterval - the interval between updates to time state (centiseconds!).
+ */
+export function useTimer(updateInterval: number = 1) {
   const [time, setTime] = useState<number>(0); //time in centiseconds
   const [isRunning, setIsRunning] = useState<boolean>(false); // whether or not timer currently running
   const startTimeRef = useRef<number>(0);
@@ -15,10 +18,15 @@ export function useTimer() {
     const update = () => {
       const now = performance.now();
       const elapsed = now - startTimeRef.current;
-      const newTime = Math.floor(elapsed / 10);
+      const newTime = Math.floor(elapsed / 10); //centiseconds
 
       // Only trigger re-render when centisecond changes
-      if (newTime !== lastTimeRef.current) {
+      if (
+        newTime !== lastTimeRef.current &&
+        Math.floor(newTime / updateInterval) -
+          Math.floor(lastTimeRef.current / updateInterval) >
+          0
+      ) {
         lastTimeRef.current = newTime;
         setTime(newTime);
       }
@@ -32,11 +40,12 @@ export function useTimer() {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isRunning]);
+  }, [isRunning, updateInterval]);
 
   const startTimer = useCallback((startTime?: number) => {
     startTimeRef.current = startTime ?? performance.now();
     setTime(0);
+    lastTimeRef.current = 0;
     setIsRunning(true);
   }, []);
 
