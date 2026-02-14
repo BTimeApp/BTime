@@ -9,7 +9,7 @@ import type {
 } from "@btime/bluetooth-cubing";
 import type { KPattern } from "cubing/kpuzzle";
 
-import { connectCube } from "@btime/bluetooth-cubing";
+import { connectCube, IDENTITY_QUATERNION } from "@btime/bluetooth-cubing";
 import {
   useCallback,
   useEffect,
@@ -18,8 +18,6 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-
-const DEFAULT_ORIENTATION = { w: 1, x: 0, y: 0, z: 0 };
 
 export function useBluetoothCube(
   onMoveEvent?: CubeMoveEventListener,
@@ -93,8 +91,8 @@ export function useBluetoothCube(
         cleanup();
       };
     },
-    () => cubeRef.current?.orientation ?? DEFAULT_ORIENTATION,
-    () => DEFAULT_ORIENTATION
+    () => cubeRef.current?.orientation ?? IDENTITY_QUATERNION,
+    () => IDENTITY_QUATERNION
   );
 
   /**
