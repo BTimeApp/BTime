@@ -62,9 +62,9 @@ export default function UserRoomSettingsDialog({
               {ROOM_EVENTS_INFO[roomEvent]?.baseEvent === "333" && (
                 <SelectItem value="VIRTUAL">Virtual</SelectItem>
               )}
-              {/* {ROOM_EVENTS_INFO[roomEvent]?.baseEvent === "333" && (
+              {ROOM_EVENTS_INFO[roomEvent]?.baseEvent === "333" && (
                 <SelectItem value="BLUETOOTHCUBE">Bluetooth Cube</SelectItem>
-              )} */}
+              )}
             </SelectContent>
           </Select>
         </div>

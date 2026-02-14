@@ -3,6 +3,6 @@ export const TIMER_TYPES = [
   "KEYBOARD",
   "BLUETOOTHTIMER",
   "VIRTUAL",
-  // "BLUETOOTHCUBE",
+  "BLUETOOTHCUBE",
 ] as const;
 export type TimerType = (typeof TIMER_TYPES)[number];

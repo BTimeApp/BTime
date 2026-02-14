@@ -1,4 +1,9 @@
-import { type RoomEvent, type SolveStatus, type TimerType } from "@btime/types";
+import {
+  ROOM_EVENTS_INFO,
+  type RoomEvent,
+  type SolveStatus,
+  type TimerType,
+} from "@btime/types";
 
 /**
  * TODO - consider rolling all of these up into options on some TimerTypeInfo constant
@@ -25,8 +30,8 @@ export function getDefaultLocalSolveStatus(timerType: TimerType): SolveStatus {
       return "IDLE";
     case "VIRTUAL":
       return "IDLE";
-    // case "BLUETOOTHCUBE":
-    //   return "IDLE";
+    case "BLUETOOTHCUBE":
+      return "IDLE";
     default:
       console.error(`Illegal timer type encountered: ${timerType}`);
       return "IDLE";
@@ -48,8 +53,8 @@ export function timerAllowsEvent(timerType: TimerType, roomEvent: RoomEvent) {
     case "VIRTUAL":
       // replace this when virtual supports more puzzles
       return roomEvent === "333";
-    // case "BLUETOOTHCUBE":
-    //   return ROOM_EVENTS_INFO[roomEvent]?.baseEvent === "333";
+    case "BLUETOOTHCUBE":
+      return ROOM_EVENTS_INFO[roomEvent]?.baseEvent === "333";
     default:
       console.error(`Illegal timer type encountered: ${timerType}`);
       return "IDLE";
