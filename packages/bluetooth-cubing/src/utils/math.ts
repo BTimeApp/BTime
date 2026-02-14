@@ -16,13 +16,6 @@ export function valuedArray(
   return ret;
 }
 
-export const IDENTITY_QUATERNION: Quaternion = {
-  w: 1,
-  x: 0,
-  y: 0,
-  z: 0,
-} as const;
-
 /**
  * Invert a quaternion
  */
