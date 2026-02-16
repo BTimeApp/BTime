@@ -65,7 +65,7 @@ export default function VirtualTimer({
   onFinishInspection,
   onFinishTimer,
 }: VirtualTimerProps) {
-  const kpuzzle333 = use(kpuzzle333Promise);
+  const defaultPattern333 = use(kpuzzle333Promise).defaultPattern();
 
   /** State */
   const localSolveStatus = useRoomStore((s) => s.localSolveStatus);
@@ -99,7 +99,7 @@ export default function VirtualTimer({
   /** State manager */
 
   const { alg, isSolved, applyMove, setAlg, resetCube } = useCubeStateManager(
-    kpuzzle333,
+    defaultPattern333,
     scramble
   );
 

@@ -1,15 +1,55 @@
 import type { Move } from "cubing/alg";
-import type { KPattern, KPuzzle } from "cubing/kpuzzle";
+import type { KPattern } from "cubing/kpuzzle";
 
-import { useCallback, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+} from "react";
 
-export function useCubeStateManager(kpuzzle: KPuzzle, initialAlg: string = "") {
+export function useCubeStateManager(
+  initialState: KPattern,
+  initialAlg: string = ""
+) {
   const [alg, setAlg] = useState<string>(initialAlg);
   const [pattern, setPattern] = useState<KPattern>(() =>
-    kpuzzle.defaultPattern().applyAlg(initialAlg)
+    initialState.applyAlg(initialAlg)
   );
 
-  const [solved, setSolved] = useState<boolean>(true);
+  const [solved, setSolved] = useState<boolean>(
+    pattern.experimentalIsSolved({
+      ignoreCenterOrientation: true,
+      ignorePuzzleOrientation: true,
+    })
+  );
+
+  const lastInitialStateRef = useRef<KPattern>(initialState);
+  const lastInitialAlgRef = useRef<string>(initialAlg);
+
+  const refreshParamsEvent = useEffectEvent(() => {
+    setAlg(initialAlg);
+    const newPattern = initialState.applyAlg(initialAlg);
+    setPattern(newPattern);
+    setSolved(
+      newPattern.experimentalIsSolved({
+        ignoreCenterOrientation: true,
+        ignorePuzzleOrientation: true,
+      })
+    );
+  });
+
+  useEffect(() => {
+    if (
+      !lastInitialStateRef.current.isIdentical(initialState) ||
+      lastInitialAlgRef.current !== initialAlg
+    ) {
+      lastInitialStateRef.current = initialState;
+      lastInitialAlgRef.current = initialAlg;
+      refreshParamsEvent();
+    }
+  }, [initialState, initialAlg]);
 
   const checkSolved = useCallback((pattern: KPattern) => {
     const solved = pattern.experimentalIsSolved({
@@ -43,7 +83,7 @@ export function useCubeStateManager(kpuzzle: KPuzzle, initialAlg: string = "") {
       setAlg(newAlg);
 
       try {
-        const base = kpuzzle.defaultPattern();
+        const base = initialState;
         const newPattern = base.applyAlg(newAlg);
         setPattern(newPattern);
         checkSolved(newPattern);
@@ -51,14 +91,14 @@ export function useCubeStateManager(kpuzzle: KPuzzle, initialAlg: string = "") {
         console.warn("something went wrong applying new alg");
       }
     },
-    [checkSolved, kpuzzle]
+    [checkSolved, initialState]
   );
 
   const resetCube = useCallback(() => {
     setAlg("");
-    setPattern(kpuzzle.defaultPattern());
+    setPattern(initialState);
     setSolved(true);
-  }, [kpuzzle]);
+  }, [initialState]);
 
   return {
     alg,

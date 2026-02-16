@@ -1,5 +1,6 @@
 import type { Penalty } from "@btime/types";
 
+import BluetoothCubeTimer from "@/components/room/timers/bluetooth-cube-timer";
 import BluetoothTimer from "@/components/room/timers/bluetooth-timer";
 import KeyboardTimer from "@/components/room/timers/keyboard-timer";
 import TypingTimer from "@/components/room/timers/typing-timer";
@@ -91,8 +92,14 @@ function TimerSection({ scramble }: TimerSectionProps) {
           onFinishTimer={endNumberTimerCallback}
         />
       );
-    // case "BLUETOOTHCUBE":
-    //   return null;
+    case "BLUETOOTHCUBE":
+      return (
+        <BluetoothCubeTimer
+          scramble={scramble}
+          onFinishInspection={endInspectionCallback}
+          onFinishTimer={endNumberTimerCallback}
+        />
+      );
     default:
       console.warn(`Illegal timer type encountered: ${timerType}`);
       return;
