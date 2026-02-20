@@ -1,64 +1,44 @@
-import { useCallback, useRef, useState } from "react";
+import { AnimationQueue } from "./animation-queue";
+import {
+  useEffect,
+  useEffectEvent,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
 /**
- * Hook for handling an animation queue. Meant to be used in product code directly as a queue helper.
- * Automatically tries to process elements when adding new elems or when animations finish (handleAnimationComplete).
+ * React hook for AnimationQueue integration
+ *
+ * Creates a stable AnimationQueue instance that persists across renders
+ * and subscribes to its changes using React's useSyncExternalStore.
+ *
+ * We get the benefit of synchronous updates while maintaining reactive state with this pattern.
+ *
  */
-export const useAnimationQueue = <T,>(
+export function useAnimationQueue<T>(
   customAddToQueue?: (queue: T[], newElem: T) => T[]
-) => {
-  const animationQueueRef = useRef<T[]>([]);
-  const [currentElem, setCurrentElem] = useState<T | undefined>(undefined);
-  const currentElemRef = useRef<T | undefined>(undefined);
+) {
+  // Create queue instance once
+  const [queue] = useState<AnimationQueue<T>>(
+    () => new AnimationQueue<T>(customAddToQueue)
+  );
+  const currentElem = queue.getCurrent();
 
-  const processAnimationQueue = useCallback(() => {
-    if (currentElemRef.current) return; //ref helps avoid stale closure
-
-    const next = animationQueueRef.current.shift();
-    if (next) {
-      currentElemRef.current = next;
-      setCurrentElem(next); //update state for downstream consumers to use
+  const newCustomAddToQueueEvent = useEffectEvent(
+    (newCustomAddToQueue?: (queue: T[], newElem: T) => T[]) => {
+      queue.setCustomAddToQueue(newCustomAddToQueue);
     }
-  }, []);
-
-  const addToAnimationQueue = useCallback(
-    (newElem: T) => {
-      if (customAddToQueue) {
-        animationQueueRef.current = customAddToQueue(
-          animationQueueRef.current,
-          newElem
-        );
-      } else {
-        //default processing - add to end
-        animationQueueRef.current.push(newElem);
-      }
-
-      //immediately try to process new events
-      processAnimationQueue();
-    },
-    [processAnimationQueue, customAddToQueue]
   );
 
-  const handleAnimationComplete = useCallback(() => {
-    currentElemRef.current = undefined;
-    setCurrentElem(undefined);
-    processAnimationQueue();
-  }, [processAnimationQueue]);
+  useEffect(() => {
+    newCustomAddToQueueEvent(customAddToQueue);
+  }, [customAddToQueue]);
 
-  const clearAnimationQueue = useCallback(() => {
-    animationQueueRef.current = [];
-  }, []);
+  // Subscribe to changes for React re-renders
+  useSyncExternalStore(
+    (callback) => queue.subscribe(callback),
+    () => queue.getSnapshot()
+  );
 
-  const clearCurrentElem = useCallback(() => {
-    setCurrentElem(undefined);
-    currentElemRef.current = undefined;
-  }, []);
-
-  return {
-    currentElem,
-    addToAnimationQueue,
-    handleAnimationComplete,
-    clearAnimationQueue,
-    clearCurrentElem,
-  };
-};
+  return { queue, currentElem };
+}
