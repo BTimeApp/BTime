@@ -352,7 +352,7 @@ export default function RoomSettingsForm({
                             />
                           </SelectTrigger>
                         </FormControl>
-                        <SelectContent>
+                        <SelectContent className="overflow-y-auto max-h-[50vh]">
                           {ROOM_EVENTS.map((val, idx) => (
                             <SelectItem key={idx} value={val}>
                               {ROOM_EVENTS_INFO[val].displayName}
