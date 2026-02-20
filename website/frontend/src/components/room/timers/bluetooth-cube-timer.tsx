@@ -483,15 +483,11 @@ export default function BluetoothCubeTimer({
       const moveSolvesCube = checkSolved(
         initialState?.applyAlg(new Alg(alg).concat(animationQueueAlg))
       );
-      console.log(
-        `Move Event: ${moveEvent.move}, solves cube? ${moveSolvesCube}`
-      );
 
       if (localSolveStatus === "IDLE") {
         switch (scrambleState) {
           case ScrambleState.PRESCRAMBLE:
             if (moveSolvesCube) {
-              console.count("Solved in prescramble!");
               resetInitialStateAndClearQueue();
               resetScrambleParts();
               setScrambleState(ScrambleState.SCRAMBLING);
@@ -500,16 +496,8 @@ export default function BluetoothCubeTimer({
             break;
           case ScrambleState.SCRAMBLING:
             if (moveSolvesCube) {
-              console.count("Solved in scrambling!");
-              console.log(
-                `Currently in animation queue: ${animationQueue
-                  .getAllItems()
-                  .map((x) => x.move.toString())
-                  .join(" ")} + current alg: ${alg}`
-              );
               resetInitialStateAndClearQueue();
               resetScrambleParts();
-              console.log("Resetting everything");
               return;
             }
             applyMoveToScramble(moveEvent.move.toString());
@@ -571,7 +559,6 @@ export default function BluetoothCubeTimer({
   const onFinishAnimating = useCallback(() => {
     const currentMoveEvent = animationQueue.getCurrent();
     if (!currentMoveEvent) {
-      console.log("[onFinishAnimating] early return");
       return;
     }
 
