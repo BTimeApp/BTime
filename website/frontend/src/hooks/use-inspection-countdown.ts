@@ -25,13 +25,11 @@ export function useInspectionCountdown(
   }, [inspectionTimeRemaining]);
 
   const startInspection = useCallback(() => {
-    console.log("start inspection");
     startTimer();
     onStartInspection?.();
   }, [onStartInspection, startTimer]);
 
   const finishInspection = useCallback(() => {
-    console.log("stop inspection with penalty", currentPenalty);
     stopTimer();
     onFinishInspection?.(currentPenalty);
   }, [onFinishInspection, currentPenalty, stopTimer]);
