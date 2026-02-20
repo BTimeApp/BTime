@@ -9,11 +9,8 @@ import type {
 } from "../types/cube-types";
 import type { KPattern } from "cubing/kpuzzle";
 
-import {
-  applyQuaternion,
-  IDENTITY_QUATERNION,
-  invertQuaternion,
-} from "../utils";
+import { IDENTITY_QUATERNION } from "../types/cube-types";
+import { applyQuaternion, invertQuaternion } from "../utils";
 import { Alg, experimentalAppendMove } from "cubing/alg";
 
 export const CUBE_MOVE_EVENT = "CUBE_MOVE_EVENT";

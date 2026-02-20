@@ -1,2 +1,8 @@
-export const TIMER_TYPES = ["TYPING", "KEYBOARD", "BLUETOOTH"] as const; //TODO: implement STACKMAT
+export const TIMER_TYPES = [
+  "TYPING",
+  "KEYBOARD",
+  "BLUETOOTHTIMER",
+  "VIRTUAL",
+  "BLUETOOTHCUBE",
+] as const;
 export type TimerType = (typeof TIMER_TYPES)[number];

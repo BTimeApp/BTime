@@ -9,6 +9,11 @@ import PageWrapper from "@/components/common/page-wrapper";
 import { Button } from "@/components/ui/button";
 import { useTimer } from "@/hooks/use-timer";
 import { cn } from "@/lib/utils";
+import {
+  DEFAULT_MOVE_EVENT_DURATION,
+  SLOWEST_CONTINUOUS_MOVE_PAUSE,
+  SLOWEST_MOVE_EVENT_DURATION,
+} from "@/types/animation-constants";
 import { TimerState } from "@btime/bluetooth-cubing";
 import {
   useBluetoothCube,
@@ -27,10 +32,6 @@ import { Quaternion } from "three";
 export const Route = createFileRoute("/bluetooth/")({
   component: BluetoothPage,
 });
-
-const DEFAULT_MOVE_EVENT_DURATION = 70;
-const SLOWEST_MOVE_EVENT_DURATION = 300;
-const SLOWEST_CONTINUOUS_MOVE_PAUSE = 25;
 
 enum SolveStates {
   IDLE = 0,
@@ -172,13 +173,8 @@ function BluetoothPage() {
     disconnect: disconnectTimer,
   } = useBluetoothTimer(handleTimerEvent);
 
-  const {
-    currentElem: currentMoveEvent,
-    addToAnimationQueue,
-    handleAnimationComplete,
-    clearAnimationQueue,
-    clearCurrentElem,
-  } = useAnimationQueue<MoveEvent>(customAddToQueue);
+  const { queue: animationQueue, currentElem: currentMoveEvent } =
+    useAnimationQueue<MoveEvent>(customAddToQueue);
 
   const {
     time,
@@ -222,9 +218,9 @@ function BluetoothPage() {
         startTimer();
         solveFirstMoveDoneRef.current = true;
       }
-      addToAnimationQueue(moveEvent);
+      animationQueue.enqueue(moveEvent);
     },
-    [solveState, startTimer, addToAnimationQueue]
+    [solveState, startTimer, animationQueue]
   );
 
   const handleSolvedCallback = useCallback(() => {
@@ -255,13 +251,12 @@ function BluetoothPage() {
   const handleSync = useCallback(async () => {
     try {
       await syncCube();
-      clearAnimationQueue();
-      clearCurrentElem();
+      animationQueue.clear();
       setAlg("");
     } catch (err) {
       toast.error((err as Error)?.message ?? "Error during synchronizing");
     }
-  }, [syncCube, clearAnimationQueue, clearCurrentElem]);
+  }, [syncCube, animationQueue]);
 
   const onFinishAnimating = useCallback(() => {
     if (currentMoveEvent) {
@@ -285,15 +280,9 @@ function BluetoothPage() {
         setAlg((alg) => alg + " " + currentMoveEvent.move.toString());
       }
 
-      handleAnimationComplete();
+      animationQueue.completeCurrent();
     }
-  }, [
-    currentMoveEvent,
-    scramble,
-    solveState,
-    isSolved,
-    handleAnimationComplete,
-  ]);
+  }, [currentMoveEvent, scramble, solveState, isSolved, animationQueue]);
 
   return (
     <PageWrapper>
