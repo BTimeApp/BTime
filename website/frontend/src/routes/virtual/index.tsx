@@ -31,12 +31,8 @@ function VirtualPage() {
   const [latestTime, setLatestTime] = useState<number>(0);
   const solveFirstMoveDoneRef = useRef<boolean>(false);
 
-  const {
-    currentElem: currentMove,
-    addToAnimationQueue,
-    handleAnimationComplete,
-    clearAnimationQueue,
-  } = useAnimationQueue<Move>();
+  const { queue: animationQueue, currentElem: currentMove } =
+    useAnimationQueue<Move>();
 
   const handleKeyboardBoundMove = useCallback(
     (move: string) => {
@@ -51,7 +47,7 @@ function VirtualPage() {
 
       const moveObj = new Move(move);
 
-      addToAnimationQueue(moveObj);
+      animationQueue.enqueue(moveObj);
       if (
         !solveFirstMoveDoneRef.current &&
         !ROTATIONS.has(moveObj.quantum.family)
@@ -60,7 +56,7 @@ function VirtualPage() {
         startTimer(timestamp);
       }
     },
-    [addToAnimationQueue, startTimer]
+    [animationQueue, startTimer]
   );
 
   const generateScramble = useCallback(async () => {
@@ -71,10 +67,10 @@ function VirtualPage() {
   const handleScramble = useCallback(async () => {
     setSetupAlg(await generateScramble());
     setAlg(""); //resets the current alg!
-    clearAnimationQueue();
+    animationQueue.clear();
 
     solveFirstMoveDoneRef.current = false;
-  }, [generateScramble, clearAnimationQueue]);
+  }, [generateScramble, animationQueue]);
 
   const setupAlgInputRef = useRef<HTMLInputElement>(null);
   const algInputRef = useRef<HTMLInputElement>(null);
@@ -124,8 +120,8 @@ function VirtualPage() {
     if (currentMove) {
       applyMove(currentMove);
     }
-    handleAnimationComplete();
-  }, [applyMove, currentMove, handleAnimationComplete]);
+    animationQueue.completeCurrent();
+  }, [applyMove, currentMove, animationQueue]);
 
   const isMobile = useIsMobile();
 

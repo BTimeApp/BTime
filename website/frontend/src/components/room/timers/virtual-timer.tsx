@@ -90,11 +90,8 @@ export default function VirtualTimer({
   const { time, startTimer, stopTimer } = useTimer();
 
   /** Animation queue */
-  const {
-    currentElem: currentMoveEvent,
-    addToAnimationQueue,
-    handleAnimationComplete,
-  } = useAnimationQueue<MoveEvent>(customAddToQueue);
+  const { queue: animationQueue, currentElem: currentMoveEvent } =
+    useAnimationQueue<MoveEvent>(customAddToQueue);
 
   /** State manager */
 
@@ -139,7 +136,7 @@ export default function VirtualTimer({
         timestamp: timestamp,
       };
 
-      addToAnimationQueue(moveEvent);
+      animationQueue.enqueue(moveEvent);
       if (
         ((!useInspection && localSolveStatus === "IDLE") ||
           (useInspection && localSolveStatus === "INSPECTING")) &&
@@ -155,7 +152,7 @@ export default function VirtualTimer({
       }
     },
     [
-      addToAnimationQueue,
+      animationQueue,
       updateLocalSolveStatus,
       startTimer,
       finishInspection,
@@ -167,9 +164,9 @@ export default function VirtualTimer({
   const onFinishAnimating = useCallback(() => {
     if (!currentMoveEvent) return;
 
-    handleAnimationComplete();
+    animationQueue.completeCurrent();
     applyMove(currentMoveEvent.move);
-  }, [applyMove, currentMoveEvent, handleAnimationComplete]);
+  }, [applyMove, currentMoveEvent, animationQueue]);
 
   const timerElement = useMemo(() => {
     if (localSolveStatus === "IDLE") {
