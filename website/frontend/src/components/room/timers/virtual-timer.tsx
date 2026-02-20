@@ -6,7 +6,10 @@ import InspectionCountdown from "@/components/room/inspection-countdown";
 import { Button } from "@/components/ui/button";
 import { KeyboardListenerKey } from "@/components/virtual/keyboard-key";
 import { useRoomStore } from "@/context/room-context";
-import { useCubeStateManager } from "@/hooks/use-cube-state-manager";
+import {
+  checkSolved,
+  useCubeStateManager,
+} from "@/hooks/use-cube-state-manager";
 import { useInspectionCountdown } from "@/hooks/use-inspection-countdown";
 import { useTimer } from "@/hooks/use-timer";
 import { get3x3x3 } from "@/lib/get-kpuzzle";
@@ -18,16 +21,8 @@ import {
 } from "@/types/animation-constants";
 import { Result } from "@btime/lib";
 import { useAnimationQueue, VirtualCube } from "@btime/virtual-cubing-react";
-import { Move } from "cubing/alg";
-import {
-  use,
-  useCallback,
-  useEffect,
-  useEffectEvent,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { Alg, Move } from "cubing/alg";
+import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const customAddToQueue = (
   queue: MoveEvent[],
@@ -95,28 +90,10 @@ export default function VirtualTimer({
 
   /** State manager */
 
-  const { alg, isSolved, applyMove, setAlg, resetCube } = useCubeStateManager(
+  const { alg, applyMove, setAlg, resetCube } = useCubeStateManager(
     defaultPattern333,
     scramble
   );
-
-  const onSolvedEvent = useEffectEvent(() => {
-    /**
-     * The cube state manager will call this callback every time we enter a solved state.
-     * We only care about when we're still solving.
-     */
-    if (localSolveStatus === "SOLVING") {
-      resetCube();
-      onFinishTimer(stopTimer());
-      updateLocalSolveStatus();
-    }
-  });
-
-  useEffect(() => {
-    if (isSolved) {
-      onSolvedEvent();
-    }
-  }, [isSolved]);
 
   const lastScrambleRef = useRef<string>(scramble);
   useEffect(() => {
@@ -135,29 +112,61 @@ export default function VirtualTimer({
         move: moveObj,
         timestamp: timestamp,
       };
+      const animationQueueAlg = new Alg(
+        animationQueue.getAllItems().map((x) => x.move)
+      ).concat([moveEvent.move]);
+
+      /**
+       * Current state =
+       * initialState + alg + animation queue (including current elem) + new move
+       */
+      const moveSolvesCube = checkSolved(
+        defaultPattern333?.applyAlg(new Alg(alg).concat(animationQueueAlg))
+      );
 
       animationQueue.enqueue(moveEvent);
-      if (
-        ((!useInspection && localSolveStatus === "IDLE") ||
-          (useInspection && localSolveStatus === "INSPECTING")) &&
-        !ROTATIONS.has(moveObj.quantum.family)
-      ) {
-        if (!useInspection) {
+
+      if (localSolveStatus === "IDLE") {
+        if (!useInspection && !ROTATIONS.has(moveObj.quantum.family)) {
           updateLocalSolveStatus("TIMER_START");
-        } else {
+          startTimer(timestamp);
+        }
+      } else if (localSolveStatus === "INSPECTING") {
+        if (useInspection && !ROTATIONS.has(moveObj.quantum.family)) {
           finishInspection();
+          startTimer(timestamp);
         }
 
-        startTimer(timestamp);
+        /**
+         * Just tracing code logic, it's possible that moveSolvesCube is true here (aka the first move solves the cube)
+         * While we should handle it gracefully, it's likely unintended behavior, so also error.
+         */
+        if (moveSolvesCube) {
+          console.error(
+            "First move after inspection solved cube! This should never happen."
+          );
+          onFinishTimer(0);
+          return;
+        }
+      } else if (localSolveStatus === "SOLVING") {
+        if (moveSolvesCube) {
+          resetCube();
+          onFinishTimer(stopTimer());
+        }
       }
     },
     [
       animationQueue,
+      defaultPattern333,
+      alg,
+      localSolveStatus,
+      useInspection,
       updateLocalSolveStatus,
       startTimer,
       finishInspection,
-      useInspection,
-      localSolveStatus,
+      resetCube,
+      onFinishTimer,
+      stopTimer,
     ]
   );
 
