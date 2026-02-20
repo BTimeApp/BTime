@@ -9,20 +9,29 @@ import {
   useState,
 } from "react";
 
+export function checkSolved(pattern: KPattern | undefined) {
+  return (
+    pattern?.experimentalIsSolved({
+      ignoreCenterOrientation: true,
+      ignorePuzzleOrientation: true,
+    }) ?? false
+  );
+}
+
 export function useCubeStateManager(
-  initialState: KPattern,
+  initialState?: KPattern,
   initialAlg: string = ""
 ) {
   const [alg, setAlg] = useState<string>(initialAlg);
-  const [pattern, setPattern] = useState<KPattern>(() =>
-    initialState.applyAlg(initialAlg)
+  const [pattern, setPattern] = useState<KPattern | undefined>(() =>
+    initialState?.applyAlg(initialAlg)
   );
 
   const [solved, setSolved] = useState<boolean>(
-    pattern.experimentalIsSolved({
+    pattern?.experimentalIsSolved({
       ignoreCenterOrientation: true,
       ignorePuzzleOrientation: true,
-    })
+    }) ?? false
   );
 
   const lastInitialStateRef = useRef<KPattern>(initialState);
@@ -30,53 +39,45 @@ export function useCubeStateManager(
 
   const refreshParamsEvent = useEffectEvent(() => {
     setAlg(initialAlg);
-    const newPattern = initialState.applyAlg(initialAlg);
+    const newPattern = initialState?.applyAlg(initialAlg);
     setPattern(newPattern);
-    setSolved(
-      newPattern.experimentalIsSolved({
-        ignoreCenterOrientation: true,
-        ignorePuzzleOrientation: true,
-      })
-    );
+    setSolved(checkSolved(newPattern));
   });
 
   useEffect(() => {
-    if (
-      !lastInitialStateRef.current.isIdentical(initialState) ||
-      lastInitialAlgRef.current !== initialAlg
-    ) {
-      lastInitialStateRef.current = initialState;
+    if (lastInitialAlgRef.current !== initialAlg) {
       lastInitialAlgRef.current = initialAlg;
       refreshParamsEvent();
     }
-  }, [initialState, initialAlg]);
+  }, [initialAlg]);
 
-  const checkSolved = useCallback((pattern: KPattern) => {
-    const solved = pattern.experimentalIsSolved({
-      ignoreCenterOrientation: true,
-      ignorePuzzleOrientation: true,
+  useEffect(() => {
+    if (
+      (lastInitialStateRef.current != null && initialState == null) ||
+      (lastInitialStateRef.current == null && initialState != null) ||
+      (lastInitialStateRef.current != null &&
+        initialState != null &&
+        !lastInitialStateRef.current.isIdentical(initialState))
+    ) {
+      lastInitialStateRef.current = initialState;
+      refreshParamsEvent();
+    }
+  }, [initialState]);
+
+  const applyMove = useCallback((move: Move) => {
+    // Update alg string
+    setAlg((prev) => {
+      return prev + " " + move.toString();
     });
-    setSolved(solved);
-    return solved;
+
+    setPattern((prevPattern) => {
+      const newPattern = prevPattern?.applyMove(move);
+      const solved = checkSolved(newPattern);
+      setSolved(solved);
+
+      return newPattern;
+    });
   }, []);
-
-  const applyMove = useCallback(
-    (move: Move) => {
-      // Update alg string
-      setAlg((prev) => {
-        return prev + " " + move.toString();
-      });
-
-      setPattern((prevPattern) => {
-        const newPattern = prevPattern.applyMove(move);
-        const solved = checkSolved(newPattern);
-        setSolved(solved);
-
-        return newPattern;
-      });
-    },
-    [checkSolved]
-  );
 
   const updateAlg = useCallback(
     (newAlg: string) => {
@@ -84,20 +85,23 @@ export function useCubeStateManager(
 
       try {
         const base = initialState;
-        const newPattern = base.applyAlg(newAlg);
+        const newPattern = base?.applyAlg(newAlg);
         setPattern(newPattern);
-        checkSolved(newPattern);
+        setSolved(checkSolved(newPattern));
       } catch {
         console.warn("something went wrong applying new alg");
       }
     },
-    [checkSolved, initialState]
+    [initialState]
   );
 
   const resetCube = useCallback(() => {
     setAlg("");
     setPattern(initialState);
-    setSolved(true);
+    setSolved(checkSolved(initialState));
+
+    lastInitialAlgRef.current = "";
+    lastInitialStateRef.current = initialState;
   }, [initialState]);
 
   return {
