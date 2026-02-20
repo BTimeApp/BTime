@@ -5,7 +5,10 @@ import type { KPattern } from "cubing/kpuzzle";
 import InspectionCountdown from "@/components/room/inspection-countdown";
 import { Button } from "@/components/ui/button";
 import { useRoomStore } from "@/context/room-context";
-import { useCubeStateManager } from "@/hooks/use-cube-state-manager";
+import {
+  checkSolved,
+  useCubeStateManager,
+} from "@/hooks/use-cube-state-manager";
 import { useInspectionCountdown } from "@/hooks/use-inspection-countdown";
 import { useTimer } from "@/hooks/use-timer";
 import { get3x3x3 } from "@/lib/get-kpuzzle";
@@ -299,6 +302,7 @@ export default function BluetoothCubeTimer({
   const localResult = useRoomStore((s) => s.localResult);
   const useInspection = useRoomStore((s) => s.useInspection);
   const updateLocalSolveStatus = useRoomStore((s) => s.updateLocalSolveStatus);
+  const resetLocalSolveStatus = useRoomStore((s) => s.resetLocalSolveStatus);
 
   const [inErrorState, setInErrorState] = useState<boolean>(false);
 
@@ -306,7 +310,6 @@ export default function BluetoothCubeTimer({
   const [scrambleState, setScrambleState] = useState<ScrambleState>(
     ScrambleState.PRESCRAMBLE
   );
-  const solveFirstMoveDoneRef = useRef<boolean>(false);
   const lastScrambleRef = useRef<string>("");
 
   /** Timer */
@@ -347,21 +350,16 @@ export default function BluetoothCubeTimer({
   );
 
   /** Animation queue */
-  const {
-    currentElem: currentMoveEvent,
-    addToAnimationQueue,
-    handleAnimationComplete,
-    clearAnimationQueue,
-    clearCurrentElem,
-  } = useAnimationQueue<MoveEvent>(customAddToQueue);
+  const { queue: animationQueue, currentElem: currentMoveEvent } =
+    useAnimationQueue<MoveEvent>(customAddToQueue);
 
   /** State manager */
 
   const [
     connected,
     // cube,
-    initialState,
-    initialStateInitialized,
+    bluetoothCubeInitialState,
+    // initialStateInitialized,
     orientation,
     moveCallbackRef,
     connect,
@@ -371,7 +369,7 @@ export default function BluetoothCubeTimer({
     s.connected,
     // s.cube,
     s.initialState,
-    s.initialStateInitialized,
+    // s.initialStateInitialized,
     s.orientation,
     s.moveCallbackRef,
     s.connect,
@@ -379,33 +377,51 @@ export default function BluetoothCubeTimer({
     s.disconnect,
   ]);
 
-  const lastConnectedRef = useRef<boolean>(connected);
-
-  const { alg, isSolved, setAlg, applyMove, resetCube } = useCubeStateManager(
-    initialState ?? defaultPattern333 // use cube's initial state, or solved 333
-    // do NOT pass in scramble - we want to match cube state.
+  /**
+   * We cannot change the initial state of the bluetooth module.
+   * However, we would like to modify the initial state (according to cube state manager) to be solved whenever we solve the puzzle.
+   * On top of this, we would still like to reactively update our tracked initial state whenever the bluetooth module updates it (i.e. during a sync).
+   *
+   * To make this work, the responsibility for bridging this gap will fall on this integration component.
+   */
+  const [initialState, setInitialState] = useState<KPattern | undefined>(
+    bluetoothCubeInitialState
   );
+  const lastInitialStateRef = useRef<KPattern>(initialState);
 
-  const initialStateInitializedEvent = useEffectEvent(() => {
-    if (localSolveStatus === "IDLE") {
-      if (
-        initialState?.experimentalIsSolved({
-          ignoreCenterOrientation: true,
-          ignorePuzzleOrientation: true,
-        })
-      ) {
-        setScrambleState(ScrambleState.SCRAMBLING);
-      } else {
-        setScrambleState(ScrambleState.PRESCRAMBLE);
+  const newBluetoothCubeInitialStateEvent = useEffectEvent(
+    (newBluetoothCubeInitialState: KPattern | undefined) => {
+      if (localSolveStatus === "IDLE") {
+        if (checkSolved(newBluetoothCubeInitialState)) {
+          setScrambleState(ScrambleState.SCRAMBLING);
+        } else {
+          setScrambleState(ScrambleState.PRESCRAMBLE);
+        }
       }
     }
-  });
-
+  );
   useEffect(() => {
-    if (initialStateInitialized) {
-      initialStateInitializedEvent();
+    if (
+      (lastInitialStateRef.current == null &&
+        bluetoothCubeInitialState != null) ||
+      (lastInitialStateRef.current != null &&
+        bluetoothCubeInitialState == null) ||
+      (lastInitialStateRef.current != null &&
+        bluetoothCubeInitialState != null &&
+        !lastInitialStateRef.current.isIdentical(bluetoothCubeInitialState))
+    ) {
+      newBluetoothCubeInitialStateEvent(bluetoothCubeInitialState);
+      setInitialState(bluetoothCubeInitialState);
+      lastInitialStateRef.current = bluetoothCubeInitialState;
     }
-  }, [initialStateInitialized]);
+  }, [bluetoothCubeInitialState]);
+
+  const lastConnectedRef = useRef<boolean>(connected);
+
+  const { alg, setAlg, applyMove, resetCube } = useCubeStateManager(
+    initialState // use cube's initial state, or solved 333
+    // do NOT pass in scramble - we want to match cube state.
+  );
 
   /**
    * Updates to scramble state SCRAMBLING if we receive a new scramble while already solved.
@@ -413,19 +429,15 @@ export default function BluetoothCubeTimer({
    */
   const newScrambleEvent = useEffectEvent(() => {
     //only update if initial state initialized!
-    if (localSolveStatus === "IDLE" && initialStateInitialized) {
-      if (
-        initialState?.applyAlg(alg).experimentalIsSolved({
-          ignoreCenterOrientation: true,
-          ignorePuzzleOrientation: true,
-        })
-      ) {
+    if (localSolveStatus === "IDLE" && initialState) {
+      if (checkSolved(initialState)) {
         setScrambleState(ScrambleState.SCRAMBLING);
       } else {
         setScrambleState(ScrambleState.PRESCRAMBLE);
       }
     }
   });
+
   useEffect(() => {
     if (scramble != lastScrambleRef.current) {
       newScrambleEvent();
@@ -434,11 +446,12 @@ export default function BluetoothCubeTimer({
   }, [scramble]);
 
   const onDisconnectEvent = useEffectEvent(() => {
+    setInitialState(undefined);
     resetCube();
     setScrambleState(ScrambleState.PRESCRAMBLE);
-    clearAnimationQueue();
-    clearCurrentElem();
+    animationQueue.clear();
     resetScrambleParts();
+    resetLocalSolveStatus();
   });
 
   useEffect(() => {
@@ -450,92 +463,135 @@ export default function BluetoothCubeTimer({
     }
   }, [connected]);
 
+  const resetInitialStateAndClearQueue = useCallback(() => {
+    setInitialState(defaultPattern333); //manually set to solved state! only use this callback when live connection
+    setAlg("");
+    animationQueue.clear();
+  }, [animationQueue, setAlg, defaultPattern333]);
+
   // eslint-disable-next-line react-hooks/refs
   moveCallbackRef.current = useCallback(
     (moveEvent: MoveEvent) => {
-      addToAnimationQueue(moveEvent);
+      const animationQueueAlg = new Alg(
+        animationQueue.getAllItems().map((x) => x.move)
+      ).concat([moveEvent.move]);
+
+      /**
+       * Current state =
+       * initialState + alg + animation queue (including current elem) + new move
+       */
+      const moveSolvesCube = checkSolved(
+        initialState?.applyAlg(new Alg(alg).concat(animationQueueAlg))
+      );
+      console.log(
+        `Move Event: ${moveEvent.move}, solves cube? ${moveSolvesCube}`
+      );
 
       if (localSolveStatus === "IDLE") {
-        if (scrambleState === ScrambleState.SCRAMBLING) {
-          applyMoveToScramble(moveEvent.move.toString());
-        } else if (
-          scrambleState === ScrambleState.SCRAMBLED &&
-          !useInspection
-        ) {
-          updateLocalSolveStatus("TIMER_START");
+        switch (scrambleState) {
+          case ScrambleState.PRESCRAMBLE:
+            if (moveSolvesCube) {
+              console.count("Solved in prescramble!");
+              resetInitialStateAndClearQueue();
+              resetScrambleParts();
+              setScrambleState(ScrambleState.SCRAMBLING);
+              return;
+            }
+            break;
+          case ScrambleState.SCRAMBLING:
+            if (moveSolvesCube) {
+              console.count("Solved in scrambling!");
+              console.log(
+                `Currently in animation queue: ${animationQueue
+                  .getAllItems()
+                  .map((x) => x.move.toString())
+                  .join(" ")} + current alg: ${alg}`
+              );
+              resetInitialStateAndClearQueue();
+              resetScrambleParts();
+              console.log("Resetting everything");
+              return;
+            }
+            applyMoveToScramble(moveEvent.move.toString());
+            break;
+          case ScrambleState.SCRAMBLED:
+            if (!useInspection) {
+              updateLocalSolveStatus("TIMER_START");
+            }
+            break;
+          default:
+            console.warn(
+              `Illegal scramble state encountered: ${scrambleState}`
+            );
         }
       } else if (localSolveStatus === "INSPECTING") {
         finishInspection();
+        /**
+         * Just tracing code logic, it's possible that moveSolvesCube is true here (aka the first move solves the cube)
+         * While we should handle it gracefully, it's likely unintended behavior, so also error.
+         */
+        if (moveSolvesCube) {
+          console.error(
+            "First move after inspection solved cube! This should never happen."
+          );
+          resetInitialStateAndClearQueue();
+          setScrambleState(ScrambleState.PRESCRAMBLE);
+          onFinishTimer(0);
+          return;
+        }
+      } else if (localSolveStatus === "SOLVING") {
+        if (moveSolvesCube) {
+          resetInitialStateAndClearQueue();
+          setScrambleState(ScrambleState.PRESCRAMBLE);
+
+          onFinishTimer(stopTimer());
+          return;
+        }
       }
-      /**
-       * ideally we would check solved state here.
-       * Unfortunately we don't have a way to shortcut the animation queue...
-       */
+
+      animationQueue.enqueue(moveEvent);
     },
     [
-      addToAnimationQueue,
-      applyMoveToScramble,
-      finishInspection,
+      animationQueue,
+      initialState,
+      alg,
       localSolveStatus,
       scrambleState,
+      applyMoveToScramble,
       useInspection,
+      resetInitialStateAndClearQueue,
+      resetScrambleParts,
       updateLocalSolveStatus,
+      finishInspection,
+      onFinishTimer,
+      stopTimer,
     ]
   );
 
-  const onSolvedEvent = useEffectEvent(() => {
-    /**
-     * The cube state manager will call this callback every time we enter a solved state.
-     */
-
-    /**
-     * TODO - the fact that we start a solve on accepting the move from bluetooth module and
-     * only end it in here (downstream after some async updates) means that we aren't timing correctly!
-     *
-     * This logic should be moved into the callback ref!
-     */
-
-    if (localSolveStatus === "SOLVING") {
-      // if we're solving and we enter solved state, that means we need to finish the timer!
-      resetCube();
-      onFinishTimer(stopTimer());
-
-      setScrambleState(ScrambleState.PRESCRAMBLE);
-      solveFirstMoveDoneRef.current = false;
-    } else if (localSolveStatus === "IDLE" && initialStateInitialized) {
-      if (scrambleState === ScrambleState.PRESCRAMBLE) {
-        setScrambleState(ScrambleState.SCRAMBLING);
-      }
-    }
-  });
-
-  useEffect(() => {
-    if (isSolved) {
-      onSolvedEvent();
-    }
-  }, [isSolved]);
-
   const onFinishAnimating = useCallback(() => {
+    const currentMoveEvent = animationQueue.getCurrent();
     if (!currentMoveEvent) {
+      console.log("[onFinishAnimating] early return");
       return;
     }
 
+    const moveToApply = currentMoveEvent.move;
+
     // note: handling reset upon solve is managed by an effect right now.
     // while not the cleanest possible solution, it's a shared pattern with other timer component implementations
-    handleAnimationComplete();
-    applyMove(currentMoveEvent.move);
-  }, [currentMoveEvent, handleAnimationComplete, applyMove]);
+    animationQueue.completeCurrent();
+    applyMove(moveToApply);
+  }, [animationQueue, applyMove]);
 
   const handleSync = useCallback(async () => {
     try {
       await sync();
-      clearAnimationQueue();
-      clearCurrentElem();
+      animationQueue.clear();
       setAlg("");
     } catch (err) {
       toast.error((err as Error)?.message ?? "Error during synchronizing");
     }
-  }, [sync, setAlg, clearAnimationQueue, clearCurrentElem]);
+  }, [sync, setAlg, animationQueue]);
 
   const timerElement = useMemo(() => {
     if (localSolveStatus === "IDLE") {
