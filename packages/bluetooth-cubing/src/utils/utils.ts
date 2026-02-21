@@ -103,10 +103,9 @@ export function toUuid128(uuid: string) {
   return uuid.toUpperCase();
 }
 
-export function findUUID(
-  elems: BluetoothRemoteGATTCharacteristic[],
-  uuid: string
-) {
+export function findUUID<
+  T extends BluetoothRemoteGATTCharacteristic | BluetoothRemoteGATTService
+>(elems: T[], uuid: string): T | null {
   uuid = toUuid128(uuid);
   for (const elem of elems) {
     if (toUuid128(elem.uuid) == uuid) {
