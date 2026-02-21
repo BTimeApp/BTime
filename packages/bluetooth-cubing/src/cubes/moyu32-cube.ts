@@ -198,6 +198,7 @@ class Moyu32Cube extends BluetoothCube {
     invertQuaternion(Moyu32Cube.MOYU_TO_BTIME_FRAME_TRANSFORM);
 
   async setup(): Promise<void> {
+    this.prevMoveSequenceNumber = -1;
     const deviceName = this.device.name!.trim();
 
     this.kpuzzle = await get3x3KPuzzle();
