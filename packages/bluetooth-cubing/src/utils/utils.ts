@@ -43,7 +43,8 @@ export function requestMACAddress(
     if (!mac || forcePrompt) {
       const message =
         (isWrongKey ? "The MAC provided might be wrong!\n" : "") +
-        "Enter MAC address (xx:xx:xx:xx:xx:xx):";
+        "Enter MAC address (xx:xx:xx:xx:xx:xx):\n" +
+        "If you are using Chrome, you can find the MAC address at chrome://bluetooth-internals/#devices";
 
       mac = prompt(message, mac || defaultMac || "xx:xx:xx:xx:xx:xx");
     }
