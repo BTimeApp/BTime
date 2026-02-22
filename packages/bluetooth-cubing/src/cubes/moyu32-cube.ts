@@ -1,8 +1,13 @@
 import type { MoveEvent, Quaternion } from "../types/cube-types";
+import type { CornerFacelet, EdgeFacelet } from "../types/facelet";
 import type { KPatternData, KPuzzle } from "cubing/kpuzzle";
 
 import { BluetoothCube } from "./cube";
 import { CubeRegistry } from "./cube-registry";
+import {
+  CORNER_FACELET_PIECEDATA_MAPPING_333,
+  EDGE_FACELET_PIECEDATA_MAPPING_333,
+} from "../types/facelet";
 import {
   applyQuaternion,
   findUUID,
@@ -49,10 +54,6 @@ const ENCRYPTION_KEYS = [
 /**
  * Types for edge facelet
  */
-type EdgeFacelet = [number, number];
-type CornerFacelet = [number, number, number];
-
-type PieceData = { id: number; orientation: number };
 
 //canonical order (same as piece id order): UF, UR, UB, UL, DF, DR, DB, DL, FR, FL, BR, BL
 
@@ -81,47 +82,6 @@ const EDGE_FACELET_BIT_ORDER: EdgeFacelet[] = [
   [24 * 1 + 4 * 3, 24 * 4 + 3 * 3], //BL
 ];
 
-const EDGE_FACELET_PIECEDATA_MAPPING: Map<string, PieceData> = new Map<
-  string,
-  PieceData
->([
-  ["UF", { id: 0, orientation: 0 }],
-  ["FU", { id: 0, orientation: 1 }],
-
-  ["UR", { id: 1, orientation: 0 }],
-  ["RU", { id: 1, orientation: 1 }],
-
-  ["UB", { id: 2, orientation: 0 }],
-  ["BU", { id: 2, orientation: 1 }],
-
-  ["UL", { id: 3, orientation: 0 }],
-  ["LU", { id: 3, orientation: 1 }],
-
-  ["DF", { id: 4, orientation: 0 }],
-  ["FD", { id: 4, orientation: 1 }],
-
-  ["DR", { id: 5, orientation: 0 }],
-  ["RD", { id: 5, orientation: 1 }],
-
-  ["DB", { id: 6, orientation: 0 }],
-  ["BD", { id: 6, orientation: 1 }],
-
-  ["DL", { id: 7, orientation: 0 }],
-  ["LD", { id: 7, orientation: 1 }],
-
-  ["FR", { id: 8, orientation: 0 }],
-  ["RF", { id: 8, orientation: 1 }],
-
-  ["FL", { id: 9, orientation: 0 }],
-  ["LF", { id: 9, orientation: 1 }],
-
-  ["BR", { id: 10, orientation: 0 }],
-  ["RB", { id: 10, orientation: 1 }],
-
-  ["BL", { id: 11, orientation: 0 }],
-  ["LB", { id: 11, orientation: 1 }],
-]);
-
 //FBUDLR
 // URF, UBR, ULB, UFL, DFR, DLF, DBL, DRB
 const CORNER_FACELET_BIT_ORDER: CornerFacelet[] = [
@@ -134,43 +94,6 @@ const CORNER_FACELET_BIT_ORDER: CornerFacelet[] = [
   [24 * 3 + 5 * 3, 24 * 1 + 7 * 3, 24 * 4 + 5 * 3], //DBL
   [24 * 3 + 7 * 3, 24 * 5 + 7 * 3, 24 * 1 + 5 * 3], //DRB
 ];
-
-const CORNER_FACELET_PIECEDATA_MAPPING: Map<string, PieceData> = new Map<
-  string,
-  PieceData
->([
-  ["URF", { id: 0, orientation: 0 }],
-  ["FUR", { id: 0, orientation: 1 }],
-  ["RFU", { id: 0, orientation: 2 }],
-
-  ["UBR", { id: 1, orientation: 0 }],
-  ["RUB", { id: 1, orientation: 1 }],
-  ["BRU", { id: 1, orientation: 2 }],
-
-  ["ULB", { id: 2, orientation: 0 }],
-  ["BUL", { id: 2, orientation: 1 }],
-  ["LBU", { id: 2, orientation: 2 }],
-
-  ["UFL", { id: 3, orientation: 0 }],
-  ["LUF", { id: 3, orientation: 1 }],
-  ["FLU", { id: 3, orientation: 2 }],
-
-  ["DFR", { id: 4, orientation: 0 }],
-  ["RDF", { id: 4, orientation: 1 }],
-  ["FRD", { id: 4, orientation: 2 }],
-
-  ["DLF", { id: 5, orientation: 0 }],
-  ["FDL", { id: 5, orientation: 1 }],
-  ["LFD", { id: 5, orientation: 2 }],
-
-  ["DBL", { id: 6, orientation: 0 }],
-  ["LDB", { id: 6, orientation: 1 }],
-  ["BLD", { id: 6, orientation: 2 }],
-
-  ["DRB", { id: 7, orientation: 0 }],
-  ["BDR", { id: 7, orientation: 1 }],
-  ["RBD", { id: 7, orientation: 2 }],
-]);
 
 class Moyu32Cube extends BluetoothCube {
   private readCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
@@ -652,7 +575,7 @@ class Moyu32Cube extends BluetoothCube {
       const pieceString = EDGE_FACELET_BIT_ORDER[i]
         .map((x) => "FBUDLR".charAt(parseInt(faceletBits.slice(x, x + 3), 2)))
         .join("");
-      const pieceData = EDGE_FACELET_PIECEDATA_MAPPING.get(pieceString)!;
+      const pieceData = EDGE_FACELET_PIECEDATA_MAPPING_333.get(pieceString)!;
       newState.EDGES.pieces.push(pieceData.id);
       newState.EDGES.orientation.push(pieceData.orientation);
     }
@@ -660,7 +583,7 @@ class Moyu32Cube extends BluetoothCube {
       const pieceString = CORNER_FACELET_BIT_ORDER[i]
         .map((x) => "FBUDLR".charAt(parseInt(faceletBits.slice(x, x + 3), 2)))
         .join("");
-      const pieceData = CORNER_FACELET_PIECEDATA_MAPPING.get(pieceString)!;
+      const pieceData = CORNER_FACELET_PIECEDATA_MAPPING_333.get(pieceString)!;
       newState.CORNERS.pieces.push(pieceData.id);
       newState.CORNERS.orientation.push(pieceData.orientation);
     }
