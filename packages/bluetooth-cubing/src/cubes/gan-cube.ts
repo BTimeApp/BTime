@@ -14,6 +14,8 @@ import {
   // normalizeQuaternion,
   // applyQuaternion,
   requestMACAddress,
+  valuedArray,
+  waitForAdvertisements,
 } from "../utils";
 import { AES128Cipher } from "../utils/aes128";
 import { get3x3KPuzzle } from "../utils/load-333";
@@ -42,6 +44,9 @@ const CHRCT_UUID_V3WRITE = "8653000c-43e6-47b7-9cb0-5fc21d4ae340";
 const SERVICE_UUID_V4 = "00000010-0000-fff7-fff6-fff5fff4fff0";
 const CHRCT_UUID_V4READ = "0000fff6-0000-1000-8000-00805f9b34fb";
 const CHRCT_UUID_V4WRITE = "0000fff5-0000-1000-8000-00805f9b34fb";
+
+// List of Company Identifier Codes, fill with all values range [0x0001, 0xFF01] possible for GAN cubes
+const GAN_CIC_LIST = valuedArray(256, (i) => (i << 8) | 0x01);
 
 // Encryption keys for aes128. The same as cstimer's KEYS[2..5] (dropping the first 2 keys since those are for v1)
 //   [0] = KEYS[2]  ver0 key
@@ -109,10 +114,6 @@ const GAN_EDGE_NAMES = [
  */
 const GAN_TO_BTIME_EDGE_ORDER = [1, 0, 3, 2, 5, 4, 7, 6, 8, 9, 11, 10];
 
-// ---------------------------------------------------------------------------
-// Main class
-// ---------------------------------------------------------------------------
-
 class GanCube extends BluetoothCube {
   private readCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
   private writeCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
@@ -129,7 +130,6 @@ class GanCube extends BluetoothCube {
   private deviceTime: number = 0;
   private deviceTimeOffset: number = 0;
 
-  // Gyro reference frame transform (GAN: x right, y up, z back → BTime: x right, y up, z front)
   // static readonly GAN_TO_BTIME_FRAME_TRANSFORM: Quaternion = {
   //   w: 0,
   //   x: 0,
@@ -144,6 +144,17 @@ class GanCube extends BluetoothCube {
     const deviceName = this.device.name!.trim();
 
     this.kpuzzle = await get3x3KPuzzle();
+
+    /**
+     * Attempt automatic MAC discovery
+     */
+    try {
+      const mfData = await waitForAdvertisements(this.device);
+      const dataView = this.getManufacturerDataBytes(mfData);
+      this.deviceMac = await this.getMACAddressFromMfData(dataView);
+    } catch (error) {
+      console.log("[Moyu32Cube] Advertisement discovery failed:", error);
+    }
 
     this.server = await this.device.gatt!.connect();
     const services = await this.server.getPrimaryServices();
@@ -192,6 +203,39 @@ class GanCube extends BluetoothCube {
 
     await this.refreshReadCharacteristic();
     await this.sendInitialRequests();
+  }
+
+  /**
+   * Both functions just used for automatic MAC discovery. Leaving out for now
+   */
+  private getManufacturerDataBytes(
+    mfData: BluetoothManufacturerData | DataView
+  ): DataView | undefined {
+    if (mfData instanceof DataView) {
+      // this is workaround for Bluefy browser
+      return new DataView(mfData.buffer.slice(2, 11));
+    }
+    for (const id of GAN_CIC_LIST) {
+      if (mfData.has(id)) {
+        return new DataView(mfData.get(id)!.buffer.slice(0, 9));
+      }
+    }
+    console.warn("[Moyu32Cube] Cube has new unknown CIC");
+  }
+
+  private getMACAddressFromMfData(dataView: DataView | undefined) {
+    if (dataView && dataView.byteLength >= 6) {
+      const mac = [];
+      for (let i = 0; i < 6; i++) {
+        mac.push(
+          (dataView.getUint8(dataView.byteLength - i - 1) + 0x100)
+            .toString(16)
+            .slice(1)
+        );
+      }
+      return Promise.resolve(mac.join(":"));
+    }
+    return Promise.reject(-3);
   }
 
   /**
@@ -401,10 +445,6 @@ class GanCube extends BluetoothCube {
       ?.writeValue(new Uint8Array(encoded).buffer)
       .catch(() => {}); // suppress — retried automatically on next move event
   }
-
-  // ---------------------------------------------------------------------------
-  // Notification setup
-  // ---------------------------------------------------------------------------
 
   private async refreshReadCharacteristic(): Promise<void> {
     await this.readCharacteristic?.stopNotifications().catch(() => {});

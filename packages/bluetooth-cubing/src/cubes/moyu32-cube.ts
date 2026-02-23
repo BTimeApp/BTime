@@ -271,7 +271,7 @@ class Moyu32Cube extends BluetoothCube {
   }
 
   /**
-   * Both functions just used for automatic MAC discovery. Leaving out for now
+   * Both functions just used for automatic MAC discovery
    */
   private getManufacturerDataBytes(
     mfData: BluetoothManufacturerData | DataView
