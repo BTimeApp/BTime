@@ -54,6 +54,7 @@ export type RoomStore = {
   timerType: TimerType; //type of timer client is using
   useInspection: boolean; //is inspection on?
   drawScramble: boolean; //should we draw the scramble?
+  useSessionStats: boolean; //should we display local session stats?
 
   /**
    * Map from user IDs to timestamps of when each user (potentially) started a live timer.
@@ -71,6 +72,7 @@ export type RoomStore = {
   setUseInspection: (useInspection: boolean) => void;
   setTimerType: (timerType: TimerType) => void;
   setDrawScramble: (drawScramble: boolean) => void;
+  setUseSessionStats: (useSessionStats: boolean) => void;
 
   isUserHost: (userId: string | undefined) => boolean;
 
@@ -194,6 +196,7 @@ export function createRoomStore() {
           timerType: "KEYBOARD",
           useInspection: false,
           drawScramble: true,
+          useSessionStats: true,
 
           // local (client) state/options
           localPenalty: "OK",
@@ -243,6 +246,10 @@ export function createRoomStore() {
           setDrawScramble: (drawScramble: boolean) =>
             set((state) => {
               state.drawScramble = drawScramble;
+            }),
+          setUseSessionStats: (useSessionStats: boolean) =>
+            set((state) => {
+              state.useSessionStats = useSessionStats;
             }),
           /**
            * Handles all state transitions for local SolveStatus.
@@ -665,14 +672,13 @@ export function createRoomStore() {
           timerType: state.timerType,
           useInspection: state.useInspection,
           drawScramble: state.drawScramble,
+          useSessionStats: state.useSessionStats,
         }),
         // runs right after reading persisted state
         onRehydrateStorage: () => (state) => {
-          if (!state) return; //
+          if (!state) return;
 
-          state.localSolveStatus = getDefaultLocalSolveStatus(
-            state.timerType //
-          );
+          state.localSolveStatus = getDefaultLocalSolveStatus(state.timerType);
         },
         migrate: () => {
           return {};
