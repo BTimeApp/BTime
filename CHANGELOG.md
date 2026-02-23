@@ -4,6 +4,18 @@ This file contains summaries of major/relevant changes to the BTime project in r
 
 The current versioning convention tracks changes to BTime as a whole. Packages will maintain their own versions as necessary.
 
+## 0.6.1 - 2026-02-22
+
+Added:
+
+- GAN bluetooth cube support (v2-v4 protocols)
+  - only v2 protocol was tested. v3 and v4 are completely untested
+  - orientation data is not implemented.
+
+Bug Fixes:
+
+- add default orientation (identity) to bluetooth cube parent class
+
 ## 0.6.0 - 2026-02-20
 
 Added:

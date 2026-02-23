@@ -688,6 +688,7 @@ export default function BluetoothCubeTimer({
           Supported cubes:
           <ul>
             <li>Moyu32 cubes: WCU-MY3...</li>
+            <li>GAN cubes (v2-v4 protocol)</li>
           </ul>
         </div>
       </div>
