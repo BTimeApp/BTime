@@ -14,6 +14,8 @@ import {
   invertQuaternion,
   normalizeQuaternion,
   requestMACAddress,
+  valuedArray,
+  waitForAdvertisements,
 } from "../utils";
 import { AES128Cipher } from "../utils/aes128";
 import { get3x3KPuzzle } from "../utils/load-333";
@@ -45,9 +47,9 @@ const ENCRYPTION_KEYS = [
 ];
 
 // CICs 0x(01..=FF)00
-// const MOYU32_CIC_LIST = valuedArray(255, (i: number) => {
-//   return (i + 1) << 8;
-// });
+const MOYU32_CIC_LIST = valuedArray(255, (i: number) => {
+  return (i + 1) << 8;
+});
 
 /** Helper types for Edges and Corners as defined by Moyu32. If other protocols use these definitions, consider moving them to /types */
 
@@ -127,16 +129,15 @@ class Moyu32Cube extends BluetoothCube {
     this.kpuzzle = await get3x3KPuzzle();
 
     /**
-     * Attempt automatic MAC discovery - in my experience, this doesn't work.
-     * Leaving it out for now
+     * Attempt automatic MAC discovery
      */
-    // try {
-    //   const mfData = await waitForAdvertisements(this.device);
-    //   const dataView = this.getManufacturerDataBytes(mfData);
-    //   this.deviceMac = await this.getMACAddressFromMfData(dataView);
-    // } catch (error) {
-    //   console.log("[Moyu32Cube] Advertisement discovery failed:", error);
-    // }
+    try {
+      const mfData = await waitForAdvertisements(this.device);
+      const dataView = this.getManufacturerDataBytes(mfData);
+      this.deviceMac = await this.getMACAddressFromMfData(dataView);
+    } catch (error) {
+      console.log("[Moyu32Cube] Advertisement discovery failed:", error);
+    }
 
     // set up primary service + characteristics
     this.server = await this.device.gatt!.connect();
@@ -272,35 +273,35 @@ class Moyu32Cube extends BluetoothCube {
   /**
    * Both functions just used for automatic MAC discovery. Leaving out for now
    */
-  //   private getManufacturerDataBytes(
-  //     mfData: BluetoothManufacturerData | DataView
-  //   ): DataView | undefined {
-  //     if (mfData instanceof DataView) {
-  //       // this is workaround for Bluefy browser
-  //       return new DataView(mfData.buffer.slice(2));
-  //     }
-  //     for (const id of MOYU32_CIC_LIST) {
-  //       if (mfData.has(id)) {
-  //         return mfData.get(id);
-  //       }
-  //     }
-  //     console.warn("[Moyu32Cube] Cube has new unknown CIC");
-  //   }
+  private getManufacturerDataBytes(
+    mfData: BluetoothManufacturerData | DataView
+  ): DataView | undefined {
+    if (mfData instanceof DataView) {
+      // this is workaround for Bluefy browser
+      return new DataView(mfData.buffer.slice(2));
+    }
+    for (const id of MOYU32_CIC_LIST) {
+      if (mfData.has(id)) {
+        return mfData.get(id);
+      }
+    }
+    console.warn("[Moyu32Cube] Cube has new unknown CIC");
+  }
 
-  //   private getMACAddressFromMfData(dataView: DataView | undefined) {
-  //     if (dataView && dataView.byteLength >= 6) {
-  //       const mac = [];
-  //       for (let i = 0; i < 6; i++) {
-  //         mac.push(
-  //           (dataView.getUint8(dataView.byteLength - i - 1) + 0x100)
-  //             .toString(16)
-  //             .slice(1)
-  //         );
-  //       }
-  //       return Promise.resolve(mac.join(":"));
-  //     }
-  //     return Promise.reject(-3);
-  //   }
+  private getMACAddressFromMfData(dataView: DataView | undefined) {
+    if (dataView && dataView.byteLength >= 6) {
+      const mac = [];
+      for (let i = 0; i < 6; i++) {
+        mac.push(
+          (dataView.getUint8(dataView.byteLength - i - 1) + 0x100)
+            .toString(16)
+            .slice(1)
+        );
+      }
+      return Promise.resolve(mac.join(":"));
+    }
+    return Promise.reject(-3);
+  }
 
   private initMac(
     deviceName: string,
