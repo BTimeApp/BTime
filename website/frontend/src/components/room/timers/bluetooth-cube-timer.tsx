@@ -553,6 +553,7 @@ export default function BluetoothCubeTimer({
       updateLocalSolveStatus,
       finishInspection,
       onFinishTimer,
+      startTimer,
       stopTimer,
     ]
   );
