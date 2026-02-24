@@ -19,11 +19,8 @@ import type {
 } from "@btime/types";
 import type { Draft } from "immer";
 
-import {
-  Result,
-  getDefaultLocalSolveStatus,
-  timerAllowsInspection,
-} from "@btime/lib";
+import { Result } from "@btime/lib";
+import { TIMER_TYPES_INFO } from "@btime/types";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
@@ -259,7 +256,7 @@ export function createRoomStore() {
               case "IDLE":
                 if (
                   get().useInspection &&
-                  timerAllowsInspection(get().timerType) &&
+                  TIMER_TYPES_INFO[get().timerType].allowsInspection &&
                   event !== "TIMER_START"
                 ) {
                   set((state) => {
@@ -311,9 +308,8 @@ export function createRoomStore() {
             }
           },
           resetLocalSolveStatus: () => {
-            const defaultSolveStatus = getDefaultLocalSolveStatus(
-              get().timerType
-            );
+            const defaultSolveStatus =
+              TIMER_TYPES_INFO[get().timerType].defaultLocalSolveStatus;
             set((state) => {
               state.localSolveStatus = defaultSolveStatus;
             });
@@ -678,7 +674,8 @@ export function createRoomStore() {
         onRehydrateStorage: () => (state) => {
           if (!state) return;
 
-          state.localSolveStatus = getDefaultLocalSolveStatus(state.timerType);
+          state.localSolveStatus =
+            TIMER_TYPES_INFO[state.timerType].defaultLocalSolveStatus;
         },
         migrate: () => {
           return {};

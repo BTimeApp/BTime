@@ -4,7 +4,8 @@ import { useRoomActions, useRoomStore } from "@/context/room-context";
 import { useCallbackOnTransition } from "@/hooks/use-callback-on-transition";
 import { useOnTransition } from "@/hooks/use-on-transition";
 import { useSocketEvent } from "@/hooks/use-socket-event";
-import { Result, isLiveTimer } from "@btime/lib";
+import { Result } from "@btime/lib";
+import { TIMER_TYPES_INFO } from "@btime/types";
 import { SOCKET_CLIENT, SOCKET_SERVER } from "@btime/types";
 import { useParams, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect } from "react";
@@ -99,13 +100,13 @@ export default function RoomEventHandler() {
   }, [roomState, resetLocalSolveStatus]);
 
   const broadcastStartLiveTimerCallback = useCallback(() => {
-    if (socket && socket.connected && isLiveTimer(timerType)) {
+    if (socket && socket.connected && TIMER_TYPES_INFO[timerType].isLiveTimer) {
       socket.emit(SOCKET_CLIENT.START_LIVE_TIMER);
     }
   }, [socket, timerType]);
 
   const broadcastStopLiveTimerCallback = useCallback(() => {
-    if (socket && socket.connected && isLiveTimer(timerType)) {
+    if (socket && socket.connected && TIMER_TYPES_INFO[timerType].isLiveTimer) {
       socket.emit(SOCKET_CLIENT.STOP_LIVE_TIMER);
     }
   }, [socket, timerType]);
