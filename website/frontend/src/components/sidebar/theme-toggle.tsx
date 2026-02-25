@@ -9,7 +9,10 @@ export default function ThemeToggle() {
 
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton onClick={() => setTheme(isDark ? "light" : "dark")}>
+      <SidebarMenuButton
+        onClick={() => setTheme(isDark ? "light" : "dark")}
+        onKeyDown={(e) => e.preventDefault()}
+      >
         {isDark ? <IconSun /> : <IconMoon />}
         <span>Toggle Theme</span>
       </SidebarMenuButton>

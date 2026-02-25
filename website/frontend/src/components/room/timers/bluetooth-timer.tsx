@@ -5,6 +5,7 @@ import InspectionCountdown from "@/components/room/inspection-countdown";
 import StopwatchTimer from "@/components/room/stopwatch-timer";
 import { Button } from "@/components/ui/button";
 import { useRoomStore } from "@/context/room-context";
+import { useInspectionCountdown } from "@/hooks/use-inspection-countdown";
 import { cn } from "@/lib/utils";
 import { useBluetoothTimerStore } from "@/stores/bluetooth-timer-store";
 import { TimerState } from "@btime/bluetooth-cubing";
@@ -30,15 +31,18 @@ export default function BluetoothTimer({
     ]);
   const [textStyle, setTextStyle] = useState<string>("");
 
-  const [localInspectionPenalty, setLocalInspectionPenalty] =
-    useState<Penalty>("OK");
-
   const localSolveStatus = useRoomStore((s) => s.localSolveStatus);
   const liveTimerStartTime = useRoomStore((s) => s.liveTimerStartTime);
   const localResult = useRoomStore((s) => s.localResult);
   const useInspection = useRoomStore((s) => s.useInspection);
   const updateLocalSolveStatus = useRoomStore((s) => s.updateLocalSolveStatus);
   const resetLocalSolveStatus = useRoomStore((s) => s.resetLocalSolveStatus);
+  const {
+    time: inspectionTime,
+    startInspection,
+    finishInspection,
+    inspectionPenalty,
+  } = useInspectionCountdown(updateLocalSolveStatus, onFinishInspection);
 
   /**
    * Main callback logic for updating client state when timer pushes a new event
@@ -71,8 +75,10 @@ export default function BluetoothTimer({
           switch (localSolveStatus) {
             case "IDLE": {
               //we cannot extract the current display time to check whether or not to inspect or not b/c upon receiving this event, the current display time is 0
-              if (useInspection && currentDisplayTimeMS === 0)
-                updateLocalSolveStatus("");
+              if (useInspection && currentDisplayTimeMS === 0) {
+                startInspection();
+              }
+
               break;
             }
             case "INSPECTING": {
@@ -94,7 +100,7 @@ export default function BluetoothTimer({
             useInspection &&
             currentDisplayTimeMS === 0
           ) {
-            updateLocalSolveStatus();
+            startInspection();
           }
           break;
         }
@@ -110,7 +116,7 @@ export default function BluetoothTimer({
           //updatelocalsolvestatus should kick off the useStartTimeOnTransition hook in room-event-handler and update liveTimerStartTime
           if (useInspection && localSolveStatus === "INSPECTING") {
             //this will already include updateLocalSolveStatus
-            onFinishInspection?.(localInspectionPenalty);
+            finishInspection();
           } else {
             updateLocalSolveStatus("TIMER_START");
           }
@@ -139,8 +145,8 @@ export default function BluetoothTimer({
       currentDisplayTimeMS,
       localSolveStatus,
       useInspection,
-      localInspectionPenalty,
-      onFinishInspection,
+      startInspection,
+      finishInspection,
       onFinishTimer,
       resetLocalSolveStatus,
       updateLocalSolveStatus,
@@ -182,10 +188,8 @@ export default function BluetoothTimer({
       case "INSPECTING":
         return (
           <InspectionCountdown
-            timerType="BLUETOOTH"
-            onFinishInspection={(penalty: Penalty) => {
-              setLocalInspectionPenalty(penalty);
-            }}
+            remainingTime={inspectionTime}
+            penalty={inspectionPenalty}
             className={cn("text-4xl", textStyle)}
           />
         );
@@ -194,7 +198,7 @@ export default function BluetoothTimer({
           <StopwatchTimer
             startTime={liveTimerStartTime}
             className="text-4xl"
-            timerType="BLUETOOTH"
+            timerType="BLUETOOTHTIMER"
           />
         );
       case "SUBMITTING":

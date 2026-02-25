@@ -4,6 +4,26 @@ This file contains summaries of major/relevant changes to the BTime project in r
 
 The current versioning convention tracks changes to BTime as a whole. Packages will maintain their own versions as necessary.
 
+## 0.6.0 - 2026-02-20
+
+Added:
+
+- two new timer types to use in rooms: one for a virtual cube, one for a bluetooth cube
+- new global context for key listeners to hook into to prevent creating many window event listeners. Instead, two (keyup, keydown) event listeners can handle all key listening events.
+- new global keybind store for (mainly) virtual cube controls. A potential next step is to provide an interface to define custom keybinds.
+- new hook for inspection timing and state updates/control
+
+Changed:
+
+- refactors KeyListener component to use new keybind context + hook
+- refactors the animation queue into an external store with React integration through useSyncExternalStore
+
+Bug Fixes:
+
+- refactor room update server message to exclude password completely
+- fixes text placement relative to the arrow icons in room panel carousel
+- prevent various buttons in room header and sidebar from triggering upon keypress after focusing
+
 ## 0.5.1 - 2026-02-05
 
 Added:

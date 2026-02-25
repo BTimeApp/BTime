@@ -192,7 +192,9 @@ export async function startServer(): Promise<void> {
   });
 
   // Apply the rate limiting middleware to all requests.
-  app.use(limiter);
+  if (isProd) {
+    app.use(limiter);
+  }
 
   // Set up api routes
   app.use("/api", api(dataStores));

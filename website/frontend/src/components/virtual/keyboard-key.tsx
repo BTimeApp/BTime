@@ -4,6 +4,7 @@ import React, { useState } from "react";
 
 type KeyboardKeyProps = {
   keyName: string; // can be a key or keycode
+  visible?: boolean;
   primaryText?: string;
   secondaryText?: string;
   className?: string;
@@ -13,6 +14,7 @@ export const KeyboardKey: React.FC<
   KeyboardKeyProps & Omit<React.ComponentProps<typeof KeyListener>, "keyName">
 > = ({
   keyName,
+  visible = true,
   className,
   primaryText,
   secondaryText,
@@ -20,15 +22,17 @@ export const KeyboardKey: React.FC<
 }) => {
   return (
     <KeyListener {...keyListenerProps} keyName={keyName}>
-      <div
-        className={cn(
-          "flex flex-col items-center justify-center text-center h-14 w-14 text-lg",
-          className
-        )}
-      >
-        {primaryText}
-        <p className="text-sm">{secondaryText}</p>
-      </div>
+      {visible && (
+        <div
+          className={cn(
+            "flex flex-col items-center justify-center text-center h-14 w-14 text-lg",
+            className
+          )}
+        >
+          {primaryText}
+          <p className="text-sm">{secondaryText}</p>
+        </div>
+      )}
     </KeyListener>
   );
 };

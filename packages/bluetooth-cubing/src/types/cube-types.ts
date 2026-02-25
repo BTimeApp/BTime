@@ -8,6 +8,13 @@ export type Quaternion = {
   w: number;
 };
 
+export const IDENTITY_QUATERNION: Quaternion = {
+  w: 1,
+  x: 0,
+  y: 0,
+  z: 0,
+} as const;
+
 export type TimedEvent = {
   timestamp: number; //ms
   duration?: number; //ms

@@ -272,7 +272,7 @@ export function createRoomStore() {
                 break;
               case "INSPECTING":
                 if (
-                  get().timerType === "BLUETOOTH" &&
+                  get().timerType === "BLUETOOTHTIMER" &&
                   event === "TIMER_RESET"
                 ) {
                   set((state) => {

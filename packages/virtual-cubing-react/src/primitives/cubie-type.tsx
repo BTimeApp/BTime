@@ -2,7 +2,7 @@ import type { GeometrySource, GroupProps } from "../types/geometry";
 import type { Color, Group } from "three";
 
 import { Cubie } from "./cubie";
-import React from "react";
+import React, { useMemo } from "react";
 
 export type CubieProps = {
   position: number;
@@ -44,9 +44,15 @@ export function generateCubieType<F extends string>(
   geometrySource: GeometrySource<F>
 ): CubieType {
   return function CubieType({ position, orientation, id, ref }: CubieProps) {
-    const positionTransform = positionToTransform(position);
-    const orientationTransform = orientationToTransform(orientation);
-    const colors = idToColoring(id);
+    const positionTransform = useMemo(() => {
+      return positionToTransform(position);
+    }, [position]);
+    const orientationTransform = useMemo(() => {
+      return orientationToTransform(orientation);
+    }, [orientation]);
+    const colors = useMemo(() => {
+      return idToColoring(id);
+    }, [id]);
 
     return (
       <group {...positionTransform} ref={ref}>

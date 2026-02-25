@@ -99,7 +99,7 @@ export const ROOM_EVENT_HANDLERS = {
       await stores.rooms.persistRoom(room.id);
 
       socket.emit(SOCKET_SERVER.USER_JOIN_ROOM_USER_SUCCESS, {
-        room: room,
+        room: getPasswordStrippedRoom(room),
         userId: userId,
       });
       socket.join(room.id);
@@ -175,8 +175,13 @@ export const ROOM_EVENT_HANDLERS = {
     socket.join(room.id);
     socket.data.roomId = room.id;
 
+    RoomLogger.info(
+      getPasswordStrippedRoom(room).settings.access,
+      "password stripped room"
+    );
+
     io.to(userId).emit(SOCKET_SERVER.USER_JOIN_ROOM_USER_SUCCESS, {
-      room: room,
+      room: getPasswordStrippedRoom(room),
       userId: newUser ? undefined : userId,
     });
 
@@ -907,4 +912,23 @@ function socketIntersection(io: Server, roomA: string, roomB: string) {
     setA.size <= setB.size ? [setA, setB] : [setB, setA];
 
   return [...smaller].filter((socketId) => larger.has(socketId));
+}
+
+function getPasswordStrippedRoom(room: IRoom) {
+  if (room.settings.access.visibility === "PUBLIC") {
+    return room;
+  }
+
+  const passwordStrippedRoom = {
+    ...room,
+    settings: {
+      ...room.settings,
+      access: {
+        ...room.settings.access,
+        password: "",
+      },
+    },
+  };
+
+  return passwordStrippedRoom;
 }
