@@ -6,8 +6,8 @@ import KeyboardTimer from "@/components/room/timers/keyboard-timer";
 import TypingTimer from "@/components/room/timers/typing-timer";
 import VirtualTimer from "@/components/room/timers/virtual-timer";
 import { useRoomStore } from "@/context/room-context";
-import { Result, timerAllowsEvent } from "@btime/lib";
-import { ROOM_EVENTS_INFO } from "@btime/types";
+import { Result } from "@btime/lib";
+import { ROOM_EVENTS_INFO, TIMER_TYPES_INFO } from "@btime/types";
 import { useCallback } from "react";
 
 type TimerSectionProps = {
@@ -57,7 +57,7 @@ function TimerSection({ scramble }: TimerSectionProps) {
     [updateLocalSolveStatus, setLocalResult, localPenalty]
   );
 
-  if (!timerAllowsEvent(timerType, roomEvent)) {
+  if (!TIMER_TYPES_INFO[timerType].allowsEvent(roomEvent)) {
     return (
       <div className="text-center text-lg text-error font-bold text-wrap">
         You cannot use the {timerType} timer for event{" "}
