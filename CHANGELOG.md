@@ -4,6 +4,18 @@ This file contains summaries of major/relevant changes to the BTime project in r
 
 The current versioning convention tracks changes to BTime as a whole. Packages will maintain their own versions as necessary.
 
+## 0.6.2 - 2026-02-23
+
+Added:
+
+- Session (live, during match) stats are finally shown on the main room panel!
+  - Two stats offered: overall mean and current ao5
+  - Not doing a solve counts as a DNF. This may be changed in the future.
+
+Bug Fixes:
+
+- fixed a missing dependency lint issue in bluetooth-cube-timer
+
 ## 0.6.1 - 2026-02-22
 
 Added:
@@ -15,7 +27,7 @@ Added:
 Bug Fixes:
 
 - add default orientation (identity) to bluetooth cube parent class
-- add missing startTimer() call to no inspection bluetooth timer component
+- add missing startTimer() call to no inspection bluetooth-cube-timer component
 
 ## 0.6.0 - 2026-02-20
 
