@@ -43,7 +43,8 @@ export function requestMACAddress(
     if (!mac || forcePrompt) {
       const message =
         (isWrongKey ? "The MAC provided might be wrong!\n" : "") +
-        "Enter MAC address (xx:xx:xx:xx:xx:xx):";
+        "Enter MAC address (xx:xx:xx:xx:xx:xx):\n" +
+        "If you are using Chrome, you can find the MAC address at chrome://bluetooth-internals/#devices";
 
       mac = prompt(message, mac || defaultMac || "xx:xx:xx:xx:xx:xx");
     }
@@ -103,10 +104,9 @@ export function toUuid128(uuid: string) {
   return uuid.toUpperCase();
 }
 
-export function findUUID(
-  elems: BluetoothRemoteGATTCharacteristic[],
-  uuid: string
-) {
+export function findUUID<
+  T extends BluetoothRemoteGATTCharacteristic | BluetoothRemoteGATTService
+>(elems: T[], uuid: string): T | null {
   uuid = toUuid128(uuid);
   for (const elem of elems) {
     if (toUuid128(elem.uuid) == uuid) {

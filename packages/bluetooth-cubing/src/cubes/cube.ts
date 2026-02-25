@@ -31,7 +31,7 @@ export abstract class BluetoothCube extends EventTarget {
    * y up
    * z front
    */
-  private quaternion!: Quaternion;
+  private quaternion: Quaternion = IDENTITY_QUATERNION;
 
   private syncQuaternion: Quaternion = IDENTITY_QUATERNION;
   private moveEvents: MoveEvent[] = []; //sorted by timestamp
