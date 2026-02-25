@@ -15,6 +15,7 @@ Added:
 Bug Fixes:
 
 - add default orientation (identity) to bluetooth cube parent class
+- add missing startTimer() call to no inspection bluetooth timer component
 
 ## 0.6.0 - 2026-02-20
 

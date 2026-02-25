@@ -505,6 +505,7 @@ export default function BluetoothCubeTimer({
           case ScrambleState.SCRAMBLED:
             if (!useInspection) {
               updateLocalSolveStatus("TIMER_START");
+              startTimer();
             }
             break;
           default:
@@ -597,7 +598,7 @@ export default function BluetoothCubeTimer({
           );
         case ScrambleState.SCRAMBLED:
           // consider returning null
-          return <p className="text-4xl">-.--</p>;
+          return <p className="text-lg">Do any move to start solve</p>;
         default:
           console.error(`Encountered illegal scramble state: ${scrambleState}`);
           return null;
