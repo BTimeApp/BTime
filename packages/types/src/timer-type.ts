@@ -17,10 +17,6 @@ const defaultAllowsEvent = () => {
   return true;
 };
 
-const onlyAllow333 = (roomEvent: RoomEvent) => {
-  return roomEvent === "333";
-};
-
 const allowBase333 = (roomEvent: RoomEvent) => {
   return ROOM_EVENTS_INFO[roomEvent]?.baseEvent === "333";
 };
@@ -48,7 +44,9 @@ export const TIMER_TYPES_INFO = {
     isLiveTimer: true,
     allowsInspection: true,
     defaultLocalSolveStatus: "IDLE",
-    allowsEvent: onlyAllow333,
+    allowsEvent: (roomEvent: RoomEvent) => {
+      return roomEvent === "333" || roomEvent === "222";
+    },
   },
   BLUETOOTHCUBE: {
     isLiveTimer: true,
