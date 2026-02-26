@@ -4,9 +4,9 @@ import type { Color } from "three";
 import { generateCubieType } from "../../primitives";
 import {
   BOX_GEOMETRY_FACE_ORDER,
-  CENTER_GEOMETRY,
-  CORNER_GEOMETRY,
-  EDGE_GEOMETRY,
+  centerCubieGeometryGenerator,
+  cornerCubieGeometryGenerator,
+  edgeCubieGeometryGenerator,
 } from "../../types/box-geometry";
 import {
   COLOR_BLUE,
@@ -17,6 +17,10 @@ import {
   COLOR_YELLOW,
 } from "../../types/colors";
 import { Quaternion } from "three";
+
+const CENTER_GEOMETRY = centerCubieGeometryGenerator(1);
+const EDGE_GEOMETRY = edgeCubieGeometryGenerator(1);
+const CORNER_GEOMETRY = cornerCubieGeometryGenerator(1);
 
 const CenterGeometrySource = (): GeometrySpec<BoxFace> => ({
   geometry: CENTER_GEOMETRY,
@@ -119,7 +123,7 @@ function centerCubie333IdToColors(
   return CENTER_POSITION_TO_COLOR_MAP[position];
 }
 
-export const CenterCubie = generateCubieType<BoxFace>(
+export const CenterCubie333 = generateCubieType<BoxFace>(
   centerCubie333PositionToTransform,
   centerCubie333OrientationToTransform,
   centerCubie333IdToColors,
@@ -251,7 +255,7 @@ function edgeCubie333IdToColors(
   return EDGE_POSITION_TO_COLOR_MAP[position];
 }
 
-export const EdgeCubie = generateCubieType<BoxFace>(
+export const EdgeCubie333 = generateCubieType<BoxFace>(
   edgeCubie333PositionToTransform,
   edgeCubie333OrientationToTransform,
   edgeCubie333IdToColors,
@@ -369,7 +373,7 @@ function cornerCubie333IdToColors(
   return CORNER_POSITION_TO_COLOR_MAP[position];
 }
 
-export const CornerCubie = generateCubieType<BoxFace>(
+export const CornerCubie333 = generateCubieType<BoxFace>(
   cornerCubie333PositionToTransform,
   cornerCubie333OrientationToTransform,
   cornerCubie333IdToColors,

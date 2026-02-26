@@ -6,15 +6,17 @@ import {
   generateVirtualCubeImplementation,
   VIRTUAL_CUBE_IMPLEMENTATIONS,
 } from "../virtual-cube-implementation";
-import { CenterCubie, CornerCubie, EdgeCubie } from "./333-cubie-types";
+import {
+  CenterCubie333,
+  CornerCubie333,
+  EdgeCubie333,
+} from "./333-cubie-types";
 import { cube3x3x3 } from "cubing/puzzles";
 import { Vector3 } from "three";
 
 /**
  * Cubing.js only exposes kpuzzles through an async kpuzzle: () => Promise<KPuzzle> api.
- * Why? not sure. This loader helps deal with it by caching the definition.
  */
-
 let kpuzzlePromise: Promise<KPuzzle> | null = null;
 function get3x3KPuzzle(): Promise<KPuzzle> {
   if (!kpuzzlePromise) {
@@ -24,9 +26,9 @@ function get3x3KPuzzle(): Promise<KPuzzle> {
 }
 
 const ORBIT_NAME_CUBIE_MAPPING: Record<string, CubieType> = {
-  CENTERS: CenterCubie,
-  EDGES: EdgeCubie,
-  CORNERS: CornerCubie,
+  CENTERS: CenterCubie333,
+  EDGES: EdgeCubie333,
+  CORNERS: CornerCubie333,
 };
 
 /**
