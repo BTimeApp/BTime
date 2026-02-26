@@ -118,6 +118,11 @@ export function generateVirtualCubeImplementation(
 
     const prevAnimationProgressRef = useRef<number | null>(null);
 
+    /**
+     * TODO - derivedMoves will not always work. cubing.js's 2x2 definition, for example, has a derivedMoves section with moves like B: [x': U].
+     * Our original assumption that derivedMoves provides a simple alias is wrong. At some point, we need to provide a lookup helper.
+     * We will get by by defining our own 2x2 KPuzzleDefinition for now.
+     */
     const moveFamily = animationMove
       ? kpuzzle.definition.derivedMoves?.[animationMove.quantum.family] ??
         animationMove.quantum.family
