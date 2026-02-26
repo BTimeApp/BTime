@@ -14,6 +14,7 @@ import { useInspectionCountdown } from "@/hooks/use-inspection-countdown";
 import { useTimer } from "@/hooks/use-timer";
 import { EVENT_KPUZZLE_GETTERS } from "@/lib/get-kpuzzle";
 import { cn } from "@/lib/utils";
+import { isValidMoveForPuzzle } from "@/lib/valid-move-for-puzzle";
 import { useKeybindStore } from "@/stores/keybind-store";
 import {
   DEFAULT_MOVE_EVENT_DURATION,
@@ -117,6 +118,10 @@ export default function VirtualTimer({
       const timestamp = performance.now();
 
       const moveObj = new Move(move);
+      if (!isValidMoveForPuzzle(moveObj, defaultPattern.kpuzzle)) {
+        // early return - prevents adding invalid moves to animation queue
+        return;
+      }
       const moveEvent = {
         move: moveObj,
         timestamp: timestamp,

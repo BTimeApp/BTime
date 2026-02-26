@@ -9,6 +9,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useTimer } from "@/hooks/use-timer";
 import { get3x3x3 } from "@/lib/get-kpuzzle";
 import { cn } from "@/lib/utils";
+import { isValidMoveForPuzzle } from "@/lib/valid-move-for-puzzle";
 import { DEFAULT_VIRTUAL_KEYBINDS } from "@/lib/virtual-keybinds";
 import { Result } from "@btime/lib";
 import { useAnimationQueue, VirtualCube } from "@btime/virtual-cubing-react";
@@ -24,6 +25,11 @@ export const Route = createFileRoute("/virtual/")({
 const ROTATIONS = new Set<string>(["x", "y", "z"]);
 
 function VirtualPage() {
+  /**
+   * TODO - support more than just 3x3 :)
+   */
+  const kpuzzle: KPuzzle = use<KPuzzle>(get3x3x3());
+
   const [setupAlg, setSetupAlg] = useState<string>("");
   const [alg, setAlg] = useState<string>("");
 
@@ -47,6 +53,11 @@ function VirtualPage() {
 
       const moveObj = new Move(move);
 
+      if (!isValidMoveForPuzzle(moveObj, kpuzzle)) {
+        // early return - validates moves before we add them to the animation queue!
+        return;
+      }
+
       animationQueue.enqueue(moveObj);
       if (
         !solveFirstMoveDoneRef.current &&
@@ -56,7 +67,7 @@ function VirtualPage() {
         startTimer(timestamp);
       }
     },
-    [animationQueue, startTimer]
+    [animationQueue, kpuzzle, startTimer]
   );
 
   const generateScramble = useCallback(async () => {
@@ -77,7 +88,6 @@ function VirtualPage() {
 
   const [inErrorState, setInErrorState] = useState<boolean>(false);
 
-  const kpuzzle: KPuzzle = use<KPuzzle>(get3x3x3());
   const kpattern: KPattern = useMemo(() => {
     const defaultKPattern: KPattern = kpuzzle.defaultPattern();
 
