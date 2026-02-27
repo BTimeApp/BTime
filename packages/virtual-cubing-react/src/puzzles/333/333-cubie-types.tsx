@@ -1,7 +1,13 @@
-import type { GeometrySpec, GroupProps } from "../../types";
+import type { BoxFace, GeometrySpec, GroupProps } from "../../types";
 import type { Color } from "three";
 
 import { generateCubieType } from "../../primitives";
+import {
+  BOX_GEOMETRY_FACE_ORDER,
+  CENTER_GEOMETRY,
+  CORNER_GEOMETRY,
+  EDGE_GEOMETRY,
+} from "../../types/box-geometry";
 import {
   COLOR_BLUE,
   COLOR_GREEN,
@@ -11,23 +17,19 @@ import {
   COLOR_YELLOW,
 } from "../../types/colors";
 import { Quaternion } from "three";
-import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
-
-type BoxFace = "+x" | "-x" | "+y" | "-y" | "+z" | "-z";
-const BOX_GEOMETRY_FACE_ORDER: BoxFace[] = ["+x", "-x", "+y", "-y", "+z", "-z"];
 
 const CenterGeometrySource = (): GeometrySpec<BoxFace> => ({
-  geometry: new RoundedBoxGeometry(0.99, 0.995, 0.99, 4, 0.07),
+  geometry: CENTER_GEOMETRY,
   orderedFaces: BOX_GEOMETRY_FACE_ORDER,
 });
 
 const EdgeGeometrySource = (): GeometrySpec<BoxFace> => ({
-  geometry: new RoundedBoxGeometry(0.995, 0.995, 0.995, 4, 0.07),
+  geometry: EDGE_GEOMETRY,
   orderedFaces: BOX_GEOMETRY_FACE_ORDER,
 });
 
 const CornerGeometrySource = (): GeometrySpec<BoxFace> => ({
-  geometry: new RoundedBoxGeometry(0.995, 0.995, 0.995, 4, 0.07),
+  geometry: CORNER_GEOMETRY,
   orderedFaces: BOX_GEOMETRY_FACE_ORDER,
 });
 

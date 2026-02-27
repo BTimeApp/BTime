@@ -7,3 +7,4 @@
  */
 
 import "./moyu32-cube";
+import "./gan-cube";

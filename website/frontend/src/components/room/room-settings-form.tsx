@@ -76,7 +76,7 @@ type RoomTemplateKey = (typeof ROOM_TEMPLATES)[number];
 const AccessSchema = z.discriminatedUnion("visibility", [
   z.object({
     visibility: z.literal("PRIVATE"),
-    password: z.string().min(1, "Password is required"),
+    password: z.string(),
   }),
   z.object({
     visibility: z.literal("PUBLIC"),
@@ -352,7 +352,7 @@ export default function RoomSettingsForm({
                             />
                           </SelectTrigger>
                         </FormControl>
-                        <SelectContent>
+                        <SelectContent className="overflow-y-auto max-h-[50vh]">
                           {ROOM_EVENTS.map((val, idx) => (
                             <SelectItem key={idx} value={val}>
                               {ROOM_EVENTS_INFO[val].displayName}

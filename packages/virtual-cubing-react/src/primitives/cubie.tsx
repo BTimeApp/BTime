@@ -3,8 +3,7 @@ import type { Color } from "three";
 
 import { COLOR_DARKGRAY } from "../types/colors";
 import { resolveGeometrySource } from "../types/geometry";
-import { useMemo } from "react";
-import { MeshBasicMaterial } from "three";
+import { memo, useMemo } from "react";
 
 type CubieProps<F extends string> = {
   colors: Partial<Record<F, Color>>;
@@ -17,7 +16,7 @@ type CubieProps<F extends string> = {
  *
  * NOT intended to be used directly in higher-level components. Make a typed Cubie to handle cube-cubie relation correctly (look at CornerCubie)
  */
-export function Cubie<F extends string>({
+export const Cubie = memo(function Cubie<F extends string>({
   colors,
   defaultColor = COLOR_DARKGRAY,
   geometrySource,
@@ -27,12 +26,15 @@ export function Cubie<F extends string>({
     [geometrySource]
   );
 
-  const materials = orderedFaces.map(
-    (face) =>
-      new MeshBasicMaterial({
-        color: face in colors ? colors[face] : defaultColor,
-      })
+  return (
+    <mesh geometry={geometry}>
+      {orderedFaces.map((face, i) => (
+        <meshBasicMaterial
+          key={i}
+          attach={`material-${i}`}
+          color={face in colors ? colors[face] : defaultColor}
+        />
+      ))}
+    </mesh>
   );
-
-  return <mesh geometry={geometry} material={materials} />;
-}
+});

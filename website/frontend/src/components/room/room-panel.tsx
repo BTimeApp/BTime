@@ -5,6 +5,7 @@ import GlobalTimeList from "@/components/room/global-time-list";
 import RoomSubmittingButtons from "@/components/room/room-submitting-buttons";
 import RoomTeamDialog from "@/components/room/room-team-dialog";
 import RoomUserDialog from "@/components/room/room-user-dialog";
+import SessionStats from "@/components/room/session-stats";
 import {
   JoinTeamButton,
   LeaveTeamButton,
@@ -185,16 +186,26 @@ function UserCenterSection({
   userId: string;
   isLocalUser: boolean;
 }) {
-  const [users, solveStatus, match, roomEvent, drawScramble] = useRoomStore(
-    (s) => [s.users, s.localSolveStatus, s.match, s.roomEvent, s.drawScramble]
-  );
+  // const [users, solveStatus, match, roomEvent, drawScramble, useSessionStats] = useRoomStore(
+  //   (s) => [s.users, s.localSolveStatus, s.match, s.roomEvent, s.drawScramble, s.useSessionStats]
+  // );
+
+  const users = useRoomStore((s) => s.users);
+  const solveStatus = useRoomStore((s) => s.localSolveStatus);
+  const match = useRoomStore((s) => s.match);
+  const roomEvent = useRoomStore((s) => s.roomEvent);
+  const drawScramble = useRoomStore((s) => s.drawScramble);
+  const useSessionStats = useRoomStore((s) => s.useSessionStats);
+
+  const currScramble = useMemo(() => {
+    return (
+      match.sets.at(-1)?.solves.at(-1)?.solve.attempts[userId]?.scramble ?? ""
+    );
+  }, [match, userId]);
 
   if (!users[userId]) {
     return null;
   }
-
-  const currScramble =
-    match.sets.at(-1)?.solves.at(-1)?.solve.attempts[userId]?.scramble ?? "";
 
   return (
     <div className={cn("flex flex-row", className)}>
@@ -208,7 +219,7 @@ function UserCenterSection({
           {isLocalUser ? (
             users[userId].competing ? (
               <>
-                <TimerSection />
+                <TimerSection scramble={currScramble} />
                 {solveStatus === "SUBMITTING" && <RoomSubmittingButtons />}
               </>
             ) : (
@@ -221,26 +232,31 @@ function UserCenterSection({
           )}
         </div>
         <div className="flex-0 flex flex-col">
-          {drawScramble &&
-            solveStatus !== "FINISHED" &&
-            users[userId].competing &&
-            (currScramble ? (
-              // <scramble-display
-              //   className="w-full h-45"
-              //   scramble={currScramble}
-              //   event={ROOM_EVENT_JS_NAME_MAP.get(roomEvent) ?? null}
-              // />
-              <twisty-player
-                experimental-setup-alg={currScramble}
-                puzzle={ROOM_EVENTS_INFO[roomEvent].jsName ?? "3x3x3"}
-                visualization="2D"
-                control-panel="none"
-                className="w-full h-40 md:h-48 xl:h-54 2xl:h-60"
-                background="none"
-              />
-            ) : (
-              <div>missing scramble...</div>
-            ))}
+          <div className="flex flex-row gap-2">
+            {drawScramble &&
+              solveStatus !== "FINISHED" &&
+              users[userId].competing &&
+              (currScramble ? (
+                // <scramble-display
+                //   className="w-full h-45"
+                //   scramble={currScramble}
+                //   event={ROOM_EVENT_JS_NAME_MAP.get(roomEvent) ?? null}
+                // />
+                <twisty-player
+                  experimental-setup-alg={currScramble}
+                  puzzle={ROOM_EVENTS_INFO[roomEvent].jsName ?? "3x3x3"}
+                  visualization="2D"
+                  control-panel="none"
+                  className="w-full h-40 md:h-48 xl:h-54 2xl:h-60"
+                  background="none"
+                />
+              ) : (
+                <div>missing scramble...</div>
+              ))}
+            {useSessionStats && (
+              <SessionStats userId={userId} className="px-3" />
+            )}
+          </div>
         </div>
       </div>
     </div>

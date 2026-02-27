@@ -1,9 +1,13 @@
 import type React from "react";
 
-import { useEffect, useEffectEvent, useRef } from "react";
+import {
+  useBTimeKeyDownKeybind,
+  useBTimeKeyUpKeybind,
+} from "@/context/keybind-context";
+import { useCallback, useEffect, useRef } from "react";
 
 type KeyListenerProps = {
-  keyName?: string; //the name of the key to listen to. For example, "Space" for the space bar
+  keyName?: string; //the name of the key to listen to. Will match both event.key and event.code.
   onKeyDown?: () => void; //callback to use upon key first being pressed
   onKeyUp?: () => void; //callback to use upon key first being released
   onDismount?: () => void; //callback to use upon this component being dismounted
@@ -11,8 +15,8 @@ type KeyListenerProps = {
   children?: React.ReactNode;
 };
 
-/** A listener component that triggers optional callbacks when the key is first pressed or released.
- *
+/**
+ * A listener component that triggers optional callbacks when the key is first pressed or released.
  */
 function KeyListener({
   keyName = "Space",
@@ -27,34 +31,27 @@ function KeyListener({
    */
   const isPressedRef = useRef(forceInitialValue);
 
-  const handleKeyDown = useEffectEvent((event: KeyboardEvent) => {
-    if (
-      (event.code === keyName || event.key === keyName) &&
-      !isPressedRef.current
-    ) {
+  const handleKeyDown = useCallback(() => {
+    if (!isPressedRef.current) {
       isPressedRef.current = true;
       onKeyDown?.();
     }
-  });
+  }, [onKeyDown]);
 
-  const handleKeyUp = useEffectEvent((event: KeyboardEvent) => {
-    if (
-      (event.code === keyName || event.key === keyName) &&
-      isPressedRef.current
-    ) {
+  const handleKeyUp = useCallback(() => {
+    if (isPressedRef.current) {
       isPressedRef.current = false;
       onKeyUp?.();
     }
-  });
+  }, [onKeyUp]);
+
+  // register keybinds with the global keybind handlers - avoids attaching new event listeners for every keybind
+  useBTimeKeyDownKeybind(keyName, handleKeyDown);
+  useBTimeKeyUpKeybind(keyName, handleKeyUp);
 
   useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-
     return () => {
       onDismount?.();
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
     };
   }, [onDismount]);
 

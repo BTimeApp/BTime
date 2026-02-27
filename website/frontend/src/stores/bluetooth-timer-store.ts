@@ -1,10 +1,6 @@
-import type { TimerEvent ,
-  BluetoothTimer} from "@btime/bluetooth-cubing";
+import type { TimerEvent, BluetoothTimer } from "@btime/bluetooth-cubing";
 
-import {
-  connectTimer,
-  TimerState,
-} from "@btime/bluetooth-cubing";
+import { connectTimer, TimerState } from "@btime/bluetooth-cubing";
 import { createStore, useStore } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 
@@ -53,7 +49,6 @@ const BluetoothTimerStore = createStore<BluetoothTimerStore>((set, get) => ({
 
       const timer = await connectTimer();
       timer.onTimerEvent((event: TimerEvent) => {
-        console.log(`RECEIVED STATE ${event.state}`);
         set({
           timerState: event.state,
         });
@@ -64,7 +59,6 @@ const BluetoothTimerStore = createStore<BluetoothTimerStore>((set, get) => ({
         if (event.state === TimerState.IDLE) set({ currentDisplayTimeMS: 0 });
 
         if (event.state === TimerState.DISCONNECT) {
-          console.log("BLUETOOTH TIMER DISCONNECT EVENT");
           set({ timer: null, connected: false, currentDisplayTimeMS: 0 });
         }
 

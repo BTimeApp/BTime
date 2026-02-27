@@ -1,26 +1,38 @@
 import type { Penalty } from "@btime/types";
 
-import KeyListener from "@/components/common/key-listener";
-import BluetoothTimer from "@/components/room/bluetooth-timer";
-import InspectionCountdown from "@/components/room/inspection-countdown";
-import StopwatchTimer from "@/components/room/stopwatch-timer";
-import { CallbackInput } from "@/components/ui/callback-input";
+import BluetoothCubeTimer from "@/components/room/timers/bluetooth-cube-timer";
+import BluetoothTimer from "@/components/room/timers/bluetooth-timer";
+import KeyboardTimer from "@/components/room/timers/keyboard-timer";
+import TypingTimer from "@/components/room/timers/typing-timer";
+import VirtualTimer from "@/components/room/timers/virtual-timer";
 import { useRoomStore } from "@/context/room-context";
-import { cn } from "@/lib/utils";
 import { Result } from "@btime/lib";
-import { useCallback, useState } from "react";
+import { ROOM_EVENTS_INFO, TIMER_TYPES_INFO } from "@btime/types";
+import { useCallback } from "react";
 
-function TimerSection() {
-  const [spacebarDown, setSpacebarDown] = useState<boolean>(false);
+type TimerSectionProps = {
+  scramble?: string;
+};
+
+/**
+ * Displays information related to the timer for the LOCAL USER ONLY.
+ * This varies mainly depending on local user's TimerType.
+ */
+function TimerSection({ scramble }: TimerSectionProps) {
   const localPenalty = useRoomStore((s) => s.localPenalty);
-  const localResult = useRoomStore((s) => s.localResult);
   const timerType = useRoomStore((s) => s.timerType);
-  const localSolveStatus = useRoomStore((s) => s.localSolveStatus);
-  const useInspection = useRoomStore((s) => s.useInspection);
-  const liveTimerStartTime = useRoomStore((s) => s.liveTimerStartTime);
+  const roomEvent = useRoomStore((s) => s.roomEvent);
   const setLocalPenalty = useRoomStore((s) => s.setLocalPenalty);
   const setLocalResult = useRoomStore((s) => s.setLocalResult);
   const updateLocalSolveStatus = useRoomStore((s) => s.updateLocalSolveStatus);
+
+  const endInspectionCallback = useCallback(
+    (penalty: Penalty) => {
+      setLocalPenalty(penalty);
+      updateLocalSolveStatus();
+    },
+    [updateLocalSolveStatus, setLocalPenalty]
+  );
 
   const endStringTimerCallback = useCallback(
     (value: string) => {
@@ -41,134 +53,53 @@ function TimerSection() {
     (timerValue: number) => {
       setLocalResult(new Result(timerValue, localPenalty));
       updateLocalSolveStatus();
-      setSpacebarDown(false);
     },
-    [updateLocalSolveStatus, setLocalResult, setSpacebarDown, localPenalty]
+    [updateLocalSolveStatus, setLocalResult, localPenalty]
   );
 
-  const endInspectionCallback = useCallback(
-    (penalty: Penalty) => {
-      setLocalPenalty(penalty);
-      updateLocalSolveStatus();
-      setSpacebarDown(false);
-    },
-    [updateLocalSolveStatus, setLocalPenalty, setSpacebarDown]
-  );
+  if (!TIMER_TYPES_INFO[timerType].allowsEvent(roomEvent)) {
+    return (
+      <div className="text-center text-lg text-error font-bold text-wrap">
+        You cannot use the {timerType} timer for event{" "}
+        {ROOM_EVENTS_INFO[roomEvent]!.displayName}. Switch to a legal timer
+        type.
+      </div>
+    );
+  }
 
   switch (timerType) {
     case "TYPING":
-      switch (localSolveStatus) {
-        case "IDLE":
-        // Make idle (should be illegal) fall back to the solving state.
-        // Currently possible to be in IDLE state if joining an already-started room with timertype TYPING in dev mode b/c of react's strict mode (the second render causes the default localSolveStatus to be IDLE)
-        // eslint-disable-next-line no-fallthrough
-        case "SOLVING":
-          return (
-            <>
-              <div>Press Enter to submit time</div>
-              <CallbackInput
-                type="text"
-                className="text-center text-4xl mx-auto bg-container-1/70 border-none"
-                onEnter={endStringTimerCallback}
-              />
-            </>
-          );
-        case "SUBMITTING":
-          return <div className="text-4xl">{localResult.toString()}</div>;
-        case "FINISHED":
-        default:
-          return (
-            <>
-              <div>Waiting for others to finish</div>
-              <div className="text-4xl">{localResult.toString()}</div>
-            </>
-          );
-      }
-      break;
+      return <TypingTimer onFinishTimer={endStringTimerCallback} />;
     case "KEYBOARD":
-      switch (localSolveStatus) {
-        case "IDLE":
-          return (
-            <>
-              {useInspection ? (
-                <div>Press Space to Inspect</div>
-              ) : (
-                <div>Press Space to Start</div>
-              )}
-              <KeyListener
-                keyName="Space"
-                onKeyUp={() => {
-                  setSpacebarDown(false);
-                  updateLocalSolveStatus(); //updateLocalSolveStatus
-                }}
-                onKeyDown={() => {
-                  setSpacebarDown(true);
-                }}
-              >
-                <div
-                  className={cn(
-                    `text-4xl ${spacebarDown ? "text-timer-ready" : ""}`
-                  )}
-                >
-                  -.--
-                </div>
-              </KeyListener>
-            </>
-          );
-        case "INSPECTING":
-          return (
-            <>
-              <div>Press Space to Start</div>
-              <KeyListener
-                keyName="Space"
-                onKeyUp={() => {
-                  setSpacebarDown(false);
-                }}
-                onKeyDown={() => {
-                  setSpacebarDown(true);
-                }}
-              >
-                <InspectionCountdown
-                  className="text-4xl"
-                  timerType={timerType}
-                  onFinishInspection={endInspectionCallback}
-                />
-              </KeyListener>
-            </>
-          );
-        case "SOLVING":
-          return (
-            <>
-              <div>Press Space to Stop</div>
-              <StopwatchTimer
-                startTime={liveTimerStartTime}
-                onFinishTimer={endNumberTimerCallback}
-                className="text-4xl"
-                timerType={timerType}
-              />
-            </>
-          );
-        case "SUBMITTING":
-          return <div className="text-4xl">{localResult.toString()}</div>;
-        case "FINISHED":
-          return (
-            <>
-              <div>Waiting for others to finish</div>
-              <div className="text-4xl">{localResult.toString()}</div>
-            </>
-          );
-        default:
-          return <></>;
-      }
-      break;
-    case "BLUETOOTH":
+      return (
+        <KeyboardTimer
+          onFinishInspection={endInspectionCallback}
+          onFinishTimer={endNumberTimerCallback}
+        />
+      );
+    case "BLUETOOTHTIMER":
       return (
         <BluetoothTimer
           onFinishInspection={endInspectionCallback}
           onFinishTimer={endNumberTimerCallback}
         />
       );
-      break;
+    case "VIRTUAL":
+      return (
+        <VirtualTimer
+          scramble={scramble}
+          onFinishInspection={endInspectionCallback}
+          onFinishTimer={endNumberTimerCallback}
+        />
+      );
+    case "BLUETOOTHCUBE":
+      return (
+        <BluetoothCubeTimer
+          scramble={scramble}
+          onFinishInspection={endInspectionCallback}
+          onFinishTimer={endNumberTimerCallback}
+        />
+      );
     default:
       console.warn(`Illegal timer type encountered: ${timerType}`);
       return;

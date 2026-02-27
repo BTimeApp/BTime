@@ -222,7 +222,7 @@ export function RoomHeader() {
                     size="icon"
                     className="self-end"
                     variant="icon"
-                    onMouseDown={(e) => e.preventDefault()}
+                    onKeyDown={(e) => e.preventDefault()}
                   >
                     <Settings className="size-8" />
                   </Button>

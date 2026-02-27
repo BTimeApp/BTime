@@ -4,6 +4,51 @@ This file contains summaries of major/relevant changes to the BTime project in r
 
 The current versioning convention tracks changes to BTime as a whole. Packages will maintain their own versions as necessary.
 
+## 0.6.2 - 2026-02-23
+
+Added:
+
+- Session (live, during match) stats are finally shown on the main room panel!
+  - Two stats offered: overall mean and current ao5
+  - Not doing a solve counts as a DNF. This may be changed in the future.
+
+Bug Fixes:
+
+- fixed a missing dependency lint issue in bluetooth-cube-timer
+
+## 0.6.1 - 2026-02-22
+
+Added:
+
+- GAN bluetooth cube support (v2-v4 protocols)
+  - only v2 protocol was tested. v3 and v4 are completely untested
+  - orientation data is not implemented.
+
+Bug Fixes:
+
+- add default orientation (identity) to bluetooth cube parent class
+- add missing startTimer() call to no inspection bluetooth-cube-timer component
+
+## 0.6.0 - 2026-02-20
+
+Added:
+
+- two new timer types to use in rooms: one for a virtual cube, one for a bluetooth cube
+- new global context for key listeners to hook into to prevent creating many window event listeners. Instead, two (keyup, keydown) event listeners can handle all key listening events.
+- new global keybind store for (mainly) virtual cube controls. A potential next step is to provide an interface to define custom keybinds.
+- new hook for inspection timing and state updates/control
+
+Changed:
+
+- refactors KeyListener component to use new keybind context + hook
+- refactors the animation queue into an external store with React integration through useSyncExternalStore
+
+Bug Fixes:
+
+- refactor room update server message to exclude password completely
+- fixes text placement relative to the arrow icons in room panel carousel
+- prevent various buttons in room header and sidebar from triggering upon keypress after focusing
+
 ## 0.5.1 - 2026-02-05
 
 Added:

@@ -2,12 +2,15 @@ import type { CubieType } from "../primitives";
 import type { AxisAngle } from "../types/angle";
 import type { Alg, Move } from "cubing/alg";
 import type { KPattern, KPatternData, KPuzzle } from "cubing/kpuzzle";
+import type { RefObject } from "react";
 import type { Group } from "three";
 
 import { useFrame } from "@react-three/fiber";
-import { use, useEffect, useMemo, useRef } from "react";
+import { use, useCallback, useEffect, useMemo, useRef } from "react";
 import { Quaternion } from "three";
 import { clamp } from "three/src/math/MathUtils.js";
+
+const DEFAULT_ORIENTATION = new Quaternion();
 
 function getCubieKey(orbitName: string, id: number) {
   return orbitName + "-" + id.toString();
@@ -43,7 +46,7 @@ export type VirtualCubeImplementationProps = {
    * The animation progress for the current animated move. Must fall in range [0, 1] or get clamped.
    * The layer above the cube component should be responsible for handling animation.
    */
-  animationProgress?: number;
+  animationProgressRef?: RefObject<number>;
 };
 /**
  * A generic type that dictates the API for a new cubie type.
@@ -59,7 +62,7 @@ export type VirtualCubeImplementation = ({
   alg,
   orientation,
   animationMove,
-  animationProgress,
+  animationProgressRef,
 }: VirtualCubeImplementationProps) => React.ReactNode;
 
 export function generateVirtualCubeImplementation(
@@ -81,20 +84,33 @@ export function generateVirtualCubeImplementation(
     initialState,
     setupAlg = "",
     alg = "",
-    orientation = new Quaternion(),
+    orientation = DEFAULT_ORIENTATION,
     animationMove = undefined,
-    animationProgress = 0,
+    animationProgressRef,
   }: VirtualCubeImplementationProps) {
-    const kpuzzle: KPuzzle = use<KPuzzle>(kPuzzleLoader());
-    const kpattern: KPattern = initialState ?? kpuzzle.defaultPattern();
+    // const kpuzzle: KPuzzle = use<KPuzzle>(kPuzzleLoader());
+    const kpuzzlePromise = useMemo(() => kPuzzleLoader(), []);
+    const kpuzzle = use<KPuzzle>(kpuzzlePromise);
+
+    const kpattern: KPattern = useMemo(
+      () => initialState ?? kpuzzle.defaultPattern(),
+      [initialState, kpuzzle]
+    );
 
     /**
      * applyAlg does not apply any validation to string parameters.
      * We rely on parent components to handle either validation, or error handling.
      */
-    const setupKPattern = kpattern.applyAlg(setupAlg);
-    const updatedKPattern = setupKPattern.applyAlg(alg);
-    const kPatternData: KPatternData = updatedKPattern.patternData;
+    // const setupKPattern = kpattern.applyAlg(setupAlg);
+    // const updatedKPattern = setupKPattern.applyAlg(alg);
+    const updatedKPattern = useMemo(() => {
+      const setup = kpattern.applyAlg(setupAlg);
+      return setup.applyAlg(alg);
+    }, [kpattern, setupAlg, alg]);
+    // const kPatternData: KPatternData = updatedKPattern.patternData;
+    const kPatternData: KPatternData = useMemo(() => {
+      return updatedKPattern.patternData;
+    }, [updatedKPattern]);
 
     const mainGroupRef = useRef<Group>(null);
     const animationGroupRef = useRef<Group>(null);
@@ -198,23 +214,41 @@ export function generateVirtualCubeImplementation(
      * Main animation loop.
      */
     useFrame(() => {
-      if (!animationMove || animationProgress == null) return;
+      if (
+        !animationMove ||
+        animationProgressRef == null ||
+        animationGroupRef.current == null
+      )
+        return;
       // make sure refs exist
       const mainGroup = mainGroupRef.current;
       const animationGroup = animationGroupRef.current;
       if (!mainGroup || !animationGroup) return;
 
-      if (prevAnimationProgressRef.current === animationProgress) return;
-      prevAnimationProgressRef.current = animationProgress;
+      if (prevAnimationProgressRef.current === animationProgressRef.current)
+        return;
+      prevAnimationProgressRef.current = animationProgressRef.current;
 
       // Apply rotation to animation group
       const currentAngle =
-        (finalAxisAngle?.angle ?? 0) * clamp(animationProgress, 0, 1);
+        (finalAxisAngle?.angle ?? 0) *
+        clamp(animationProgressRef.current, 0, 1);
       animationGroup.quaternion.setFromAxisAngle(
         finalAxisAngle!.axis!, //this is ugly, but have to deal with it for now
         currentAngle
       );
     });
+
+    const setCubieRef = useCallback(
+      (key: string) => (group: Group | null) => {
+        if (group) {
+          cubieRefs.current.set(key, group);
+        } else {
+          cubieRefs.current.delete(key);
+        }
+      },
+      []
+    );
 
     return (
       <group quaternion={orientation} ref={mainGroupRef}>
@@ -233,13 +267,7 @@ export function generateVirtualCubeImplementation(
                 position={position}
                 orientation={orbitData.orientation[position]}
                 id={id}
-                ref={(group) => {
-                  if (group) {
-                    cubieRefs.current.set(cubieKey, group);
-                  } else {
-                    cubieRefs.current.delete(cubieKey);
-                  }
-                }}
+                ref={setCubieRef(cubieKey)}
               />
             );
           });
