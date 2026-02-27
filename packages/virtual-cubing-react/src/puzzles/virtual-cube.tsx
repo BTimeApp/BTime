@@ -141,7 +141,9 @@ function VirtualCubeAnimationManager({
 
   if (!VirtualCubeComponent) {
     throw new Error(
-      `No Virtual Cube component implementation exists for event ${event}`
+      `No Virtual Cube component implementation exists for event ${event}. Valid events: ${[
+        ...VIRTUAL_CUBE_IMPLEMENTATIONS.keys(),
+      ]}`
     );
   }
 

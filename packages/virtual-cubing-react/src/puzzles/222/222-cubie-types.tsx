@@ -87,7 +87,7 @@ const CORNER_ORIENTATION_TO_ROTATION: Record<number, Quaternion> = {
   2: new Quaternion(0.5, 0.5, 0.5, 0.5),
 };
 
-const CORNER_POSITION_TO_COLOR_MAP: Record<
+const CORNER_ID_TO_COLOR_MAP: Record<
   number,
   Partial<Record<BoxFace, Color>>
 > = {
@@ -161,10 +161,10 @@ function cornerCubie222IdToColors(
 ): Partial<Record<BoxFace, Color>> {
   if (position < 0 || position > 7) {
     throw new Error(
-      `Invalid position for corner cubie (must be in range [0, 7]): ${position}`
+      `Invalid id for corner cubie (must be in range [0, 7]): ${position}`
     );
   }
-  return CORNER_POSITION_TO_COLOR_MAP[position];
+  return CORNER_ID_TO_COLOR_MAP[position];
 }
 
 export const CornerCubie222 = generateCubieType<BoxFace>(

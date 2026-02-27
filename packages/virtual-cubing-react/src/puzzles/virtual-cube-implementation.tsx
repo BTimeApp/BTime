@@ -265,7 +265,9 @@ export function generateVirtualCubeImplementation(
           const CubieComponent = orbitCubieMapping[orbitName];
 
           return orbitData.pieces.map((id, position) => {
-            const cubieKey = orbitName + "-" + id.toString();
+            // the cubie "id" is not guaranteed to be unique, but still provides useful debug information. For this reason, we use both id and position (guaranteed unique) in the key.
+            const cubieKey =
+              orbitName + "-" + id.toString() + "-" + position.toString();
             return (
               <CubieComponent
                 key={cubieKey}
