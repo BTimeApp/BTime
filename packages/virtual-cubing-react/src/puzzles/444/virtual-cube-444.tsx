@@ -50,6 +50,13 @@ const MOVE_TRANSFORMS_4x4: Record<string, AxisAngle> = {
   r: { axis: new Vector3(1, 0, 0), angle: -Math.PI / 2 },
   l: { axis: new Vector3(1, 0, 0), angle: Math.PI / 2 },
 
+  Uw: { axis: new Vector3(0, 1, 0), angle: -Math.PI / 2 },
+  Dw: { axis: new Vector3(0, 1, 0), angle: Math.PI / 2 },
+  Fw: { axis: new Vector3(0, 0, 1), angle: -Math.PI / 2 },
+  Bw: { axis: new Vector3(0, 0, 1), angle: Math.PI / 2 },
+  Rw: { axis: new Vector3(1, 0, 0), angle: -Math.PI / 2 },
+  Lw: { axis: new Vector3(1, 0, 0), angle: Math.PI / 2 },
+
   x: { axis: new Vector3(1, 0, 0), angle: -Math.PI / 2 },
   y: { axis: new Vector3(0, 1, 0), angle: -Math.PI / 2 },
   z: { axis: new Vector3(0, 0, 1), angle: -Math.PI / 2 },
