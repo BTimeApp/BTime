@@ -7,7 +7,7 @@ import { cube2x2x2, cube3x3x3, puzzles } from "cubing/puzzles";
 // TODO: consider just using the promises/kpuzzle definitions from virtual-cubing-react!
 
 let kpuzzle333Promise: Promise<KPuzzle>;
-export function get3x3x3(): Promise<KPuzzle> {
+function get3x3x3(): Promise<KPuzzle> {
   if (!kpuzzle333Promise) {
     kpuzzle333Promise = cube3x3x3.kpuzzle();
   }
@@ -15,7 +15,7 @@ export function get3x3x3(): Promise<KPuzzle> {
 }
 
 let kpuzzle222Promise: Promise<KPuzzle>;
-export function get2x2x2(): Promise<KPuzzle> {
+function get2x2x2(): Promise<KPuzzle> {
   if (!kpuzzle222Promise) {
     kpuzzle222Promise = cube2x2x2.kpuzzle();
   }

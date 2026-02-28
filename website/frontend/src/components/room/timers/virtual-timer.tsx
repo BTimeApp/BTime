@@ -15,7 +15,7 @@ import { useTimer } from "@/hooks/use-timer";
 import { EVENT_KPUZZLE_GETTERS } from "@/lib/get-kpuzzle";
 import { cn } from "@/lib/utils";
 import { isValidMoveForPuzzle } from "@/lib/valid-move-for-puzzle";
-import { useKeybindStore } from "@/stores/keybind-store";
+import { DEFAULT_VIRTUAL_KEYBINDS } from "@/lib/virtual-keybinds";
 import {
   DEFAULT_MOVE_EVENT_DURATION,
   SLOWEST_MOVE_EVENT_DURATION,
@@ -64,12 +64,19 @@ export default function VirtualTimer({
   onFinishTimer,
 }: VirtualTimerProps) {
   const getKPuzzle = EVENT_KPUZZLE_GETTERS[event];
+  const keybindMap = DEFAULT_VIRTUAL_KEYBINDS.get(event);
   if (!getKPuzzle) {
     throw new Error(
       `VirtualTimer rendered with unsupported event "${event}". ` +
         `This is a bug — check that allowsEvent() guards are in place upstream.`
     );
   }
+  if (!keybindMap) {
+    throw new Error(
+      `Couldn't find keybinds for event ${event}. Check that virtual-keybinds is updated for this event.`
+    );
+  }
+
   const defaultPattern = use(getKPuzzle()).defaultPattern();
 
   /** State */
@@ -87,9 +94,6 @@ export default function VirtualTimer({
     finishInspection,
     inspectionPenalty,
   } = useInspectionCountdown(updateLocalSolveStatus, onFinishInspection);
-
-  /** Keybind map */
-  const keybindMap = useKeybindStore((s) => s.keybindMap);
 
   /** Timer */
   const { time, startTimer, stopTimer } = useTimer();
