@@ -83,6 +83,7 @@ export default function VirtualTimer({
   const localSolveStatus = useRoomStore((s) => s.localSolveStatus);
   const localResult = useRoomStore((s) => s.localResult);
   const useInspection = useRoomStore((s) => s.useInspection);
+  const setLocalPenalty = useRoomStore((s) => s.setLocalPenalty);
   const updateLocalSolveStatus = useRoomStore((s) => s.updateLocalSolveStatus);
 
   const [timerTextClassName, setTimerTextClassName] = useState<string>("");
@@ -317,6 +318,16 @@ export default function VirtualTimer({
               setTimerTextClassName("");
               setAlg(scramble);
               startInspection();
+            }}
+          />
+        )}
+        {localSolveStatus === "SOLVING" && (
+          <KeyboardListenerKey
+            visible={false}
+            keyName="Escape"
+            onKeyDown={() => {
+              setLocalPenalty("DNF");
+              updateLocalSolveStatus();
             }}
           />
         )}
