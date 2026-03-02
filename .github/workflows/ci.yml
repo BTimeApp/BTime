@@ -1,9 +1,8 @@
-# .github/workflows/ci.yml
 name: CI
 
 on:
   pull_request:
-    types: [opened, ready_for_review]
+    types: [opened, edited, ready_for_review]
 
 jobs:
   # runs pnpm lint
