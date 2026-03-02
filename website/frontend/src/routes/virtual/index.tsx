@@ -145,9 +145,9 @@ function VirtualPageInner({
   );
 
   const generateScramble = useCallback(async () => {
-    const scrambleAlg = await randomScrambleForEvent("333");
+    const scrambleAlg = await randomScrambleForEvent(event);
     return scrambleAlg.toString();
-  }, []);
+  }, [event]);
 
   const handleScramble = useCallback(async () => {
     setSetupAlg(await generateScramble());
