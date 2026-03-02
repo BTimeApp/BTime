@@ -1,19 +1,24 @@
 import type { CubieType } from "../primitives";
 import type { AxisAngle } from "../types/angle";
-import type { Alg, Move } from "cubing/alg";
+import type { Alg } from "cubing/alg";
 import type { KPattern, KPatternData, KPuzzle } from "cubing/kpuzzle";
 import type { RefObject } from "react";
 import type { Group } from "three";
 
 import { useFrame } from "@react-three/fiber";
+import { Move } from "cubing/alg";
 import { use, useCallback, useEffect, useMemo, useRef } from "react";
 import { Quaternion } from "three";
 import { clamp } from "three/src/math/MathUtils.js";
 
 const DEFAULT_ORIENTATION = new Quaternion();
 
-function getCubieKey(orbitName: string, id: number) {
-  return orbitName + "-" + id.toString();
+/**
+ * While we would like to use the cubie's piece ID, the piece ID isn't always unique.
+ * The position within the pieces array (for the cubie type's orbit) is, though.
+ */
+function getCubieKey(orbitName: string, posn: number) {
+  return orbitName + "-" + posn.toString();
 }
 
 export type VirtualCubeImplementationProps = {
@@ -118,14 +123,28 @@ export function generateVirtualCubeImplementation(
 
     const prevAnimationProgressRef = useRef<number | null>(null);
 
-    const moveFamily = animationMove
-      ? kpuzzle.definition.derivedMoves?.[animationMove.quantum.family] ??
-        animationMove.quantum.family
-      : undefined;
+    /**
+     * TODO - derivedMoves will not always work. cubing.js's 2x2 definition, for example, has a derivedMoves section with moves like B: [x': U].
+     * Our original assumption that derivedMoves provides a simple alias is wrong. At some point, we need to provide a lookup helper.
+     * We will get by by defining our own 2x2 KPuzzleDefinition for now.
+     */
+    const moveFamily = useMemo(() => {
+      return animationMove
+        ? kpuzzle.definition.derivedMoves?.[animationMove.quantum.family] ??
+            animationMove.quantum.family
+        : undefined;
+    }, [animationMove, kpuzzle]);
 
-    const moveTransformDefinition = moveFamily
-      ? kpuzzle.definition.moves[moveFamily]
-      : undefined;
+    const moveTransformDefinition = useMemo(() => {
+      if (!moveFamily) return undefined;
+      /** Same issue as isValidMoveForPuzzle - since there are no guaranteed "legal move for puzzle" options, we must try catch. */
+      try {
+        return kpuzzle.moveToTransformation(new Move(animationMove!.quantum, 1))
+          .transformationData;
+      } catch {
+        return undefined;
+      }
+    }, [moveFamily, kpuzzle, animationMove]);
 
     const finalAxisAngle: AxisAngle | undefined = useMemo(() => {
       if (animationMove && moveFamily) {
@@ -153,27 +172,22 @@ export function generateVirtualCubeImplementation(
         // permutation - how pieces get shuffled. The indices where permutation[i] != i are affected ids
         orbitDefn.permutation
           .filter((id, posn) => id != posn)
-          .forEach((id) => {
-            affectedCubieKeys.add(
-              getCubieKey(orbitName, kPatternData[orbitName].pieces[id])
-            );
+          .forEach((posn) => {
+            affectedCubieKeys.add(getCubieKey(orbitName, posn));
           });
 
         // orientation - pieces at indices where orientationDelta[i] != 0 are affected ids.
         orbitDefn.orientationDelta.forEach((delta, idx) => {
           if (delta != 0) {
             affectedCubieKeys.add(
-              getCubieKey(
-                orbitName,
-                kPatternData[orbitName].pieces[orbitDefn.permutation[idx]]
-              )
+              getCubieKey(orbitName, orbitDefn.permutation[idx])
             );
           }
         });
       }
 
       return affectedCubieKeys;
-    }, [kPatternData, moveTransformDefinition]);
+    }, [moveTransformDefinition]);
 
     // Handle conditions for cubies in the correct animation group.
     useEffect(() => {
@@ -260,7 +274,9 @@ export function generateVirtualCubeImplementation(
           const CubieComponent = orbitCubieMapping[orbitName];
 
           return orbitData.pieces.map((id, position) => {
-            const cubieKey = orbitName + "-" + id.toString();
+            // the cubie "id" is not guaranteed to be unique.
+            // For this reason, we use position (guaranteed unique) for the key.
+            const cubieKey = getCubieKey(orbitName, position);
             return (
               <CubieComponent
                 key={cubieKey}

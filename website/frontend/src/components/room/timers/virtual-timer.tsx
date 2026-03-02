@@ -1,6 +1,6 @@
 import type { KeybindMap } from "@/types/keybind";
 import type { MoveEvent } from "@btime/bluetooth-cubing";
-import type { Penalty } from "@btime/types";
+import type { Penalty, RoomEvent } from "@btime/types";
 
 import InspectionCountdown from "@/components/room/inspection-countdown";
 import { Button } from "@/components/ui/button";
@@ -12,14 +12,16 @@ import {
 } from "@/hooks/use-cube-state-manager";
 import { useInspectionCountdown } from "@/hooks/use-inspection-countdown";
 import { useTimer } from "@/hooks/use-timer";
-import { get3x3x3 } from "@/lib/get-kpuzzle";
+import { EVENT_KPUZZLE_GETTERS } from "@/lib/get-kpuzzle";
 import { cn } from "@/lib/utils";
-import { useKeybindStore } from "@/stores/keybind-store";
+import { isValidMoveForPuzzle } from "@/lib/valid-move-for-puzzle";
+import { DEFAULT_VIRTUAL_KEYBINDS } from "@/lib/virtual-keybinds";
 import {
   DEFAULT_MOVE_EVENT_DURATION,
   SLOWEST_MOVE_EVENT_DURATION,
 } from "@/types/animation-constants";
 import { Result } from "@btime/lib";
+import { ROOM_EVENTS_INFO } from "@btime/types";
 import { useAnimationQueue, VirtualCube } from "@btime/virtual-cubing-react";
 import { Alg, Move } from "cubing/alg";
 import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -50,22 +52,38 @@ const ROTATIONS = new Set<string>(["x", "y", "z"]);
 
 type VirtualTimerProps = {
   scramble?: string;
+  event: RoomEvent;
   onFinishInspection?: (penalty: Penalty) => void;
   onFinishTimer: (timerValue: number) => void;
 };
 
-const kpuzzle333Promise = get3x3x3();
 export default function VirtualTimer({
   scramble = "",
+  event,
   onFinishInspection,
   onFinishTimer,
 }: VirtualTimerProps) {
-  const defaultPattern333 = use(kpuzzle333Promise).defaultPattern();
+  const getKPuzzle = EVENT_KPUZZLE_GETTERS[event];
+  const keybindMap = DEFAULT_VIRTUAL_KEYBINDS.get(event);
+  if (!getKPuzzle) {
+    throw new Error(
+      `VirtualTimer rendered with unsupported event "${event}". ` +
+        `This is a bug — check that allowsEvent() guards are in place upstream.`
+    );
+  }
+  if (!keybindMap) {
+    throw new Error(
+      `Couldn't find keybinds for event ${event}. Check that virtual-keybinds is updated for this event.`
+    );
+  }
+
+  const defaultPattern = use(getKPuzzle()).defaultPattern();
 
   /** State */
   const localSolveStatus = useRoomStore((s) => s.localSolveStatus);
   const localResult = useRoomStore((s) => s.localResult);
   const useInspection = useRoomStore((s) => s.useInspection);
+  const setLocalPenalty = useRoomStore((s) => s.setLocalPenalty);
   const updateLocalSolveStatus = useRoomStore((s) => s.updateLocalSolveStatus);
 
   const [timerTextClassName, setTimerTextClassName] = useState<string>("");
@@ -78,9 +96,6 @@ export default function VirtualTimer({
     inspectionPenalty,
   } = useInspectionCountdown(updateLocalSolveStatus, onFinishInspection);
 
-  /** Keybind map */
-  const keybindMap = useKeybindStore((s) => s.keybindMap);
-
   /** Timer */
   const { time, startTimer, stopTimer } = useTimer();
 
@@ -91,7 +106,7 @@ export default function VirtualTimer({
   /** State manager */
 
   const { alg, applyMove, setAlg, resetCube } = useCubeStateManager(
-    defaultPattern333,
+    defaultPattern,
     scramble
   );
 
@@ -108,6 +123,10 @@ export default function VirtualTimer({
       const timestamp = performance.now();
 
       const moveObj = new Move(move);
+      if (!isValidMoveForPuzzle(moveObj, defaultPattern.kpuzzle)) {
+        // early return - prevents adding invalid moves to animation queue
+        return;
+      }
       const moveEvent = {
         move: moveObj,
         timestamp: timestamp,
@@ -121,7 +140,7 @@ export default function VirtualTimer({
        * initialState + alg + animation queue (including current elem) + new move
        */
       const moveSolvesCube = checkSolved(
-        defaultPattern333?.applyAlg(new Alg(alg).concat(animationQueueAlg))
+        defaultPattern?.applyAlg(new Alg(alg).concat(animationQueueAlg))
       );
 
       animationQueue.enqueue(moveEvent);
@@ -157,7 +176,7 @@ export default function VirtualTimer({
     },
     [
       animationQueue,
-      defaultPattern333,
+      defaultPattern,
       alg,
       localSolveStatus,
       useInspection,
@@ -231,7 +250,7 @@ export default function VirtualTimer({
   const VirtualCubeElement = useMemo(() => {
     return (
       <VirtualCube
-        event="3x3x3"
+        event={ROOM_EVENTS_INFO[event].jsName}
         viewerControlsEnabled={false}
         setupAlg=""
         alg={displayAlg}
@@ -246,7 +265,7 @@ export default function VirtualTimer({
         onFinishAnimating={onFinishAnimating}
       />
     );
-  }, [displayAlg, currentMoveEvent, onFinishAnimating]);
+  }, [event, displayAlg, currentMoveEvent, onFinishAnimating]);
 
   const helpTextElement = useMemo(() => {
     if (localSolveStatus === "SOLVING" || localSolveStatus === "SUBMITTING") {
@@ -299,6 +318,16 @@ export default function VirtualTimer({
               setTimerTextClassName("");
               setAlg(scramble);
               startInspection();
+            }}
+          />
+        )}
+        {localSolveStatus === "SOLVING" && (
+          <KeyboardListenerKey
+            visible={false}
+            keyName="Escape"
+            onKeyDown={() => {
+              setLocalPenalty("DNF");
+              updateLocalSolveStatus();
             }}
           />
         )}

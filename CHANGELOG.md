@@ -4,6 +4,12 @@ This file contains summaries of major/relevant changes to the BTime project in r
 
 The current versioning convention tracks changes to BTime as a whole. Packages will maintain their own versions as necessary.
 
+## 0.6.3 - 2026-03-01
+
+Added:
+
+- Add support for 2x2 through 5x5 in Virtual Cube
+
 ## 0.6.2 - 2026-02-23
 
 Added:
