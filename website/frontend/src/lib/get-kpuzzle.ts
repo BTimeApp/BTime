@@ -30,6 +30,14 @@ function get4x4x4(): Promise<KPuzzle> {
   return kpuzzle444Promise;
 }
 
+let kpuzzle555Promise: Promise<KPuzzle> | null = null;
+function get5x5x5(): Promise<KPuzzle> {
+  if (!kpuzzle555Promise) {
+    kpuzzle555Promise = puzzles["5x5x5"].kpuzzle();
+  }
+  return kpuzzle555Promise;
+}
+
 /**
  * Mapping of room events to kpuzzle (to be used in virtual-timer).
  * Needs to use Partial typing b/c we don't support every possible RoomEvent yet.
@@ -40,4 +48,5 @@ export const EVENT_KPUZZLE_GETTERS: Partial<
   "333": get3x3x3,
   "222": get2x2x2,
   "444": get4x4x4,
+  "555": get5x5x5,
 };

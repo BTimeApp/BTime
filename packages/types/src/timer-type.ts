@@ -45,7 +45,12 @@ export const TIMER_TYPES_INFO = {
     allowsInspection: true,
     defaultLocalSolveStatus: "IDLE",
     allowsEvent: (roomEvent: RoomEvent) => {
-      return roomEvent === "333" || roomEvent === "222" || roomEvent === "444";
+      return (
+        roomEvent === "333" ||
+        roomEvent === "222" ||
+        roomEvent === "444" ||
+        roomEvent === "555"
+      );
     },
   },
   BLUETOOTHCUBE: {
