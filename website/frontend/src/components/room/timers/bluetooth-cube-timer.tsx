@@ -11,7 +11,7 @@ import {
 } from "@/hooks/use-cube-state-manager";
 import { useInspectionCountdown } from "@/hooks/use-inspection-countdown";
 import { useTimer } from "@/hooks/use-timer";
-import { get3x3x3 } from "@/lib/get-kpuzzle";
+import { EVENT_KPUZZLE_GETTERS } from "@/lib/get-kpuzzle";
 import { cn } from "@/lib/utils";
 import { useBluetoothCubeStore } from "@/stores/bluetooth-cube-store";
 import {
@@ -289,7 +289,7 @@ type BluetoothCubeTimerProps = {
   onFinishTimer: (timerValue: number) => void;
 };
 
-const kpuzzle333Promise = get3x3x3();
+const kpuzzle333Promise = EVENT_KPUZZLE_GETTERS["333"]!();
 export default function BluetoothCubeTimer({
   scramble = "",
   onFinishInspection,

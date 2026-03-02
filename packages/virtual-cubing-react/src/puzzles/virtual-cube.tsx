@@ -139,6 +139,14 @@ function VirtualCubeAnimationManager({
 }: VirtualCubeAnimationManagerProps) {
   const VirtualCubeComponent = VIRTUAL_CUBE_IMPLEMENTATIONS.get(event);
 
+  if (!VirtualCubeComponent) {
+    throw new Error(
+      `No Virtual Cube component implementation exists for event ${event}. Valid events: ${[
+        ...VIRTUAL_CUBE_IMPLEMENTATIONS.keys(),
+      ]}`
+    );
+  }
+
   const animationProgressRef = useRef<number>(0);
 
   const startTimeRef = useRef<number>(null);
@@ -171,10 +179,6 @@ function VirtualCubeAnimationManager({
       onFinishAnimating?.();
     }
   });
-
-  if (!VirtualCubeComponent) {
-    return null;
-  }
 
   return (
     <VirtualCubeComponent

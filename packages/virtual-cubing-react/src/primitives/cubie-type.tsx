@@ -4,6 +4,16 @@ import type { Color, Group } from "three";
 import { Cubie } from "./cubie";
 import React, { useMemo } from "react";
 
+/**
+ * To understand these definitions, you need to know how KPatternOrbitData works: https://js.cubing.net/cubing/api/interfaces/kpuzzle.KPatternOrbitData.html
+ * It may help to also look through some example definitions at https://experiments.cubing.net/cubing.js/twips/text-ui.html.
+ *
+ * A cubie is the atomic unit of a twisty puzzle. The information we need to render it comes in three attributes:
+ *  - position - what index it takes up in its orbit's pieces array
+ *  - orientation - its current orientation. 0 is akin to the "solved" orientation
+ *  - id - the number value it has within the pieces array. this tells us "which piece is this" and defines its coloring
+ */
+
 export type CubieProps = {
   position: number;
   orientation: number;

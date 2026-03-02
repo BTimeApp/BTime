@@ -4,9 +4,9 @@ import type { Color } from "three";
 import { generateCubieType } from "../../primitives";
 import {
   BOX_GEOMETRY_FACE_ORDER,
-  CENTER_GEOMETRY,
-  CORNER_GEOMETRY,
-  EDGE_GEOMETRY,
+  centerCubieGeometryGenerator,
+  cornerCubieGeometryGenerator,
+  edgeCubieGeometryGenerator,
 } from "../../types/box-geometry";
 import {
   COLOR_BLUE,
@@ -17,6 +17,10 @@ import {
   COLOR_YELLOW,
 } from "../../types/colors";
 import { Quaternion } from "three";
+
+const CENTER_GEOMETRY = centerCubieGeometryGenerator(1);
+const EDGE_GEOMETRY = edgeCubieGeometryGenerator(1);
+const CORNER_GEOMETRY = cornerCubieGeometryGenerator(1);
 
 const CenterGeometrySource = (): GeometrySpec<BoxFace> => ({
   geometry: CENTER_GEOMETRY,
@@ -61,7 +65,7 @@ const CENTER_ORIENTATION_TO_ROTATION: Record<number, Quaternion> = {
   3: new Quaternion(0, Math.sqrt(2) / 2, 0, Math.sqrt(2) / 2),
 };
 
-const CENTER_POSITION_TO_COLOR_MAP: Record<
+const CENTER_ID_TO_COLOR_MAP: Record<
   number,
   Partial<Record<BoxFace, Color>>
 > = {
@@ -113,13 +117,13 @@ function centerCubie333IdToColors(
 ): Partial<Record<BoxFace, Color>> {
   if (position < 0 || position > 5) {
     throw new Error(
-      `Invalid Id for center cubie (must be in range [0, 5]): ${position}`
+      `Invalid id for center cubie (must be in range [0, 5]): ${position}`
     );
   }
-  return CENTER_POSITION_TO_COLOR_MAP[position];
+  return CENTER_ID_TO_COLOR_MAP[position];
 }
 
-export const CenterCubie = generateCubieType<BoxFace>(
+export const CenterCubie333 = generateCubieType<BoxFace>(
   centerCubie333PositionToTransform,
   centerCubie333OrientationToTransform,
   centerCubie333IdToColors,
@@ -163,10 +167,7 @@ const EDGE_ORIENTATION_TO_ROTATION: Record<number, Quaternion> = {
   1: new Quaternion(0, Math.sqrt(2) / 2, Math.sqrt(2) / 2, 0),
 };
 
-const EDGE_POSITION_TO_COLOR_MAP: Record<
-  number,
-  Partial<Record<BoxFace, Color>>
-> = {
+const EDGE_ID_TO_COLOR_MAP: Record<number, Partial<Record<BoxFace, Color>>> = {
   0: {
     "+y": COLOR_WHITE,
     "+z": COLOR_GREEN,
@@ -245,13 +246,13 @@ function edgeCubie333IdToColors(
 ): Partial<Record<BoxFace, Color>> {
   if (position < 0 || position > 11) {
     throw new Error(
-      `Invalid Id for edge cubie (must be in range [0, 11]): ${position}`
+      `Invalid id for edge cubie (must be in range [0, 11]): ${position}`
     );
   }
-  return EDGE_POSITION_TO_COLOR_MAP[position];
+  return EDGE_ID_TO_COLOR_MAP[position];
 }
 
-export const EdgeCubie = generateCubieType<BoxFace>(
+export const EdgeCubie333 = generateCubieType<BoxFace>(
   edgeCubie333PositionToTransform,
   edgeCubie333OrientationToTransform,
   edgeCubie333IdToColors,
@@ -289,7 +290,7 @@ const CORNER_ORIENTATION_TO_ROTATION: Record<number, Quaternion> = {
   2: new Quaternion(0.5, 0.5, 0.5, 0.5),
 };
 
-const CORNER_POSITION_TO_COLOR_MAP: Record<
+const CORNER_ID_TO_COLOR_MAP: Record<
   number,
   Partial<Record<BoxFace, Color>>
 > = {
@@ -363,13 +364,13 @@ function cornerCubie333IdToColors(
 ): Partial<Record<BoxFace, Color>> {
   if (position < 0 || position > 7) {
     throw new Error(
-      `Invalid position for corner cubie (must be in range [0, 7]): ${position}`
+      `Invalid id for corner cubie (must be in range [0, 7]): ${position}`
     );
   }
-  return CORNER_POSITION_TO_COLOR_MAP[position];
+  return CORNER_ID_TO_COLOR_MAP[position];
 }
 
-export const CornerCubie = generateCubieType<BoxFace>(
+export const CornerCubie333 = generateCubieType<BoxFace>(
   cornerCubie333PositionToTransform,
   cornerCubie333OrientationToTransform,
   cornerCubie333IdToColors,

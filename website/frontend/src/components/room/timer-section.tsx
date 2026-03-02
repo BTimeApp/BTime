@@ -9,6 +9,7 @@ import { useRoomStore } from "@/context/room-context";
 import { Result } from "@btime/lib";
 import { ROOM_EVENTS_INFO, TIMER_TYPES_INFO } from "@btime/types";
 import { useCallback } from "react";
+import { ErrorBoundary } from "react-error-boundary";
 
 type TimerSectionProps = {
   scramble?: string;
@@ -86,11 +87,14 @@ function TimerSection({ scramble }: TimerSectionProps) {
       );
     case "VIRTUAL":
       return (
-        <VirtualTimer
-          scramble={scramble}
-          onFinishInspection={endInspectionCallback}
-          onFinishTimer={endNumberTimerCallback}
-        />
+        <ErrorBoundary FallbackComponent={VirtualTimerErrorFallback}>
+          <VirtualTimer
+            scramble={scramble}
+            event={roomEvent}
+            onFinishInspection={endInspectionCallback}
+            onFinishTimer={endNumberTimerCallback}
+          />
+        </ErrorBoundary>
       );
     case "BLUETOOTHCUBE":
       return (
@@ -104,6 +108,15 @@ function TimerSection({ scramble }: TimerSectionProps) {
       console.warn(`Illegal timer type encountered: ${timerType}`);
       return;
   }
+}
+
+function VirtualTimerErrorFallback() {
+  return (
+    <div className="text-wrap text-onerror">
+      You are trying to use VirtualTimer with an incompatible room event. Either
+      switch room events or switch to a different timer.
+    </div>
+  );
 }
 
 export default TimerSection;

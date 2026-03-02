@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useRoomActions, useRoomStore } from "@/context/room-context";
 import { useTheme } from "@/context/theme-context";
-import { ROOM_EVENTS_INFO } from "@btime/types";
+import { TIMER_TYPES_INFO } from "@btime/types";
 import { Moon, Sun } from "lucide-react";
 
 type UserRoomSettingsDialogProps = {
@@ -68,10 +68,10 @@ export default function UserRoomSettingsDialog({
                 <SelectItem value="KEYBOARD">Keyboard</SelectItem>
                 {/* TODO - update when we implement more than GAN timer */}
                 <SelectItem value="BLUETOOTHTIMER">GAN Timer</SelectItem>
-                {ROOM_EVENTS_INFO[roomEvent]?.baseEvent === "333" && (
+                {TIMER_TYPES_INFO["VIRTUAL"].allowsEvent(roomEvent) && (
                   <SelectItem value="VIRTUAL">Virtual</SelectItem>
                 )}
-                {ROOM_EVENTS_INFO[roomEvent]?.baseEvent === "333" && (
+                {TIMER_TYPES_INFO["BLUETOOTHCUBE"].allowsEvent(roomEvent) && (
                   <SelectItem value="BLUETOOTHCUBE">Bluetooth Cube</SelectItem>
                 )}
               </SelectContent>
