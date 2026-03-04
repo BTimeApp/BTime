@@ -6,7 +6,7 @@ import { ErrorBoundary } from "../utils/error-boundary";
 import { TrackballControls } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { EffectComposer, Vignette } from "@react-three/postprocessing";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState, memo } from "react";
 import { Quaternion } from "three";
 import { clamp } from "three/src/math/MathUtils.js";
 
@@ -63,7 +63,16 @@ export type VirtualCubeProps = VirtualCubeAnimationManagerProps & {
   onErrorClear?: () => void;
 };
 
-export function VirtualCube({
+const DEFAULT_CAMERA = {
+  position: [2, 4, 5] as [number, number, number],
+  fov: 60,
+  near: 0.1,
+  far: 15,
+};
+
+const DEFAULT_DPR: [number, number] = [1, 2];
+
+export const VirtualCube = memo(function VirtualCube({
   //virtual cube only props
   viewerControlsEnabled = true,
   onError,
@@ -72,16 +81,10 @@ export function VirtualCube({
 }: VirtualCubeProps) {
   const [inErrorState, setInErrorState] = useState<boolean>(false);
 
+  const resetKey = `${virtualCubeInternalProps.setupAlg}-${virtualCubeInternalProps.alg}`;
+
   return (
-    <Canvas
-      camera={{
-        position: [2, 4, 5],
-        fov: 60,
-        near: 0.1,
-        far: 15,
-      }}
-      dpr={[1, 2]}
-    >
+    <Canvas camera={DEFAULT_CAMERA} dpr={DEFAULT_DPR}>
       <Suspense fallback={null}>
         {/* <ambientLight /> */}
         <ErrorBoundary
@@ -103,10 +106,7 @@ export function VirtualCube({
             setInErrorState(false);
             onErrorClear?.();
           }}
-          resetKey={{
-            alg: virtualCubeInternalProps.alg,
-            setupAlg: virtualCubeInternalProps.setupAlg,
-          }}
+          resetKey={resetKey}
         >
           <VirtualCubeAnimationManager {...virtualCubeInternalProps} />
         </ErrorBoundary>
@@ -120,12 +120,9 @@ export function VirtualCube({
       </Suspense>
     </Canvas>
   );
-}
+});
 
-/**
- * Pull out the wrapper of a virtual cube implementation into its own component b/c useFrame has to be within a canvas, not at the same level
- */
-function VirtualCubeAnimationManager({
+const VirtualCubeAnimationManager = memo(function VirtualCubeAnimationManager({
   event = "3x3x3",
   initialState,
   setupAlg = "",
@@ -190,4 +187,4 @@ function VirtualCubeAnimationManager({
       animationProgressRef={animationProgressRef}
     />
   );
-}
+});
