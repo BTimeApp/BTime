@@ -253,16 +253,23 @@ export function generateVirtualCubeImplementation(
       );
     });
 
-    const setCubieRef = useCallback(
-      (key: string) => (group: Group | null) => {
-        if (group) {
-          cubieRefs.current.set(key, group);
-        } else {
-          cubieRefs.current.delete(key);
-        }
-      },
-      []
+    const cubieRefHandlers = useRef<Map<string, (group: Group | null) => void>>(
+      new Map()
     );
+    const getCubieRefHandler = useCallback((key: string) => {
+      let handler = cubieRefHandlers.current.get(key);
+      if (!handler) {
+        handler = (group: Group | null) => {
+          if (group) {
+            cubieRefs.current.set(key, group);
+          } else {
+            cubieRefs.current.delete(key);
+          }
+        };
+        cubieRefHandlers.current.set(key, handler);
+      }
+      return handler;
+    }, []);
 
     return (
       <group quaternion={orientation} ref={mainGroupRef}>
@@ -283,7 +290,7 @@ export function generateVirtualCubeImplementation(
                 position={position}
                 orientation={orbitData.orientation[position]}
                 id={id}
-                ref={setCubieRef(cubieKey)}
+                ref={getCubieRefHandler(cubieKey)}
               />
             );
           });
