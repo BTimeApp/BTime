@@ -26,15 +26,19 @@ export const Cubie = memo(function Cubie<F extends string>({
     [geometrySource]
   );
 
+  const materials = useMemo(() => {
+    return orderedFaces.map((face, idx) => (
+      <meshBasicMaterial
+        key={face}
+        attach={`material-${idx}`}
+        color={face in colors ? colors[face] : defaultColor}
+      />
+    ));
+  }, [colors, orderedFaces, defaultColor]);
+
   return (
     <mesh geometry={geometry}>
-      {orderedFaces.map((face, i) => (
-        <meshBasicMaterial
-          key={i}
-          attach={`material-${i}`}
-          color={face in colors ? colors[face] : defaultColor}
-        />
-      ))}
+      {materials}
     </mesh>
   );
 });
