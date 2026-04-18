@@ -1,7 +1,7 @@
+import * as schema from './schema.js';
+import { DBLogger } from "@/logging/logger.js";
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
-import { DBLogger } from "@/logging/logger.js";
-import * as schema from './schema.js';
 
 export let db: ReturnType<typeof drizzle<typeof schema>>;
 

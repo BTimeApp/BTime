@@ -1,5 +1,5 @@
-import type { IUser } from "@btime/types";
 import type { User } from "@/database/schema.js";
+import type { IUser } from "@btime/types";
 
 /** Converts a Drizzle User to IUser for use in the backend.
  *

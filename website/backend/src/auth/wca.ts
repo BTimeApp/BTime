@@ -2,10 +2,10 @@
 import type { RedisStores } from "@/redis/stores.js";
 import type { PassportStatic } from "passport";
 
-import { AuthLogger } from "@/logging/logger.js";
-import { toIUser } from "@/models/user.js";
 import { db } from "@/database/database.js";
 import { users } from "@/database/schema.js";
+import { AuthLogger } from "@/logging/logger.js";
+import { toIUser } from "@/models/user.js";
 import { eq } from "drizzle-orm";
 import { Router } from "express";
 import { Strategy as CustomStrategy } from "passport-custom";

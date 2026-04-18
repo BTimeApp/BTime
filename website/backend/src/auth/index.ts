@@ -5,11 +5,11 @@ import type { NextFunction, Request, Response} from "express";
 import type { PassportStatic } from "passport";
 
 import { createWCAAuth } from "@/auth/wca.js";
-import { toIUser } from "@/models/user.js";
-import { Router } from "express";
 import { db } from "@/database/database.js";
 import { users } from "@/database/schema.js";
+import { toIUser } from "@/models/user.js";
 import { eq } from "drizzle-orm";
+import { Router } from "express";
 
 export function createAuthRouter(
   passport: PassportStatic,
