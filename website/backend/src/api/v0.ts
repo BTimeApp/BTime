@@ -1,9 +1,11 @@
-import type { UserDocument} from "@/models/user.js";
 import type { IUser } from "@btime/types";
 
 import { authMiddleware } from "@/auth/index.js";
-import { toIUser, UserModel } from "@/models/user.js";
+import { db } from "@/database/database.js";
+import { users } from "@/database/schema.js";
+import { toIUser } from "@/models/user.js";
 import { type RedisStores } from "@/redis/stores.js";
+import { eq } from "drizzle-orm";
 import { Router } from "express";
 
 /** Adds sub-API routes (v0) to an application. Meant to be used from within the /api route. ([btime]/api/v0/...)
@@ -46,13 +48,13 @@ export function v0(stores: RedisStores): Router {
       }
     }
 
-    UserModel.findOneAndUpdate(
-      { _id: userId },
-      { $set: updates },
-      { new: true, runValidators: true }
-    )
-      .lean<UserDocument>()
-      .then((updatedUser) => {
+    db.update(users)
+      .set(updates)
+      .where(eq(users.id, parseInt(userId)))
+      .returning()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .then((results: any) => {
+        const updatedUser = results[0];
         if (!updatedUser) {
           //user not found
           res.status(404).json({ success: false, message: "User not found." });
@@ -71,13 +73,10 @@ export function v0(stores: RedisStores): Router {
         });
         return;
       })
-      .catch((err) => {
-        if (err.name === "ValidationError") {
-          res.status(400).json({ success: false, message: err.message });
-          return;
-        }
-
-        if (err.code === 11000 && err.keyPattern?.userName) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .catch((err: any) => {
+        // Simple error handling for postgres duplicate key (userName unique constraint)
+        if (err.code === '23505' && err.constraint === 'users_userName_unique') {
           res
             .status(400)
             .json({ success: false, message: "Username is already taken." });

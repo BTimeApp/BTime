@@ -1,9 +1,12 @@
-import type { UserDocument } from "@/models/user.js";
+
 import type { RedisStores } from "@/redis/stores.js";
 import type { PassportStatic } from "passport";
 
+import { db } from "@/database/database.js";
+import { users } from "@/database/schema.js";
 import { AuthLogger } from "@/logging/logger.js";
-import { UserModel, toIUser } from "@/models/user.js";
+import { toIUser } from "@/models/user.js";
+import { eq } from "drizzle-orm";
 import { Router } from "express";
 import { Strategy as CustomStrategy } from "passport-custom";
 
@@ -63,31 +66,32 @@ export function createWCAAuth(
         const profileData = await profileResponse.json();
         const profile = profileData.me;
 
-        UserModel.findOneAndUpdate(
-          {
-            wcaIdNo: profile.id,
-          },
-          {
+        const existingUser = await db.query.users.findFirst({
+          where: eq(users.wcaIdNo, profile.id)
+        });
+
+        let user;
+        if (existingUser) {
+          [user] = await db.update(users).set({
+            name: profile.name,
+            wcaId: profile.wca_id,
+            avatarURL: profile.avatar?.thumb_url,
+            updatedAt: new Date(),
+          }).where(eq(users.id, existingUser.id)).returning();
+        } else {
+          [user] = await db.insert(users).values({
             name: profile.name,
             wcaIdNo: profile.id,
             wcaId: profile.wca_id,
             avatarURL: profile.avatar?.thumb_url,
-            $setOnInsert: {
-              //only set these fields upon insertion (protect against overriding existing fields from other OAuth/user changing)
-              email: profile.email,
-              userName: profile.wca_id ?? `BTimeUser${profile.id}`, //null WCAID is possible - fallback to profile id number, which is unique
-            },
-          },
-          {
-            upsert: true,
-            useFindAndModify: false,
-            setDefaultsOnInsert: true,
-            new: true,
-          }
-        )
-          .lean<UserDocument>()
-          .then((user) => done(null, user ? toIUser(user) : null))
-          .catch((err) => done(err));
+            email: profile.email,
+            userName: profile.wca_id ?? `BTimeUser${profile.id}`,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }).returning();
+        }
+
+        return done(null, user ? toIUser(user) : null);
       } catch (err) {
         return done(err as Error);
       }

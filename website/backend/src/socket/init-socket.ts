@@ -18,7 +18,7 @@ import {
   SOCKET_SERVER,
 } from "@btime/types";
 import { createAdapter } from "@socket.io/redis-adapter";
-import { ObjectId } from "bson";
+import { randomUUID } from "crypto";
 import passport from "passport";
 import { Server } from "socket.io";
 
@@ -220,9 +220,9 @@ export const startSocketListener = (
         { roomSettings }: { roomSettings: IRoomSettings },
         callback: (roomId: string) => void
       ) => {
-        let roomId: string = new ObjectId().toString();
+        let roomId: string = randomUUID();
         while ((await stores.rooms.getRoom(roomId)) != null) {
-          roomId = new ObjectId().toString();
+          roomId = randomUUID();
         }
         const room: IRoom = await createRoom(
           roomSettings,
