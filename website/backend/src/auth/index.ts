@@ -5,8 +5,11 @@ import type { NextFunction, Request, Response} from "express";
 import type { PassportStatic } from "passport";
 
 import { createWCAAuth } from "@/auth/wca.js";
-import { UserModel, toIUser } from "@/models/user.js";
+import { toIUser } from "@/models/user.js";
 import { Router } from "express";
+import { db } from "@/database/database.js";
+import { users } from "@/database/schema.js";
+import { eq } from "drizzle-orm";
 
 export function createAuthRouter(
   passport: PassportStatic,
@@ -17,19 +20,17 @@ export function createAuthRouter(
   });
 
   passport.deserializeUser(async (id: string, done) => {
-    //id is the objectId of the user in DB.
-    UserModel.findOne({ _id: id })
-      .then((user) => {
-        // find fail
-        if (!user) {
-          return done(null, false);
-        }
-
-        return done(null, toIUser(user) as Express.User);
-      })
-      .catch((err) => {
-        return done(err);
+    try {
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, parseInt(id))
       });
+      if (!user) {
+        return done(null, false);
+      }
+      return done(null, toIUser(user) as Express.User);
+    } catch (err) {
+      return done(err);
+    }
   });
 
   const router = Router();

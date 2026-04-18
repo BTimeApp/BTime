@@ -1,17 +1,27 @@
+import { drizzle } from 'drizzle-orm/node-postgres';
+import pg from 'pg';
 import { DBLogger } from "@/logging/logger.js";
-import mongoose from "mongoose";
+import * as schema from './schema.js';
+
+export let db: ReturnType<typeof drizzle<typeof schema>>;
 
 export const connectToDB = async () => {
   if (!process.env.DB_URI) {
     throw new Error("DB_URI must be set in environment");
   }
-  await mongoose
-    .connect(process.env.DB_URI)
-    .then(() => {
-      DBLogger.info("Connected to DB.");
-    })
-    .catch((err) => {
-      DBLogger.error({ err }, "Error when connecting to DB");
-      process.exit();
+
+  try {
+    const pool = new pg.Pool({
+      connectionString: process.env.DB_URI,
     });
+    
+    const client = await pool.connect();
+    client.release();
+    DBLogger.info("Connected to PostgreSQL DB.");
+
+    db = drizzle(pool, { schema });
+  } catch (err) {
+    DBLogger.error({ err }, "Error when connecting to PostgreSQL DB");
+    process.exit(1);
+  }
 };
