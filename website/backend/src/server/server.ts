@@ -4,7 +4,7 @@ import type { Request, Response } from "express";
 
 import { api } from "@/api/index.js";
 import { createAuthRouter } from "@/auth/index.js";
-import { connectToDB } from "@/database/database.js";
+import { connectToDB, runMigrations } from "@/database/database.js";
 import { ServerLogger } from "@/logging/logger.js";
 import { connectToRedis } from "@/redis/init-redis.js";
 import { createStores } from "@/redis/stores.js";
@@ -33,6 +33,7 @@ export async function startServer(): Promise<void> {
 
   // connect to the DB
   await connectToDB();
+  await runMigrations();
 
   // connect to Redis
   const { pubClient, subClient, dataClient } = await connectToRedis();

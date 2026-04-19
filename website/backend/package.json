@@ -50,7 +50,7 @@
     "start": "NODE_ENV=production node -r tsconfig-paths/register dist/server/run-server.js",
     "lint": "eslint ./src",
     "lint:fix": "eslint ./src --fix",
-    "db:push": "drizzle-kit push --verbose",
+    "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio"
   }
 }
