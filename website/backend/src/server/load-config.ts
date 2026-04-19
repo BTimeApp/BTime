@@ -3,7 +3,7 @@ import fs from "fs";
 import { join } from "path";
 
 export const handleConfig = (): void => {
-  const env = process.env.NODE_ENV; // "production", "development", or "test"
+  const env = process.env.NODE_ENV;
   const projectRoot = process.cwd(); // Project root directory
 
   // Load base .env

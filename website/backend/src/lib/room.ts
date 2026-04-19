@@ -15,7 +15,7 @@ import { generateScramble, generateScrambles } from "@/lib/utils.js";
 import { RoomLogger } from "@/logging/logger.js";
 import { DNF, Result } from "@btime/lib";
 import bcrypt from "bcrypt";
-import { ObjectId } from "bson";
+import { randomUUID } from "crypto";
 
 /**
  * This file has all the functions related to manipulating Room objects.
@@ -27,7 +27,7 @@ export async function createRoom(
   initialHost?: IUserInfo
 ): Promise<IRoom> {
   const room: IRoom = {
-    id: roomId ? roomId : new ObjectId().toString(),
+    id: roomId ? roomId : randomUUID(),
     users: {},
     teams: {},
     match: {
@@ -784,9 +784,9 @@ export function finishRoomSolve(room: IRoom) {
  */
 export function createTeam(room: IRoom, teamName: string) {
   // generate unique team id
-  let teamId: string = new ObjectId().toString();
+  let teamId: string = randomUUID();
   while (room.teams[teamId] != null) {
-    teamId = new ObjectId().toString();
+    teamId = randomUUID();
   }
 
   // we don't validate the team name - just generate unique ids
