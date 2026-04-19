@@ -17,7 +17,7 @@
     "lib": ["ES2022", "DOM"]
   },
   "include": ["**/*.ts", "**/*.d.ts"],
-  "exclude": ["node-modules", "dist", "eslint.config.ts"],
+  "exclude": ["node-modules", "dist", "eslint.config.ts", "drizzle.config.ts"],
   "tsc-alias": {
     "verbose": false,
     "resolveFullPaths": true,
