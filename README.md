@@ -25,7 +25,7 @@ If you're interested, the following are basic instructions for hosting the BTime
 - `pnpm` (package management)
 - `Node.js` (server runtime)
 - `redis` (ephemeral data store)
-- `mongodb` (database)
+- `PostgreSQL` (database)
 
 #### BTime Repo Setup
 

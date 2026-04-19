@@ -4,6 +4,12 @@ This file contains summaries of major/relevant changes to the BTime project in r
 
 The current versioning convention tracks changes to BTime as a whole. Packages will maintain their own versions as necessary.
 
+## 0.6.4 - 2026-04-18
+
+Changed:
+
+- Migrated off of Mongodb onto PostgreSQL w/ Drizzle ORM
+
 ## 0.6.3 - 2026-03-01
 
 Added:
