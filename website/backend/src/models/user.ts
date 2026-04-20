@@ -10,6 +10,7 @@ export function toIUser(user: User): IUser {
       id: user.id.toString(),
       userName: user.userName,
       avatarURL: user.avatarURL || undefined,
+      isGuest: false,
     },
     userPrivateInfo: {
       name: user.name,
