@@ -122,6 +122,10 @@ export default function Room() {
           console.log("wrong password");
           setUserJoined(false);
           break;
+        case USER_JOIN_FAILURE_REASON.GUESTS_NOT_ALLOWED:
+          toast.error("This room does not allow guests. Please log in to join.");
+          navigate({ to: "/" });
+          break;
         default:
           console.warn(
             `Invalid reason for failing to join room: ${reason}. Routing to home page.`
