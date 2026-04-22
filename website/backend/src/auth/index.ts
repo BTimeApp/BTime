@@ -1,7 +1,7 @@
 // import OAuth2Strategy from "passport-oauth2";
 
 import type { RedisStores } from "@/redis/stores.js";
-import type { NextFunction, Request, Response} from "express";
+import type { NextFunction, Request, Response } from "express";
 import type { PassportStatic } from "passport";
 
 import { createWCAAuth } from "@/auth/wca.js";
@@ -13,7 +13,7 @@ import { Router } from "express";
 
 export function createAuthRouter(
   passport: PassportStatic,
-  stores: RedisStores
+  stores: RedisStores,
 ) {
   passport.serializeUser((user: Express.User, done) => {
     done(null, user.userInfo.id);
@@ -22,7 +22,7 @@ export function createAuthRouter(
   passport.deserializeUser(async (id: string, done) => {
     try {
       const user = await db.query.users.findFirst({
-        where: eq(users.id, parseInt(id))
+        where: eq(users.id, id),
       });
       if (!user) {
         return done(null, false);
@@ -43,7 +43,7 @@ export function createAuthRouter(
 export function authMiddleware(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   if (!req.isAuthenticated()) {
     res
