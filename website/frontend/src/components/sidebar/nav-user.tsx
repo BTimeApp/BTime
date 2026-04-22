@@ -15,7 +15,7 @@ export function NavUser() {
   const navigate = useNavigate();
 
   function handleUserLogin() {
-    if (!user) {
+    if (!user || user.userInfo.isGuest) {
       // user not logged in. log in.
       window.location.href = `/auth/wca?redirect=${window.location.pathname}`;
     } else {
@@ -40,7 +40,7 @@ export function NavUser() {
           </Avatar>
 
           <div className="grid flex-1 text-left text-sm leading-tight">
-            {user ? (
+            {user && !user.userInfo.isGuest ? (
               <>
                 <span className="truncate">{user.userInfo.userName}</span>
                 <span className="text-muted-foreground truncate text-xs">

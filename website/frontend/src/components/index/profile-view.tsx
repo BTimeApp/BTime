@@ -28,7 +28,7 @@ export default function ProfileView({ className }: { className?: string }) {
     <Card
       className={cn(
         "flex flex-col rounded-lg p-2 bg-container-1 gap-1",
-        className
+        className,
       )}
     >
       <CardHeader className="flex flex-row justify-center items-center">
@@ -56,7 +56,7 @@ export default function ProfileView({ className }: { className?: string }) {
       </CardContent>
       <CardFooter className="px-0">
         <div className="">
-          {user ? (
+          {user && !user.userInfo.isGuest ? (
             <LogoutButton className="px-1" size="sm" />
           ) : (
             <LoginButton className="px-1" size="sm" />
