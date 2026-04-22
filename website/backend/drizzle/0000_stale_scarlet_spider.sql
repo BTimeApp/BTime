@@ -1,5 +1,5 @@
 CREATE TABLE "users" (
-	"id" serial PRIMARY KEY NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text NOT NULL,
 	"userName" varchar(25) NOT NULL,
 	"email" text NOT NULL,

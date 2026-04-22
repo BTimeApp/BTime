@@ -50,7 +50,7 @@ export function v0(stores: RedisStores): Router {
 
     db.update(users)
       .set(updates)
-      .where(eq(users.id, parseInt(userId)))
+      .where(eq(users.id, userId))
       .returning()
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .then((results: any) => {
@@ -76,7 +76,10 @@ export function v0(stores: RedisStores): Router {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .catch((err: any) => {
         // Simple error handling for postgres duplicate key (userName unique constraint)
-        if (err.code === '23505' && err.constraint === 'users_userName_unique') {
+        if (
+          err.code === "23505" &&
+          err.constraint === "users_userName_unique"
+        ) {
           res
             .status(400)
             .json({ success: false, message: "Username is already taken." });
