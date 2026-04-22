@@ -7,6 +7,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { getSession } from "@/lib/get-session";
+import { generateGuestUser } from "@/lib/guest";
 import { Outlet, createRootRouteWithContext } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
@@ -15,20 +16,21 @@ export const Route = createRootRouteWithContext<RouterContext>()({
   notFoundComponent: NotFoundComponent,
   beforeLoad: async ({ context }: { context: RouterContext }) => {
     const auth = context.authStore.getState();
-    if (auth.hydrated) return;
 
-    try {
-      const user = await getSession();
-      context.authStore.getState().setUser(user);
-    } catch (err) {
-      console.warn((err as Error).message);
-      context.authStore.getState().setUser(null);
-    }
+    if (!auth.hydrated) {
+      const user = await getSession().catch(() => null); // simplify error handling
 
-    // connect socket only if logged in
-    if (context.authStore.getState().user && !context.socket.connected) {
-      // consider putting socket in a store
-      context.socket.connect();
+      if (user) {
+        // Live OAuth session
+        auth.setUser(user);
+      } else if (auth.user?.userInfo.isGuest) {
+        // Valid persisted guest. reuse & mark hydrated
+        auth.setUser(auth.user);
+      } else {
+        // Cold start or stale OAuth in storage. Create new guest
+        const guestUser = generateGuestUser();
+        auth.setUser(guestUser);
+      }
     }
   },
 });
