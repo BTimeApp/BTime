@@ -32,6 +32,16 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         auth.setUser(guestUser);
       }
     }
+
+    //connect socket
+    if (!context.socket.connected) {
+      context.socket.on("connection", () => {
+        console.log("Socket connected!");
+      });
+      const user = context.authStore.getState().user;
+      context.socket.auth = { user };
+      context.socket.connect();
+    }
   },
 });
 
