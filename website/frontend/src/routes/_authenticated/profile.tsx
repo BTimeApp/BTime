@@ -9,7 +9,7 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/profile/")({
+export const Route = createFileRoute("/_authenticated/profile")({
   component: ProfilePage,
 });
 

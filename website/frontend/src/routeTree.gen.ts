@@ -9,14 +9,19 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from "./routes/__root"
+import { Route as AuthenticatedRouteImport } from "./routes/_authenticated"
 import { Route as IndexRouteImport } from "./routes/index"
 import { Route as VirtualIndexRouteImport } from "./routes/virtual/index"
-import { Route as ProfileIndexRouteImport } from "./routes/profile/index"
 import { Route as PlaygroundIndexRouteImport } from "./routes/playground/index"
-import { Route as CreateIndexRouteImport } from "./routes/create/index"
 import { Route as BluetoothIndexRouteImport } from "./routes/bluetooth/index"
 import { Route as RoomRoomIdRouteImport } from "./routes/room/$roomId"
+import { Route as AuthenticatedProfileRouteImport } from "./routes/_authenticated/profile"
+import { Route as AuthenticatedCreateRouteImport } from "./routes/_authenticated/create"
 
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: "/_authenticated",
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: "/",
   path: "/",
@@ -27,19 +32,9 @@ const VirtualIndexRoute = VirtualIndexRouteImport.update({
   path: "/virtual/",
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProfileIndexRoute = ProfileIndexRouteImport.update({
-  id: "/profile/",
-  path: "/profile/",
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PlaygroundIndexRoute = PlaygroundIndexRouteImport.update({
   id: "/playground/",
   path: "/playground/",
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CreateIndexRoute = CreateIndexRouteImport.update({
-  id: "/create/",
-  path: "/create/",
   getParentRoute: () => rootRouteImport,
 } as any)
 const BluetoothIndexRoute = BluetoothIndexRouteImport.update({
@@ -52,77 +47,95 @@ const RoomRoomIdRoute = RoomRoomIdRouteImport.update({
   path: "/room/$roomId",
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
+  id: "/profile",
+  path: "/profile",
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedCreateRoute = AuthenticatedCreateRouteImport.update({
+  id: "/create",
+  path: "/create",
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   "/": typeof IndexRoute
+  "/create": typeof AuthenticatedCreateRoute
+  "/profile": typeof AuthenticatedProfileRoute
   "/room/$roomId": typeof RoomRoomIdRoute
   "/bluetooth/": typeof BluetoothIndexRoute
-  "/create/": typeof CreateIndexRoute
   "/playground/": typeof PlaygroundIndexRoute
-  "/profile/": typeof ProfileIndexRoute
   "/virtual/": typeof VirtualIndexRoute
 }
 export interface FileRoutesByTo {
   "/": typeof IndexRoute
+  "/create": typeof AuthenticatedCreateRoute
+  "/profile": typeof AuthenticatedProfileRoute
   "/room/$roomId": typeof RoomRoomIdRoute
   "/bluetooth": typeof BluetoothIndexRoute
-  "/create": typeof CreateIndexRoute
   "/playground": typeof PlaygroundIndexRoute
-  "/profile": typeof ProfileIndexRoute
   "/virtual": typeof VirtualIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   "/": typeof IndexRoute
+  "/_authenticated": typeof AuthenticatedRouteWithChildren
+  "/_authenticated/create": typeof AuthenticatedCreateRoute
+  "/_authenticated/profile": typeof AuthenticatedProfileRoute
   "/room/$roomId": typeof RoomRoomIdRoute
   "/bluetooth/": typeof BluetoothIndexRoute
-  "/create/": typeof CreateIndexRoute
   "/playground/": typeof PlaygroundIndexRoute
-  "/profile/": typeof ProfileIndexRoute
   "/virtual/": typeof VirtualIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | "/"
+    | "/create"
+    | "/profile"
     | "/room/$roomId"
     | "/bluetooth/"
-    | "/create/"
     | "/playground/"
-    | "/profile/"
     | "/virtual/"
   fileRoutesByTo: FileRoutesByTo
   to:
     | "/"
+    | "/create"
+    | "/profile"
     | "/room/$roomId"
     | "/bluetooth"
-    | "/create"
     | "/playground"
-    | "/profile"
     | "/virtual"
   id:
     | "__root__"
     | "/"
+    | "/_authenticated"
+    | "/_authenticated/create"
+    | "/_authenticated/profile"
     | "/room/$roomId"
     | "/bluetooth/"
-    | "/create/"
     | "/playground/"
-    | "/profile/"
     | "/virtual/"
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   RoomRoomIdRoute: typeof RoomRoomIdRoute
   BluetoothIndexRoute: typeof BluetoothIndexRoute
-  CreateIndexRoute: typeof CreateIndexRoute
   PlaygroundIndexRoute: typeof PlaygroundIndexRoute
-  ProfileIndexRoute: typeof ProfileIndexRoute
   VirtualIndexRoute: typeof VirtualIndexRoute
 }
 
 declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
+    "/_authenticated": {
+      id: "/_authenticated"
+      path: ""
+      fullPath: "/"
+      preLoaderRoute: typeof AuthenticatedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     "/": {
       id: "/"
       path: "/"
@@ -137,25 +150,11 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof VirtualIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    "/profile/": {
-      id: "/profile/"
-      path: "/profile"
-      fullPath: "/profile/"
-      preLoaderRoute: typeof ProfileIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     "/playground/": {
       id: "/playground/"
       path: "/playground"
       fullPath: "/playground/"
       preLoaderRoute: typeof PlaygroundIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    "/create/": {
-      id: "/create/"
-      path: "/create"
-      fullPath: "/create/"
-      preLoaderRoute: typeof CreateIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     "/bluetooth/": {
@@ -172,16 +171,43 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof RoomRoomIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    "/_authenticated/profile": {
+      id: "/_authenticated/profile"
+      path: "/profile"
+      fullPath: "/profile"
+      preLoaderRoute: typeof AuthenticatedProfileRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    "/_authenticated/create": {
+      id: "/_authenticated/create"
+      path: "/create"
+      fullPath: "/create"
+      preLoaderRoute: typeof AuthenticatedCreateRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
+interface AuthenticatedRouteChildren {
+  AuthenticatedCreateRoute: typeof AuthenticatedCreateRoute
+  AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
+}
+
+const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedCreateRoute: AuthenticatedCreateRoute,
+  AuthenticatedProfileRoute: AuthenticatedProfileRoute,
+}
+
+const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
+  AuthenticatedRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRoute: AuthenticatedRouteWithChildren,
   RoomRoomIdRoute: RoomRoomIdRoute,
   BluetoothIndexRoute: BluetoothIndexRoute,
-  CreateIndexRoute: CreateIndexRoute,
   PlaygroundIndexRoute: PlaygroundIndexRoute,
-  ProfileIndexRoute: ProfileIndexRoute,
   VirtualIndexRoute: VirtualIndexRoute,
 }
 export const routeTree = rootRouteImport

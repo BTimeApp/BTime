@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { AuthStore } from "@/stores/auth-store";
 import { Link } from "@tanstack/react-router";
 
 export default function CreateRoomButton({
@@ -6,8 +7,16 @@ export default function CreateRoomButton({
 }: {
   className?: string;
 }) {
+  const user = AuthStore((s) => s.user);
+  const userIsAuthenticated = user && !user.userInfo.isGuest;
+
   return (
-    <Button variant="primary" size="lg" className={className}>
+    <Button
+      disabled={!userIsAuthenticated}
+      variant="primary"
+      size="lg"
+      className={className}
+    >
       <Link to="/create" className="grow w-full">
         <h1 className="font-bold text-center text-2xl w-full truncate">
           Create Room
