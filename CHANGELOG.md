@@ -4,6 +4,19 @@ This file contains summaries of major/relevant changes to the BTime project in r
 
 The current versioning convention tracks changes to BTime as a whole. Packages will maintain their own versions as necessary.
 
+## 0.6.5 - 2026-04-23
+
+Added:
+
+- Support for a guest mode on BTime!
+- New room setting `allowGuests` to control if the room allows guests to join
+- Client-side guest identity generation
+
+Changed:
+
+- Use zustand persist middleware in the auth store to help persist user identity. useful for guests and fully oauth'd users.
+- /create and /profile routes are now auth-protected. Guests cannot access either of these routes
+
 ## 0.6.4 - 2026-04-18
 
 Changed:
