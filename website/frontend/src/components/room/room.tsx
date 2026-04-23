@@ -99,7 +99,7 @@ export default function Room() {
 
       setUserJoined(true);
     },
-    [handleRoomUpdate, resetLocalSolveStatus, setUpLocalUserState]
+    [handleRoomUpdate, resetLocalSolveStatus, setUpLocalUserState],
   );
 
   const handleJoinRoomFail = useCallback(
@@ -122,14 +122,20 @@ export default function Room() {
           console.log("wrong password");
           setUserJoined(false);
           break;
+        case USER_JOIN_FAILURE_REASON.GUESTS_NOT_ALLOWED:
+          toast.error(
+            "This room does not allow guests. Please log in to join.",
+          );
+          navigate({ to: "/" });
+          break;
         default:
           console.warn(
-            `Invalid reason for failing to join room: ${reason}. Routing to home page.`
+            `Invalid reason for failing to join room: ${reason}. Routing to home page.`,
           );
           navigate({ to: "/" });
       }
     },
-    [navigate]
+    [navigate],
   );
 
   /**
@@ -139,12 +145,12 @@ export default function Room() {
   useSocketEvent(
     socket,
     SOCKET_SERVER.USER_JOIN_ROOM_USER_SUCCESS,
-    handleJoinRoomSuccess
+    handleJoinRoomSuccess,
   );
   useSocketEvent(
     socket,
     SOCKET_SERVER.USER_JOIN_ROOM_USER_FAIL,
-    handleJoinRoomFail
+    handleJoinRoomFail,
   );
 
   // if not logged in, make the user log in first.

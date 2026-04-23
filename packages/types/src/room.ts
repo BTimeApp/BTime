@@ -251,6 +251,7 @@ export interface IRoomSettings {
   access: Access;
   raceSettings: RaceSettings;
   teamSettings: TeamSettings;
+  allowGuests: boolean; //whether or not guests can join room. should default to true.
   maxUsers?: number; //the maximum number of users we can have in the room
 }
 
@@ -274,4 +275,5 @@ export enum USER_JOIN_FAILURE_REASON {
   UNDEFINED_PASSWORD,
   USER_BANNED,
   ROOM_FULL,
+  GUESTS_NOT_ALLOWED,
 }

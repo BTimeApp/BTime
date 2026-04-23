@@ -20,6 +20,7 @@ import { Image } from "@unpic/react";
 export default function ProfileView({ className }: { className?: string }) {
   const user = AuthStore((s) => s.user);
   const hydrated = AuthStore((s) => s.hydrated);
+  const userIsAuthenticated = user && !user.userInfo.isGuest;
 
   const username = user?.userInfo.userName ?? "Profile";
   const avatarURL = user?.userInfo.avatarURL ?? "/C_logo.png";
@@ -28,16 +29,22 @@ export default function ProfileView({ className }: { className?: string }) {
     <Card
       className={cn(
         "flex flex-col rounded-lg p-2 bg-container-1 gap-1",
-        className
+        className,
       )}
     >
       <CardHeader className="flex flex-row justify-center items-center">
-        <Link
-          to="/profile"
-          className="flex font-semibold text-xl hover:font-bold hover:underline truncate"
-        >
-          {username.length > 0 ? username : "BTime User"}
-        </Link>
+        {userIsAuthenticated ? (
+          <Link
+            to="/profile"
+            className="flex font-semibold text-xl hover:font-bold hover:underline truncate"
+          >
+            {username.length > 0 ? username : "BTime User"}
+          </Link>
+        ) : (
+          <div className="flex font-semibold text-xl">
+            {username.length > 0 ? username : "Btime User"}
+          </div>
+        )}
       </CardHeader>
       <CardContent className="px-0">
         <div className="flex flex-row justify-center items-center">
@@ -56,7 +63,7 @@ export default function ProfileView({ className }: { className?: string }) {
       </CardContent>
       <CardFooter className="px-0">
         <div className="">
-          {user ? (
+          {userIsAuthenticated ? (
             <LogoutButton className="px-1" size="sm" />
           ) : (
             <LoginButton className="px-1" size="sm" />

@@ -151,6 +151,20 @@ export const ROOM_EVENT_HANDLERS = {
         return;
       }
     }
+    //validate guests are allowed when the user is a guest
+    if (
+      user.isGuest &&
+      room.settings.allowGuests === false
+    ) {
+      RoomLogger.debug(
+        { roomId: roomId, userId: userId },
+        "Guest user tried to join a room that does not allow guests."
+      );
+      socket.emit(SOCKET_SERVER.USER_JOIN_ROOM_USER_FAIL, {
+        reason: USER_JOIN_FAILURE_REASON.GUESTS_NOT_ALLOWED,
+      });
+      return;
+    }
     /**
      * User is successfully joining the room at this point.
      */

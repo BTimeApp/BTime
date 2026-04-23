@@ -10,6 +10,7 @@ export interface IUserInfo {
   id: string; //user id
   userName: string; //username
   avatarURL?: string;
+  isGuest: boolean; //whether or not this user is a guest.
 }
 
 /**
