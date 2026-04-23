@@ -139,6 +139,7 @@ const formSchema = z.object({
   template: z
     .enum(ROOM_TEMPLATES as [RoomTemplateKey, ...RoomTemplateKey[]])
     .optional(),
+  allowGuests: z.boolean(),
   maxUsers: z
     .number()
     .min(1, { message: "Room cannot have a maximum of fewer than 1 user." })
@@ -151,6 +152,7 @@ type RoomSettingsFormProps = {
   access: Access;
   raceSettings: RaceSettings;
   teamSettings: TeamSettings;
+  allowGuests?: boolean;
   maxUsers?: number;
   createNewRoom: boolean;
   submitButtonRef?: React.RefObject<HTMLButtonElement>;
@@ -164,6 +166,7 @@ export default function RoomSettingsForm({
   access,
   raceSettings,
   teamSettings,
+  allowGuests = true,
   maxUsers,
   createNewRoom,
   submitButtonRef,
@@ -183,6 +186,7 @@ export default function RoomSettingsForm({
       access: access,
       raceSettings: raceSettings,
       teamSettings: teamSettings,
+      allowGuests: allowGuests,
       maxUsers: maxUsers,
     },
   });
@@ -197,7 +201,7 @@ export default function RoomSettingsForm({
         setFormErrorText("User is not logged in.");
       } else if (!socket || !socket.connected) {
         setFormErrorText(
-          "Websocket is not connected. Try refreshing the page."
+          "Websocket is not connected. Try refreshing the page.",
         );
       }
     } else {
@@ -223,19 +227,19 @@ export default function RoomSettingsForm({
         socket.emit(
           SOCKET_CLIENT.CREATE_ROOM,
           { roomSettings: roomSettings },
-          onCreateCallback
+          onCreateCallback,
         );
       } else {
         socket.emit(SOCKET_CLIENT.UPDATE_ROOM, { roomSettings });
       }
     },
-    [socket, user, createNewRoom, onCreateCallback]
+    [socket, user, createNewRoom, onCreateCallback],
   );
 
   const onError = useCallback((errors: FieldErrors<FieldValues>) => {
     toast.error(
       "Error(s) in form: " +
-        Object.values(errors).map((err) => err?.message?.toString())
+        Object.values(errors).map((err) => err?.message?.toString()),
     );
   }, []);
 
@@ -252,7 +256,7 @@ export default function RoomSettingsForm({
         }
       }
     },
-    [form] // form is a dependency since we're using setValue and trigger
+    [form], // form is a dependency since we're using setValue and trigger
   );
 
   const handleRoomFormatChange = useCallback(
@@ -274,7 +278,7 @@ export default function RoomSettingsForm({
         }
       }
     },
-    [form]
+    [form],
   );
 
   return (
@@ -421,15 +425,15 @@ export default function RoomSettingsForm({
                           if (value) {
                             form.setValue(
                               "teamSettings.teamFormatSettings.teamSolveFormat",
-                              "ALL"
+                              "ALL",
                             );
                             form.setValue(
                               "teamSettings.teamFormatSettings.teamScrambleFormat",
-                              "SAME"
+                              "SAME",
                             );
                             form.setValue(
                               "teamSettings.teamFormatSettings.teamReduceFunction",
-                              "MEAN"
+                              "MEAN",
                             );
                           }
                         }}
@@ -522,7 +526,7 @@ export default function RoomSettingsForm({
                               field.onChange(
                                 isNaN(parseInt(e.target.value))
                                   ? ""
-                                  : parseInt(e.target.value)
+                                  : parseInt(e.target.value),
                               )
                             }
                           />
@@ -575,7 +579,7 @@ export default function RoomSettingsForm({
                               field.onChange(
                                 isNaN(parseInt(e.target.value))
                                   ? ""
-                                  : parseInt(e.target.value)
+                                  : parseInt(e.target.value),
                               )
                             }
                           />
@@ -602,11 +606,11 @@ export default function RoomSettingsForm({
                               if (value) {
                                 form.setValue(
                                   "teamSettings.teamFormatSettings.teamScrambleFormat",
-                                  "SAME"
+                                  "SAME",
                                 );
                                 form.setValue(
                                   "teamSettings.teamFormatSettings.teamReduceFunction",
-                                  "MEAN"
+                                  "MEAN",
                                 );
                               }
                             }}
@@ -631,7 +635,7 @@ export default function RoomSettingsForm({
                     )}
                   />
                   {form.watch(
-                    "teamSettings.teamFormatSettings.teamSolveFormat"
+                    "teamSettings.teamFormatSettings.teamSolveFormat",
                   ) === "ALL" && (
                     <>
                       <FormField
@@ -705,6 +709,23 @@ export default function RoomSettingsForm({
               <p className="text-xl font-bold">EXTRA</p>
               <FormField
                 control={form.control}
+                name="allowGuests"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Allow Guests</FormLabel>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        defaultChecked={true}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
                 name="maxUsers"
                 render={({ field }) => (
                   <FormItem>
@@ -719,7 +740,7 @@ export default function RoomSettingsForm({
                         onChange={(e) => {
                           const val = e.target.value;
                           field.onChange(
-                            val === "" ? undefined : parseInt(val)
+                            val === "" ? undefined : parseInt(val),
                           );
                         }}
                       />
@@ -748,7 +769,7 @@ export default function RoomSettingsForm({
                             onChange={(e) => {
                               const val = e.target.value;
                               field.onChange(
-                                val === "" ? undefined : parseInt(val)
+                                val === "" ? undefined : parseInt(val),
                               );
                             }}
                           />
@@ -773,7 +794,7 @@ export default function RoomSettingsForm({
                             onChange={(e) => {
                               const val = e.target.value;
                               field.onChange(
-                                val === "" ? undefined : parseInt(val)
+                                val === "" ? undefined : parseInt(val),
                               );
                             }}
                           />

@@ -251,8 +251,8 @@ export interface IRoomSettings {
   access: Access;
   raceSettings: RaceSettings;
   teamSettings: TeamSettings;
+  allowGuests: boolean; //whether or not guests can join room. should default to true.
   maxUsers?: number; //the maximum number of users we can have in the room
-  allowGuests?: boolean; //whether or not guests can join room
 }
 
 /**
