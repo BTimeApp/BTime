@@ -25,71 +25,92 @@ import { abbreviate, cn } from "@/lib/utils";
 import { Route } from "@/routes"; //index route
 import { displayText } from "@btime/lib";
 import { ROOM_EVENTS_INFO } from "@btime/types";
+import { Await } from "@tanstack/react-router";
 import { RefreshCw, User, Globe, GlobeLock } from "lucide-react";
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
-export default function RoomListing({ className }: { className?: string }) {
-  // pull in initial rooms data from root route's loader
-  const { roomsData: initialRoomsData } = Route.useLoaderData();
+type RoomData = {
+  rooms: IRoomSummary[];
+  pageNumber: number;
+  totalPages: number;
+};
+
+type RoomListingInnerProps = {
+  initialRoomsDataResult: RoomData | null;
+  className?: string;
+};
+
+function RoomListingInner({
+  className,
+  initialRoomsDataResult,
+}: RoomListingInnerProps) {
+  const initialRoomsData: RoomData = initialRoomsDataResult ?? {
+    rooms: [] as IRoomSummary[],
+    pageNumber: 1,
+    totalPages: 1,
+  };
 
   // the page number we are currently on. 1-indexed
   const [rooms, setRooms] = useState<Map<string, IRoomSummary>>(
-    new Map(initialRoomsData.rooms.map((r: IRoomSummary) => [r.id, r]))
+    new Map(initialRoomsData.rooms.map((r: IRoomSummary) => [r.id, r])),
   );
   const [pageNumber, setPageNumber] = useState<number>(
-    initialRoomsData.pageNumber
+    initialRoomsData.pageNumber,
   );
   const [totalPages, setTotalPages] = useState<number>(
-    initialRoomsData.totalPages
+    initialRoomsData.totalPages,
   );
 
-  const [refreshPending, startRefreshTransition] = useTransition();
-  const [previousPending, startPreviousTransition] = useTransition();
-  const [nextPending, startNextTransition] = useTransition();
+  const [refreshPending, setRefreshPending] = useState(false);
+  const [previousPending, setPreviousPending] = useState(false);
+  const [nextPending, setNextPending] = useState(false);
 
-  /**
-   * Updates the rooms local state
-   */
-  const updateRooms = useCallback(async (pageNumber: number) => {
-    const res = await fetchRooms(pageNumber);
-    if (!res) {
-      toast.error("Could not fetch rooms");
-      return;
-    }
-
-    setTotalPages(res.totalPages);
-
-    if (pageNumber > res.totalPages) {
-      setPageNumber(res.totalPages);
-    } else {
-      if (res.rooms != null) {
-        setRooms(
-          new Map(
-            res.rooms.map((roomSummary: IRoomSummary) => [
-              roomSummary.id,
-              roomSummary,
-            ])
-          )
-        );
+  const updateRooms = useCallback(
+    async (pageNumber: number, setLoading: (v: boolean) => void) => {
+      setLoading(true);
+      try {
+        const res = await fetchRooms(pageNumber);
+        if (!res) {
+          toast.error("Could not fetch rooms");
+          return;
+        }
+        setTotalPages(res.totalPages);
+        if (pageNumber > res.totalPages) {
+          setPageNumber(res.totalPages);
+        } else {
+          if (res.rooms != null) {
+            setRooms(
+              new Map(
+                res.rooms.map((roomSummary: IRoomSummary) => [
+                  roomSummary.id,
+                  roomSummary,
+                ]),
+              ),
+            );
+          }
+          setPageNumber(pageNumber);
+        }
+      } finally {
+        setLoading(false);
       }
-      setPageNumber(pageNumber);
-    }
-  }, []);
+    },
+    [],
+  );
 
   const goToPreviousPage = useCallback(() => {
-    updateRooms(Math.max(pageNumber - 1, 1));
+    updateRooms(Math.max(pageNumber - 1, 1), setPreviousPending);
   }, [updateRooms, pageNumber]);
 
   const goToNextPage = useCallback(() => {
-    updateRooms(pageNumber + 1);
+    updateRooms(pageNumber + 1, setNextPending);
   }, [updateRooms, pageNumber]);
 
   return (
     <Card
       className={cn(
         "h-120 w-full flex flex-col px-3 gap-1 rounded-lg shadow-lg p-1 bg-container-1",
-        className
+        className,
       )}
     >
       <CardHeader className="shrink overflow-x-hidden">
@@ -107,11 +128,7 @@ export default function RoomListing({ className }: { className?: string }) {
                 size="sm"
                 disabled={refreshPending}
                 className="min-w-0 overflow-x-hidden"
-                onClick={() => {
-                  startRefreshTransition(() => {
-                    updateRooms(pageNumber);
-                  });
-                }}
+                onClick={() => updateRooms(pageNumber, setRefreshPending)}
               >
                 <RefreshCw
                   className={`${refreshPending ? "animate-spin" : ""}`}
@@ -219,9 +236,7 @@ export default function RoomListing({ className }: { className?: string }) {
               ) : (
                 <PaginationPreviousButton
                   onClick={() => {
-                    startPreviousTransition(() => {
-                      goToPreviousPage();
-                    });
+                    goToPreviousPage();
                   }}
                 />
               ))}
@@ -231,9 +246,7 @@ export default function RoomListing({ className }: { className?: string }) {
             ) : (
               <PaginationNextButton
                 onClick={() => {
-                  startNextTransition(() => {
-                    goToNextPage();
-                  });
+                  goToNextPage();
                 }}
               />
             )}
@@ -241,5 +254,21 @@ export default function RoomListing({ className }: { className?: string }) {
         </Pagination>
       </CardFooter>
     </Card>
+  );
+}
+
+export default function RoomListing({ className }: { className?: string }) {
+  // pull in initial rooms data from root route's loader
+  const { roomsData } = Route.useLoaderData();
+
+  return (
+    <Await promise={roomsData}>
+      {(initialRoomsDataResult) => (
+        <RoomListingInner
+          initialRoomsDataResult={initialRoomsDataResult}
+          className={className}
+        />
+      )}
+    </Await>
   );
 }
