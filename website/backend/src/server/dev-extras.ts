@@ -23,6 +23,7 @@ async function addTestRooms(stores: RedisStores, roomWorker: RoomWorker) {
               visibility: "PUBLIC",
             }
           : { visibility: "PRIVATE", password: "test" }) as Access,
+        allowGuests: true,
         raceSettings: (i % 2 == 0
           ? {
               roomFormat: "CASUAL",
@@ -49,7 +50,7 @@ async function addTestRooms(stores: RedisStores, roomWorker: RoomWorker) {
             }
           : { teamsEnabled: false }) as TeamSettings,
       },
-      i.toString()
+      i.toString(),
     );
 
     await stores.rooms.setRoom(room);
@@ -66,7 +67,7 @@ function disableCubingSearchPrintout() {
 
 export default async function addDevExtras(
   stores: RedisStores,
-  roomWorker: RoomWorker
+  roomWorker: RoomWorker,
 ) {
   addTestRooms(stores, roomWorker);
   disableCubingSearchPrintout();

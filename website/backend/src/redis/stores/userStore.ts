@@ -27,6 +27,7 @@ export function createUserStore(redis: Redis) {
         id: data.id,
         userName: data.userName,
         avatarURL: data.avatarURL || undefined,
+        isGuest: data.isGuest === "true",
       };
     },
 
@@ -37,6 +38,7 @@ export function createUserStore(redis: Redis) {
         id: user.id,
         userName: user.userName,
         avatarURL: user.avatarURL ?? "",
+        isGuest: String(user.isGuest),
       });
     },
 

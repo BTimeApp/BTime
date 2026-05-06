@@ -5,20 +5,17 @@ import PageWrapper from "@/components/common/page-wrapper";
 import CreateRoomButton from "@/components/index/create-room-button";
 import ProfileView from "@/components/index/profile-view";
 import RoomListing from "@/components/index/room-listing";
+import RoomListingLoading from "@/components/index/room-listing-loading";
 import { fetchRooms } from "@/lib/fetch-rooms";
 import { cn } from "@/lib/utils";
-import { createFileRoute } from "@tanstack/react-router";
-import { toast } from "sonner";
+import { createFileRoute, defer } from "@tanstack/react-router";
+import { Suspense } from "react";
 
 export const Route = createFileRoute("/")({
-  loader: async () => {
-    const roomsData = await fetchRooms(1);
-    if (!roomsData) {
-      toast.error("Couldn't load rooms.");
-    }
-    return roomsData
-      ? { roomsData }
-      : { roomsData: { rooms: [], totalPages: 1, pageNumber: 1 } };
+  loader: () => {
+    return {
+      roomsData: defer(fetchRooms(1)),
+    }; // no await — returns immediately
   },
   component: HomeComponent,
 });
@@ -36,7 +33,9 @@ function HomeComponent() {
         className={cn("py-2 px-4", "flex flex-1 flex-col gap-2 md:flex-row")}
       >
         <div className="basis-0 grow md:grow-[2] min-w-0 px-2">
-          <RoomListing />
+          <Suspense fallback={<RoomListingLoading />}>
+            <RoomListing />
+          </Suspense>
         </div>
         <div className="basis-0 md:grow min-w-0 px-2">
           <ProfileView />

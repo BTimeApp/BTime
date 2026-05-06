@@ -3,7 +3,7 @@ import PageWrapper from "@/components/common/page-wrapper";
 import RoomSettingsForm from "@/components/room/room-settings-form";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/create/")({
+export const Route = createFileRoute("/_authenticated/create")({
   component: CreatePage,
 });
 

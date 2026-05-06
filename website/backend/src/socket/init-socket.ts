@@ -25,13 +25,13 @@ import { Server } from "socket.io";
 export type SocketMiddleware = (
   req: any, // eslint-disable-line @typescript-eslint/no-explicit-any
   res: ServerResponse,
-  next: NextFunction
+  next: NextFunction,
 ) => void;
 
 export const createSocket = (
   httpServer: HttpServer,
   pubClient: Redis,
-  subClient: Redis
+  subClient: Redis,
 ) => {
   return new Server(httpServer, {
     adapter: createAdapter(pubClient, subClient),
@@ -45,10 +45,10 @@ export const createSocket = (
 
 export const setUpSocketMiddleware = (
   io: Server,
-  sessionMiddleware: SocketMiddleware
+  sessionMiddleware: SocketMiddleware,
 ) => {
-  function socketHandshakeMiddleware(
-    middleware: SocketMiddleware
+  function initialConnectionMiddleware(
+    middleware: SocketMiddleware,
   ): SocketMiddleware {
     return (req, res, next) => {
       const isHandshake = req._query.sid === undefined;
@@ -60,41 +60,38 @@ export const setUpSocketMiddleware = (
     };
   }
 
-  io.engine.use(socketHandshakeMiddleware(sessionMiddleware));
-  io.engine.use(socketHandshakeMiddleware(passport.session()));
-  io.engine.use(
-    socketHandshakeMiddleware((req, res, next) => {
-      if (req.user) {
-        next();
-      } else {
-        res.writeHead(401);
-        res.end();
-      }
-    })
-  );
+  io.engine.use(initialConnectionMiddleware(sessionMiddleware));
+  io.engine.use(initialConnectionMiddleware(passport.session()));
 };
 
 export const startSocketListener = (
   io: Server,
   stores: RedisStores,
-  roomWorker: RoomWorker
+  roomWorker: RoomWorker,
 ) => {
   async function onConnect(socket: Socket) {
     // node environment hack?
     const req = socket.request as http.IncomingMessage & { user?: IUser };
-    socket.data.user = req.user;
-    //check for user. DC if no user
-    // socket.data.user = socket.request.user;
-    if (!socket.data.user) {
-      socket.disconnect(true);
-      return;
+
+    if (req.user) {
+      // OAuth user — trust passport
+      socket.data.user = req.user;
+    } else {
+      // Check handshake auth payload for guest
+      const handshakeUser = socket.handshake.auth?.user as IUser | undefined;
+      if (handshakeUser?.userInfo.isGuest) {
+        socket.data.user = handshakeUser;
+      } else {
+        socket.disconnect(true);
+        return;
+      }
     }
 
     const SocketLogger = createSocketLogger(socket.id, socket.data.user);
     socket.data.logger = SocketLogger;
 
     socket.data.logger.info(
-      `User ${socket.data.user?.userInfo.userName} (${socket.data.user?.userInfo.id}) connected via websocket.`
+      `User ${socket.data.user?.userInfo.userName} (${socket.data.user?.userInfo.id}) connected via websocket.`,
     );
 
     const userId = socket.data.user!.userInfo.id;
@@ -118,7 +115,7 @@ export const startSocketListener = (
       if (!eventConfig) {
         socket.data.logger?.warn(
           { event: eventName },
-          `Unknown socket client event: ${eventName}`
+          `Unknown socket client event: ${eventName}`,
         );
         return next();
       }
@@ -142,7 +139,7 @@ export const startSocketListener = (
         logMethod.call(
           socket.data.logger,
           logData,
-          `Received socket event: ${eventName}`
+          `Received socket event: ${eventName}`,
         );
       }
 
@@ -205,7 +202,7 @@ export const startSocketListener = (
               //the room doesn't exist
               socket.emit(SOCKET_SERVER.INVALID_ROOM);
             }
-          }
+          },
         );
       }
     }
@@ -218,7 +215,7 @@ export const startSocketListener = (
       SOCKET_CLIENT.CREATE_ROOM,
       async (
         { roomSettings }: { roomSettings: IRoomSettings },
-        callback: (roomId: string) => void
+        callback: (roomId: string) => void,
       ) => {
         let roomId: string = randomUUID();
         while ((await stores.rooms.getRoom(roomId)) != null) {
@@ -227,13 +224,13 @@ export const startSocketListener = (
         const room: IRoom = await createRoom(
           roomSettings,
           roomId,
-          socket.data.user?.userInfo
+          socket.data.user?.userInfo,
         );
 
         await stores.rooms.setRoom(room);
         roomWorker.startRoomProcessor(roomId);
         callback(roomId);
-      }
+      },
     );
 
     /**
