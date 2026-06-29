@@ -8,6 +8,7 @@ export interface RoomEventAttributes {
   displayName: string;
   baseEvent: string;
   jsName: string;
+  scrambleName: string;
   iconSrc: string;
 }
 
@@ -36,91 +37,114 @@ export const ROOM_EVENTS_INFO = {
     displayName: "3x3",
     baseEvent: "333",
     jsName: "3x3x3",
+    scrambleName: "333",
     iconSrc: "event-333",
   },
   "222": {
     displayName: "2x2",
     baseEvent: "222",
     jsName: "2x2x2",
+    scrambleName: "222",
     iconSrc: "event-222",
   },
   "444": {
     displayName: "4x4",
     baseEvent: "444",
     jsName: "4x4x4",
+    scrambleName: "444",
     iconSrc: "event-444",
   },
   "555": {
     displayName: "5x5",
     baseEvent: "555",
     jsName: "5x5x5",
+    scrambleName: "555",
     iconSrc: "event-555",
   },
   "666": {
     displayName: "6x6",
     baseEvent: "666",
     jsName: "6x6x6",
+    scrambleName: "666",
     iconSrc: "event-666",
   },
   "777": {
     displayName: "7x7",
     baseEvent: "777",
     jsName: "7x7x7",
+    scrambleName: "777",
     iconSrc: "event-777",
   },
   megaminx: {
     displayName: "Megaminx",
     baseEvent: "megaminx",
     jsName: "megaminx",
+    scrambleName: "minx",
     iconSrc: "event-minx",
   },
   pyraminx: {
     displayName: "Pyraminx",
     baseEvent: "pyraminx",
     jsName: "pyraminx",
+    scrambleName: "pyram",
     iconSrc: "event-pyra",
   },
   skewb: {
     displayName: "Skewb",
     baseEvent: "skewb",
     jsName: "skewb",
+    scrambleName: "skewb",
     iconSrc: "event-skewb",
   },
   clock: {
     displayName: "Clock",
     baseEvent: "clock",
     jsName: "clock",
+    scrambleName: "clock",
     iconSrc: "event-clock",
   },
   sq1: {
     displayName: "Sq-1",
     baseEvent: "sq1",
     jsName: "square1",
+    scrambleName: "sq1",
     iconSrc: "event-sq1",
   },
   "3oh": {
     displayName: "3x3 OH",
     baseEvent: "333",
     jsName: "3x3x3",
+    scrambleName: "333oh",
     iconSrc: "event-333oh",
   },
   "3bld": {
     displayName: "3BLD",
     baseEvent: "333",
     jsName: "3x3x3",
+    scrambleName: "333bf",
     iconSrc: "event-3bf",
   },
   "4bld": {
     displayName: "4BLD",
     baseEvent: "444",
     jsName: "4x4x4",
+    scrambleName: "444bf",
     iconSrc: "event-4bf",
   },
   "5bld": {
     displayName: "5BLD",
     baseEvent: "555",
     jsName: "5x5x5",
+
+    scrambleName: "555bf",
     iconSrc: "event-5bf",
+  },
+  fto: {
+    displayName: "FTO",
+    baseEvent: "fto",
+    jsName: "fto",
+    scrambleName: "fto",
+    iconSrc: "unofficial-fto",
   },
 } satisfies Record<string, RoomEventAttributes>;
 export const ROOM_EVENTS = literalKeys(ROOM_EVENTS_INFO);
