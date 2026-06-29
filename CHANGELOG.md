@@ -4,6 +4,12 @@ This file contains summaries of major/relevant changes to the BTime project in r
 
 The current versioning convention tracks changes to BTime as a whole. Packages will maintain their own versions as necessary.
 
+## 0.6.6 - 2026-06-28
+
+Added:
+
+- fto
+
 ## 0.6.5 - 2026-04-23
 
 Added:
